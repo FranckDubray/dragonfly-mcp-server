@@ -1,5 +1,5 @@
 """
-Core LLM execution logic (restored and fixed)
+Core LLM execution logic (stream-first with robust fallbacks)
 """
 from typing import Any, Dict, List, Optional
 import os
@@ -49,6 +49,7 @@ def execute_call_llm(
     }
 
     # Tools requested
+    tool_data: Dict[str, Any] = {"tools": [], "name_to_reg": {}, "found_tools": []}
     if tool_names:
         if LOG.isEnabledFor(logging.DEBUG):
             LOG.debug("=== MCP TOOLS MODE ===")
@@ -77,41 +78,57 @@ def execute_call_llm(
     try:
         # Simple mode (no tools) OR tools mode for final answer
         if not tool_names:
+            # FINAL ANSWER (TEXT) — STREAM
             if LOG.isEnabledFor(logging.DEBUG):
                 LOG.debug("=== STREAMING MODE (FINAL/TEXT) ===")
                 LOG.debug(f"→ POST {endpoint}")
-                LOG.debug(f"🔍 SIMPLE PAYLOAD TO LLM API: {json.dumps(payload, indent=2)}")
             payload["stream"] = True
             resp = requests.post(endpoint, headers=headers, json=payload, stream=True, verify=False)
-            if LOG.isEnabledFor(logging.DEBUG):
-                LOG.debug(f"← HTTP {resp.status_code}")
             resp.raise_for_status()
             result = process_streaming_chunks(resp)
-            if LOG.isEnabledFor(logging.DEBUG):
-                LOG.debug(f"🔍 ASSEMBLED CHUNKS RESULT: {json.dumps(result, indent=2)}")
             return {
                 "success": True,
-                "content": result["content"],
-                "finish_reason": result["finish_reason"],
-                "usage": result["usage"]
+                "content": result.get("content", ""),
+                "finish_reason": result.get("finish_reason", "stop"),
+                "usage": result.get("usage")
             }
         
-        # Tools mode - first call (STREAM)
+        # Tools mode - first call (STREAM) for tool_calls
         else:
             if LOG.isEnabledFor(logging.DEBUG):
                 LOG.debug("=== TOOLS MODE (STREAM) ===")
                 LOG.debug(f"→ POST {endpoint} (SSE for tool_calls)")
             payload["stream"] = True
             resp = requests.post(endpoint, headers=headers, json=payload, stream=True, verify=False)
-            if LOG.isEnabledFor(logging.DEBUG):
-                LOG.debug(f"← HTTP {resp.status_code}")
             resp.raise_for_status()
 
             # Reconstruct tool_calls from stream
             tc_data = process_tool_calls_stream(resp)
             tool_calls = tc_data.get("tool_calls") or []
 
-            # Append assistant message built from streaming tool_calls (OpenAI format)
+            # Fallback: if streaming yielded no tool_calls, retry non-stream once
+            if not tool_calls:
+                if LOG.isEnabledFor(logging.DEBUG):
+                    LOG.debug("No tool_calls in stream; retrying first call in non-stream mode")
+                retry_payload = json.loads(json.dumps(payload))
+                retry_payload.pop("stream", None)
+                try:
+                    resp_ns = requests.post(endpoint, headers=headers, json=retry_payload, timeout=60, verify=False)
+                    resp_ns.raise_for_status()
+                    data = resp_ns.json()
+                    if "response" in data and "choices" not in data:
+                        data = data["response"]
+                    choices = data.get("choices", [])
+                    if choices:
+                        msg = choices[0].get("message") or {}
+                        tool_calls = msg.get("tool_calls") or []
+                except Exception as _:
+                    tool_calls = []
+            # Still nothing? abort gracefully
+            if not tool_calls:
+                return {"error": "LLM did not return tool_calls"}
+
+            # Append assistant message built from (non-empty) tool_calls (OpenAI format)
             assistant_msg: Dict[str, Any] = {"role": "assistant", "tool_calls": []}
             for tc in tool_calls:
                 assistant_msg["tool_calls"].append({
