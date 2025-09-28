@@ -1,0 +1,23 @@
+{
+  "type": "function",
+  "function": {
+    "name": "pdf2text",
+    "displayName": "PDF to Text",
+    "description": "Extraction de texte depuis un PDF pour des pages données. Entrée: path (string), pages (string optionnelle) — Sortie: texte concaténé et par page.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Chemin du fichier PDF (relatif au projet ou absolu)"
+        },
+        "pages": {
+          "type": "string",
+          "description": "Pages à extraire (1-based), ex: '1-3,5,10'"
+        }
+      },
+      "required": ["path"],
+      "additionalProperties": false
+    }
+  }
+}
