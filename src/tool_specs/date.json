@@ -1,0 +1,87 @@
+{
+  "type": "function",
+  "function": {
+    "name": "date",
+    "displayName": "Date/Time",
+    "description": "Calculs de dates: jour de la semaine, différence entre 2 dates, maintenant/aujourd'hui, ajout de durées, formatage et parsing.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": [
+            "now", "today", "day_of_week", "diff", "diff_days", "add", "format", "parse", "week_number"
+          ],
+          "description": "Type d'opération date/heure"
+        },
+        "date": {
+          "type": "string",
+          "description": "Date/DateTime d'entrée (ISO ou selon input_format)"
+        },
+        "datetime": {
+          "type": "string",
+          "description": "Alias pour 'date'"
+        },
+        "start": {
+          "type": "string",
+          "description": "Date/DateTime de début pour diff"
+        },
+        "end": {
+          "type": "string",
+          "description": "Date/DateTime de fin pour diff"
+        },
+        "date1": {
+          "type": "string",
+          "description": "Alias pour début"
+        },
+        "date2": {
+          "type": "string",
+          "description": "Alias pour fin"
+        },
+        "unit": {
+          "type": "string",
+          "enum": ["days", "hours", "minutes", "seconds"],
+          "description": "Unité pour diff/diff_days"
+        },
+        "weeks": {
+          "type": "integer",
+          "description": "Semaines à ajouter (add)"
+        },
+        "days": {
+          "type": "integer",
+          "description": "Jours à ajouter (add)"
+        },
+        "hours": {
+          "type": "integer",
+          "description": "Heures à ajouter (add)"
+        },
+        "minutes": {
+          "type": "integer",
+          "description": "Minutes à ajouter (add)"
+        },
+        "seconds": {
+          "type": "integer",
+          "description": "Secondes à ajouter (add)"
+        },
+        "format": {
+          "type": "string",
+          "description": "Format de sortie strftime pour format"
+        },
+        "input_format": {
+          "type": "string",
+          "description": "Format d'entrée strptime"
+        },
+        "tz": {
+          "type": "string",
+          "description": "Fuseau horaire IANA (ex: Europe/Paris)"
+        },
+        "locale": {
+          "type": "string",
+          "description": "Locale pour noms de jours (fr/en)"
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}
