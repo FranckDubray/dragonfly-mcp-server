@@ -23,7 +23,8 @@ logger = logging.getLogger(__name__)
 
 MCP_HOST = os.getenv('MCP_HOST', '127.0.0.1')
 MCP_PORT = int(os.getenv('MCP_PORT', '8000'))
-EXECUTE_TIMEOUT_SEC = int(os.getenv('EXECUTE_TIMEOUT_SEC', '30'))
+# Default tool execution timeout: 180s (3 minutes)
+EXECUTE_TIMEOUT_SEC = int(os.getenv('EXECUTE_TIMEOUT_SEC', '180'))
 RELOAD_ENV = os.getenv('RELOAD', '').strip() == '1'
 AUTO_RELOAD_TOOLS = os.getenv('AUTO_RELOAD_TOOLS', '1').strip() == '1'
 
