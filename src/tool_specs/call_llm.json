@@ -1,0 +1,50 @@
+{
+  "type": "function",
+  "function": {
+    "name": "call_llm",
+    "displayName": "LLM Orchestrator",
+    "description": "Appel d'API LLM avec support streaming automatique et outils MCP optionnels. Le streaming est TOUJOURS activé côté serveur.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "messages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": {
+                "type": "string",
+                "enum": ["system", "user", "assistant", "function"]
+              },
+              "content": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": ["role", "content"]
+          },
+          "description": "Messages de conversation au format OpenAI"
+        },
+        "model": {
+          "type": "string",
+          "description": "Modèle LLM à utiliser (default: gpt-5)"
+        },
+        "max_tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 128000,
+          "description": "Nombre maximum de tokens à générer"
+        },
+        "tool_names": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Noms des outils MCP à rendre disponibles au LLM"
+        }
+      },
+      "required": ["messages"],
+      "additionalProperties": false
+    }
+  }
+}
