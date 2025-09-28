@@ -1,5 +1,5 @@
 """
-call_llm tool - LLM API integration with MCP tools support
+call_llm tool - LLM API integration with MCP tools support (simplified params)
 """
 from typing import Any, Dict, List, Optional
 import os
@@ -46,19 +46,35 @@ if _env_truthy("LLM_DEBUG"):
 
 
 def run(
-    messages: List[Dict[str, Any]],
+    message: Optional[str] = None,
+    promptSystem: Optional[str] = None,
     model: str = "gpt-5",
     max_tokens: Optional[int] = None,
     tool_names: Optional[List[str]] = None,
-    promptSystem: Optional[str] = None,
     **kwargs
 ) -> Dict[str, Any]:
     """
-    If promptSystem is provided, system messages in `messages` will be stripped and sent via payload.promptSystem.
+    Simplified interface:
+    - message: user message (string)
+    - promptSystem: system instructions routed via payload.promptSystem
+    Backward-compat: if `messages` is found in kwargs (array of OpenAI messages), it will be used instead of `message`.
     """
+    # Build messages payload
+    messages: List[Dict[str, Any]]
+    if message:
+        messages = [{"role": "user", "content": message}]
+    else:
+        # Backward-compat path
+        msgs = kwargs.get("messages")
+        if isinstance(msgs, list) and msgs:
+            messages = msgs
+        else:
+            return {"error": "message required"}
+
     extra = {}
     if promptSystem:
         extra["promptSystem"] = promptSystem
+
     return core.execute_call_llm(messages, model, max_tokens, tool_names, **extra)
 
 
@@ -68,22 +84,17 @@ def spec() -> Dict[str, Any]:
         "function": {
             "name": "call_llm",
             "displayName": "LLM Orchestrator",
-            "description": "Appel d'API LLM avec support streaming automatique et outils MCP optionnels. Le streaming est TOUJOURS activé côté serveur.",
+            "description": "Appel d'API LLM en streaming (SSE) avec option d'outillage MCP. Fournir un seul paramètre 'message' (texte utilisateur) et un 'promptSystem' optionnel.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "messages": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "role": {"type": "string", "enum": ["system", "user", "assistant", "function"]},
-                                "content": {"type": "string"},
-                                "name": {"type": "string"}
-                            },
-                            "required": ["role", "content"]
-                        },
-                        "description": "Messages de conversation au format OpenAI"
+                    "message": {
+                        "type": "string",
+                        "description": "Message utilisateur (texte libre)"
+                    },
+                    "promptSystem": {
+                        "type": "string",
+                        "description": "Instructions système transmises via payload.promptSystem (et non dans messages)."
                     },
                     "model": {
                         "type": "string",
@@ -99,13 +110,9 @@ def spec() -> Dict[str, Any]:
                         "type": "array",
                         "items": {"type": "string"},
                         "description": "Noms des outils MCP à rendre disponibles au LLM"
-                    },
-                    "promptSystem": {
-                        "type": "string",
-                        "description": "Instructions système transmises via payload.promptSystem (et non dans messages)."
                     }
                 },
-                "required": ["messages"],
+                "required": ["message"],
                 "additionalProperties": False
             }
         }
