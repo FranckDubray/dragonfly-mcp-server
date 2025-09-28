@@ -60,14 +60,10 @@ def execute_call_llm(
             if not tool_data["tools"]:
                 return {"error": "No matching tools found for call_llm"}
             payload["tools"] = tool_data["tools"]
-            # ENFORCE tool usage
-            found = tool_data.get("found_tools", [])
-            if len(found) == 1:
-                payload["tool_choice"] = {"type": "function", "function": {"name": found[0]}}
-            else:
-                payload["tool_choice"] = "required"
+            # ENFORCE tool usage: always require a tool selection (even if 1 tool)
+            payload["tool_choice"] = "required"
             if LOG.isEnabledFor(logging.DEBUG):
-                LOG.debug(f"Added {len(tool_data['tools'])} tools to LLM payload")
+                LOG.debug(f"Added {len(tool_data['tools'])} tools to LLM payload; tool_choice=required")
         except Exception as e:
             return {"error": f"Failed to get MCP tools: {e}"}
 
