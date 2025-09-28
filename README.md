@@ -8,6 +8,22 @@ Serveur MCP multi-outils (FastAPI) avec auto-découverte des tools et panneau de
 - JSON sûr (valeurs NaN/Infinity sanitizées)
 - Panneau de contrôle web (`/control`) pour configurer les tokens et tester
 
+## Outils MCP disponibles (src/tools)
+- call_llm: Orchestrateur LLM + tools (2 appels, tool_choice=required puis none)
+- math: calcul numérique/HP et symbolique (modules dans `src/tools/_math/`)
+- date: opérations date/heure (now/today, diff, add, format, parse, weekday, week_number)
+- git: GitHub API + Git local (chroot, opérations limitées)
+- gitbook: découverte/contenu/sitemap GitBook
+- sqlite_db: SQLite chrootée dans `<projet>/sqlite3` (noms de DB validés)
+- pdf_search: recherche de mots-clés dans les PDF
+- pdf2text: extraction de texte depuis PDF
+- reddit_intelligence: recherche multi, experts, tendances, sentiment
+- script_executor: exécution encadrée de scripts (sécurité/_script)
+- universal_doc_scraper: détection/scraping universel de docs
+- academic_research_super: outil agrégateur pour recherches avancées
+
+Les spécifications JSON (OpenAI tools) correspondantes se trouvent dans `src/tool_specs/` (items obligatoires pour les arrays).
+
 ## Prérequis
 - Python 3.9+
 - Accès Internet si vous utilisez les APIs (GitHub, LLM)
@@ -15,7 +31,7 @@ Serveur MCP multi-outils (FastAPI) avec auto-découverte des tools et panneau de
 ## Installation (développement)
 ```bash
 git clone https://github.com/FranckDubray/dragonfly-mcp-server.git
-cd dragonfly-mcp-server
+ycd dragonfly-mcp-server
 python -m venv venv
 source venv/bin/activate   # Windows: venv\Scripts\Activate.ps1
 pip install -U pip
@@ -32,7 +48,7 @@ Le serveur démarre par défaut sur `http://127.0.0.1:8000`.
 Vous pouvez configurer via variables d'environnement ou via l'interface web (recommandé):
 - Ouvrez `http://HOST:PORT/control` (panneau de contrôle)
 - Onglet "Config" → saisissez/mettez à jour les tokens
-- Les valeurs sont persistées dans `.env` (automatiquement ajouté à `.gitignore`)
+- Les valeurs sont persistées dans `.env` (automatiquement ajoutée à `.gitignore`)
 
 Variables principales:
 - MCP_HOST: hôte du serveur (défaut `127.0.0.1`)
