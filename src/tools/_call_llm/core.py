@@ -1,5 +1,5 @@
 """
-Core LLM execution logic (stream-only for both calls)
+Core LLM execution logic (stream-only for both calls) + promptSystem support
 """
 from typing import Any, Dict, List, Optional
 import os
@@ -33,6 +33,17 @@ def execute_call_llm(
     if not messages:
         return {"error": "messages required"}
 
+    # Extract promptSystem from kwargs or from system messages
+    prompt_system = kwargs.get("promptSystem")
+    if not prompt_system:
+        new_messages: List[Dict[str, Any]] = []
+        for m in messages:
+            if (m.get("role") == "system") and (prompt_system is None):
+                prompt_system = m.get("content", "")
+            else:
+                new_messages.append(m)
+        messages = new_messages
+
     endpoint = os.getenv("LLM_ENDPOINT", "https://dev-ai.dragonflygroup.fr/api/v1/chat/completions")
     
     payload: Dict[str, Any] = {
@@ -40,6 +51,8 @@ def execute_call_llm(
         "messages": messages,
         "temperature": 1,
     }
+    if prompt_system:
+        payload["promptSystem"] = prompt_system
     if max_tokens:
         payload["max_tokens"] = max_tokens
 
@@ -60,10 +73,16 @@ def execute_call_llm(
             if not tool_data["tools"]:
                 return {"error": "No matching tools found for call_llm"}
             payload["tools"] = tool_data["tools"]
-            # ENFORCE tool usage: always require a tool selection (even if 1 tool)
-            payload["tool_choice"] = "required"
+            # ENFORCE tool usage always (even if 1 tool)
+            found = tool_data.get("found_tools", [])
+            if len(found) == 1:
+                payload["tool_choice"] = {"type": "function", "function": {"name": found[0]}}
+            else:
+                payload["tool_choice"] = "required"
+            # Optional: avoid parallel tool calls if provider supports it
+            payload["parallel_tool_calls"] = False
             if LOG.isEnabledFor(logging.DEBUG):
-                LOG.debug(f"Added {len(tool_data['tools'])} tools to LLM payload; tool_choice=required")
+                LOG.debug(f"Added {len(tool_data['tools'])} tools to LLM payload; tool_choice={payload['tool_choice']}")
         except Exception as e:
             return {"error": f"Failed to get MCP tools: {e}"}
 
