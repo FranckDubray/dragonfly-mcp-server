@@ -1,4 +1,3 @@
-
 """
 call_llm tool - LLM API integration with MCP tools support
 """
@@ -51,9 +50,16 @@ def run(
     model: str = "gpt-5",
     max_tokens: Optional[int] = None,
     tool_names: Optional[List[str]] = None,
+    promptSystem: Optional[str] = None,
     **kwargs
 ) -> Dict[str, Any]:
-    return core.execute_call_llm(messages, model, max_tokens, tool_names, **kwargs)
+    """
+    If promptSystem is provided, system messages in `messages` will be stripped and sent via payload.promptSystem.
+    """
+    extra = {}
+    if promptSystem:
+        extra["promptSystem"] = promptSystem
+    return core.execute_call_llm(messages, model, max_tokens, tool_names, **extra)
 
 
 def spec() -> Dict[str, Any]:
@@ -93,6 +99,10 @@ def spec() -> Dict[str, Any]:
                         "type": "array",
                         "items": {"type": "string"},
                         "description": "Noms des outils MCP à rendre disponibles au LLM"
+                    },
+                    "promptSystem": {
+                        "type": "string",
+                        "description": "Instructions système transmises via payload.promptSystem (et non dans messages)."
                     }
                 },
                 "required": ["messages"],
