@@ -1,7 +1,0 @@
-Dragonfly MCP Server
-
-This repository contains the MCP server (flat layout):
-- src/server.py entry point
-- src/app_factory.py, src/config.py, src/ui_html.py, src/ui_js.py, src/json_utils.py
-- src/tools/* and src/tool_specs/*
-- scripts/dev.sh and scripts/dev.ps1
