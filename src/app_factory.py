@@ -27,6 +27,18 @@ EXECUTE_TIMEOUT_SEC = int(os.getenv('EXECUTE_TIMEOUT_SEC', '30'))
 RELOAD_ENV = os.getenv('RELOAD', '').strip() == '1'
 AUTO_RELOAD_TOOLS = os.getenv('AUTO_RELOAD_TOOLS', '1').strip() == '1'
 
+# Big integers handling
+BIGINT_AS_STRING = os.getenv('BIGINT_AS_STRING', '1').strip().lower() in ('1','true','yes','on')
+BIGINT_STR_THRESHOLD = int(os.getenv('BIGINT_STR_THRESHOLD', '1000'))  # stringify ints when digits > threshold
+# Lift Python 3.11+ safety cap for int->str to support very large factorials
+try:
+    if hasattr(sys, 'set_int_max_str_digits'):
+        val = os.getenv('PY_INT_MAX_STR_DIGITS', '0').strip()  # 0 = unlimited
+        sys.set_int_max_str_digits(0 if val == '' else int(val))
+        logger.info(f"int->str max digits set to {val or 'unlimited'}")
+except Exception as e:
+    logger.warning(f"Could not set int max str digits: {e}")
+
 registry: Dict[str, Dict[str, Any]] = {}
 _tool_id_counter = 10000
 _last_scan_time = 0
@@ -47,11 +59,22 @@ class ConfigUpdate(BaseModel):
 
 # Fonction de sérialisation JSON safe intégrée
 def sanitize_for_json(obj: Any) -> Any:
-    """Recursively sanitize an object to make it JSON-compliant."""
+    """Recursively sanitize an object to make it JSON-compliant, incl. huge ints."""
     if isinstance(obj, dict):
         return {k: sanitize_for_json(v) for k, v in obj.items()}
     elif isinstance(obj, (list, tuple)):
         return [sanitize_for_json(item) for item in obj]
+    elif isinstance(obj, int):
+        # Optionally return large integers as strings to avoid downstream parser limits
+        try:
+            if BIGINT_AS_STRING:
+                s = str(obj)
+                if len(s) > BIGINT_STR_THRESHOLD:
+                    return s
+        except Exception:
+            # Fallback: return as-is; global int->str cap is lifted above
+            pass
+        return obj
     elif isinstance(obj, float):
         if math.isinf(obj):
             return "Infinity" if obj > 0 else "-Infinity"
@@ -63,7 +86,7 @@ def sanitize_for_json(obj: Any) -> Any:
         return obj
 
 class SafeJSONResponse(JSONResponse):
-    """JSONResponse qui gère automatiquement les valeurs infinies"""
+    """JSONResponse qui gère automatiquement les valeurs infinies et gros entiers"""
     def render(self, content: Any) -> bytes:
         sanitized = sanitize_for_json(content)
         return json.dumps(
