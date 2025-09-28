@@ -20,7 +20,7 @@ def execute_call_llm(
 ) -> Dict[str, Any]:
     
     if LOG.isEnabledFor(logging.DEBUG):
-        LOG.debug("=== CALL_LLM START ===")
+        LOG.debug("=== CALL_LLM START (stream-only) ===")
         LOG.debug(f"messages: {len(messages) if messages else 'None'}")
         LOG.debug(f"model: {model}")
         LOG.debug(f"max_tokens: {max_tokens}")
@@ -64,25 +64,14 @@ def execute_call_llm(
     # Tools requested
     tool_data: Dict[str, Any] = {"tools": [], "name_to_reg": {}, "found_tools": []}
     if tool_names:
-        if LOG.isEnabledFor(logging.DEBUG):
-            LOG.debug("=== MCP TOOLS MODE ===")
-            LOG.debug(f"Requested tools: {tool_names}")
         try:
             mcp_url = os.getenv("MCP_URL", "http://127.0.0.1:8000")
-            tool_data = fetch_and_prepare_tools(tool_names, mcp_url)
-            if not tool_data["tools"]:
+            td = fetch_and_prepare_tools(tool_names, mcp_url)
+            if not td["tools"]:
                 return {"error": "No matching tools found for call_llm"}
+            tool_data = td
             payload["tools"] = tool_data["tools"]
-            # ENFORCE tool usage always (even if 1 tool)
-            found = tool_data.get("found_tools", [])
-            if len(found) == 1:
-                payload["tool_choice"] = {"type": "function", "function": {"name": found[0]}}
-            else:
-                payload["tool_choice"] = "required"
-            # Optional: avoid parallel tool calls if provider supports it
-            payload["parallel_tool_calls"] = False
-            if LOG.isEnabledFor(logging.DEBUG):
-                LOG.debug(f"Added {len(tool_data['tools'])} tools to LLM payload; tool_choice={payload['tool_choice']}")
+            # NOTE: No tool_choice / no parallel_tool_calls → let provider decide
         except Exception as e:
             return {"error": f"Failed to get MCP tools: {e}"}
 
@@ -90,9 +79,6 @@ def execute_call_llm(
         # Simple mode (no tools) OR tools mode for final answer
         if not tool_names:
             # FINAL ANSWER (TEXT) — STREAM-ONLY
-            if LOG.isEnabledFor(logging.DEBUG):
-                LOG.debug("=== STREAM (FINAL/TEXT) ===")
-                LOG.debug(f"→ POST {endpoint}")
             payload["stream"] = True
             resp = requests.post(endpoint, headers=headers, json=payload, stream=True, verify=False)
             resp.raise_for_status()
@@ -106,9 +92,6 @@ def execute_call_llm(
         
         # Tools mode - first call (STREAM-ONLY) for tool_calls
         else:
-            if LOG.isEnabledFor(logging.DEBUG):
-                LOG.debug("=== TOOLS MODE (STREAM-ONLY) ===")
-                LOG.debug(f"→ POST {endpoint} (SSE for tool_calls)")
             payload["stream"] = True
             resp = requests.post(endpoint, headers=headers, json=payload, stream=True, verify=False)
             resp.raise_for_status()
@@ -117,7 +100,6 @@ def execute_call_llm(
             tc_data = process_tool_calls_stream(resp)
             tool_calls = tc_data.get("tool_calls") or []
             if not tool_calls:
-                # Strict: no fallback to non-stream; return explicit error
                 return {"error": "No tool_calls returned in streaming response"}
 
             # Append assistant message built from streaming tool_calls (OpenAI format)
@@ -147,12 +129,9 @@ def execute_call_llm(
                     "content": json.dumps(result)
                 })
 
-            # Force final text answer (no more tool calls) - STREAM-ONLY
-            payload["tool_choice"] = "none"
-            if "tools" in payload: del payload["tools"]
-            if "functions" in payload: del payload["functions"]
-            if LOG.isEnabledFor(logging.DEBUG):
-                LOG.debug("=== FINAL CALL (STREAM-ONLY) ===")
+            # Final text answer (no tools in second call) — STREAM-ONLY
+            if "tools" in payload:
+                del payload["tools"]
             final_payload = json.loads(json.dumps(payload))
             final_payload["stream"] = True
             resp2 = requests.post(endpoint, headers=headers, json=final_payload, stream=True, verify=False)
@@ -172,14 +151,10 @@ def execute_call_llm(
 
 def fetch_and_prepare_tools(tool_names, mcp_url):
     """Fetch tools from MCP server and prepare OpenAI format"""
-    if LOG.isEnabledFor(logging.DEBUG):
-        LOG.debug(f"Fetching tools from MCP: {mcp_url}/tools")
     import requests
     resp = requests.get(f"{mcp_url}/tools", timeout=10)
     resp.raise_for_status()
     all_tools = resp.json()
-    if LOG.isEnabledFor(logging.DEBUG):
-        LOG.debug(f"MCP returned {len(all_tools)} total tools")
 
     tools = []
     name_to_reg: Dict[str, str] = {}
@@ -199,11 +174,8 @@ def fetch_and_prepare_tools(tool_names, mcp_url):
                         if fname:
                             name_to_reg[fname] = reg_name
                             found_tools.append(fname)
-                except Exception as e:
-                    if LOG.isEnabledFor(logging.DEBUG):
-                        LOG.debug(f"Failed to parse spec for tool {item_name}: {e}")
-    if LOG.isEnabledFor(logging.DEBUG):
-        LOG.debug(f"Found {len(found_tools)} matching tools: {found_tools}")
+                except Exception:
+                    continue
     return {"tools": tools, "name_to_reg": name_to_reg, "found_tools": found_tools}
 
 
