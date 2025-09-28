@@ -1,0 +1,67 @@
+{
+  "type": "function",
+  "function": {
+    "name": "universal_doc_scraper",
+    "displayName": "Doc Scraper",
+    "description": "Universal documentation scraper supporting GitBook, Notion, Confluence, ReadTheDocs, Docusaurus, and other doc platforms. Discover, extract, and search across multiple documentation sites.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["discover_docs", "extract_page", "search_across_sites", "detect_platform"],
+          "description": "Type d'opération de scraping"
+        },
+        "base_url": {
+          "type": "string",
+          "description": "URL de base du site de documentation pour discover_docs"
+        },
+        "url": {
+          "type": "string",
+          "description": "URL spécifique de page pour extract_page ou detect_platform"
+        },
+        "sites": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Liste d'URLs de sites de documentation pour search_across_sites"
+        },
+        "query": {
+          "type": "string",
+          "description": "Requête de recherche pour search_across_sites"
+        },
+        "max_results": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Nombre maximum de résultats à retourner (default: 20)"
+        },
+        "max_pages": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200,
+          "description": "Nombre maximum de pages à parcourir par site"
+        },
+        "depth": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "description": "Profondeur de crawling (default: 2)"
+        },
+        "include_external": {
+          "type": "boolean",
+          "description": "Inclure les liens externes (default: false)"
+        },
+        "content_types": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["article", "tutorial", "reference", "guide", "api", "faq"]
+          },
+          "description": "Types de contenu à rechercher"
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}
