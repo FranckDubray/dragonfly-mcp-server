@@ -1,0 +1,225 @@
+{
+  "type": "function",
+  "function": {
+    "name": "math",
+    "displayName": "Math",
+    "description": "Maths: arithmétique (précision arbitr.), expressions (SymPy), symbolique, complexes, probas (suppl.), algèbre linéaire (+ext), solveurs, calcul diff., stats, sommes.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": [
+            "add", "subtract", "multiply", "divide", "power", "modulo", 
+            "eval", "derivative", "integral", "simplify", "expand", "factor",
+            "sin", "cos", "tan", "ln", "log", "exp", "sqrt",
+            "complex", "conjugate", "magnitude", "phase",
+            "mean", "median", "mode", "stdev", "variance", 
+            "combination", "permutation", "normal_pdf", "binomial", 
+            "normal_cdf", "normal_ppf", "poisson_pmf", "poisson_cdf", 
+            "binomial_cdf", "uniform_pdf", "uniform_cdf", 
+            "exponential_pdf", "exponential_cdf",
+            "mat_add", "mat_mul", "mat_det", "mat_inv", "mat_transpose", 
+            "mat_rank", "mat_solve", "eig", "vec_add", "dot", "cross", "norm",
+            "pinv", "cond", "trace", "nullspace", "lu", "qr",
+            "linear_regression", "correlation", "covariance", "zscore", "moving_average",
+            "poly_roots", "poly_factor", "poly_expand",
+            "solve_eq", "solve_system", "nsolve", "root_find", "optimize_1d",
+            "limit", "series", "gradient", "jacobian", "hessian",
+            "sum_finite", "product_finite", "sum_infinite",
+            "nth_prime", "prime_approx", "is_prime", "next_prime", "prev_prime", 
+            "prime_factors", "factorize", "euler_phi", "primes_range"
+          ],
+          "description": "Opération mathématique à effectuer"
+        },
+        "a": {
+          "description": "Premier opérande (nombre, liste, matrice selon l'opération)"
+        },
+        "b": {
+          "description": "Deuxième opérande (nombre, liste, matrice selon l'opération)"  
+        },
+        "x": {
+          "description": "Variable ou valeur x (pour dérivées, intégrales, évaluation)"
+        },
+        "n": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Paramètre n pour nombres premiers, combinaisons, permutations, etc."
+        },
+        "start": {
+          "type": "integer",
+          "minimum": 2,
+          "description": "Début d'intervalle pour primes_range"
+        },
+        "end": {
+          "type": "integer",
+          "description": "Fin d'intervalle pour primes_range"
+        },
+        "expr": {
+          "type": "string",
+          "description": "Expression mathématique (string) pour eval, simplify, expand, factor, etc."
+        },
+        "expression": {
+          "type": "string",
+          "description": "Expression mathématique (alias pour expr)"
+        },
+        "equation": {
+          "type": "string",
+          "description": "Équation à résoudre"
+        },
+        "equations": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Liste d'équations pour systèmes"
+        },
+        "variables": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Variables pour calculs symboliques"
+        },
+        "variable": {
+          "type": "string",
+          "description": "Variable pour dérivées/intégrales"
+        },
+        "data": {
+          "type": "array",
+          "items": {"type": "number"},
+          "description": "Données numériques pour stats, régression, etc."
+        },
+        "x_data": {
+          "type": "array", 
+          "items": {"type": "number"},
+          "description": "Données X pour régression linéaire"
+        },
+        "y_data": {
+          "type": "array",
+          "items": {"type": "number"}, 
+          "description": "Données Y pour régression linéaire"
+        },
+        "matrix": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {"type": "number"}
+          },
+          "description": "Matrice (array 2D) pour opérations matricielles"
+        },
+        "A": {
+          "type": "array",
+          "items": {
+            "type": "array", 
+            "items": {"type": "number"}
+          },
+          "description": "Matrice A pour algèbre linéaire"
+        },
+        "vector": {
+          "type": "array",
+          "items": {"type": "number"},
+          "description": "Vecteur pour opérations vectorielles"
+        },
+        "k": {
+          "type": "integer", 
+          "minimum": 0,
+          "description": "Paramètre k pour combinaisons, etc."
+        },
+        "mu": {
+          "type": "number",
+          "description": "Moyenne (paramètre μ) pour distributions"
+        },
+        "sigma": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Écart-type (paramètre σ) pour distributions"
+        },
+        "lambda": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Paramètre λ pour distribution de Poisson"
+        },
+        "lam": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Paramètre λ pour distribution de Poisson (alias)"
+        },
+        "p": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Probabilité p pour distribution binomiale"
+        },
+        "window": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Taille de fenêtre pour moving_average"
+        },
+        "degree": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Degré pour opérations sur polynômes"
+        },
+        "coeffs": {
+          "type": "array",
+          "items": {"type": "number"},
+          "description": "Coefficients de polynôme"
+        },
+        "expressions": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Liste d'expressions pour jacobien"
+        },
+        "guess": {
+          "type": "number",
+          "description": "Valeur initiale pour solveurs numériques"
+        },
+        "x0": {
+          "type": "number",
+          "description": "Point de départ pour recherche de racines"
+        },
+        "tol": {
+          "type": "number",
+          "description": "Tolérance pour solveurs numériques"
+        },
+        "max_iter": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Nombre max d'itérations"
+        },
+        "point": {
+          "description": "Point pour calcul de limite"
+        },
+        "direction": {
+          "type": "string",
+          "description": "Direction pour calcul de limite"
+        },
+        "order": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Ordre pour développement en série"
+        },
+        "index": {
+          "type": "string",
+          "description": "Variable d'index pour sommes"
+        },
+        "goal": {
+          "type": "string",
+          "description": "Objectif pour optimisation (min/max)"
+        },
+        "precision": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Précision pour calculs décimaux"
+        },
+        "angle_unit": {
+          "type": "string",
+          "description": "Unité d'angle (rad/deg)"
+        },
+        "sample": {
+          "type": "boolean",
+          "description": "Échantillon pour covariance"
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}
