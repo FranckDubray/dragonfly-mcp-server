@@ -1,0 +1,55 @@
+{
+  "type": "function",
+  "function": {
+    "name": "sqlite3",
+    "displayName": "SQLite",
+    "description": "Gestion d'une base SQLite locale dans <projet>/sqlite3. Créer, lister, supprimer des DB et exécuter des requêtes SQL.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["ensure_dir", "list_dbs", "create_db", "delete_db", "get_tables", "describe", "execute", "exec", "query", "executescript"],
+          "description": "Type d'opération SQLite"
+        },
+        "name": {
+          "type": "string",
+          "description": "Nom de la base (avec ou sans .db) pour create_db/delete_db"
+        },
+        "db": {
+          "type": "string",
+          "description": "Nom de la base (avec ou sans .db) pour les opérations sur données"
+        },
+        "schema": {
+          "type": "string",
+          "description": "Script SQL d'initialisation (optionnel pour create_db)"
+        },
+        "table": {
+          "type": "string",
+          "description": "Nom de table pour describe"
+        },
+        "query": {
+          "type": "string",
+          "description": "Requête SQL pour execute/exec/query"
+        },
+        "script": {
+          "type": "string",
+          "description": "Script SQL multi-instructions pour executescript"
+        },
+        "params": {
+          "description": "Paramètres SQL (dict/list/tuple ou liste de jeux quand many=True)"
+        },
+        "many": {
+          "type": "boolean",
+          "description": "Utiliser executemany avec params comme liste (default: false)"
+        },
+        "return_rows": {
+          "type": "boolean",
+          "description": "Forcer le retour des lignes (default: auto pour SELECT)"
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}
