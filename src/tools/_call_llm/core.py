@@ -1,5 +1,9 @@
 """
 Core LLM execution logic (stream-only for both calls) + promptSystem support
+Behavior with tools:
+- First streaming call:
+  - If tool_calls appear → execute them, then do second streaming call for final text.
+  - If NO tool_calls but some text was streamed → return that text directly (no second call).
 """
 from typing import Any, Dict, List, Optional
 import os
@@ -96,11 +100,22 @@ def execute_call_llm(
             resp = requests.post(endpoint, headers=headers, json=payload, stream=True, verify=False)
             resp.raise_for_status()
 
-            # Reconstruct tool_calls from stream
+            # Reconstruct tool_calls (and capture any streamed text)
             tc_data = process_tool_calls_stream(resp)
             tool_calls = tc_data.get("tool_calls") or []
+            streamed_text = (tc_data.get("text") or "").strip()
+
+            # If no tool_calls were returned but some text was streamed, return that text directly
             if not tool_calls:
-                return {"error": "No tool_calls returned in streaming response"}
+                if streamed_text:
+                    return {
+                        "success": True,
+                        "content": streamed_text,
+                        "finish_reason": tc_data.get("finish_reason", "stop"),
+                        "usage": tc_data.get("usage")
+                    }
+                # Otherwise, nothing usable was received
+                return {"error": "No tool_calls and no text returned in streaming response"}
 
             # Append assistant message built from streaming tool_calls (OpenAI format)
             assistant_msg: Dict[str, Any] = {"role": "assistant", "tool_calls": []}
