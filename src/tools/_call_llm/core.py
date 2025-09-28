@@ -1,9 +1,9 @@
 """
-Core LLM execution logic (stream-only for both calls) + promptSystem support
-Behavior with tools:
-- First streaming call:
-  - If tool_calls appear → execute them, then do second streaming call for final text.
-  - If NO tool_calls but some text was streamed → return that text directly (no second call).
+Core LLM execution logic (stream-only for both calls)
+- If tools provided:
+  - 1st call (STREAM): if tool_calls → execute, then 2nd call (STREAM) for final text.
+  - If no tool_calls but text streamed → return that text directly.
+- promptSystem support: added to payload but system messages are NOT stripped (keep both for compatibility).
 """
 from typing import Any, Dict, List, Optional
 import os
@@ -22,34 +22,25 @@ def execute_call_llm(
     tool_names: Optional[List[str]] = None,
     **kwargs
 ) -> Dict[str, Any]:
-    
     if LOG.isEnabledFor(logging.DEBUG):
         LOG.debug("=== CALL_LLM START (stream-only) ===")
         LOG.debug(f"messages: {len(messages) if messages else 'None'}")
         LOG.debug(f"model: {model}")
         LOG.debug(f"max_tokens: {max_tokens}")
         LOG.debug(f"tool_names: {tool_names}")
-        
+
     token = os.getenv("AI_PORTAL_TOKEN")
     if not token:
         return {"error": "AI_PORTAL_TOKEN required"}
-    
     if not messages:
         return {"error": "messages required"}
 
-    # Extract promptSystem from kwargs or from system messages
+    # Do NOT strip system messages; keep them in messages for max compatibility
     prompt_system = kwargs.get("promptSystem")
-    if not prompt_system:
-        new_messages: List[Dict[str, Any]] = []
-        for m in messages:
-            if (m.get("role") == "system") and (prompt_system is None):
-                prompt_system = m.get("content", "")
-            else:
-                new_messages.append(m)
-        messages = new_messages
 
     endpoint = os.getenv("LLM_ENDPOINT", "https://dev-ai.dragonflygroup.fr/api/v1/chat/completions")
-    
+    timeout_sec = int(os.getenv("LLM_REQUEST_TIMEOUT_SEC", "180"))
+
     payload: Dict[str, Any] = {
         "model": model,
         "messages": messages,
@@ -84,7 +75,7 @@ def execute_call_llm(
         if not tool_names:
             # FINAL ANSWER (TEXT) — STREAM-ONLY
             payload["stream"] = True
-            resp = requests.post(endpoint, headers=headers, json=payload, stream=True, verify=False)
+            resp = requests.post(endpoint, headers=headers, json=payload, stream=True, timeout=timeout_sec, verify=False)
             resp.raise_for_status()
             result = process_streaming_chunks(resp)
             return {
@@ -93,11 +84,11 @@ def execute_call_llm(
                 "finish_reason": result.get("finish_reason", "stop"),
                 "usage": result.get("usage")
             }
-        
+
         # Tools mode - first call (STREAM-ONLY) for tool_calls
         else:
             payload["stream"] = True
-            resp = requests.post(endpoint, headers=headers, json=payload, stream=True, verify=False)
+            resp = requests.post(endpoint, headers=headers, json=payload, stream=True, timeout=timeout_sec, verify=False)
             resp.raise_for_status()
 
             # Reconstruct tool_calls (and capture any streamed text)
@@ -149,7 +140,7 @@ def execute_call_llm(
                 del payload["tools"]
             final_payload = json.loads(json.dumps(payload))
             final_payload["stream"] = True
-            resp2 = requests.post(endpoint, headers=headers, json=final_payload, stream=True, verify=False)
+            resp2 = requests.post(endpoint, headers=headers, json=final_payload, stream=True, timeout=timeout_sec, verify=False)
             resp2.raise_for_status()
             final_result = process_streaming_chunks(resp2)
             return {
