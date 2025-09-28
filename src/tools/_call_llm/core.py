@@ -3,7 +3,7 @@ Core LLM execution logic (stream-only for both calls)
 - If tools provided:
   - 1st call (STREAM): if tool_calls → execute, then 2nd call (STREAM) for final text.
   - If no tool_calls but text streamed → return that text directly.
-- promptSystem support: added to payload but system messages are NOT stripped (keep both for compatibility).
+- promptSystem: ONLY via payload.promptSystem (system messages are stripped from messages for max compatibility with your constraint).
 """
 from typing import Any, Dict, List, Optional
 import os
@@ -35,8 +35,16 @@ def execute_call_llm(
     if not messages:
         return {"error": "messages required"}
 
-    # Do NOT strip system messages; keep them in messages for max compatibility
+    # Strip system messages and route to promptSystem only
     prompt_system = kwargs.get("promptSystem")
+    if not prompt_system:
+        new_messages: List[Dict[str, Any]] = []
+        for m in messages:
+            if m.get("role") == "system" and prompt_system is None:
+                prompt_system = m.get("content", "")
+            else:
+                new_messages.append(m)
+        messages = new_messages
 
     endpoint = os.getenv("LLM_ENDPOINT", "https://dev-ai.dragonflygroup.fr/api/v1/chat/completions")
     timeout_sec = int(os.getenv("LLM_REQUEST_TIMEOUT_SEC", "180"))
@@ -66,7 +74,7 @@ def execute_call_llm(
                 return {"error": "No matching tools found for call_llm"}
             tool_data = td
             payload["tools"] = tool_data["tools"]
-            # NOTE: No tool_choice / no parallel_tool_calls → let provider decide
+            # No tool_choice / no parallel_tool_calls → let provider decide
         except Exception as e:
             return {"error": f"Failed to get MCP tools: {e}"}
 
