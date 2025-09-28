@@ -1,0 +1,52 @@
+{
+  "type": "function",
+  "function": {
+    "name": "gitbook",
+    "displayName": "GitBook",
+    "description": "Enhanced GitBook tool with smart discovery and global search. Automatically find all pages in a GitBook site and search across entire documentation without knowing specific URLs.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["find_docs", "extract_base_url", "discover_site", "search_site", "read_page"],
+          "description": "Type d'opération GitBook"
+        },
+        "company": {
+          "type": "string",
+          "description": "Nom de l'entreprise/organisation pour find_docs"
+        },
+        "page_url": {
+          "type": "string",
+          "description": "URL d'une page quelconque pour extract_base_url"
+        },
+        "base_url": {
+          "type": "string",
+          "description": "URL de base du site GitBook (ex: https://docs.example.gitbook.io)"
+        },
+        "url": {
+          "type": "string",
+          "description": "URL spécifique de page pour read_page"
+        },
+        "query": {
+          "type": "string",
+          "description": "Requête de recherche pour search_site"
+        },
+        "max_results": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50,
+          "description": "Nombre maximum de résultats de recherche à retourner (default: 10)"
+        },
+        "max_pages": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Nombre maximum de pages à parcourir pour la recherche (default: 20)"
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}
