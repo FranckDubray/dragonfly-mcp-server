@@ -1,5 +1,5 @@
 """
-Core LLM execution logic (stream-first with robust fallbacks)
+Core LLM execution logic (stream-only for both calls)
 """
 from typing import Any, Dict, List, Optional
 import os
@@ -58,29 +58,25 @@ def execute_call_llm(
             mcp_url = os.getenv("MCP_URL", "http://127.0.0.1:8000")
             tool_data = fetch_and_prepare_tools(tool_names, mcp_url)
             if not tool_data["tools"]:
-                if LOG.isEnabledFor(logging.DEBUG):
-                    LOG.debug("No matching tools found - falling back to simple LLM call")
-                tool_names = None
+                return {"error": "No matching tools found for call_llm"}
+            payload["tools"] = tool_data["tools"]
+            # ENFORCE tool usage
+            found = tool_data.get("found_tools", [])
+            if len(found) == 1:
+                payload["tool_choice"] = {"type": "function", "function": {"name": found[0]}}
             else:
-                payload["tools"] = tool_data["tools"]
-                # ENFORCE tool usage
-                found = tool_data.get("found_tools", [])
-                if len(found) == 1:
-                    payload["tool_choice"] = {"type": "function", "function": {"name": found[0]}}
-                else:
-                    payload["tool_choice"] = "required"
-                if LOG.isEnabledFor(logging.DEBUG):
-                    LOG.debug(f"Added {len(tool_data['tools'])} tools to LLM payload (NEW FORMAT)")
-                    LOG.debug(f"🔍 PAYLOAD TO LLM API: {json.dumps(payload, indent=2)}")
+                payload["tool_choice"] = "required"
+            if LOG.isEnabledFor(logging.DEBUG):
+                LOG.debug(f"Added {len(tool_data['tools'])} tools to LLM payload")
         except Exception as e:
             return {"error": f"Failed to get MCP tools: {e}"}
 
     try:
         # Simple mode (no tools) OR tools mode for final answer
         if not tool_names:
-            # FINAL ANSWER (TEXT) — STREAM
+            # FINAL ANSWER (TEXT) — STREAM-ONLY
             if LOG.isEnabledFor(logging.DEBUG):
-                LOG.debug("=== STREAMING MODE (FINAL/TEXT) ===")
+                LOG.debug("=== STREAM (FINAL/TEXT) ===")
                 LOG.debug(f"→ POST {endpoint}")
             payload["stream"] = True
             resp = requests.post(endpoint, headers=headers, json=payload, stream=True, verify=False)
@@ -93,10 +89,10 @@ def execute_call_llm(
                 "usage": result.get("usage")
             }
         
-        # Tools mode - first call (STREAM) for tool_calls
+        # Tools mode - first call (STREAM-ONLY) for tool_calls
         else:
             if LOG.isEnabledFor(logging.DEBUG):
-                LOG.debug("=== TOOLS MODE (STREAM) ===")
+                LOG.debug("=== TOOLS MODE (STREAM-ONLY) ===")
                 LOG.debug(f"→ POST {endpoint} (SSE for tool_calls)")
             payload["stream"] = True
             resp = requests.post(endpoint, headers=headers, json=payload, stream=True, verify=False)
@@ -105,30 +101,11 @@ def execute_call_llm(
             # Reconstruct tool_calls from stream
             tc_data = process_tool_calls_stream(resp)
             tool_calls = tc_data.get("tool_calls") or []
-
-            # Fallback: if streaming yielded no tool_calls, retry non-stream once
             if not tool_calls:
-                if LOG.isEnabledFor(logging.DEBUG):
-                    LOG.debug("No tool_calls in stream; retrying first call in non-stream mode")
-                retry_payload = json.loads(json.dumps(payload))
-                retry_payload.pop("stream", None)
-                try:
-                    resp_ns = requests.post(endpoint, headers=headers, json=retry_payload, timeout=60, verify=False)
-                    resp_ns.raise_for_status()
-                    data = resp_ns.json()
-                    if "response" in data and "choices" not in data:
-                        data = data["response"]
-                    choices = data.get("choices", [])
-                    if choices:
-                        msg = choices[0].get("message") or {}
-                        tool_calls = msg.get("tool_calls") or []
-                except Exception as _:
-                    tool_calls = []
-            # Still nothing? abort gracefully
-            if not tool_calls:
-                return {"error": "LLM did not return tool_calls"}
+                # Strict: no fallback to non-stream; return explicit error
+                return {"error": "No tool_calls returned in streaming response"}
 
-            # Append assistant message built from (non-empty) tool_calls (OpenAI format)
+            # Append assistant message built from streaming tool_calls (OpenAI format)
             assistant_msg: Dict[str, Any] = {"role": "assistant", "tool_calls": []}
             for tc in tool_calls:
                 assistant_msg["tool_calls"].append({
@@ -155,12 +132,12 @@ def execute_call_llm(
                     "content": json.dumps(result)
                 })
 
-            # Force final text answer (no more tool calls) - STREAM
+            # Force final text answer (no more tool calls) - STREAM-ONLY
             payload["tool_choice"] = "none"
             if "tools" in payload: del payload["tools"]
             if "functions" in payload: del payload["functions"]
             if LOG.isEnabledFor(logging.DEBUG):
-                LOG.debug("=== FINAL CALL (STREAM) ===")
+                LOG.debug("=== FINAL CALL (STREAM-ONLY) ===")
             final_payload = json.loads(json.dumps(payload))
             final_payload["stream"] = True
             resp2 = requests.post(endpoint, headers=headers, json=final_payload, stream=True, verify=False)
