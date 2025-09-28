@@ -7,6 +7,8 @@ import json
 import requests
 import logging
 
+from .streaming import process_streaming_chunks, process_tool_calls_stream
+
 LOG = logging.getLogger(__name__)
 
 def execute_call_llm(
@@ -73,10 +75,10 @@ def execute_call_llm(
             return {"error": f"Failed to get MCP tools: {e}"}
 
     try:
-        # Simple streaming mode (no tools)
+        # Simple mode (no tools) OR tools mode for final answer
         if not tool_names:
             if LOG.isEnabledFor(logging.DEBUG):
-                LOG.debug("=== STREAMING MODE ===")
+                LOG.debug("=== STREAMING MODE (FINAL/TEXT) ===")
                 LOG.debug(f"→ POST {endpoint}")
                 LOG.debug(f"🔍 SIMPLE PAYLOAD TO LLM API: {json.dumps(payload, indent=2)}")
             payload["stream"] = True
@@ -94,42 +96,65 @@ def execute_call_llm(
                 "usage": result["usage"]
             }
         
-        # Tools mode - first call
+        # Tools mode - first call (STREAM)
         else:
             if LOG.isEnabledFor(logging.DEBUG):
-                LOG.debug("=== TOOLS MODE (NEW FORMAT) ===")
-                LOG.debug(f"→ POST {endpoint} (JSON for tool_calls)")
-            resp = requests.post(endpoint, headers=headers, json=payload, verify=False)
+                LOG.debug("=== TOOLS MODE (STREAM) ===")
+                LOG.debug(f"→ POST {endpoint} (SSE for tool_calls)")
+            payload["stream"] = True
+            resp = requests.post(endpoint, headers=headers, json=payload, stream=True, verify=False)
             if LOG.isEnabledFor(logging.DEBUG):
                 LOG.debug(f"← HTTP {resp.status_code}")
-                LOG.debug(f"🔍 RAW LLM RESPONSE: {resp.text[:1000]}...")
             resp.raise_for_status()
-            data = resp.json()
-            if "response" in data and "choices" not in data:
-                if LOG.isEnabledFor(logging.DEBUG):
-                    LOG.debug("← Detected wrapped response, unwrapping...")
-                data = data["response"]
 
-            choice = (data.get("choices") or [{}])[0]
-            message = choice.get("message", {})
-            tool_calls = message.get("tool_calls")
-            function_call = message.get("function_call")
+            # Reconstruct tool_calls from stream
+            tc_data = process_tool_calls_stream(resp)
+            tool_calls = tc_data.get("tool_calls") or []
 
-            # Append assistant message
-            payload["messages"].append(message)
+            # Append assistant message built from streaming tool_calls (OpenAI format)
+            assistant_msg: Dict[str, Any] = {"role": "assistant", "tool_calls": []}
+            for tc in tool_calls:
+                assistant_msg["tool_calls"].append({
+                    "id": tc.get("id"),
+                    "type": "function",
+                    "function": {"name": (tc.get("function") or {}).get("name"),
+                                  "arguments": (tc.get("function") or {}).get("arguments", "")}
+                })
+            payload["messages"].append(assistant_msg)
 
-            if tool_calls:
-                return handle_tool_calls(tool_calls, tool_data["name_to_reg"], mcp_url, payload, endpoint, headers)
-            elif function_call:
-                return handle_function_call(function_call, tool_data["name_to_reg"], mcp_url, payload, endpoint, headers)
-            else:
-                # No tool calls, direct answer
-                return {
-                    "success": True,
-                    "content": message.get("content", ""),
-                    "finish_reason": choice.get("finish_reason", "stop"),
-                    "usage": data.get("usage")
-                }
+            # Execute each tool call
+            mcp_url = os.getenv("MCP_URL", "http://127.0.0.1:8000")
+            for tc in tool_calls:
+                fname = (tc.get("function") or {}).get("name")
+                args_str = (tc.get("function") or {}).get("arguments", "{}")
+                try:
+                    args = json.loads(args_str)
+                except Exception:
+                    args = {}
+                result = execute_mcp_tool(fname, args, tool_data["name_to_reg"], mcp_url)
+                payload["messages"].append({
+                    "role": "tool",
+                    "tool_call_id": tc.get("id"),
+                    "content": json.dumps(result)
+                })
+
+            # Force final text answer (no more tool calls) - STREAM
+            payload["tool_choice"] = "none"
+            if "tools" in payload: del payload["tools"]
+            if "functions" in payload: del payload["functions"]
+            if LOG.isEnabledFor(logging.DEBUG):
+                LOG.debug("=== FINAL CALL (STREAM) ===")
+            final_payload = json.loads(json.dumps(payload))
+            final_payload["stream"] = True
+            resp2 = requests.post(endpoint, headers=headers, json=final_payload, stream=True, verify=False)
+            resp2.raise_for_status()
+            final_result = process_streaming_chunks(resp2)
+            return {
+                "success": True,
+                "content": final_result.get("content", ""),
+                "finish_reason": final_result.get("finish_reason", "stop"),
+                "usage": final_result.get("usage")
+            }
     except Exception as e:
         if LOG.isEnabledFor(logging.DEBUG):
             LOG.exception("LLM call failed")
@@ -140,6 +165,7 @@ def fetch_and_prepare_tools(tool_names, mcp_url):
     """Fetch tools from MCP server and prepare OpenAI format"""
     if LOG.isEnabledFor(logging.DEBUG):
         LOG.debug(f"Fetching tools from MCP: {mcp_url}/tools")
+    import requests
     resp = requests.get(f"{mcp_url}/tools", timeout=10)
     resp.raise_for_status()
     all_tools = resp.json()
@@ -172,86 +198,9 @@ def fetch_and_prepare_tools(tool_names, mcp_url):
     return {"tools": tools, "name_to_reg": name_to_reg, "found_tools": found_tools}
 
 
-def process_streaming_chunks(response):
-    """Process streaming response and return content - FIXED streaming"""
-    content = ""
-    finish_reason = None
-    usage = None
-    chunk_count = 0
-    # Keep logs minimal (no per-chunk spam)
-    for line in response.iter_lines():
-        if not line:
-            continue
-        line = line.decode('utf-8').strip()
-        # SSE prefix
-        if line.startswith('data: '):
-            data_str = line[6:]
-            if data_str == '[DONE]':
-                break
-            try:
-                chunk = json.loads(data_str)
-                if "response" in chunk and "choices" not in chunk:
-                    chunk = chunk["response"]
-                chunk_count += 1
-                choices = chunk.get("choices", [])
-                if choices:
-                    delta = choices[0].get("delta", {})
-                    if delta.get("content"):
-                        content += delta["content"]
-                    if choices[0].get("finish_reason"):
-                        finish_reason = choices[0]["finish_reason"]
-                if chunk.get("usage"):
-                    usage = chunk["usage"]
-            except Exception:
-                continue
-    return {"content": content, "finish_reason": finish_reason or "stop", "usage": usage}
-
-
-def handle_tool_calls(tool_calls, name_to_reg, mcp_url, payload, endpoint, headers):
-    """Handle tool_calls (NEW OpenAI format)"""
-    # Execute each tool call
-    for tool_call in tool_calls:
-        tc_id = tool_call.get("id")
-        function_data = tool_call.get("function", {})
-        fname = function_data.get("name")
-        args_str = function_data.get("arguments", "{}")
-        try:
-            args = json.loads(args_str)
-        except Exception:
-            args = {}
-        # Execute MCP tool
-        result = execute_mcp_tool(fname, args, name_to_reg, mcp_url)
-        # Add tool response to conversation (NEW FORMAT)
-        payload["messages"].append({
-            "role": "tool",
-            "tool_call_id": tc_id,
-            "content": json.dumps(result)
-        })
-    # Force final text answer (no more tool calls)
-    payload["tool_choice"] = "none"
-    return final_llm_call(payload, endpoint, headers)
-
-
-def handle_function_call(function_call, name_to_reg, mcp_url, payload, endpoint, headers):
-    """Handle function_call (LEGACY OpenAI format)"""
-    fname = function_call.get("name")
-    args_str = function_call.get("arguments", "{}")
-    try:
-        args = json.loads(args_str)
-    except Exception:
-        args = {}
-    result = execute_mcp_tool(fname, args, name_to_reg, mcp_url)
-    payload["messages"] .append({
-        "role": "function",
-        "name": fname,
-        "content": json.dumps(result)
-    })
-    payload["tool_choice"] = "none"  # force final text answer
-    return final_llm_call(payload, endpoint, headers)
-
-
 def execute_mcp_tool(fname, args, name_to_reg, mcp_url):
     """Execute a single MCP tool"""
+    import requests
     reg_name = name_to_reg.get(fname, fname)
     mcp_payload = {"tool_reg": reg_name, "params": args}
     try:
@@ -268,57 +217,3 @@ def execute_mcp_tool(fname, args, name_to_reg, mcp_url):
             return {"error": f"MCP error {mcp_resp.status_code}: {mcp_resp.text}"}
     except Exception as e:
         return {"error": f"MCP call failed: {e}"}
-
-
-def final_llm_call(payload, endpoint, headers):
-    """Make final LLM call with streaming after tool execution"""
-    # Clone payload and enforce text answer; REMOVE tools for the second call
-    final_payload = json.loads(json.dumps(payload))
-    final_payload["tool_choice"] = "none"
-    # Remove tools/functions on second call so model only writes text
-    if "tools" in final_payload:
-        del final_payload["tools"]
-    if "functions" in final_payload:
-        del final_payload["functions"]
-    # Add a strict instruction to return only the final number (helps avoid verbose answers)
-    final_payload["messages"].append({
-        "role": "system",
-        "content": "Réponds uniquement avec le résultat final (le nombre brut), sans texte, sans explication, sans formatage." 
-    })
-    final_payload["stream"] = True
-    resp = requests.post(endpoint, headers=headers, json=final_payload, stream=True, verify=False)
-    resp.raise_for_status()
-    result = process_streaming_chunks(resp)
-    content = result.get("content") or ""
-    # Fallback non-stream if content empty
-    if not content.strip():
-        final_payload2 = json.loads(json.dumps(payload))
-        final_payload2["tool_choice"] = "none"
-        if "tools" in final_payload2:
-            del final_payload2["tools"]
-        if "functions" in final_payload2:
-            del final_payload2["functions"]
-        # Add the same strict instruction
-        final_payload2["messages"].append({
-            "role": "system",
-            "content": "Réponds uniquement avec le résultat final (le nombre brut), sans texte, sans explication, sans formatage."
-        })
-        if "stream" in final_payload2:
-            del final_payload2["stream"]
-        resp2 = requests.post(endpoint, headers=headers, json=final_payload2, verify=False)
-        resp2.raise_for_status()
-        data2 = resp2.json()
-        if "response" in data2 and "choices" not in data2:
-            data2 = data2["response"]
-        choice2 = (data2.get("choices") or [{}])[0]
-        message2 = choice2.get("message", {})
-        content = message2.get("content", "")
-        finish_reason = choice2.get("finish_reason", "stop")
-        usage = data2.get("usage")
-        return {"success": True, "content": content, "finish_reason": finish_reason, "usage": usage}
-    return {
-        "success": True,
-        "content": content,
-        "finish_reason": result.get("finish_reason", "stop"),
-        "usage": result.get("usage")
-    }
