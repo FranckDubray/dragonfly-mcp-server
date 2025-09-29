@@ -1,19 +1,70 @@
 """
-Core LLM execution logic (stream-only for both calls)
+Core LLM execution logic (STREAM-ONLY for both calls) with rich debug.
 - If tools provided:
-  - 1st call (STREAM): if tool_calls → execute, then 2nd call (STREAM) for final text.
+  - 1st call (STREAM): if tool_calls → execute MCP tools, then 2nd call (STREAM) for final text.
   - If no tool_calls but text streamed → return that text directly.
-- promptSystem: ONLY via payload.promptSystem (system messages are stripped from messages for max compatibility with your constraint).
+- promptSystem: ONLY via payload.promptSystem (system messages are stripped from messages).
+- Debug: when LLM_DEBUG or LLM_RETURN_DEBUG truthy, returns a `debug` object (no secrets),
+  summarizing payloads, streaming outcomes, tool_calls and tool executions.
+- STRICT: no non-stream fallbacks (never stream=False).
 """
 from typing import Any, Dict, List, Optional
 import os
 import json
-import requests
 import logging
+import requests
 
 from .streaming import process_streaming_chunks, process_tool_calls_stream
 
 LOG = logging.getLogger(__name__)
+
+# -------------------- helpers (debug + safety) --------------------
+
+def _env_truthy(name: str) -> bool:
+    v = os.getenv(name, "").strip().lower()
+    return v in ("1", "true", "yes", "on", "debug")
+
+
+def _trim_str(s: Any, limit: int = 2000) -> Any:
+    try:
+        if isinstance(s, str) and len(s) > limit:
+            return s[:limit] + f"... (+{len(s) - limit} bytes)"
+    except Exception:
+        pass
+    return s
+
+
+def _trim_val(x: Any, limit: int = 2000) -> Any:
+    try:
+        if isinstance(x, dict):
+            return {k: _trim_val(v, limit) for k, v in x.items()}
+        if isinstance(x, list):
+            return [_trim_val(v, limit) for v in x]
+        if isinstance(x, str):
+            return _trim_str(x, limit)
+    except Exception:
+        return x
+    return x
+
+
+def _payload_summary(payload: Dict[str, Any], tool_data: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    out: Dict[str, Any] = {
+        "model": payload.get("model"),
+        "has_promptSystem": "promptSystem" in payload and bool(payload.get("promptSystem")),
+        "messages_count": len(payload.get("messages") or []),
+        "stream": bool(payload.get("stream")),
+    }
+    if tool_data:
+        names = list(tool_data.get("found_tools") or [])
+        out.update({
+            "tools_count": len(tool_data.get("tools") or []),
+            "tool_names": names,
+            "tool_choice": payload.get("tool_choice"),
+            "parallel_tool_calls": payload.get("parallel_tool_calls"),
+        })
+    # Do not include Authorization nor the full tools specs/messages here to avoid noise
+    return out
+
 
 def execute_call_llm(
     messages: List[Dict[str, Any]],
@@ -22,20 +73,21 @@ def execute_call_llm(
     tool_names: Optional[List[str]] = None,
     **kwargs
 ) -> Dict[str, Any]:
-    if LOG.isEnabledFor(logging.DEBUG):
-        LOG.debug("=== CALL_LLM START (stream-only) ===")
-        LOG.debug(f"messages: {len(messages) if messages else 'None'}")
-        LOG.debug(f"model: {model}")
-        LOG.debug(f"max_tokens: {max_tokens}")
-        LOG.debug(f"tool_names: {tool_names}")
+    debug_enabled = _env_truthy("LLM_RETURN_DEBUG") or _env_truthy("LLM_DEBUG") or bool(kwargs.get("debug"))
+    debug: Dict[str, Any] = {
+        "first": {},
+        "tools": {"requested": tool_names or [], "prepared": [], "executions": []},
+        "second": {},
+        "meta": {},
+    } if debug_enabled else {}
 
     token = os.getenv("AI_PORTAL_TOKEN")
     if not token:
-        return {"error": "AI_PORTAL_TOKEN required"}
+        return {"error": "AI_PORTAL_TOKEN required", **({"debug": debug} if debug_enabled else {})}
     if not messages:
-        return {"error": "messages required"}
+        return {"error": "messages required", **({"debug": debug} if debug_enabled else {})}
 
-    # Strip system messages and route to promptSystem only
+    # Strip system messages → promptSystem
     prompt_system = kwargs.get("promptSystem")
     if not prompt_system:
         new_messages: List[Dict[str, Any]] = []
@@ -48,6 +100,7 @@ def execute_call_llm(
 
     endpoint = os.getenv("LLM_ENDPOINT", "https://dev-ai.dragonflygroup.fr/api/v1/chat/completions")
     timeout_sec = int(os.getenv("LLM_REQUEST_TIMEOUT_SEC", "180"))
+    mcp_url = os.getenv("MCP_URL", "http://127.0.0.1:8000")
 
     payload: Dict[str, Any] = {
         "model": model,
@@ -61,107 +114,133 @@ def execute_call_llm(
 
     headers = {
         "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
 
-    # Tools requested
+    # Prepare tools if requested
     tool_data: Dict[str, Any] = {"tools": [], "name_to_reg": {}, "found_tools": []}
     if tool_names:
         try:
-            mcp_url = os.getenv("MCP_URL", "http://127.0.0.1:8000")
             td = fetch_and_prepare_tools(tool_names, mcp_url)
-            if not td["tools"]:
-                return {"error": "No matching tools found for call_llm"}
             tool_data = td
-            payload["tools"] = tool_data["tools"]
-            # No tool_choice / no parallel_tool_calls → let provider decide
+            if tool_data.get("tools"):
+                payload["tools"] = tool_data["tools"]
+                if debug_enabled:
+                    debug["tools"]["prepared"] = list(tool_data.get("found_tools") or [])
         except Exception as e:
-            return {"error": f"Failed to get MCP tools: {e}"}
+            return {"error": f"Failed to get MCP tools: {e}", **({"debug": debug} if debug_enabled else {})}
 
+    # 1) FIRST CALL (STREAM-ONLY)
     try:
-        # Simple mode (no tools) OR tools mode for final answer
-        if not tool_names:
-            # FINAL ANSWER (TEXT) — STREAM-ONLY
-            payload["stream"] = True
-            resp = requests.post(endpoint, headers=headers, json=payload, stream=True, timeout=timeout_sec, verify=False)
-            resp.raise_for_status()
-            result = process_streaming_chunks(resp)
-            return {
-                "success": True,
-                "content": result.get("content", ""),
-                "finish_reason": result.get("finish_reason", "stop"),
-                "usage": result.get("usage")
+        payload["stream"] = True
+        if debug_enabled:
+            debug["meta"] = {
+                "endpoint": endpoint,
+                "MCP_URL": mcp_url,
+                "model": model,
+                "max_tokens": max_tokens,
+            }
+            debug["first"]["payload"] = _payload_summary(payload, tool_data)
+
+        resp = requests.post(endpoint, headers=headers, json=payload, stream=True, timeout=timeout_sec, verify=False)
+        resp.raise_for_status()
+
+        # Reconstruct tool_calls (and capture any streamed text)
+        tc_data = process_tool_calls_stream(resp)
+        tool_calls = tc_data.get("tool_calls") or []
+        streamed_text = (tc_data.get("text") or "").strip()
+        if debug_enabled:
+            debug["first"]["stream"] = {
+                "tool_calls_count": len(tool_calls),
+                "text_len": len(streamed_text),
+                "finish_reason": tc_data.get("finish_reason"),
+                "usage": tc_data.get("usage"),
             }
 
-        # Tools mode - first call (STREAM-ONLY) for tool_calls
-        else:
-            payload["stream"] = True
-            resp = requests.post(endpoint, headers=headers, json=payload, stream=True, timeout=timeout_sec, verify=False)
-            resp.raise_for_status()
+        # If no tool_calls were returned but some text was streamed, return that text directly
+        if not tool_calls:
+            if streamed_text:
+                result: Dict[str, Any] = {
+                    "success": True,
+                    "content": streamed_text,
+                    "finish_reason": tc_data.get("finish_reason", "stop"),
+                    "usage": tc_data.get("usage"),
+                }
+                if debug_enabled:
+                    result["debug"] = debug
+                return result
+            # Otherwise, nothing usable was received
+            return {"error": "No tool_calls and no text returned in streaming response", **({"debug": debug} if debug_enabled else {})}
 
-            # Reconstruct tool_calls (and capture any streamed text)
-            tc_data = process_tool_calls_stream(resp)
-            tool_calls = tc_data.get("tool_calls") or []
-            streamed_text = (tc_data.get("text") or "").strip()
+        # Append assistant message built from streaming tool_calls (OpenAI format)
+        assistant_msg: Dict[str, Any] = {"role": "assistant", "tool_calls": []}
+        for tc in tool_calls:
+            assistant_msg["tool_calls"].append({
+                "id": tc.get("id"),
+                "type": "function",
+                "function": {
+                    "name": (tc.get("function") or {}).get("name"),
+                    "arguments": (tc.get("function") or {}).get("arguments", ""),
+                },
+            })
+        payload["messages"].append(assistant_msg)
 
-            # If no tool_calls were returned but some text was streamed, return that text directly
-            if not tool_calls:
-                if streamed_text:
-                    return {
-                        "success": True,
-                        "content": streamed_text,
-                        "finish_reason": tc_data.get("finish_reason", "stop"),
-                        "usage": tc_data.get("usage")
-                    }
-                # Otherwise, nothing usable was received
-                return {"error": "No tool_calls and no text returned in streaming response"}
-
-            # Append assistant message built from streaming tool_calls (OpenAI format)
-            assistant_msg: Dict[str, Any] = {"role": "assistant", "tool_calls": []}
-            for tc in tool_calls:
-                assistant_msg["tool_calls"].append({
-                    "id": tc.get("id"),
-                    "type": "function",
-                    "function": {"name": (tc.get("function") or {}).get("name"),
-                                  "arguments": (tc.get("function") or {}).get("arguments", "")}
+        # Execute each tool call via MCP
+        for tc in tool_calls:
+            fname = (tc.get("function") or {}).get("name")
+            args_str = (tc.get("function") or {}).get("arguments", "{}")
+            try:
+                args = json.loads(args_str)
+            except Exception:
+                args = {}
+            result = execute_mcp_tool(fname, args, tool_data.get("name_to_reg") or {}, mcp_url)
+            # Debug capture (trimmed)
+            if debug_enabled:
+                debug["tools"]["executions"].append({
+                    "name": fname,
+                    "args": _trim_val(args, 500),
+                    "result_excerpt": _trim_val(result, 1000),
                 })
-            payload["messages"].append(assistant_msg)
+            payload["messages"].append({
+                "role": "tool",
+                "tool_call_id": tc.get("id"),
+                "content": json.dumps(result),
+            })
 
-            # Execute each tool call
-            mcp_url = os.getenv("MCP_URL", "http://127.0.0.1:8000")
-            for tc in tool_calls:
-                fname = (tc.get("function") or {}).get("name")
-                args_str = (tc.get("function") or {}).get("arguments", "{}")
-                try:
-                    args = json.loads(args_str)
-                except Exception:
-                    args = {}
-                result = execute_mcp_tool(fname, args, tool_data["name_to_reg"], mcp_url)
-                payload["messages"].append({
-                    "role": "tool",
-                    "tool_call_id": tc.get("id"),
-                    "content": json.dumps(result)
-                })
+        # 2) SECOND CALL (STREAM-ONLY, no tools)
+        if "tools" in payload:
+            del payload["tools"]
+        final_payload = json.loads(json.dumps(payload))  # deep copy
+        final_payload["stream"] = True
+        if debug_enabled:
+            debug["second"]["payload"] = _payload_summary(final_payload)
 
-            # Final text answer (no tools in second call) — STREAM-ONLY
-            if "tools" in payload:
-                del payload["tools"]
-            final_payload = json.loads(json.dumps(payload))
-            final_payload["stream"] = True
-            resp2 = requests.post(endpoint, headers=headers, json=final_payload, stream=True, timeout=timeout_sec, verify=False)
-            resp2.raise_for_status()
-            final_result = process_streaming_chunks(resp2)
-            return {
-                "success": True,
-                "content": final_result.get("content", ""),
-                "finish_reason": final_result.get("finish_reason", "stop"),
-                "usage": final_result.get("usage")
+        resp2 = requests.post(endpoint, headers=headers, json=final_payload, stream=True, timeout=timeout_sec, verify=False)
+        resp2.raise_for_status()
+        final_result = process_streaming_chunks(resp2)
+        if debug_enabled:
+            debug["second"]["stream"] = {
+                "finish_reason": final_result.get("finish_reason"),
+                "text_len": len(final_result.get("content") or ""),
+                "usage": final_result.get("usage"),
             }
+        out: Dict[str, Any] = {
+            "success": True,
+            "content": final_result.get("content", ""),
+            "finish_reason": final_result.get("finish_reason", "stop"),
+            "usage": final_result.get("usage"),
+        }
+        if debug_enabled:
+            out["debug"] = debug
+        return out
+
     except Exception as e:
         if LOG.isEnabledFor(logging.DEBUG):
-            LOG.exception("LLM call failed")
-        return {"error": str(e)}
+            LOG.exception("LLM call failed (stream-only)")
+        return {"error": str(e), **({"debug": debug} if debug_enabled else {})}
 
+
+# -------------------- tool discovery + MCP exec --------------------
 
 def fetch_and_prepare_tools(tool_names, mcp_url):
     """Fetch tools from MCP server and prepare OpenAI format"""
@@ -203,7 +282,7 @@ def execute_mcp_tool(fname, args, name_to_reg, mcp_url):
             f"{mcp_url}/execute",
             json=mcp_payload,
             headers={"Content-Type": "application/json"},
-            timeout=30
+            timeout=30,
         )
         if mcp_resp.status_code == 200:
             mcp_data = mcp_resp.json()
