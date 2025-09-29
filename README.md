@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="https://fr.wikipedia.org/wiki/Special:FilePath/LOGO_DRAGONFLY_HD.jpg" alt="Dragonfly logo" width="120" />
+
 # 🐉 Dragonfly MCP Server
 
 Serveur MCP multi‑outils, rapide et extensible, propulsé par FastAPI. Découverte automatique des tools, exécution sécurisée, orchestrateur LLM avancé, et panneau de contrôle web.
