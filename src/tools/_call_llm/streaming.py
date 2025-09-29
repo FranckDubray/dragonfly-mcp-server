@@ -2,22 +2,28 @@
 Streaming utilities for LLM responses (SSE)
 - Supports both text aggregation and tool_calls reconstruction in streaming mode.
 - Optional trace mode: set env LLM_STREAM_TRACE=1 to include a per-chunk trace for debugging.
-- Optional raw dump: set env LLM_STREAM_DUMP=1 to capture up to N raw SSE JSON lines (LLM_STREAM_DUMP_MAX, default 10).
+- Optional raw dump: set env LLM_STREAM_DUMP=1 (or 'all') to capture raw SSE JSON lines
+  up to LLM_STREAM_DUMP_MAX (default 10; if 'all' then 10000).
 """
 import json
 import logging
 import os
 
 LOG = logging.getLogger(__name__)
+
 TRACE = os.getenv("LLM_STREAM_TRACE", "").strip().lower() in ("1","true","yes","on","debug")
-DUMP = os.getenv("LLM_STREAM_DUMP", "").strip().lower() in ("1","true","yes","on","debug")
-try:
-    DUMP_MAX = int(os.getenv("LLM_STREAM_DUMP_MAX", "10"))
-except Exception:
-    DUMP_MAX = 10
+_dump_mode = os.getenv("LLM_STREAM_DUMP", "").strip().lower()
+DUMP = _dump_mode in ("1","true","yes","on","debug","all")
+if _dump_mode == "all":
+    DUMP_MAX = 10000
+else:
+    try:
+        DUMP_MAX = int(os.getenv("LLM_STREAM_DUMP_MAX", "10"))
+    except Exception:
+        DUMP_MAX = 10
 
 
-def _trim(s: str, limit: int = 2000) -> str:
+def _trim(s: str, limit: int = 4000) -> str:
     try:
         if isinstance(s, str) and len(s) > limit:
             return s[:limit] + f"... (+{len(s)-limit} bytes)"
@@ -46,7 +52,7 @@ def process_streaming_chunks(response):
         if data_str == '[DONE]':
             break
         if DUMP and len(raw) < DUMP_MAX:
-            raw.append(_trim(data_str, 2000))
+            raw.append(_trim(data_str, 4000))
         try:
             chunk = json.loads(data_str)
             # Some gateways wrap under {"response": ...}
@@ -99,7 +105,7 @@ def process_tool_calls_stream(response):
         if data_str == '[DONE]':
             break
         if DUMP and len(raw) < DUMP_MAX:
-            raw.append(_trim(data_str, 2000))
+            raw.append(_trim(data_str, 4000))
         try:
             obj = json.loads(data_str)
         except Exception:
