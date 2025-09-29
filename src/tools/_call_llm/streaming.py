@@ -1,11 +1,15 @@
 """
 Streaming utilities for LLM responses (SSE)
 - Supports both text aggregation and tool_calls reconstruction in streaming mode.
+- Optional trace mode: set env LLM_STREAM_TRACE=1 to include a per-chunk trace for debugging.
 """
 import json
 import logging
+import os
 
 LOG = logging.getLogger(__name__)
+TRACE = os.getenv("LLM_STREAM_TRACE", "").strip().lower() in ("1","true","yes","on","debug")
+
 
 def process_streaming_chunks(response):
     """
@@ -51,7 +55,8 @@ def process_tool_calls_stream(response):
       "tool_calls": [ {"id": str|None, "function": {"name": str|None, "arguments": str}}, ...],
       "text": str,  # any assistant text streamed (if present)
       "finish_reason": str,
-      "usage": dict|None
+      "usage": dict|None,
+      "trace": list  # optional per-chunk trace if LLM_STREAM_TRACE=1
     }
     """
     # index -> entry {"id":..., "function": {"name":..., "arguments": str}}
@@ -59,6 +64,7 @@ def process_tool_calls_stream(response):
     text_buf = []
     finish_reason = None
     usage = None
+    trace = [] if TRACE else None
 
     for raw in response.iter_lines():
         if not raw:
@@ -85,7 +91,9 @@ def process_tool_calls_stream(response):
         if delta.get("content"):
             text_buf.append(delta["content"])
         # Aggregate tool_calls fragments from delta.tool_calls
-        for item in delta.get("tool_calls", []) or []:
+        d_tc = delta.get("tool_calls", []) or []
+        d_tc_count = 0
+        for item in d_tc:
             idx = item.get("index", 0)
             entry = calls.setdefault(idx, {"id": None, "function": {"name": None, "arguments": ""}})
             if item.get("id"):
@@ -94,10 +102,19 @@ def process_tool_calls_stream(response):
             if fn.get("name"):
                 entry["function"]["name"] = fn["name"]
             if fn.get("arguments"):
-                entry["function"]["arguments"] += fn["arguments"]
+                args = fn["arguments"]
+                if isinstance(args, dict):
+                    try:
+                        args = json.dumps(args, separators=(",", ":"))
+                    except Exception:
+                        args = str(args)
+                entry["function"]["arguments"] += args
+            d_tc_count += 1
         # Some providers send final tool_calls under message.tool_calls (not delta)
         msg = choice0.get("message") or {}
-        for item in (msg.get("tool_calls") or []) if isinstance(msg.get("tool_calls"), list) else []:
+        m_tc = (msg.get("tool_calls") or []) if isinstance(msg.get("tool_calls"), list) else []
+        m_tc_count = 0
+        for item in m_tc:
             idx = item.get("index", 0)
             entry = calls.setdefault(idx, {"id": None, "function": {"name": None, "arguments": ""}})
             if item.get("id"):
@@ -105,23 +122,41 @@ def process_tool_calls_stream(response):
             fn = item.get("function") or {}
             if fn.get("name"):
                 entry["function"]["name"] = fn["name"]
-            # In some cases, arguments are already a full JSON string
             if fn.get("arguments") and not entry["function"]["arguments"]:
-                entry["function"]["arguments"] = fn["arguments"]
+                args = fn["arguments"]
+                if isinstance(args, dict):
+                    try:
+                        args = json.dumps(args, separators=(",", ":"))
+                    except Exception:
+                        args = str(args)
+                entry["function"]["arguments"] = args
+            m_tc_count += 1
         # Finish reason
         if choice0.get("finish_reason"):
             finish_reason = choice0["finish_reason"]
         # Usage if present
         if obj.get("usage"):
             usage = obj["usage"]
+        # Trace
+        if TRACE:
+            trace.append({
+                "delta_has_tool_calls": bool(d_tc),
+                "delta_tool_calls_count": d_tc_count,
+                "message_tool_calls_count": m_tc_count,
+                "delta_has_content": bool(delta.get("content")),
+                "finish_reason_line": choice0.get("finish_reason"),
+            })
 
     # Order calls by index
     tool_calls = []
     for idx in sorted(calls.keys()):
         tool_calls.append(calls[idx])
-    return {
+    out = {
         "tool_calls": tool_calls,
         "text": "".join(text_buf),
         "finish_reason": finish_reason or "tool_calls",
         "usage": usage,
     }
+    if TRACE:
+        out["trace"] = trace
+    return out
