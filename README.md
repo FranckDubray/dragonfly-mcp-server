@@ -31,7 +31,7 @@ Les spécifications JSON (OpenAI tools) correspondantes se trouvent dans `src/to
 ## Installation (développement)
 ```bash
 git clone https://github.com/FranckDubray/dragonfly-mcp-server.git
-ycd dragonfly-mcp-server
+cd dragonfly-mcp-server
 python -m venv venv
 source venv/bin/activate   # Windows: venv\Scripts\Activate.ps1
 pip install -U pip
@@ -47,7 +47,7 @@ Le serveur démarre par défaut sur `http://127.0.0.1:8000`.
 ## Configuration
 Vous pouvez configurer via variables d'environnement ou via l'interface web (recommandé):
 - Ouvrez `http://HOST:PORT/control` (panneau de contrôle)
-- Onglet "Config" → saisissez/mettez à jour les tokens
+- Onglet "Config" → saisissez/mettre à jour les tokens
 - Les valeurs sont persistées dans `.env` (automatiquement ajoutée à `.gitignore`)
 
 Variables principales:
@@ -86,7 +86,12 @@ Variables principales:
 - LLM qui ignore les tools: 1er appel `tool_choice=required`; 2e appel `tool_choice=none` sans `tools`
 - Specs JSON invalides: les `array` doivent avoir `items`
 
-## Scripts
-- `scripts/dev.sh` (Linux/macOS) et `scripts/dev.ps1` (Windows) démarrent via `python -m server`
+---
 
-Licence: MIT
+## Guide pour LLM (à lire en priorité)
+Pour les modèles qui souhaitent interagir efficacement avec ce dépôt, consultez le guide dédié: [LLM_GUIDE.md](./LLM_GUIDE.md)
+Il explique:
+- Comment découvrir les tools (`GET /tools`) et les appeler (`POST /execute`)
+- Les schémas JSON attendus pour les tools (rules de `parameters`)
+- L’orchestration via `call_llm` (2 phases, usage cumulatif)
+- Les bonnes pratiques pour éviter la récursion et respecter les specs
