@@ -3,47 +3,37 @@
   "function": {
     "name": "call_llm",
     "displayName": "LLM Orchestrator",
-    "description": "Appel d'API LLM avec support streaming automatique et outils MCP optionnels. Le streaming est TOUJOURS activé côté serveur.",
+    "description": "Appelle un modèle LLM en mode streaming. Peut orchestrer des tool_calls (MCP) sur un premier appel, exécuter les outils, puis faire un second appel pour produire la réponse finale en texte.",
     "parameters": {
       "type": "object",
       "properties": {
-        "messages": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "role": {
-                "type": "string",
-                "enum": ["system", "user", "assistant", "function"]
-              },
-              "content": {
-                "type": "string"
-              },
-              "name": {
-                "type": "string"
-              }
-            },
-            "required": ["role", "content"]
-          },
-          "description": "Messages de conversation au format OpenAI"
+        "message": {
+          "type": "string",
+          "description": "Message utilisateur (contenu principal)."
+        },
+        "promptSystem": {
+          "type": "string",
+          "description": "Contexte système transmis séparément au payload (pas dans messages)."
         },
         "model": {
           "type": "string",
-          "description": "Modèle LLM à utiliser (default: gpt-5)"
+          "description": "Nom du modèle (obligatoire). Ex: gpt-5."
         },
         "max_tokens": {
           "type": "integer",
-          "minimum": 1,
-          "maximum": 128000,
-          "description": "Nombre maximum de tokens à générer"
+          "description": "Nombre maximum de tokens générés pour la réponse finale."
         },
         "tool_names": {
           "type": "array",
-          "items": {"type": "string"},
-          "description": "Noms des outils MCP à rendre disponibles au LLM"
+          "description": "Liste des outils MCP autorisés pour le 1er appel (ex: [\"math\"]).",
+          "items": { "type": "string" }
+        },
+        "debug": {
+          "type": "boolean",
+          "description": "Quand true, inclut un bloc debug détaillé dans la réponse (payloads, SSE, exécutions MCP)."
         }
       },
-      "required": ["messages"],
+      "required": ["message", "model"],
       "additionalProperties": false
     }
   }
