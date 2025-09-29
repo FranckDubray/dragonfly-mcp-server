@@ -1,6 +1,7 @@
 <div align="center">
 
-<img src="https://fr.wikipedia.org/wiki/Special:FilePath/LOGO_DRAGONFLY_HD.jpg?width=120" alt="Dragonfly logo" width="120" style="background:#ffffff; padding:6px; border-radius:8px;" />
+<!-- Local logo for reliability (placed in docs/image/) -->
+<img src="docs/image/LOGO_DRAGONFLY_HD.jpg" alt="Dragonfly logo" width="120" style="background:#ffffff; padding:6px; border-radius:8px;" />
 
 # 🐉 Dragonfly MCP Server
 
