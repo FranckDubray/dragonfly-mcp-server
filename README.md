@@ -89,5 +89,5 @@ Variables principales:
 ---
 
 ## Guides pour LLM
-- À lire en priorité (utilisation outillée): [LLM_GUIDE.md](./LLM_GUIDE.md)
 - Pour un LLM « développeur » (modifications du dépôt): [LLM_DEV_GUIDE.md](./LLM_DEV_GUIDE.md)
+- Documentation API interne: [src/README.md](./src/README.md)
