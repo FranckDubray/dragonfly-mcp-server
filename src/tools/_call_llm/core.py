@@ -4,15 +4,16 @@ Core LLM execution logic (STREAM-ONLY for both calls) with rich debug.
   - 1st call (STREAM): if tool_calls → execute MCP tools, then 2nd call (STREAM) for final text.
   - If no tool_calls but text streamed → return that text directly.
 - promptSystem: ONLY via payload.promptSystem (system messages are stripped from messages).
-- Debug: when LLM_DEBUG or LLM_RETURN_DEBUG truthy, returns a `debug` object (no secrets),
-  summarizing payloads, streaming outcomes, tool_calls and tool executions.
+- Debug: when LLM_DEBUG or LLM_RETURN_DEBUG truthy, returns a `debug` object (no secrets).
+  Includes full payloads and raw SSE chunks if enabled via env.
 - STRICT: no non-stream fallbacks (never stream=False).
 """
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 import os
 import json
 import logging
 import requests
+import copy
 
 from .streaming import process_streaming_chunks, process_tool_calls_stream
 
@@ -62,9 +63,10 @@ def _payload_summary(payload: Dict[str, Any], tool_data: Dict[str, Any] | None =
             "tool_choice": payload.get("tool_choice"),
             "parallel_tool_calls": payload.get("parallel_tool_calls"),
         })
-    # Do not include Authorization nor the full tools specs/messages here to avoid noise
     return out
 
+
+# -------------------- main --------------------
 
 def execute_call_llm(
     messages: List[Dict[str, Any]],
@@ -74,6 +76,8 @@ def execute_call_llm(
     **kwargs
 ) -> Dict[str, Any]:
     debug_enabled = _env_truthy("LLM_RETURN_DEBUG") or _env_truthy("LLM_DEBUG") or bool(kwargs.get("debug"))
+    include_payloads = True  # always include full payloads when debug_enabled
+
     debug: Dict[str, Any] = {
         "first": {},
         "tools": {"requested": tool_names or [], "prepared": [], "executions": []},
@@ -141,6 +145,9 @@ def execute_call_llm(
                 "max_tokens": max_tokens,
             }
             debug["first"]["payload"] = _payload_summary(payload, tool_data)
+            if include_payloads:
+                # Full payload (redacted only by absence of headers)
+                debug["first"]["payload_full"] = copy.deepcopy(payload)
 
         resp = requests.post(endpoint, headers=headers, json=payload, stream=True, timeout=timeout_sec, verify=False)
         resp.raise_for_status()
@@ -150,12 +157,18 @@ def execute_call_llm(
         tool_calls = tc_data.get("tool_calls") or []
         streamed_text = (tc_data.get("text") or "").strip()
         if debug_enabled:
-            debug["first"]["stream"] = {
+            s = {
                 "tool_calls_count": len(tool_calls),
                 "text_len": len(streamed_text),
                 "finish_reason": tc_data.get("finish_reason"),
                 "usage": tc_data.get("usage"),
             }
+            # Attach raw and trace if present
+            if "raw" in tc_data:
+                s["raw"] = tc_data.get("raw")
+            if "trace" in tc_data:
+                s["trace"] = tc_data.get("trace")
+            debug["first"]["stream"] = s
 
         # If no tool_calls were returned but some text was streamed, return that text directly
         if not tool_calls:
@@ -169,7 +182,6 @@ def execute_call_llm(
                 if debug_enabled:
                     result["debug"] = debug
                 return result
-            # Otherwise, nothing usable was received
             return {"error": "No tool_calls and no text returned in streaming response", **({"debug": debug} if debug_enabled else {})}
 
         # Append assistant message built from streaming tool_calls (OpenAI format)
@@ -193,13 +205,13 @@ def execute_call_llm(
                 args = json.loads(args_str)
             except Exception:
                 args = {}
-            result = execute_mcp_tool(fname, args, tool_data.get("name_to_reg") or {}, mcp_url)
-            # Debug capture (trimmed)
+            result, mcp_dbg = execute_mcp_tool(fname, args, tool_data.get("name_to_reg") or {}, mcp_url, debug_enabled)
             if debug_enabled:
                 debug["tools"]["executions"].append({
                     "name": fname,
-                    "args": _trim_val(args, 500),
-                    "result_excerpt": _trim_val(result, 1000),
+                    "args": args,
+                    "mcp": mcp_dbg,
+                    "result_excerpt": _trim_val(result, 2000),
                 })
             payload["messages"].append({
                 "role": "tool",
@@ -214,16 +226,21 @@ def execute_call_llm(
         final_payload["stream"] = True
         if debug_enabled:
             debug["second"]["payload"] = _payload_summary(final_payload)
+            if include_payloads:
+                debug["second"]["payload_full"] = copy.deepcopy(final_payload)
 
         resp2 = requests.post(endpoint, headers=headers, json=final_payload, stream=True, timeout=timeout_sec, verify=False)
         resp2.raise_for_status()
         final_result = process_streaming_chunks(resp2)
         if debug_enabled:
-            debug["second"]["stream"] = {
+            s2 = {
                 "finish_reason": final_result.get("finish_reason"),
                 "text_len": len(final_result.get("content") or ""),
                 "usage": final_result.get("usage"),
             }
+            if "raw" in final_result:
+                s2["raw"] = final_result.get("raw")
+            debug["second"]["stream"] = s2
         out: Dict[str, Any] = {
             "success": True,
             "content": final_result.get("content", ""),
@@ -244,7 +261,6 @@ def execute_call_llm(
 
 def fetch_and_prepare_tools(tool_names, mcp_url):
     """Fetch tools from MCP server and prepare OpenAI format"""
-    import requests
     resp = requests.get(f"{mcp_url}/tools", timeout=10)
     resp.raise_for_status()
     all_tools = resp.json()
@@ -272,22 +288,34 @@ def fetch_and_prepare_tools(tool_names, mcp_url):
     return {"tools": tools, "name_to_reg": name_to_reg, "found_tools": found_tools}
 
 
-def execute_mcp_tool(fname, args, name_to_reg, mcp_url):
-    """Execute a single MCP tool"""
-    import requests
+def execute_mcp_tool(fname: str, args: Dict[str, Any], name_to_reg: Dict[str, str], mcp_url: str, dbg: bool = False) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """Execute a single MCP tool, returning (result, debug_meta)."""
     reg_name = name_to_reg.get(fname, fname)
     mcp_payload = {"tool_reg": reg_name, "params": args}
+    mcp_url_exec = f"{mcp_url}/execute"
+    mcp_debug: Dict[str, Any] = {"url": mcp_url_exec, "request_json": mcp_payload}
     try:
         mcp_resp = requests.post(
-            f"{mcp_url}/execute",
+            mcp_url_exec,
             json=mcp_payload,
             headers={"Content-Type": "application/json"},
             timeout=30,
         )
+        mcp_debug["status_code"] = mcp_resp.status_code
+        # Try JSON, else text
+        try:
+            mcp_json = mcp_resp.json()
+            mcp_debug["response_json"] = _trim_val(mcp_json, 4000)
+        except Exception:
+            mcp_debug["response_text"] = _trim_str(mcp_resp.text, 4000)
         if mcp_resp.status_code == 200:
-            mcp_data = mcp_resp.json()
-            return mcp_data.get("result", {})
+            try:
+                mcp_data = mcp_resp.json()
+                return mcp_data.get("result", {}), mcp_debug
+            except Exception:
+                return {"error": "Invalid MCP JSON response"}, mcp_debug
         else:
-            return {"error": f"MCP error {mcp_resp.status_code}: {mcp_resp.text}"}
+            return {"error": f"MCP error {mcp_resp.status_code}", "body": mcp_debug.get("response_text")}, mcp_debug
     except Exception as e:
-        return {"error": f"MCP call failed: {e}"}
+        mcp_debug["exception"] = str(e)
+        return {"error": f"MCP call failed: {e}"}, mcp_debug
