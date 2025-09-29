@@ -3,27 +3,29 @@
   "function": {
     "name": "script_executor",
     "displayName": "Script Executor",
-    "description": "🎭 SCRIPT EXECUTOR: Execute Python scripts that orchestrate multiple MCP tools\n\n🔧 HOW IT WORKS:\n- Write Python scripts that call other MCP tools\n- Use call_tool('tool_name', {params}) or tools.tool_name(params=value)\n- Scripts run in a secure sandbox (no file access, no imports, no network except MCP tools)\n- Perfect for complex research workflows and multi-step automation\n\n⚠️ LIMITATIONS:\n- Only works with LOCAL MCP tools (not browser tools like Perplexity)\n- No file system access, no imports, no network requests\n- Maximum 50 tool calls per script\n- 60 second execution timeout (configurable)\n\n🎯 AVAILABLE MCP TOOLS: academic_research_super, git_github, reddit_intelligence, universal_doc_scraper, gitbook, script_executor (self)\n\n💡 EXAMPLES:\n1. Multi-source research:\n   papers = tools.academic_research_super(query='AI', max_results=3)\n   for paper in papers.get('results', []):\n       code = tools.git_github(action='search', query=paper['title'])\n   result = {'papers': papers, 'code': code}\n\n2. Documentation analysis:\n   docs = tools.universal_doc_scraper(operation='discover_docs', base_url='https://fastapi.tiangolo.com/')\n   results = tools.universal_doc_scraper(operation='search_across_sites', sites=[base_url], query='authentication')\n   result = {'documentation': docs, 'search_results': results}\n\n3. Social intelligence:\n   reddit_data = tools.reddit_intelligence(operation='search', query='python best practices')\n   result = reddit_data",
+    "description": "Execute des scripts Python qui orchestrent des outils MCP dans un bac à sable (sécurisé).",
     "parameters": {
       "type": "object",
       "properties": {
         "script": {
           "type": "string",
-          "description": "Python script to execute. RULES:\n- Use call_tool('tool_name', {params}) or tools.tool_name(params) to call MCP tools\n- Store final result in 'result' variable or use print() for output\n- Only basic Python: variables, loops, conditions, basic functions (len, str, etc.)\n- NO imports, NO function definitions, NO file operations, NO network requests\n- Available tools: academic_research_super, git_github, reddit_intelligence, universal_doc_scraper, gitbook\n\nEXAMPLE:\npapers = tools.academic_research_super(query='machine learning', max_results=3)\nprint(f'Found {len(papers.get(\"results\", []))} papers')\nresult = papers"
+          "description": "Script Python. Utilise call_tool('nom', {params}) ou tools.nom(params=...) pour appeler les outils MCP. La valeur finale doit être dans une variable 'result' ou via print()."
         },
         "variables": {
           "type": "object",
-          "description": "Optional variables to inject into script namespace (e.g., {'topic': 'AI', 'max_results': 5})",
-          "patternProperties": {
-            "^[a-zA-Z_][a-zA-Z0-9_]*$": {}
-          },
-          "additionalProperties": false
+          "description": "Variables optionnelles injectées dans l'espace du script (ex: {'topic': 'AI', 'max_results': 5}).",
+          "additionalProperties": true
         },
         "timeout": {
           "type": "integer",
           "minimum": 1,
           "maximum": 300,
-          "description": "Execution timeout in seconds (default: 60)"
+          "description": "Délai d'exécution en secondes (défaut: 60)."
+        },
+        "allowed_tools": {
+          "type": "array",
+          "description": "Liste blanche facultative des outils autorisés dans le script.",
+          "items": { "type": "string" }
         }
       },
       "required": ["script"],

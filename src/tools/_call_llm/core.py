@@ -26,6 +26,30 @@ from .tools_exec import (
 from .debug_utils import env_truthy, make_debug_container, attach_stream_debug, trim_val
 
 
+def _merge_usage(into: Dict[str, Any], add: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Merge usage dicts cumulatively.
+    - Sum numeric fields (int/float), except keys containing 'price'
+    - For non-numeric or unknown fields, set if missing
+    - Returns the 'into' dict (mutated)
+    """
+    if not add or not isinstance(add, dict):
+        return into
+    for k, v in add.items():
+        try:
+            if isinstance(v, (int, float)) and ("price" not in k.lower()):
+                if isinstance(into.get(k), (int, float)):
+                    into[k] += v
+                elif k not in into:
+                    into[k] = v
+            else:
+                if k not in into:
+                    into[k] = v
+        except Exception:
+            if k not in into:
+                into[k] = v
+    return into
+
+
 def execute_call_llm(
     messages: List[Dict[str, Any]],
     model: str = "gpt-5",
@@ -66,6 +90,10 @@ def execute_call_llm(
 
     headers = build_headers(token)
 
+    # Cumulative usage across phases and nested calls
+    usage_cumulative: Dict[str, Any] = {}
+    usage_breakdown: List[Dict[str, Any]] = [] if debug_enabled else None
+
     # 1) First call (stream, with tools)
     payload["stream"] = True
     if debug_enabled:
@@ -78,12 +106,18 @@ def execute_call_llm(
     tool_calls = tc_data.get("tool_calls") or []
     streamed_text = (tc_data.get("text") or "").strip()
 
+    # Aggregate usage from first stream
+    first_usage = tc_data.get("usage")
+    _merge_usage(usage_cumulative, first_usage)
+    if debug_enabled and first_usage:
+        usage_breakdown.append({"stage": "first_stream_with_tools", "usage": first_usage})
+
     if debug_enabled:
         first_stream = {
             "tool_calls_count": len(tool_calls),
             "text_len": len(streamed_text),
             "finish_reason": tc_data.get("finish_reason"),
-            "usage": tc_data.get("usage"),
+            "usage": first_usage,
         }
         attach_stream_debug(first_stream, tc_data)
         debug["first"]["stream"] = first_stream
@@ -95,9 +129,12 @@ def execute_call_llm(
                 "success": True,
                 "content": streamed_text,
                 "finish_reason": tc_data.get("finish_reason", "stop"),
-                "usage": tc_data.get("usage"),
+                "usage": usage_cumulative if usage_cumulative else first_usage,
             }
             if debug_enabled:
+                debug["usage_cumulative"] = usage_cumulative
+                if usage_breakdown:
+                    debug["usage_breakdown"] = usage_breakdown
                 out["debug"] = debug
             return out
         return {"error": "No tool_calls and no text returned in streaming response", **({"debug": debug} if debug_enabled else {})}
@@ -115,6 +152,13 @@ def execute_call_llm(
         except Exception:
             args = {}
         result, mcp_dbg = execute_mcp_tool(fname, args, tool_data.get("name_to_reg") or {}, mcp_url, debug_enabled)
+        # Merge usage from child tool (recursively if this is a nested call_llm)
+        child_usage = None
+        if isinstance(result, dict):
+            child_usage = result.get("usage") or result.get("usage_cumulative")
+        _merge_usage(usage_cumulative, child_usage)
+        if debug_enabled and child_usage:
+            usage_breakdown.append({"stage": f"tool:{fname}", "usage": child_usage})
         exec_results.append({
             "name": fname,
             "args": args,
@@ -139,20 +183,29 @@ def execute_call_llm(
     resp2 = post_stream(endpoint, headers, final_payload, timeout_sec)
     final_result = process_streaming_chunks(resp2)
 
+    # Aggregate usage from second stream
+    final_usage = final_result.get("usage")
+    _merge_usage(usage_cumulative, final_usage)
+    if debug_enabled and final_usage:
+        usage_breakdown.append({"stage": "second_stream_without_tools", "usage": final_usage})
+
     if debug_enabled:
         second_stream = {
             "finish_reason": final_result.get("finish_reason"),
             "text_len": len(final_result.get("content") or ""),
-            "usage": final_result.get("usage"),
+            "usage": final_usage,
         }
         attach_stream_debug(second_stream, final_result, keys=("sse_stats", "raw_preview", "response_headers", "raw"))
         debug["second"]["stream"] = second_stream
+        debug["usage_cumulative"] = usage_cumulative
+        if usage_breakdown:
+            debug["usage_breakdown"] = usage_breakdown
 
     out = {
         "success": True,
         "content": final_result.get("content", ""),
         "finish_reason": final_result.get("finish_reason", "stop"),
-        "usage": final_result.get("usage"),
+        "usage": usage_cumulative if usage_cumulative else final_usage,
     }
     if debug_enabled:
         out["debug"] = debug

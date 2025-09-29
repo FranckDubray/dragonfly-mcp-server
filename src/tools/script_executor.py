@@ -1,15 +1,11 @@
 """
 Script Executor Tool - Execute multi-tool scripts with orchestration
-Allows users to create complex research workflows by scripting MCP tool calls
 SECURITY: Sandboxed execution with strict limitations
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from pathlib import Path
 import json
-
-# TODO: Implement with _script module when imports are fixed
-# from ._script import ScriptExecutor
 
 _SPEC_DIR = Path(__file__).resolve().parent.parent / "tool_specs"
 
@@ -25,58 +21,88 @@ def _load_spec_override(name: str) -> Dict[str, Any] | None:
     return None
 
 
-def run(script: str, variables: Dict[str, Any] = None, timeout: Optional[int] = None) -> Dict[str, Any]:
-    """Execute a multi-tool script
-    
-    Args:
-        script: Python script code to execute
-        variables: Optional dictionary of variables to make available in script
-        timeout: Optional timeout in seconds (overrides default)
-    """
-    
+def _safe_parameters(obj: Any) -> Dict[str, Any] | None:
+    # tools.function.parameters doit être un objet (ou bool). Jamais un tableau.
+    return obj if isinstance(obj, dict) else None
+
+
+def run(
+    script: str,
+    variables: Dict[str, Any] | None = None,
+    timeout: Optional[int] = None,
+    allowed_tools: Optional[List[str]] = None,
+) -> Dict[str, Any]:
     if not script:
         return {
             "success": False,
-            "error": "❌ MISSING SCRIPT: The 'script' parameter is required",
-            "help": "Provide a Python script that uses call_tool() or tools.tool_name() to orchestrate MCP tools"
+            "error": "❌ 'script' est requis",
+            "help": "Fournissez un script Python qui utilise call_tool('nom', params) ou tools.nom(params=...)."
         }
-    
-    # TODO: Implement with _script module when imports are fixed
-    return {
-        "success": False,
-        "error": "Script executor temporarily disabled due to import issues",
-        "help": "Being fixed..."
-    }
+
+    # Tente d’utiliser l’exécuteur sandbox si disponible
+    try:
+        from ._script.executor import ScriptExecutor  # type: ignore
+    except Exception as e:
+        return {
+            "success": False,
+            "error": "Script executor indisponible (module _script manquant).",
+            "details": str(e),
+            "hint": "Assurez-vous que src/tools/_script/* est présent et importable."
+        }
+
+    try:
+        executor = ScriptExecutor(
+            allowed_tools=allowed_tools,          # None -> politique par défaut interne
+            default_timeout=timeout or 60,
+        )
+        exec_result = executor.run(script=script, variables=variables or {})
+        # Normalise le retour
+        out: Dict[str, Any] = {"success": True, "result": exec_result.get("result")}
+        if "prints" in exec_result:
+            out["prints"] = exec_result["prints"]
+        if "tool_calls" in exec_result:
+            out["tool_calls"] = exec_result["tool_calls"]
+        if "stats" in exec_result:
+            out["stats"] = exec_result["stats"]
+        if "usage" in exec_result:
+            out["usage"] = exec_result["usage"]
+        return out
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Echec d'exécution du script: {e}"
+        }
 
 
 def spec() -> Dict[str, Any]:
-    """Return the MCP function specification for Script Executor"""
-    
     base = {
         "type": "function",
         "function": {
             "name": "script_executor",
-            "description": "🎭 SCRIPT EXECUTOR: Execute Python scripts that orchestrate multiple MCP tools (temporarily disabled)",
+            "displayName": "Script Executor",
+            "description": "Exécute des scripts Python orchestrant des outils MCP dans un bac à sable.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "script": {
                         "type": "string",
-                        "description": "Python script to execute"
+                        "description": "Script Python orchestrant des appels MCP via call_tool() ou tools.<nom>()."
                     },
                     "variables": {
                         "type": "object",
-                        "description": "Optional variables to inject into script namespace",
-                        "patternProperties": {
-                            "^[a-zA-Z_][a-zA-Z0-9_]*$": {}
-                        },
-                        "additionalProperties": False
+                        "description": "Variables optionnelles injectées.",
+                        "additionalProperties": True
                     },
                     "timeout": {
                         "type": "integer",
                         "minimum": 1,
                         "maximum": 300,
-                        "description": "Execution timeout in seconds (default: 60)"
+                        "description": "Timeout en secondes (défaut: 60)."
+                    },
+                    "allowed_tools": {
+                        "type": "array",
+                        "description": "Liste blanche des outils autorisés.",
+                        "items": {"type": "string"}
                     }
                 },
                 "required": ["script"],
@@ -84,15 +110,16 @@ def spec() -> Dict[str, Any]:
             }
         }
     }
-    
+
     override = _load_spec_override("script_executor")
-    if override and isinstance(override, dict):
-        fn = base.get("function", {})
+    if isinstance(override, dict):
         ofn = override.get("function", {})
-        if ofn.get("displayName"):
+        fn = base.get("function", {})
+        if isinstance(ofn.get("displayName"), str):
             fn["displayName"] = ofn["displayName"]
-        if ofn.get("description"):
+        if isinstance(ofn.get("description"), str):
             fn["description"] = ofn["description"]
-        if ofn.get("parameters"):
-            fn["parameters"] = ofn["parameters"]
+        params = _safe_parameters(ofn.get("parameters"))
+        if params:
+            fn["parameters"] = params
     return base
