@@ -88,10 +88,6 @@ Variables principales:
 
 ---
 
-## Guide pour LLM (à lire en priorité)
-Pour les modèles qui souhaitent interagir efficacement avec ce dépôt, consultez le guide dédié: [LLM_GUIDE.md](./LLM_GUIDE.md)
-Il explique:
-- Comment découvrir les tools (`GET /tools`) et les appeler (`POST /execute`)
-- Les schémas JSON attendus pour les tools (rules de `parameters`)
-- L’orchestration via `call_llm` (2 phases, usage cumulatif)
-- Les bonnes pratiques pour éviter la récursion et respecter les specs
+## Guides pour LLM
+- À lire en priorité (utilisation outillée): [LLM_GUIDE.md](./LLM_GUIDE.md)
+- Pour un LLM « développeur » (modifications du dépôt): [LLM_DEV_GUIDE.md](./LLM_DEV_GUIDE.md)
