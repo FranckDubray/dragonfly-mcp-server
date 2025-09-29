@@ -79,11 +79,12 @@ def process_tool_calls_stream(response):
         choices = obj.get("choices", [])
         if not choices:
             continue
-        delta = choices[0].get("delta", {})
+        choice0 = choices[0] or {}
+        delta = choice0.get("delta", {})
         # Aggregate text if any
         if delta.get("content"):
             text_buf.append(delta["content"])
-        # Aggregate tool_calls fragments
+        # Aggregate tool_calls fragments from delta.tool_calls
         for item in delta.get("tool_calls", []) or []:
             idx = item.get("index", 0)
             entry = calls.setdefault(idx, {"id": None, "function": {"name": None, "arguments": ""}})
@@ -94,9 +95,22 @@ def process_tool_calls_stream(response):
                 entry["function"]["name"] = fn["name"]
             if fn.get("arguments"):
                 entry["function"]["arguments"] += fn["arguments"]
+        # Some providers send final tool_calls under message.tool_calls (not delta)
+        msg = choice0.get("message") or {}
+        for item in (msg.get("tool_calls") or []) if isinstance(msg.get("tool_calls"), list) else []:
+            idx = item.get("index", 0)
+            entry = calls.setdefault(idx, {"id": None, "function": {"name": None, "arguments": ""}})
+            if item.get("id"):
+                entry["id"] = item["id"]
+            fn = item.get("function") or {}
+            if fn.get("name"):
+                entry["function"]["name"] = fn["name"]
+            # In some cases, arguments are already a full JSON string
+            if fn.get("arguments") and not entry["function"]["arguments"]:
+                entry["function"]["arguments"] = fn["arguments"]
         # Finish reason
-        if choices[0].get("finish_reason"):
-            finish_reason = choices[0]["finish_reason"]
+        if choice0.get("finish_reason"):
+            finish_reason = choice0["finish_reason"]
         # Usage if present
         if obj.get("usage"):
             usage = obj["usage"]
