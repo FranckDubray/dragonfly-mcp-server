@@ -4,8 +4,8 @@ Core LLM execution logic (STREAM-ONLY for both calls) with rich debug.
   - 1st call (STREAM): if tool_calls → execute MCP tools, then 2nd call (STREAM) for final text.
   - If no tool_calls but text streamed → return that text directly.
 - promptSystem: ONLY via payload.promptSystem (system messages are stripped from messages).
-- Debug: when LLM_DEBUG or LLM_RETURN_DEBUG truthy, returns a `debug` object (no secrets).
-  Includes full payloads and raw SSE chunks if enabled via env.
+- Debug: returned ONLY when LLM_RETURN_DEBUG is truthy or params.debug=True (no longer tied to LLM_DEBUG).
+  Includes full payloads and raw SSE chunks if enabled via env, plus sse_stats/raw_preview/response_headers.
 - STRICT: no non-stream fallbacks (never stream=False).
 """
 from typing import Any, Dict, List, Optional, Tuple
@@ -75,8 +75,9 @@ def execute_call_llm(
     tool_names: Optional[List[str]] = None,
     **kwargs
 ) -> Dict[str, Any]:
-    debug_enabled = _env_truthy("LLM_RETURN_DEBUG") or _env_truthy("LLM_DEBUG") or bool(kwargs.get("debug"))
-    include_payloads = True  # always include full payloads when debug_enabled
+    # Debug is returned ONLY if explicitly requested via env LLM_RETURN_DEBUG or params.debug
+    debug_enabled = _env_truthy("LLM_RETURN_DEBUG") or bool(kwargs.get("debug"))
+    include_payloads = True  # when debug_enabled, include full payloads
 
     debug: Dict[str, Any] = {
         "first": {},
@@ -146,7 +147,6 @@ def execute_call_llm(
             }
             debug["first"]["payload"] = _payload_summary(payload, tool_data)
             if include_payloads:
-                # Full payload (redacted only by absence of headers)
                 debug["first"]["payload_full"] = copy.deepcopy(payload)
 
         resp = requests.post(endpoint, headers=headers, json=payload, stream=True, timeout=timeout_sec, verify=False)
@@ -163,11 +163,9 @@ def execute_call_llm(
                 "finish_reason": tc_data.get("finish_reason"),
                 "usage": tc_data.get("usage"),
             }
-            # Attach raw and trace if present
-            if "raw" in tc_data:
-                s["raw"] = tc_data.get("raw")
-            if "trace" in tc_data:
-                s["trace"] = tc_data.get("trace")
+            for extra_key in ("sse_stats", "raw_preview", "response_headers", "raw", "trace", "provider_preview"):
+                if extra_key in tc_data:
+                    s[extra_key] = tc_data.get(extra_key)
             debug["first"]["stream"] = s
 
         # If no tool_calls were returned but some text was streamed, return that text directly
@@ -238,8 +236,9 @@ def execute_call_llm(
                 "text_len": len(final_result.get("content") or ""),
                 "usage": final_result.get("usage"),
             }
-            if "raw" in final_result:
-                s2["raw"] = final_result.get("raw")
+            for extra_key in ("sse_stats", "raw_preview", "response_headers", "raw"):
+                if extra_key in final_result:
+                    s2[extra_key] = final_result.get(extra_key)
             debug["second"]["stream"] = s2
         out: Dict[str, Any] = {
             "success": True,
@@ -293,7 +292,7 @@ def execute_mcp_tool(fname: str, args: Dict[str, Any], name_to_reg: Dict[str, st
     reg_name = name_to_reg.get(fname, fname)
     mcp_payload = {"tool_reg": reg_name, "params": args}
     mcp_url_exec = f"{mcp_url}/execute"
-    mcp_debug: Dict[str, Any] = {"url": mcp_url_exec, "request_json": mcp_payload}
+    mcp_debug: Dict[str, Any] = {"url": mcp_url_exec, "request_json": mcp_payload} if dbg else {}
     try:
         mcp_resp = requests.post(
             mcp_url_exec,
@@ -301,21 +300,24 @@ def execute_mcp_tool(fname: str, args: Dict[str, Any], name_to_reg: Dict[str, st
             headers={"Content-Type": "application/json"},
             timeout=30,
         )
-        mcp_debug["status_code"] = mcp_resp.status_code
-        # Try JSON, else text
-        try:
-            mcp_json = mcp_resp.json()
-            mcp_debug["response_json"] = _trim_val(mcp_json, 4000)
-        except Exception:
-            mcp_debug["response_text"] = _trim_str(mcp_resp.text, 4000)
+        if dbg:
+            mcp_debug["status_code"] = mcp_resp.status_code
         if mcp_resp.status_code == 200:
             try:
-                mcp_data = mcp_resp.json()
-                return mcp_data.get("result", {}), mcp_debug
+                mcp_json = mcp_resp.json()
+                if dbg:
+                    mcp_debug["response_json"] = _trim_val(mcp_json, 4000)
+                return mcp_json.get("result", {}), mcp_debug
             except Exception:
                 return {"error": "Invalid MCP JSON response"}, mcp_debug
         else:
-            return {"error": f"MCP error {mcp_resp.status_code}", "body": mcp_debug.get("response_text")}, mcp_debug
+            if dbg:
+                try:
+                    mcp_debug["response_text"] = _trim_str(mcp_resp.text, 4000)
+                except Exception:
+                    pass
+            return {"error": f"MCP error {mcp_resp.status_code}"}, mcp_debug
     except Exception as e:
-        mcp_debug["exception"] = str(e)
+        if dbg:
+            mcp_debug["exception"] = str(e)
         return {"error": f"MCP call failed: {e}"}, mcp_debug
