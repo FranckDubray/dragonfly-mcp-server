@@ -2,6 +2,7 @@
 Streaming utilities for LLM responses (SSE)
 - Supports both text aggregation and tool_calls reconstruction in streaming mode.
 - Optional trace mode: set env LLM_STREAM_TRACE=1 to include a per-chunk trace for debugging.
+- Optional raw dump: set env LLM_STREAM_DUMP=1 to capture up to N raw SSE JSON lines (LLM_STREAM_DUMP_MAX, default 10).
 """
 import json
 import logging
@@ -9,17 +10,32 @@ import os
 
 LOG = logging.getLogger(__name__)
 TRACE = os.getenv("LLM_STREAM_TRACE", "").strip().lower() in ("1","true","yes","on","debug")
+DUMP = os.getenv("LLM_STREAM_DUMP", "").strip().lower() in ("1","true","yes","on","debug")
+try:
+    DUMP_MAX = int(os.getenv("LLM_STREAM_DUMP_MAX", "10"))
+except Exception:
+    DUMP_MAX = 10
+
+
+def _trim(s: str, limit: int = 2000) -> str:
+    try:
+        if isinstance(s, str) and len(s) > limit:
+            return s[:limit] + f"... (+{len(s)-limit} bytes)"
+    except Exception:
+        pass
+    return s
 
 
 def process_streaming_chunks(response):
     """
     Process streaming response and return aggregated text content.
     Expects Server-Sent Events with lines starting by 'data: '.
-    Returns: {"content": str, "finish_reason": str, "usage": dict|None}
+    Returns: {"content": str, "finish_reason": str, "usage": dict|None, "raw": list|None}
     """
     content = ""
     finish_reason = None
     usage = None
+    raw = [] if DUMP else None
     for line in response.iter_lines():
         if not line:
             continue
@@ -29,6 +45,8 @@ def process_streaming_chunks(response):
         data_str = line[6:]
         if data_str == '[DONE]':
             break
+        if DUMP and len(raw) < DUMP_MAX:
+            raw.append(_trim(data_str, 2000))
         try:
             chunk = json.loads(data_str)
             # Some gateways wrap under {"response": ...}
@@ -45,7 +63,10 @@ def process_streaming_chunks(response):
                 usage = chunk["usage"]
         except Exception:
             continue
-    return {"content": content, "finish_reason": finish_reason or "stop", "usage": usage}
+    out = {"content": content, "finish_reason": finish_reason or "stop", "usage": usage}
+    if DUMP:
+        out["raw"] = raw
+    return out
 
 
 def process_tool_calls_stream(response):
@@ -56,7 +77,8 @@ def process_tool_calls_stream(response):
       "text": str,  # any assistant text streamed (if present)
       "finish_reason": str,
       "usage": dict|None,
-      "trace": list  # optional per-chunk trace if LLM_STREAM_TRACE=1
+      "trace": list|None,  # optional per-chunk trace if LLM_STREAM_TRACE=1
+      "raw": list|None     # optional raw JSON lines if LLM_STREAM_DUMP=1
     }
     """
     # index -> entry {"id":..., "function": {"name":..., "arguments": str}}
@@ -65,16 +87,19 @@ def process_tool_calls_stream(response):
     finish_reason = None
     usage = None
     trace = [] if TRACE else None
+    raw = [] if DUMP else None
 
-    for raw in response.iter_lines():
-        if not raw:
+    for raw_line in response.iter_lines():
+        if not raw_line:
             continue
-        line = raw.decode('utf-8').strip()
+        line = raw_line.decode('utf-8').strip()
         if not line.startswith('data: '):
             continue
         data_str = line[6:]
         if data_str == '[DONE]':
             break
+        if DUMP and len(raw) < DUMP_MAX:
+            raw.append(_trim(data_str, 2000))
         try:
             obj = json.loads(data_str)
         except Exception:
@@ -159,4 +184,6 @@ def process_tool_calls_stream(response):
     }
     if TRACE:
         out["trace"] = trace
+    if DUMP:
+        out["raw"] = raw
     return out
