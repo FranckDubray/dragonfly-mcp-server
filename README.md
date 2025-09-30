@@ -32,6 +32,7 @@ Dragonfly MCP Server expose des « tools » (au format OpenAI tools) via des end
 - [Demo rapide](#-demo-rapide)
 - [Installation](#-installation)
 - [Démarrage](#-démarrage)
+- [Prerequis Python](#-prerequis-python)
 - [Endpoints](#-endpoints)
 - [Outils inclus](#-outils-inclus)
 - [Orchestrateur LLM (call_llm)](#-orchestrateur-llm-call_llm)
@@ -101,6 +102,15 @@ Panneau de contrôle: http://127.0.0.1:8000/control
 
 ---
 
+## 🐍 Prerequis Python
+- Version minimale recommandée: Python 3.11 ou 3.12.
+- Le projet utilise des fonctionnalités modernes (annotations/typing, comportement de json/ints, etc.) pouvant échouer avec des versions trop anciennes.
+- Les scripts de démarrage vérifient automatiquement la version installée et abortent si la version est trop ancienne.
+
+> Astuce: utilisez pyenv pour installer la bonne version, ou conda/mamba.
+
+---
+
 ## 🔗 Endpoints
 - `GET /tools` — liste des tools (spec incluse). Ajouter `?reload=1` pour forcer un rescannage.
 - `POST /execute` — exécuter un tool: `{ tool: string, params: object }`
@@ -112,7 +122,7 @@ Détails étendus: [src/README.md](./src/README.md)
 
 ---
 
-## 🧰 Outils inclus
+## 🧪 Outils inclus
 - `call_llm`: orchestrateur LLM (2 phases, usage cumulatif)
 - `math`: calcul numérique/HP, symbolique, algèbre linéaire
 - `date`: now/today, diff, add, format, parse, weekday, week_number
@@ -148,7 +158,7 @@ Configurer via `/control` (recommandé) ou via `.env`.
 
 ---
 
-## 🔐 Sécurité
+## 🔒 Sécurité
 - SQLite chroot: DBs sous `<projet>/sqlite3` (noms validés)
 - Git local: opérations limités à la racine du projet
 - `script_executor`: sandbox stricte (pas d’accès non autorisé)
@@ -172,7 +182,7 @@ src/
 
 ---
 
-## 🧑‍💻 Pour les LLM « développeurs »
+## 👩‍💻 Pour les LLM « développeurs »
 Vous modifiez/étendez le dépôt ? Lisez ce guide:
 - [LLM_DEV_GUIDE.md](./LLM_DEV_GUIDE.md)
   - Conventions, invariants, checklists, pièges à éviter
