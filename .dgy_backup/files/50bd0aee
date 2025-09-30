@@ -112,63 +112,6 @@ class AcademicResearchSuper:
                     return {}
             return text
 
-    def _norm_str(self, s: str) -> str:
-        return (s or '').strip().lower()
-
-    def _make_key(self, it: Dict[str, Any]) -> str:
-        doi = self._norm_str(it.get('doi', ''))
-        if doi:
-            return f"doi::{doi}"
-        url = self._norm_str(it.get('url', ''))
-        if url:
-            return f"url::{url}"
-        title = self._norm_str(it.get('title', ''))
-        pubdate = self._norm_str(it.get('publication_date', ''))
-        if title or pubdate:
-            return f"title::{title}|date::{pubdate}"
-        return f"idx::{id(it)}"
-
-    def _merge_items(self, a: Dict[str, Any], b: Dict[str, Any], include_abstracts: bool) -> Dict[str, Any]:
-        out = dict(a)
-        # Prefer non-empty values from either
-        for k in ['title','doi','url','publication_date','journal','source','full_text_url']:
-            if not out.get(k):
-                out[k] = b.get(k) or out.get(k)
-        # authors: keep the longer list
-        a_auth = a.get('authors') or []
-        b_auth = b.get('authors') or []
-        out['authors'] = a_auth if len(a_auth) >= len(b_auth) else b_auth
-        # abstract: keep longer if allowed, else empty
-        if include_abstracts:
-            a_abs = a.get('abstract') or ''
-            b_abs = b.get('abstract') or ''
-            out['abstract'] = a_abs if len(a_abs) >= len(b_abs) else b_abs
-        else:
-            out['abstract'] = ''
-        # citations_count: max
-        try:
-            out['citations_count'] = max(int(a.get('citations_count') or 0), int(b.get('citations_count') or 0))
-        except Exception:
-            out['citations_count'] = a.get('citations_count') or b.get('citations_count') or 0
-        # full_text_url: prefer non-empty (keep existing if already set)
-        if not out.get('full_text_url') and b.get('full_text_url'):
-            out['full_text_url'] = b.get('full_text_url')
-        return out
-
-    def _deduplicate_and_merge(self, items: List[Dict[str, Any]], include_abstracts: bool) -> List[Dict[str, Any]]:
-        by_key: Dict[str, Dict[str, Any]] = {}
-        for it in items:
-            key = self._make_key(it)
-            if key in by_key:
-                by_key[key] = self._merge_items(by_key[key], it, include_abstracts)
-            else:
-                # ensure abstract removed when not included
-                cur = dict(it)
-                if not include_abstracts:
-                    cur['abstract'] = ''
-                by_key[key] = cur
-        return list(by_key.values())
-
     # ------------------- arXiv -------------------
     def _arxiv_build_url(self, query: str, start: int, max_results: int) -> str:
         params = {
@@ -430,17 +373,14 @@ class AcademicResearchSuper:
         query = str(params.get('query') or '').strip()
         year_from = params.get('year_from')
         year_to = params.get('year_to')
-        include_abstracts = bool(params.get('include_abstracts', True))
 
         # Limites par défaut (surchageables par params ou variables d'env)
         max_total_items = int(params.get('max_total_items') or os.getenv('ACADEMIC_RS_MAX_ITEMS', '50'))
         max_abstract_chars = int(params.get('max_abstract_chars') or os.getenv('ACADEMIC_RS_MAX_ABSTRACT_CHARS', '2000'))
-        if not include_abstracts:
-            max_abstract_chars = 0
         max_bytes = int(params.get('max_bytes') or os.getenv('ACADEMIC_RS_MAX_BYTES', '200000'))  # ~200KB
 
         if operation == 'search_papers':
-            collected: List[Dict[str, Any]] = []
+            out_results: List[Dict[str, Any]] = []
             notes: List[str] = []
             if not query:
                 return {"success": False, "error": "query requis"}
@@ -487,23 +427,13 @@ class AcademicResearchSuper:
                     if cutoff is not None:
                         items = self._filter_by_cutoff(items, cutoff)
 
-                    collected.extend(items)
+                    out_results.extend(items)
                 except Exception as e:
                     notes.append(f"{s} error: {e}")
 
-            # Déduplication + fusion multi-sources
-            unique_results = self._deduplicate_and_merge(collected, include_abstracts=include_abstracts)
-
-            # Tri global par date descendante
-            def sort_key(it: Dict[str, Any]):
-                dt = self._parse_any_date(it.get('publication_date') or '')
-                # None -> plus ancien
-                return dt or datetime(1900,1,1, tzinfo=timezone.utc)
-            unique_results.sort(key=sort_key, reverse=True)
-
             # Appliquer les limites de taille avant retour
-            bounded = self._enforce_size_limits(
-                results=unique_results,
+            out_results = self._enforce_size_limits(
+                results=out_results,
                 notes=notes,
                 max_total_items=max_total_items,
                 max_abstract_chars=max_abstract_chars,
@@ -515,7 +445,7 @@ class AcademicResearchSuper:
                 notes.append(f"sources non supportées dans cette implémentation: {unsupported}")
             return {
                 "success": True,
-                "results": bounded,
+                "results": out_results,
                 "source_count": len(sources),
                 "notes": notes or None
             }
@@ -543,7 +473,7 @@ def _load_spec_override(name: str) -> Dict[str, Any] | None:
 
 def run(**params) -> Dict[str, Any]:
     try:
-        operation = params.pop('operation', 'search_papers')
+        operation = params.get('operation', 'search_papers')
         return _tool.run(operation=operation, **params)
     except Exception as e:
         return {"success": False, "error": str(e)}
