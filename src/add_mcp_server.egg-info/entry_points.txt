@@ -1,0 +1,2 @@
+[console_scripts]
+mcp-server = add_mcp_server.server:main
