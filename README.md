@@ -83,6 +83,8 @@ curl -s http://127.0.0.1:8000/tools
 ---
 
 ## 🛠 Installation
+Prérequis: Python 3.11 ou 3.12. Vérifiez avec: `python3 --version`. Si votre version est < 3.11, installez via pyenv/conda ou depuis python.org.
+
 ```bash
 git clone https://github.com/FranckDubray/dragonfly-mcp-server.git
 cd dragonfly-mcp-server
