@@ -9,6 +9,9 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+MIN_MAJOR=3
+MIN_MINOR=11
+
 echo -e "${GREEN}🚀 Starting MCP Server (Development Mode)${NC}"
 
 # Check if we're in the right directory
@@ -17,9 +20,21 @@ if [ ! -f "pyproject.toml" ]; then
     exit 1
 fi
 
-# Check Python version
-python_version=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
-echo -e "${YELLOW}🐍 Using Python $python_version${NC}"
+# Check Python version strictly (>= 3.11)
+PYV_RAW=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || true)
+if [ -z "$PYV_RAW" ]; then
+  echo -e "${RED}❌ Python not found. Please install Python ${MIN_MAJOR}.${MIN_MINOR}+ and add it to PATH.${NC}"
+  exit 1
+fi
+MAJOR=${PYV_RAW%%.*}
+MINOR=${PYV_RAW#*.}
+if [ "$MAJOR" -lt "$MIN_MAJOR" ] || { [ "$MAJOR" -eq "$MIN_MAJOR" ] && [ "$MINOR" -lt "$MIN_MINOR" ]; }; then
+  echo -e "${RED}❌ Python $PYV_RAW detected, but ${MIN_MAJOR}.${MIN_MINOR}+ is required. Aborting.${NC}"
+  echo -e "${YELLOW}Tip:${NC} install via pyenv/conda or download from python.org"
+  exit 1
+fi
+
+echo -e "${YELLOW}🐍 Using Python $PYV_RAW${NC}"
 
 # Create venv if needed
 if [ ! -d "venv" ]; then
@@ -45,10 +60,10 @@ else
 fi
 
 if ! python -c "import sympy" >/dev/null 2>&1; then
-  echo -e "${YELLOW}🔢 Installing SymPy (symbolic math)...${NC}"
+  echo -e "${YELLOW}∑ Installing SymPy (symbolic math)...${NC}"
   pip install -q "sympy>=1.12.0"
 else
-  echo -e "${GREEN}🔢 SymPy available${NC}"
+  echo -e "${GREEN}∑ SymPy available${NC}"
 fi
 
 if ! python -c "import requests" >/dev/null 2>&1; then
@@ -63,8 +78,8 @@ export MCP_HOST="${MCP_HOST:-127.0.0.1}"
 export MCP_PORT="${MCP_PORT:-8000}"
 export LOG_LEVEL="${LOG_LEVEL:-INFO}"
 export RELOAD="${RELOAD:-1}"
-export EXECUTE_TIMEOUT_SEC="${EXECUTE_TIMEOUT_SEC:-30}"
 export AUTO_RELOAD_TOOLS="${AUTO_RELOAD_TOOLS:-1}"
+export EXECUTE_TIMEOUT_SEC="${EXECUTE_TIMEOUT_SEC:-30}"
 
 echo -e "${GREEN}🌐 Server Configuration:${NC}"
 echo -e "  Host: ${MCP_HOST}"

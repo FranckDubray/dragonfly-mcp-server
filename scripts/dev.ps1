@@ -1,3 +1,4 @@
+
 # MCP Server Development Script (PowerShell)
 
 param(
@@ -14,12 +15,24 @@ if (-not (Test-Path "pyproject.toml")) {
     exit 1
 }
 
-# Check Python
+# Check Python version (>= 3.11)
 try {
-    $pythonVersion = python --version 2>&1
-    Write-Host "🐍 Using $pythonVersion" -ForegroundColor Yellow
+    $version = & python - << 'PY'
+import sys
+print(f"{sys.version_info.major}.{sys.version_info.minor}")
+PY
+    if (-not $version) { throw "Python not found" }
+    $parts = $version.Split('.')
+    $maj = [int]$parts[0]
+    $min = [int]$parts[1]
+    if ($maj -lt 3 -or ($maj -eq 3 -and $min -lt 11)) {
+        Write-Host "❌ Python $version detected, but 3.11+ is required. Aborting." -ForegroundColor Red
+        Write-Host "Tip: install via pyenv-win/conda or from python.org" -ForegroundColor Yellow
+        exit 1
+    }
+    Write-Host "🐍 Using Python $version" -ForegroundColor Yellow
 } catch {
-    Write-Host "❌ Error: Python not found. Please install Python 3.8+ and add it to PATH." -ForegroundColor Red
+    Write-Host "❌ Error: Python 3.11+ not found. Please install and add to PATH." -ForegroundColor Red
     exit 1
 }
 
