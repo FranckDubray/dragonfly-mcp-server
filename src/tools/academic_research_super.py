@@ -222,6 +222,11 @@ class AcademicResearchSuper:
             items = []
         return {'provider': 'arxiv', 'count': len(items), 'items': items, 'request': self.last_request}
 
+    def _arxiv_search_by_author(self, author_name: str, max_results: int = 10) -> Dict[str, Any]:
+        # arXiv author query: au:"Lastname, Firstname" or au:"Firstname Lastname"
+        q = f'au:"{author_name}"'
+        return self._arxiv_search(query=q, max_results=max_results)
+
     # ------------------- PubMed -------------------
     def _pubmed_esearch(self, query: str, max_results: int) -> List[str]:
         q = urllib.parse.quote(query)
@@ -271,6 +276,10 @@ class AcademicResearchSuper:
             })
         return {'provider': 'pubmed', 'count': len(result_items), 'items': result_items, 'request': {'provider': 'pubmed', 'pmids': pmids}}
 
+    def _pubmed_search_by_author(self, author_name: str, max_results: int = 10) -> Dict[str, Any]:
+        term = f"{author_name}[Author]"
+        return self._pubmed_search(query=term, max_results=max_results)
+
     # ------------------- Crossref -------------------
     def _crossref_search(self, query: str, max_results: int = 10) -> Dict[str, Any]:
         params = urllib.parse.urlencode({'query': query, 'rows': max_results})
@@ -285,6 +294,48 @@ class AcademicResearchSuper:
             url = it.get('URL') or ''
             journal = ' '.join((it.get('container-title') or [])).strip()
             # date parts
+            issued = (it.get('issued') or {}).get('"date-parts"') or (it.get('issued') or {}).get('date-parts')
+            pubdate = ''
+            if issued and isinstance(issued, list) and issued:
+                parts = issued[0]
+                if isinstance(parts, list) and parts:
+                    y = parts[0]; m = parts[1] if len(parts) > 1 else 1; d = parts[2] if len(parts) > 2 else 1
+                    try:
+                        pubdate = f"{int(y):04d}-{int(m):02d}-{int(d):02d}"
+                    except Exception:
+                        pubdate = str(y)
+            cites = it.get('is-referenced-by-count') or 0
+            pdf_url = ''
+            for lk in (it.get('link') or []):
+                if lk.get('content-type') == 'application/pdf' and lk.get('URL'):
+                    pdf_url = lk.get('URL'); break
+            items.append({
+                'title': title,
+                'authors': authors,
+                'abstract': '',
+                'doi': doi,
+                'url': url,
+                'publication_date': pubdate,
+                'journal': journal,
+                'source': 'crossref',
+                'citations_count': cites,
+                'full_text_url': pdf_url,
+            })
+        return {'provider': 'crossref', 'count': len(items), 'items': items, 'request': {'provider': 'crossref', 'url': url}}
+
+    def _crossref_search_by_author(self, author_name: str, max_results: int = 10) -> Dict[str, Any]:
+        params = urllib.parse.urlencode({'query.author': author_name, 'rows': max_results})
+        url = f"https://api.crossref.org/works?{params}"
+        data = self._http_get(url, timeout=20, expect_json=True)
+        # Reuse mapping logic by feeding through _crossref_search on a synthesized 'query' would not apply query.author
+        items_in = (((data or {}).get('message') or {}).get('items') or [])
+        items: List[Dict[str, Any]] = []
+        for it in items_in:
+            title = ' '.join((it.get('title') or [])).strip()
+            authors = [{'name': f"{a.get('given','')} {a.get('family','')}".strip()} for a in (it.get('author') or []) if a.get('given') or a.get('family')]
+            doi = it.get('DOI') or ''
+            url = it.get('URL') or ''
+            journal = ' '.join((it.get('container-title') or [])).strip()
             issued = (it.get('issued') or {}).get('"date-parts"') or (it.get('issued') or {}).get('date-parts')
             pubdate = ''
             if issued and isinstance(issued, list) and issued:
@@ -362,6 +413,10 @@ class AcademicResearchSuper:
                 'full_text_url': pdf_url,
             })
         return {'provider': 'hal', 'count': len(items), 'items': items, 'request': {'provider': 'hal', 'url': url}}
+
+    def _hal_search_by_author(self, author_name: str, max_results: int = 10) -> Dict[str, Any]:
+        q = f'authFullName_s:"{author_name}"'
+        return self._hal_search(query=q, max_results=max_results)
 
     # ------------------- Limiteurs de taille -------------------
     def _truncate_text(self, s: str, limit: int) -> str:
@@ -520,8 +575,58 @@ class AcademicResearchSuper:
                 "notes": notes or None
             }
 
-        # Esquisses pour autres opérations
-        if operation in ("get_paper_details", "search_authors", "get_citations"):
+        if operation == 'search_authors':
+            author_name = str(params.get('author_name') or '').strip()
+            if not author_name:
+                return {"success": False, "error": "author_name requis"}
+            notes: List[str] = []
+            collected: List[Dict[str, Any]] = []
+            lower_sources = [s.lower() for s in sources]
+            for s in lower_sources:
+                try:
+                    if s == 'arxiv':
+                        data = self._arxiv_search_by_author(author_name=author_name, max_results=max_results)
+                    elif s == 'pubmed':
+                        data = self._pubmed_search_by_author(author_name=author_name, max_results=max_results)
+                    elif s == 'crossref':
+                        data = self._crossref_search_by_author(author_name=author_name, max_results=max_results)
+                    elif s == 'hal':
+                        data = self._hal_search_by_author(author_name=author_name, max_results=max_results)
+                    else:
+                        notes.append(f"source non supportée: {s}")
+                        continue
+                    items = data.get('items', [])
+                    collected.extend(items)
+                except Exception as e:
+                    notes.append(f"{s} error: {e}")
+
+            # Déduplication + tri
+            unique_results = self._deduplicate_and_merge(collected, include_abstracts=include_abstracts)
+            def sort_key(it: Dict[str, Any]):
+                dt = self._parse_any_date(it.get('publication_date') or '')
+                return dt or datetime(1900,1,1, tzinfo=timezone.utc)
+            unique_results.sort(key=sort_key, reverse=True)
+
+            # Limites de taille
+            bounded = self._enforce_size_limits(
+                results=unique_results,
+                notes=notes,
+                max_total_items=max_total_items,
+                max_abstract_chars=max_abstract_chars,
+                max_bytes=max_bytes,
+            )
+
+            unsupported = [s for s in sources if s.lower() not in ('arxiv','pubmed','crossref','hal')]
+            if unsupported:
+                notes.append(f"sources non supportées dans cette implémentation: {unsupported}")
+            return {
+                "success": True,
+                "results": bounded,
+                "source_count": len(sources),
+                "notes": notes or None
+            }
+
+        if operation in ("get_paper_details", "get_citations"):
             return {"success": False, "error": f"operation '{operation}' non implémentée dans cette version"}
 
         return {"success": False, "error": f"operation inconnue: {operation}"}
