@@ -1,0 +1,233 @@
+"""
+🎓 Academic Research Tool Super - Version multi-sources optimisée
+
+Sources intégrées (cette implémentation minimale active arXiv uniquement): arXiv
+Réponses compactes pour préserver le contexte LLM
+"""
+
+import json
+import urllib.request
+import urllib.parse
+import xml.etree.ElementTree as ET
+from typing import Dict, List, Any, Optional
+from dataclasses import dataclass
+from pathlib import Path
+import re
+from datetime import datetime, timedelta, timezone
+
+ATOM_NS = {
+    'atom': 'http://www.w3.org/2005/Atom',
+    'arxiv': 'http://arxiv.org/schemas/atom'
+}
+
+@dataclass
+class Author:
+    name: str
+    affiliation: str = ""
+
+@dataclass
+class ResearchResult:
+    title: str
+    authors: List[Author]
+    abstract: str
+    doi: str
+    url: str
+    publication_date: str
+    journal: str
+    source: str
+    citations_count: int = 0
+    full_text_url: str = ""
+
+
+class AcademicResearchSuper:
+    def __init__(self):
+        self.headers = {
+            'User-Agent': 'Academic-Research-Super/1.0 (Python; Educational Use)'
+        }
+        self.last_request: Dict[str, Any] = {}
+
+    # ------------------- arXiv -------------------
+    def _arxiv_build_url(self, query: str, start: int, max_results: int) -> str:
+        # arXiv API: http://export.arxiv.org/api_help/
+        # Paramètres principaux: search_query, start, max_results, sortBy, sortOrder
+        params = {
+            'search_query': query,
+            'start': str(start),
+            'max_results': str(max_results),
+            'sortBy': 'submittedDate',
+            'sortOrder': 'descending',
+        }
+        return 'http://export.arxiv.org/api/query?' + urllib.parse.urlencode(params)
+
+    def _arxiv_fetch(self, url: str) -> str:
+        req = urllib.request.Request(url, headers=self.headers)
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            return resp.read().decode('utf-8', errors='replace')
+
+    def _arxiv_parse(self, xml_text: str) -> List[Dict[str, Any]]:
+        results: List[Dict[str, Any]] = []
+        try:
+            root = ET.fromstring(xml_text)
+            for entry in root.findall('atom:entry', ATOM_NS):
+                title = (entry.findtext('atom:title', default='', namespaces=ATOM_NS) or '').strip()
+                summary = (entry.findtext('atom:summary', default='', namespaces=ATOM_NS) or '').strip()
+                id_url = entry.findtext('atom:id', default='', namespaces=ATOM_NS) or ''
+                published = entry.findtext('atom:published', default='', namespaces=ATOM_NS) or ''
+                # authors
+                authors: List[Dict[str, str]] = []
+                for a in entry.findall('atom:author', ATOM_NS):
+                    nm = a.findtext('atom:name', default='', namespaces=ATOM_NS) or ''
+                    if nm:
+                        authors.append({'name': nm})
+                # doi (arxiv:doi)
+                doi = entry.findtext('arxiv:doi', default='', namespaces=ATOM_NS) or ''
+                journal_ref = entry.findtext('arxiv:journal_ref', default='', namespaces=ATOM_NS) or ''
+                # pdf link
+                pdf_url = ''
+                for link in entry.findall('atom:link', ATOM_NS):
+                    if link.get('type') == 'application/pdf':
+                        pdf_url = link.get('href') or ''
+                        break
+                # Compact output
+                results.append({
+                    'title': title,
+                    'authors': authors,
+                    'abstract': summary,
+                    'doi': doi,
+                    'url': id_url,
+                    'publication_date': published,
+                    'journal': journal_ref,
+                    'source': 'arxiv',
+                    'citations_count': 0,
+                    'full_text_url': pdf_url,
+                })
+        except Exception:
+            # En cas de problème XML, retourner liste vide (le caller fournit un message)
+            return []
+        return results
+
+    # ------------------- Helpers -------------------
+    DATE_FILTER_RE = re.compile(r"(\s+AND\s+)?submittedDate:\[NOW-(\d+)DAYS\s+TO\s+NOW\]", re.IGNORECASE)
+
+    def _extract_date_filter(self, query: str) -> (str, Optional[datetime]):
+        """If query contains submittedDate:[NOW-XDAYS TO NOW], remove it and return cutoff datetime."""
+        m = self.DATE_FILTER_RE.search(query)
+        if not m:
+            return query, None
+        days = int(m.group(2))
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        # Remove the whole filter (and leading AND if present)
+        cleaned = self.DATE_FILTER_RE.sub("", query)
+        # Normalize duplicated spaces around removed segment
+        cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
+        # Clean trailing/leading AND/OR if left alone
+        cleaned = re.sub(r"^(AND|OR)\s+|\s+(AND|OR)$", "", cleaned, flags=re.IGNORECASE).strip()
+        return cleaned, cutoff
+
+    def _filter_by_cutoff(self, items: List[Dict[str, Any]], cutoff: datetime) -> List[Dict[str, Any]]:
+        out: List[Dict[str, Any]] = []
+        for it in items:
+            ts = it.get('publication_date') or ''
+            try:
+                # arXiv dates are like 2025-09-29T12:34:56Z
+                dt = datetime.strptime(ts.replace('Z', '+00:00'), '%Y-%m-%dT%H:%M:%S%z')
+                if dt >= cutoff:
+                    out.append(it)
+            except Exception:
+                # If unparsable, keep item (or choose to drop). We keep it to not over-filter.
+                out.append(it)
+        return out
+
+    # ------------------- façade run -------------------
+    def run(self, operation: str, **params) -> Dict[str, Any]:
+        operation = (operation or 'search_papers').strip()
+        sources = params.get('sources') or ['arxiv']
+        if isinstance(sources, str):
+            sources = [sources]
+        max_results = int(params.get('max_results') or 10)
+        query = str(params.get('query') or '').strip()
+
+        if operation == 'search_papers':
+            out_results: List[Dict[str, Any]] = []
+            notes: List[str] = []
+            if not query:
+                return {"success": False, "error": "query requis"}
+
+            # Extract optional submittedDate:[NOW-XDAYS TO NOW] and clean query for arXiv
+            clean_query, cutoff = self._extract_date_filter(query)
+            if clean_query != query:
+                notes.append("submittedDate filter detected and applied client-side")
+
+            # Actuellement, seule la source arXiv est implémentée
+            if 'arxiv' in [s.lower() for s in sources]:
+                try:
+                    data = self.arxiv_search(query=clean_query or query, max_results=max_results)
+                    items = data.get('items', [])
+                    if cutoff is not None:
+                        items = self._filter_by_cutoff(items, cutoff)
+                    out_results.extend(items)
+                except Exception as e:
+                    notes.append(f"arxiv error: {e}")
+
+            unsupported = [s for s in sources if s.lower() not in ('arxiv',)]
+            if unsupported:
+                notes.append(f"sources non supportées dans cette implémentation: {unsupported}")
+            return {
+                "success": True,
+                "results": out_results,
+                "source_count": len(sources),
+                "notes": notes or None
+            }
+
+        # Esquisses pour autres opérations
+        if operation in ("get_paper_details", "search_authors", "get_citations"):
+            return {"success": False, "error": f"operation '{operation}' non implémentée dans cette version"}
+
+        return {"success": False, "error": f"operation inconnue: {operation}"}
+
+
+_tool = AcademicResearchSuper()
+
+_SPEC_DIR = Path(__file__).resolve().parent.parent / "tool_specs"
+
+def _load_spec_override(name: str) -> Dict[str, Any] | None:
+    try:
+        p = _SPEC_DIR / f"{name}.json"
+        if p.is_file():
+            with open(p, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return None
+
+def run(**params) -> Dict[str, Any]:
+    try:
+        operation = params.get('operation', 'search_papers')
+        return _tool.run(operation=operation, **params)
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+def spec() -> Dict[str, Any]:
+    base = {
+        "type": "function",
+        "function": {
+            "name": "academic_research_super",
+            "displayName": "Research",
+            "description": "Recherche académique multi-sources (implémentation actuelle: arXiv).",
+            "parameters": {
+                "type": "object",
+                "additionalProperties": True
+            }
+        }
+    }
+    override = _load_spec_override("academic_research_super")
+    if override and isinstance(override, dict):
+        fn = base.get("function", {})
+        ofn = override.get("function", {})
+        if ofn.get("displayName"):
+            fn["displayName"] = ofn["displayName"]
+        if ofn.get("description"):
+            fn["description"] = ofn["description"]
+        if ofn.get("parameters"):
+            fn["parameters"] = ofn["parameters"]
+    return base

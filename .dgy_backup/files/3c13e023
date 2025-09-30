@@ -39,7 +39,7 @@ def summarize_payload(payload: Dict[str, Any], tool_data: Optional[Dict[str, Any
         out.update({
             "tools_count": len(tool_data.get("tools") or []),
             "tool_names": list(tool_data.get("found_tools") or []),
-            # Intentionnellement, on n'expose plus "tool_choice" ni "parallel_tool_calls"
-            # pour éviter de laisser paraître des champs null/indésirables dans le debug.
+            "tool_choice": payload.get("tool_choice"),
+            "parallel_tool_calls": payload.get("parallel_tool_calls"),
         })
     return out

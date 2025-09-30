@@ -50,25 +50,11 @@ def run(
             "hint": "Assurez-vous que src/tools/_script/* est présent et importable."
         }
 
-    # Crée l'executor avec compatibilité ascendante (anciennes signatures sans allowed_tools)
-    compat_warning: Optional[str] = None
     try:
         executor = ScriptExecutor(
             allowed_tools=allowed_tools,          # None -> politique par défaut interne
             default_timeout=timeout or 60,
         )
-    except TypeError as te:
-        # Ancienne version de ScriptExecutor ne supporte pas allowed_tools
-        executor = ScriptExecutor(
-            default_timeout=timeout or 60,
-        )
-        if allowed_tools:
-            compat_warning = (
-                "Compatibilité: la version de ScriptExecutor ne supporte pas 'allowed_tools'; "
-                "la liste blanche ne sera pas appliquée. Mettez à jour src/tools/_script/executor.py."
-            )
-
-    try:
         exec_result = executor.run(script=script, variables=variables or {})
         # Normalise le retour
         out: Dict[str, Any] = {"success": True, "result": exec_result.get("result")}
@@ -80,16 +66,6 @@ def run(
             out["stats"] = exec_result["stats"]
         if "usage" in exec_result:
             out["usage"] = exec_result["usage"]
-        if exec_result.get("output") is not None:
-            out["output"] = exec_result.get("output")
-        if exec_result.get("available_tools") is not None:
-            out["available_tools"] = exec_result.get("available_tools")
-        if exec_result.get("tool_calls_made") is not None:
-            out["tool_calls_made"] = exec_result.get("tool_calls_made")
-        if exec_result.get("execution_time_seconds") is not None:
-            out["execution_time_seconds"] = exec_result.get("execution_time_seconds")
-        if compat_warning:
-            out["warning"] = compat_warning
         return out
     except Exception as e:
         return {

@@ -1,0 +1,17 @@
+2025-09-29T12:23:20.189Z|create_file|/src/tools/_git/sync_ops.py|-|8075|file
+2025-09-29T12:28:39.678Z|create_file|/src/tools/_git/chroot.py|-|1473|file
+2025-09-29T12:28:44.862Z|create_file|/src/tools/_git/github_api.py|-|1858|file
+2025-09-29T12:28:49.945Z|create_file|/src/tools/_git/high_level.py|-|1553|file
+2025-09-29T12:30:57.913Z|create_file|/src/tools/_git/gh_ops.py|-|6130|file
+2025-09-29T12:31:20.145Z|backup_file|/src/tools/git.py|e61e633|17994|file
+2025-09-29T12:31:34.692Z|backup_file|/src/tool_specs/git.json|6c47e9c8|4502|file
+2025-09-30T08:18:34.146Z|backup_file|/src/tool_specs/script_executor.json|9dfdfe7|1247|file
+2025-09-30T08:40:49.959Z|backup_file|/src/tool_specs/script_executor.json|7df52752|1247|file
+2025-09-30T09:19:00.858Z|backup_file|src/tools/_call_llm/payloads.py|3c13e023|1585|file
+2025-09-30T09:22:18.584Z|backup_file|src/tools/_script/executor.py|5dc3af38|9904|file
+2025-09-30T09:23:33.209Z|backup_file|src/tools/script_executor.py|291ca3d6|4427|file
+2025-09-30T09:32:15.706Z|backup_file|/src/tools/academic_research_super.py|32c066b|2563|file
+2025-09-30T09:33:57.784Z|backup_file|/src/tools/academic_research_super.py|681b24a2|7639|file
+2025-09-30T09:35:46.983Z|backup_file|/src/tools/academic_research_super.py|5a09d782|9250|file
+2025-09-30T09:39:58.230Z|backup_file|/src/tools/academic_research_super.py|1c97c1b6|18639|file
+2025-09-30T09:40:36.215Z|backup_file|/src/tool_specs/academic_research_super.json|36012c91|2127|file

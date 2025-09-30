@@ -61,24 +61,6 @@
         "arxiv_id": {
           "type": "string",
           "description": "ArXiv ID pour certaines opérations"
-        },
-        "max_total_items": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 500,
-          "description": "Nombre maximum total d'items retournés après fusion (défaut: 50)"
-        },
-        "max_abstract_chars": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 20000,
-          "description": "Longueur maximum de chaque abstract (défaut: 2000, 0 = aucun abstract)"
-        },
-        "max_bytes": {
-          "type": "integer",
-          "minimum": 1000,
-          "maximum": 5000000,
-          "description": "Taille JSON maximale du payload de réponse (en octets). Le tool tronque et réduit jusqu'à respecter cette limite (défaut: 200000 ≈ 200KB)"
         }
       },
       "required": ["operation"],

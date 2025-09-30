@@ -14,7 +14,6 @@ from dataclasses import dataclass
 from pathlib import Path
 import re
 from datetime import datetime, timedelta, timezone
-import os
 
 ATOM_NS = {
     'atom': 'http://www.w3.org/2005/Atom',
@@ -306,63 +305,6 @@ class AcademicResearchSuper:
             })
         return {'provider': 'hal', 'count': len(items), 'items': items, 'request': {'provider': 'hal', 'url': url}}
 
-    # ------------------- Limiteurs de taille -------------------
-    def _truncate_text(self, s: str, limit: int) -> str:
-        if not isinstance(s, str):
-            return s
-        if limit <= 0:
-            return ''
-        if len(s) <= limit:
-            return s
-        return s[: max(0, limit - 1)] + '…'
-
-    def _enforce_size_limits(
-        self,
-        results: List[Dict[str, Any]],
-        notes: List[str],
-        max_total_items: int,
-        max_abstract_chars: int,
-        max_bytes: int,
-    ) -> List[Dict[str, Any]]:
-        # 1) Troncature champs verbeux
-        for it in results:
-            if 'abstract' in it and isinstance(it['abstract'], str):
-                it['abstract'] = self._truncate_text(it['abstract'], max_abstract_chars)
-            # Titre très long (rare): tronque à 512
-            if 'title' in it and isinstance(it['title'], str):
-                it['title'] = self._truncate_text(it['title'], 512)
-            # Limiter le nombre d'auteurs à 20 pour éviter des listes énormes
-            if 'authors' in it and isinstance(it['authors'], list) and len(it['authors']) > 20:
-                it['authors'] = it['authors'][:20]
-        # 2) Limiter le nombre total d'items
-        if len(results) > max_total_items:
-            notes.append(f"results truncated to max_total_items={max_total_items}")
-            results = results[:max_total_items]
-        # 3) Limite bytes globale. On coupe des items jusqu'à passer sous la limite.
-        def payload_size(cur_results: List[Dict[str, Any]]) -> int:
-            payload = {
-                'success': True,
-                'results': cur_results,
-                'notes': notes or None,
-            }
-            try:
-                enc = json.dumps(payload, ensure_ascii=False).encode('utf-8')
-                return len(enc)
-            except Exception:
-                return 10**9
-        while results and payload_size(results) > max_bytes:
-            results = results[:-1]
-        if payload_size(results) > max_bytes:
-            # Si même un seul résultat dépasse, tronque davantage les abstracts
-            for it in results:
-                if 'abstract' in it and isinstance(it['abstract'], str):
-                    it['abstract'] = self._truncate_text(it['abstract'], max(200, max_abstract_chars // 2))
-        if payload_size(results) > max_bytes:
-            notes.append("payload still exceeds max_bytes after truncation; consider lowering max_results or max_abstract_chars")
-        else:
-            notes.append(f"payload size <= {max_bytes} bytes")
-        return results
-
     # ------------------- façade run -------------------
     def run(self, operation: str, **params) -> Dict[str, Any]:
         operation = (operation or 'search_papers').strip()
@@ -373,11 +315,6 @@ class AcademicResearchSuper:
         query = str(params.get('query') or '').strip()
         year_from = params.get('year_from')
         year_to = params.get('year_to')
-
-        # Limites par défaut (surchageables par params ou variables d'env)
-        max_total_items = int(params.get('max_total_items') or os.getenv('ACADEMIC_RS_MAX_ITEMS', '50'))
-        max_abstract_chars = int(params.get('max_abstract_chars') or os.getenv('ACADEMIC_RS_MAX_ABSTRACT_CHARS', '2000'))
-        max_bytes = int(params.get('max_bytes') or os.getenv('ACADEMIC_RS_MAX_BYTES', '200000'))  # ~200KB
 
         if operation == 'search_papers':
             out_results: List[Dict[str, Any]] = []
@@ -430,15 +367,6 @@ class AcademicResearchSuper:
                     out_results.extend(items)
                 except Exception as e:
                     notes.append(f"{s} error: {e}")
-
-            # Appliquer les limites de taille avant retour
-            out_results = self._enforce_size_limits(
-                results=out_results,
-                notes=notes,
-                max_total_items=max_total_items,
-                max_abstract_chars=max_abstract_chars,
-                max_bytes=max_bytes,
-            )
 
             unsupported = [s for s in sources if s.lower() not in ('arxiv','pubmed','crossref','hal')]
             if unsupported:

@@ -1,0 +1,139 @@
+{
+  "type": "function",
+  "function": {
+    "name": "git",
+    "displayName": "Git",
+    "description": "Git unifié: opérations Git locales (CLI) et GitHub (API).",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": [
+            "create_repo", "get_user", "list_repos", "add_file", "add_multiple_files",
+            "delete_file", "delete_multiple_files", "get_repo_contents", "create_branch",
+            "get_commits", "diff", "merge", "status", "branch_create", "checkout",
+            "add_paths", "commit_all", "push", "clone"
+          ],
+          "description": "Type d'opération Git"
+        },
+        "name": {
+          "type": "string",
+          "description": "Nom du repository pour create_repo, ou nom pour clone"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description du repository pour create_repo"
+        },
+        "private": {
+          "type": "boolean",
+          "description": "Repository privé pour create_repo (default: false)"
+        },
+        "username": {
+          "type": "string",
+          "description": "Nom d'utilisateur GitHub pour get_user ou list_repos"
+        },
+        "owner": {
+          "type": "string",
+          "description": "Propriétaire du repository GitHub"
+        },
+        "repo": {
+          "type": "string",
+          "description": "Nom du repository GitHub"
+        },
+        "file_path": {
+          "type": "string",
+          "description": "Chemin du fichier local pour add_file ou chemin dans le repo pour delete_file"
+        },
+        "repo_path": {
+          "type": "string",
+          "description": "Chemin de destination dans le repository GitHub"
+        },
+        "message": {
+          "type": "string",
+          "description": "Message de commit"
+        },
+        "commit_message": {
+          "type": "string",
+          "description": "Message de commit (alias pour message)"
+        },
+        "branch": {
+          "type": "string",
+          "description": "Nom de la branche"
+        },
+        "branch_name": {
+          "type": "string",
+          "description": "Nom de la nouvelle branche pour create_branch ou branch_create"
+        },
+        "from_branch": {
+          "type": "string",
+          "description": "Branche source pour create_branch ou branch_create (default: main)"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {"type": "string"},
+              {
+                "type": "object",
+                "properties": {
+                  "local_path": {"type": "string"},
+                  "repo_path": {"type": "string"}
+                },
+                "required": ["local_path", "repo_path"]
+              }
+            ]
+          },
+          "description": "Liste de fichiers pour add_multiple_files ou delete_multiple_files"
+        },
+        "path": {
+          "type": "string",
+          "description": "Chemin dans le repository pour get_repo_contents"
+        },
+        "count": {
+          "type": "integer",
+          "description": "Nombre de commits à récupérer pour get_commits (default: 5)"
+        },
+        "base": {
+          "type": "string",
+          "description": "Branche de base pour diff ou merge (default: main)"
+        },
+        "head": {
+          "type": "string",
+          "description": "Branche head pour diff ou merge"
+        },
+        "source": {
+          "type": "string",
+          "description": "Branche source pour merge local"
+        },
+        "commit_title": {
+          "type": "string",
+          "description": "Titre du commit pour merge GitHub"
+        },
+        "paths": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Liste de chemins pour add_paths"
+        },
+        "remote": {
+          "type": "string",
+          "description": "Remote pour push (default: origin)"
+        },
+        "set_upstream": {
+          "type": "boolean",
+          "description": "Définir upstream pour push (default: true)"
+        },
+        "repo_url": {
+          "type": "string",
+          "description": "URL du repository pour clone"
+        },
+        "repo_dir": {
+          "type": "string",
+          "description": "Répertoire du repository local (default: project root)"
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}
