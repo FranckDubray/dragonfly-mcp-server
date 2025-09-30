@@ -1,23 +1,34 @@
 
 """
-Git Tool - Complete GitHub API + Local Git operations
+Git Tool - ultra thin facade. Heavy logic in src/tools/_git/*
 """
-import os
-import base64
-import requests
-import subprocess
-import shutil
+from __future__ import annotations
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 import json
 
-try:
-    from config import find_project_root
-except ImportError:
-    find_project_root = lambda: Path.cwd()
-
-# Import helpers
 from ._git.local_ops import GitLocalOps
+from ._git.chroot import sanitize_repo_dir, sanitize_paths_within_repo
+from ._git.gh_ops import (
+    create_repo as gh_create_repo,
+    get_user as gh_get_user,
+    list_repos as gh_list_repos,
+    add_file as gh_add_file,
+    add_multiple_files as gh_add_multiple_files,
+    delete_file as gh_delete_file,
+    delete_multiple_files as gh_delete_multiple_files,
+    get_repo_contents as gh_get_repo_contents,
+    create_branch as gh_create_branch,
+    get_commits as gh_get_commits,
+    diff as gh_diff,
+    merge as gh_merge,
+)
+from ._git.high_level import (
+    op_ensure_repo,
+    op_config_user,
+    op_set_remote,
+    op_sync_repo,
+)
 
 _SPEC_DIR = Path(__file__).resolve().parent.parent / "tool_specs"
 
@@ -32,276 +43,91 @@ def _load_spec_override(name: str) -> Dict[str, Any] | None:
         pass
     return None
 
-# -----------------------------
-# Chroot helpers (MODIFIED TO ACCESS PROJECT ROOT)
-# -----------------------------
-
-def _chroot_base() -> Path:
-    return find_project_root().resolve()  # removed /clone
-
-
-def _resolve_in_chroot(rel_path: Optional[str]) -> Path:
-    base = _chroot_base()
-    if not rel_path or str(rel_path).strip() in ("", ".", "/"):
-        return base
-    p = (base / rel_path).resolve()
-    # Prevent path escape
-    if not str(p).startswith(str(base)):
-        raise ValueError(f"Path escapes chroot: {rel_path}")
-    return p
-
-
-def _read_file_in_chroot(local_path: str) -> str:
-    p = _resolve_in_chroot(local_path)
-    if not p.is_file():
-        raise FileNotFoundError(f"File not found: {local_path}")
-    return p.read_text(encoding="utf-8")
-
-
-def _sanitize_repo_dir(param_repo_dir: Optional[str]) -> Path:
-    try:
-        return _resolve_in_chroot(param_repo_dir)
-    except Exception:
-        # Fallback to chroot base on error
-        return _chroot_base()
-
-
-def _sanitize_paths_within_repo(repo_dir: Path, paths: List[str]) -> List[str]:
-    clean: List[str] = []
-    for p in paths:
-        rp = (repo_dir / p).resolve()
-        if not str(rp).startswith(str(repo_dir)):
-            # skip paths escaping repo_dir
-            continue
-        # use relative path for git commands
-        clean.append(os.path.relpath(rp, start=repo_dir))
-    return clean
-
 
 def run(operation: str, **params) -> Union[Dict[str, Any], str]:
-    op = operation.strip() if operation else ""
-    
-    # GitHub API operations
+    op = (operation or "").strip()
+
+    # GitHub API ops
     if op == "create_repo":
-        name = params.get('name')
-        if not name: return {"error": "repository name required"}
-        data = {
-            "name": name,
-            "description": params.get('description', ''),
-            "private": params.get('private', False)
-        }
-        return _github_api_request("POST", "/user/repos", data)
-    
+        if not params.get("name"):
+            return {"error": "repository name required"}
+        return gh_create_repo(params.get("name"), params.get("description", ""), params.get("private", False))
+
     if op == "get_user":
-        username = params.get('username')
-        if not username: return {"error": "username required"}
-        return _github_api_request("GET", f"/users/{username}")
-    
+        if not params.get("username"):
+            return {"error": "username required"}
+        return gh_get_user(params.get("username"))
+
     if op == "list_repos":
-        username = params.get('username')
-        if username:
-            return _github_api_request("GET", f"/users/{username}/repos")
-        return _github_api_request("GET", "/user/repos")
-    
+        return gh_list_repos(params.get("username"))
+
     if op == "add_file":
-        owner = params.get('owner')
-        repo = params.get('repo')
-        file_path = params.get('file_path')  # local path (inside project root)
-        repo_path = params.get('repo_path')
-        message = params.get('message', f"Add {repo_path}")
-        branch = params.get('branch', 'main')
-        
-        if not all([owner, repo, file_path, repo_path]):
+        required = [params.get("owner"), params.get("repo"), params.get("file_path"), params.get("repo_path")]
+        if not all(required):
             return {"error": "owner, repo, file_path, and repo_path required"}
-        
-        try:
-            content = _read_file_in_chroot(file_path)
-        except Exception as e:
-            return {"error": f"Error reading file: {e}"}
-        
-        return _create_or_update_file(owner, repo, repo_path, content, message, branch)
-    
+        return gh_add_file(params.get("owner"), params.get("repo"), params.get("file_path"), params.get("repo_path"), params.get("message", ""), params.get("branch", "main"))
+
     if op == "add_multiple_files":
-        owner = params.get('owner')
-        repo = params.get('repo')
-        files = params.get('files', [])
-        message = params.get('message', "Add multiple files")
-        branch = params.get('branch', 'main')
-        
-        if not all([owner, repo, files]):
+        required = [params.get("owner"), params.get("repo"), params.get("files")]
+        if not all(required):
             return {"error": "owner, repo, and files list required"}
-        
-        results = []
-        for file_info in files:
-            if isinstance(file_info, dict):
-                local_path = file_info.get('local_path')
-                repo_path = file_info.get('repo_path')
-                if not local_path or not repo_path:
-                    results.append({"error": f"Missing local_path or repo_path in {file_info}"})
-                    continue
-                
-                try:
-                    content = _read_file_in_chroot(local_path)
-                except Exception as e:
-                    results.append({"error": str(e), "file": local_path})
-                    continue
-                
-                result = _create_or_update_file(owner, repo, repo_path, content, f"{message} - {repo_path}", branch)
-                results.append({"file": repo_path, "result": result})
-        
-        return {"results": results, "total": len(files), "processed": len(results)}
-    
+        return gh_add_multiple_files(params.get("owner"), params.get("repo"), params.get("files", []), params.get("message", "Add multiple files"), params.get("branch", "main"))
+
     if op == "delete_file":
-        owner = params.get('owner')
-        repo = params.get('repo')
-        file_path = params.get('file_path')
-        message = params.get('message', f"Delete {file_path}")
-        branch = params.get('branch', 'main')
-        
-        if not all([owner, repo, file_path]):
+        required = [params.get("owner"), params.get("repo"), params.get("file_path")]
+        if not all(required):
             return {"error": "owner, repo, and file_path required"}
-        
-        return _delete_file_from_repo(owner, repo, file_path, message, branch)
-    
+        return gh_delete_file(params.get("owner"), params.get("repo"), params.get("file_path"), params.get("message", ""), params.get("branch", "main"))
+
     if op == "delete_multiple_files":
-        owner = params.get('owner')
-        repo = params.get('repo')
-        files = params.get('files', [])
-        message = params.get('message', "Delete multiple files")
-        branch = params.get('branch', 'main')
-        
-        if not all([owner, repo, files]):
+        required = [params.get("owner"), params.get("repo"), params.get("files")]
+        if not all(required):
             return {"error": "owner, repo, and files list required"}
-        
-        results = []
-        for file_path in files:
-            if isinstance(file_path, str):
-                path = file_path
-            elif isinstance(file_path, dict) and 'repo_path' in file_path:
-                path = file_path['repo_path']
-            else:
-                results.append({"error": f"Invalid file entry: {file_path}"})
-                continue
-            
-            result = _delete_file_from_repo(owner, repo, path, f"{message} - {path}", branch)
-            results.append({"file": path, "result": result})
-        
-        return {"results": results, "total": len(files), "processed": len(results)}
-    
+        return gh_delete_multiple_files(params.get("owner"), params.get("repo"), params.get("files", []), params.get("message", "Delete multiple files"), params.get("branch", "main"))
+
     if op == "get_repo_contents":
-        owner = params.get('owner')
-        repo = params.get('repo')
-        path = params.get('path', '')
-        branch = params.get('branch')
-        
-        if not all([owner, repo]):
+        required = [params.get("owner"), params.get("repo")]
+        if not all(required):
             return {"error": "owner and repo required"}
-        
-        endpoint = f"/repos/{owner}/{repo}/contents"
-        if path:
-            endpoint += f"/{path}"
-        
-        params_q = {"ref": branch} if branch else None
-        return _github_api_request("GET", endpoint, params=params_q)
-    
+        return gh_get_repo_contents(params.get("owner"), params.get("repo"), params.get("path", ""), params.get("branch"))
+
     if op == "create_branch":
-        owner = params.get('owner')
-        repo = params.get('repo')
-        branch_name = params.get('branch_name')
-        from_branch = params.get('from_branch', 'main')
-        
-        if not all([owner, repo, branch_name]):
+        required = [params.get("owner"), params.get("repo"), params.get("branch_name")]
+        if not all(required):
             return {"error": "owner, repo, and branch_name required"}
-        
-        # Get SHA of from_branch
-        ref_response = _github_api_request("GET", f"/repos/{owner}/{repo}/git/ref/heads/{from_branch}")
-        if "object" not in ref_response:
-            return {"error": f"Could not get SHA for branch {from_branch}", "details": ref_response}
-        
-        sha = ref_response["object"]["sha"]
-        data = {"ref": f"refs/heads/{branch_name}", "sha": sha}
-        return _github_api_request("POST", f"/repos/{owner}/{repo}/git/refs", data)
-    
+        return gh_create_branch(params.get("owner"), params.get("repo"), params.get("branch_name"), params.get("from_branch", "main"))
+
     if op == "get_commits":
-        owner = params.get('owner')
-        repo = params.get('repo')
-        branch = params.get('branch', 'main')
-        count = params.get('count', 5)
-        
-        if not all([owner, repo]):
+        required = [params.get("owner"), params.get("repo")]
+        if not all(required):
             return {"error": "owner and repo required"}
-        
-        response = requests.get(
-            f"https://api.github.com/repos/{owner}/{repo}/commits",
-            params={"sha": branch, "per_page": count},
-            headers=_get_github_headers()
-        )
-        
-        if response.status_code >= 400:
-            return {"error": f"GitHub API error {response.status_code}: {response.text}"}
-        
-        commits = response.json()
-        return {
-            "commits": [
-                {
-                    "sha": c.get("sha", "")[:7],
-                    "message": c.get("commit", {}).get("message", ""),
-                    "author": c.get("commit", {}).get("author", {}).get("name", ""),
-                    "date": c.get("commit", {}).get("author", {}).get("date", ""),
-                }
-                for c in commits
-            ]
-        }
-    
+        return gh_get_commits(params.get("owner"), params.get("repo"), params.get("branch", "main"), params.get("count", 5))
+
     if op == "diff":
-        owner = params.get('owner')
-        repo = params.get('repo')
-        base = params.get('base', 'main')
-        head = params.get('head')
-        
-        if not all([owner, repo, head]):
+        required = [params.get("owner"), params.get("repo"), params.get("head")]
+        if not all(required):
             return {"error": "owner, repo, and head required for diff"}
-        
-        return _github_api_request("GET", f"/repos/{owner}/{repo}/compare/{base}...{head}")
-    
-    # MERGE - Smart routing: GitHub API if owner+repo, else local
+        return gh_diff(params.get("owner"), params.get("repo"), params.get("base", "main"), params.get("head"))
+
     if op == "merge":
-        owner = params.get('owner')
-        repo = params.get('repo')
-        
+        owner = params.get("owner"); repo = params.get("repo")
         if owner and repo:
-            # GitHub merge via API
-            base = params.get('base')
-            head = params.get('head')
-            commit_title = params.get('commit_title')
-            commit_message = params.get('message') or params.get('commit_message')
-            
+            base = params.get("base"); head = params.get("head")
             if not all([base, head]):
                 return {"error": "base and head required for GitHub merge"}
-            
-            data = {"base": base, "head": head}
-            if commit_title:
-                data["commit_title"] = commit_title
-            if commit_message:
-                data["commit_message"] = commit_message
-            
-            return _github_api_request("POST", f"/repos/{owner}/{repo}/merges", data)
-        else:
-            # Local merge via git CLI (chrooted)
-            local_ops = GitLocalOps()
-            repo_dir = _sanitize_repo_dir(params.get('repo_dir'))
-            source = params.get('source') or params.get('head') or params.get('from_branch')
-            
-            if not source:
-                return {"error": "source (branch to merge) required for local merge"}
-            
-            return local_ops.handle_merge(repo_dir, source, **params)
-    
-    # Local Git operations (within project root now)
+            return gh_merge(owner, repo, base, head, params.get("commit_title"), params.get("message") or params.get("commit_message"))
+        # else local merge passthrough
+        local_ops = GitLocalOps()
+        repo_dir = sanitize_repo_dir(params.get('repo_dir'))
+        source = params.get('source') or params.get('head') or params.get('from_branch')
+        if not source:
+            return {"error": "source (branch to merge) required for local merge"}
+        return local_ops.handle_merge(repo_dir, source, **params)
+
+    # Local git passthrough
     if op in ["status", "branch_create", "checkout", "add_paths", "commit_all", "push"]:
         local_ops = GitLocalOps()
-        repo_dir = _sanitize_repo_dir(params.get('repo_dir'))
-        
+        repo_dir = sanitize_repo_dir(params.get('repo_dir'))
         if op == "status":
             return local_ops.handle_status(repo_dir)
         elif op == "branch_create":
@@ -318,7 +144,7 @@ def run(operation: str, **params) -> Union[Dict[str, Any], str]:
             paths = params.get('paths', [])
             if not paths:
                 return {"error": "paths (list) required"}
-            paths = _sanitize_paths_within_repo(repo_dir, paths)
+            paths = sanitize_paths_within_repo(repo_dir, paths)
             if not paths:
                 return {"error": "no valid paths inside repo_dir"}
             return local_ops.handle_add_paths(repo_dir, paths)
@@ -332,109 +158,18 @@ def run(operation: str, **params) -> Union[Dict[str, Any], str]:
             if not branch:
                 return {"error": "branch required"}
             return local_ops.handle_push(repo_dir, branch, params.get('remote', "origin"), params.get('set_upstream', True))
-    
-    if op == "clone":
-        repo_url = params.get('repo_url')
-        repo_name = params.get('name')
-        
-        if not repo_url:
-            return {"error": "repo_url required for clone operation"}
-        
-        return _git_clone_to_clone_dir(repo_url, repo_name)
-    
-    # Legacy ops info
-    if op == "add":
-        return {"info": "Use 'add_file' (GitHub API) or 'add_paths' (local)"}
-    if op == "commit":
-        return {"info": "Use 'commit_all' for local, or note that GitHub 'add_file' commits automatically"}
-    if op == "pull":
-        return {"info": "Use local git: not implemented explicitly; script fetch+merge or use 'merge'"}
-    if op == "branch":
-        return {"info": "Use 'create_branch' (GitHub API) or 'branch_create' (local)"}
-    
+
+    # High-level orchestrated ops
+    if op == "ensure_repo":
+        return op_ensure_repo(params.get('repo_dir'), params.get('branch', 'main'))
+    if op == "config_user":
+        return op_config_user(params.get('repo_dir'), params.get('name'), params.get('email'))
+    if op == "set_remote":
+        return op_set_remote(params.get('repo_dir'), params.get('owner'), params.get('repo'), params.get('overwrite', True))
+    if op == "sync_repo":
+        return op_sync_repo(**params)
+
     return {"error": f"Unknown operation: {operation}"}
-
-
-def _github_api_request(method: str, endpoint: str, data=None, params=None) -> Dict[str, Any]:
-    token = os.getenv('GITHUB_TOKEN')
-    if not token:
-        return {"error": "GITHUB_TOKEN environment variable required"}
-    headers = _get_github_headers()
-    url = f"https://api.github.com{endpoint}"
-    try:
-        method_up = method.upper()
-        if method_up == "GET":
-            response = requests.get(url, headers=headers, params=params)
-        elif method_up == "POST":
-            response = requests.post(url, headers=headers, json=data, params=params)
-        elif method_up == "PUT":
-            response = requests.put(url, headers=headers, json=data, params=params)
-        elif method_up == "DELETE":
-            response = requests.delete(url, headers=headers, json=data, params=params)
-        else:
-            return {"error": f"Unsupported method: {method}"}
-        if response.status_code >= 400:
-            return {"error": f"GitHub API error {response.status_code}: {response.text}"}
-        return response.json() if response.content else {"success": True}
-    except Exception as e:
-        return {"error": str(e)}
-
-
-def _get_github_headers() -> dict:
-    return {
-        "Authorization": f"token {os.getenv('GITHUB_TOKEN')}",
-        "Accept": "application/vnd.github+json",
-        "User-Agent": "MCP-Git-Tool/3.0",
-    }
-
-
-def _create_or_update_file(owner: str, repo: str, path: str, content: str, message: str, branch: str = "main") -> Dict[str, Any]:
-    get_resp = _github_api_request("GET", f"/repos/{owner}/{repo}/contents/{path}", params={"ref": branch})
-    data = {
-        "message": message,
-        "content": base64.b64encode(content.encode('utf-8')).decode('utf-8'),
-        "branch": branch,
-    }
-    if isinstance(get_resp, dict) and "sha" in get_resp:
-        data["sha"] = get_resp["sha"]
-    return _github_api_request("PUT", f"/repos/{owner}/{repo}/contents/{path}", data)
-
-
-def _delete_file_from_repo(owner: str, repo: str, path: str, message: str, branch: str = "main") -> Dict[str, Any]:
-    get_resp = _github_api_request("GET", f"/repos/{owner}/{repo}/contents/{path}", params={"ref": branch})
-    if "error" in get_resp:
-        return get_resp
-    if "sha" not in get_resp:
-        return {"error": f"Could not get SHA for file {path}"}
-    data = {"message": message, "sha": get_resp["sha"], "branch": branch}
-    return _github_api_request("DELETE", f"/repos/{owner}/{repo}/contents/{path}", data)
-
-
-def _git_clone_to_clone_dir(repo_url: str, repo_name: Optional[str] = None) -> Dict[str, Any]:
-    try:
-        project_root = find_project_root()
-        clone_dir = project_root / "clone"
-        clone_dir.mkdir(exist_ok=True)
-        if not repo_name:
-            if repo_url.endswith('.git'):
-                repo_name = Path(repo_url).stem
-            else:
-                repo_name = repo_url.split('/')[-1]
-        target_path = clone_dir / repo_name
-        if target_path.exists():
-            shutil.rmtree(target_path)
-        result = subprocess.run(['git', 'clone', repo_url, str(target_path)], 
-                              capture_output=True, text=True, cwd=str(project_root))
-        if result.returncode == 0:
-            return {
-                "success": True,
-                "message": f"Repository cloned successfully to {str(target_path)}",
-                "path": str(target_path),
-            }
-        else:
-            return {"error": f"Git clone failed: {result.stderr}", "stdout": result.stdout}
-    except Exception as e:
-        return {"error": f"Clone operation failed: {str(e)}"}
 
 
 def spec() -> Dict[str, Any]:
@@ -443,12 +178,10 @@ def spec() -> Dict[str, Any]:
         "function": {
             "name": "git",
             "displayName": "Git",
-            "description": "Git unifié: opérations Git locales (CLI) et GitHub (API). Toutes les opérations locales sont limitées à la racine du projet.",
+            "description": "Git unifié: GitHub API + Git local. High-level: ensure_repo, config_user, set_remote, sync_repo (push tout le dépôt).",
             "parameters": {
                 "type": "object",
-                "properties": {
-                    "operation": {"type": "string"}
-                },
+                "properties": {"operation": {"type": "string"}},
                 "required": ["operation"],
                 "additionalProperties": True
             }
@@ -458,10 +191,7 @@ def spec() -> Dict[str, Any]:
     if override and isinstance(override, dict):
         fn = base.get("function", {})
         ofn = override.get("function", {})
-        if ofn.get("displayName"):
-            fn["displayName"] = ofn["displayName"]
-        if ofn.get("description"):
-            fn["description"] = ofn["description"]
-        if ofn.get("parameters"):
-            fn["parameters"] = ofn["parameters"]
+        if ofn.get("displayName"): fn["displayName"] = ofn["displayName"]
+        if ofn.get("description"): fn["description"] = ofn["description"]
+        if ofn.get("parameters"): fn["parameters"] = ofn["parameters"]
     return base

@@ -5,7 +5,7 @@ import os
 import time
 import json
 import threading
-from typing import Dict, Any, Optional, Set
+from typing import Dict, Any, Optional, Set, List
 import traceback
 from io import StringIO
 import sys
@@ -17,11 +17,28 @@ from .tools_proxy import ToolsProxy
 class ScriptExecutor:
     """Execute scripts that can call other MCP tools"""
     
-    def __init__(self, base_url: str = None):
+    def __init__(
+        self,
+        base_url: str = None,
+        allowed_tools: Optional[List[str] | Set[str]] = None,
+        default_timeout: Optional[int] = None,
+        max_tool_calls: Optional[int] = None,
+    ):
         self.base_url = base_url or f"http://127.0.0.1:{os.getenv('MCP_PORT', '8000')}"
-        self.timeout = int(os.getenv('SCRIPT_TIMEOUT_SEC', '60'))
-        self.max_tool_calls = int(os.getenv('MAX_TOOL_CALLS_PER_SCRIPT', '50'))
+        # Timeout and tool-calls limits can be overridden by params
+        self.timeout = (
+            int(default_timeout)
+            if default_timeout is not None
+            else int(os.getenv('SCRIPT_TIMEOUT_SEC', '60'))
+        )
+        self.max_tool_calls = (
+            int(max_tool_calls)
+            if max_tool_calls is not None
+            else int(os.getenv('MAX_TOOL_CALLS_PER_SCRIPT', '50'))
+        )
         self.call_count = 0
+        # Optional whitelist of allowed tools
+        self.allowed_tools: Optional[Set[str]] = set(allowed_tools) if allowed_tools else None
         self.available_tools = self._get_available_tools()
         
     def _get_available_tools(self) -> Set[str]:
@@ -40,13 +57,22 @@ class ScriptExecutor:
         
         # Check tool call limit
         if self.call_count >= self.max_tool_calls:
-            error_msg = f"❌ TOOL CALL LIMIT EXCEEDED: Script tried to make {self.call_count + 1} tool calls but limit is {self.max_tool_calls}"
+            error_msg = f"\u274c TOOL CALL LIMIT EXCEEDED: Script tried to make {self.call_count + 1} tool calls but limit is {self.max_tool_calls}"
+            raise Exception(error_msg)
+        
+        # Whitelist enforcement if provided
+        if self.allowed_tools is not None and tool_name not in self.allowed_tools:
+            allowed_list = sorted(list(self.allowed_tools))
+            error_msg = (
+                f"\ud83d\udeab TOOL NOT ALLOWED: '{tool_name}' is not in allowed_tools whitelist.\n"
+                f"\ud83d\udccb Allowed tools: {allowed_list}"
+            )
             raise Exception(error_msg)
         
         # Check if tool exists
         if tool_name not in self.available_tools:
             available_list = sorted(list(self.available_tools))
-            error_msg = f"❌ UNKNOWN TOOL: '{tool_name}' is not available.\n📋 Available MCP tools: {available_list}"
+            error_msg = f"\u274c UNKNOWN TOOL: '{tool_name}' is not available.\n\ud83d\udccb Available MCP tools: {available_list}"
             raise Exception(error_msg)
         
         self.call_count += 1
@@ -69,14 +95,14 @@ class ScriptExecutor:
                 result = response.json()
                 return result.get('result', result)
             else:
-                error_msg = f"❌ TOOL EXECUTION FAILED: {tool_name} returned status {response.status_code}\n🔍 Error: {response.text}"
+                error_msg = f"\u274c TOOL EXECUTION FAILED: {tool_name} returned status {response.status_code}\n\ud83d\udd0d Error: {response.text}"
                 return {"error": error_msg, "tool": tool_name, "params": params}
                 
         except requests.exceptions.Timeout:
-            error_msg = f"⏱️ TIMEOUT: Tool '{tool_name}' took more than 30 seconds to respond"
+            error_msg = f"\u23f1\ufe0f TIMEOUT: Tool '{tool_name}' took more than 30 seconds to respond"
             return {"error": error_msg, "tool": tool_name, "params": params}
         except Exception as e:
-            error_msg = f"❌ NETWORK ERROR: Failed to call tool '{tool_name}': {str(e)}"
+            error_msg = f"\u274c NETWORK ERROR: Failed to call tool '{tool_name}': {str(e)}"
             return {"error": error_msg, "tool": tool_name, "params": params}
     
     def get_safe_globals(self) -> Dict[str, Any]:
@@ -119,7 +145,7 @@ class ScriptExecutor:
         if not script or not script.strip():
             return {
                 "success": False,
-                "error": "❌ EMPTY SCRIPT: No script code provided",
+                "error": "\u274c EMPTY SCRIPT: No script code provided",
                 "help": "Please provide a valid Python script that uses call_tool() or tools.tool_name() to interact with MCP tools"
             }
         
@@ -170,7 +196,7 @@ class ScriptExecutor:
             error_msg = str(e)
             
             # Format nice error message for LLMs
-            formatted_error = f"🚨 {error_type.upper()}: {error_msg}"
+            formatted_error = f"\ud83d\udea8 {error_type.upper()}: {error_msg}"
             
             # Add context for common errors
             help_msg = None
@@ -178,6 +204,8 @@ class ScriptExecutor:
                 help_msg = f"Reduce the number of tool calls in your script (current limit: {self.max_tool_calls})"
             elif "UNKNOWN TOOL" in error_msg:
                 help_msg = "Check the available_tools list in the response to see what tools are available"
+            elif "NOT ALLOWED" in error_msg:
+                help_msg = "The tool you tried to call is not in the allowed_tools whitelist"
             elif "TIMEOUT" in error_msg or "timed out" in error_msg.lower():
                 help_msg = f"Script execution exceeded {self.timeout} seconds. Simplify your script or reduce tool calls"
             elif "SyntaxError" in error_type:
@@ -246,3 +274,7 @@ class ScriptExecutor:
             raise exception[0]
         
         return result[0] if result else None
+
+    # Compatibility shim with wrapper expecting .run()
+    def run(self, script: str, variables: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        return self.execute_script(script=script, variables=variables)
