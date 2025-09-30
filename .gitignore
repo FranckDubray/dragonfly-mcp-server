@@ -5,3 +5,4 @@ sqlite3/
 __pycache__/
 **/__pycache__/
 *.pyc
+src/add_mcp_server.egg-info/
