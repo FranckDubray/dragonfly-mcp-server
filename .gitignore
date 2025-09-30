@@ -2,3 +2,6 @@
 .env
 .dgy_backup/
 sqlite3/
+__pycache__/
+**/__pycache__/
+*.pyc
