@@ -9,6 +9,9 @@ from typing import Dict, Any, Optional, Set, List
 import traceback
 from io import StringIO
 import sys
+import importlib
+import concurrent
+import concurrent.futures as cf
 
 from .security import validate_script_security
 from .tools_proxy import ToolsProxy
@@ -26,11 +29,11 @@ class ScriptExecutor:
     ):
         self.base_url = base_url or f"http://127.0.0.1:{os.getenv('MCP_PORT', '8000')}"
         # Timeout and tool-calls limits can be overridden by params
-        self.timeout = (
-            int(default_timeout)
-            if default_timeout is not None
-            else int(os.getenv('SCRIPT_TIMEOUT_SEC', '60'))
-        )
+        # If default_timeout is None, fallback to SCRIPT_TIMEOUT_SEC, then EXECUTE_TIMEOUT_SEC, else 60
+        if default_timeout is not None:
+            self.timeout = int(default_timeout)
+        else:
+            self.timeout = int(os.getenv('SCRIPT_TIMEOUT_SEC', os.getenv('EXECUTE_TIMEOUT_SEC', '180')))
         self.max_tool_calls = (
             int(max_tool_calls)
             if max_tool_calls is not None
@@ -80,6 +83,9 @@ class ScriptExecutor:
         if params is None:
             params = {}
         
+        # Align tool call timeout with server EXECUTE_TIMEOUT_SEC (fallback 180)
+        EXECUTE_TIMEOUT_SEC = int(os.getenv('EXECUTE_TIMEOUT_SEC', '180'))
+        
         try:
             response = requests.post(
                 f"{self.base_url}/execute",
@@ -87,7 +93,7 @@ class ScriptExecutor:
                     "tool_reg": tool_name,
                     "params": params
                 },
-                timeout=30,
+                timeout=EXECUTE_TIMEOUT_SEC,
                 headers={'Content-Type': 'application/json'}
             )
             
@@ -99,7 +105,7 @@ class ScriptExecutor:
                 return {"error": error_msg, "tool": tool_name, "params": params}
                 
         except requests.exceptions.Timeout:
-            error_msg = f"\u23f1\ufe0f TIMEOUT: Tool '{tool_name}' took more than 30 seconds to respond"
+            error_msg = f"\u23f1\ufe0f TIMEOUT: Tool '{tool_name}' exceeded {EXECUTE_TIMEOUT_SEC} seconds (EXECUTE_TIMEOUT_SEC)"
             return {"error": error_msg, "tool": tool_name, "params": params}
         except Exception as e:
             error_msg = f"\u274c NETWORK ERROR: Failed to call tool '{tool_name}': {str(e)}"
@@ -109,6 +115,13 @@ class ScriptExecutor:
         """Create safe global namespace for script execution"""
         
         # Extremely limited set of safe built-ins
+        def _safe_import(name, globals=None, locals=None, fromlist=(), level=0):
+            allowed = {"concurrent", "concurrent.futures"}
+            root = name.split('.')[0]
+            if name in allowed or root in {m.split('.')[0] for m in allowed}:
+                return importlib.import_module(name)
+            raise ImportError(f"Import of '{name}' is forbidden in sandbox")
+
         safe_builtins = {
             # Basic data types
             'len': len, 'str': str, 'int': int, 'float': float, 'bool': bool,
@@ -124,12 +137,17 @@ class ScriptExecutor:
             
             # Safe output
             'print': print,
+
+            # Minimal import hook (allowlist)
+            '__import__': _safe_import,
         }
         
-        # Very limited modules
+        # Very limited modules (pre-injected)
         safe_modules = {
             'json': json,  # For data manipulation
-            'time': type('time', (), {'time': time.time, 'sleep': time.sleep}),  # Limited time functions
+            'time': type('time', (), {'time': time.time, 'sleep': time.sleep}),  # Limited time functions for user scripts
+            'concurrent': concurrent,
+            'concurrent_futures': cf,  # convenience alias if needed
         }
         
         return {
@@ -187,7 +205,7 @@ class ScriptExecutor:
                 "result": result,
                 "output": output.strip() if output.strip() else None,
                 "tool_calls_made": self.call_count,
-                "execution_time_seconds": round(getattr(self, '_execution_time', 0), 2),
+                "execution_time_seconds": round(getattr(self, '_execution_time', 0.0), 3),
                 "available_tools": sorted(list(self.available_tools))
             }
             
@@ -218,7 +236,8 @@ class ScriptExecutor:
                 "tool_calls_made": self.call_count,
                 "output": captured_output.getvalue().strip() if captured_output.getvalue().strip() else None,
                 "traceback": traceback.format_exc(),
-                "available_tools": sorted(list(self.available_tools))
+                "available_tools": sorted(list(self.available_tools)),
+                "execution_time_seconds": round(getattr(self, '_execution_time', 0.0), 3),
             }
             
         finally:
@@ -232,35 +251,30 @@ class ScriptExecutor:
         
         def target():
             try:
-                start_time = time.time()
+                start = time.perf_counter()
                 
-                # Execute the script
+                # Execute the script (this will block until all inner threads/futures complete)
                 exec(script, namespace)
                 
                 # Look for result in common variable names
                 result_vars = ['result', 'results', 'output', 'data', 'return_value', 'final_result']
                 script_result = None
-                
                 for var_name in result_vars:
                     if var_name in namespace and not var_name.startswith('_'):
                         script_result = namespace[var_name]
                         break
-                
                 # If no explicit result variable, return all user-defined variables
                 if script_result is None:
                     builtin_vars = set(self.get_safe_globals().keys())
                     script_result = {
-                        k: v for k, v in namespace.items() 
+                        k: v for k, v in namespace.items()
                         if not k.startswith('_') and k not in builtin_vars
                     }
-                
-                self._execution_time = time.time() - start_time
+                self._execution_time = time.perf_counter() - start
                 result.append(script_result)
-                
             except Exception as e:
                 exception.append(e)
         
-        # Execute in thread with timeout
         thread = threading.Thread(target=target)
         thread.daemon = True
         thread.start()

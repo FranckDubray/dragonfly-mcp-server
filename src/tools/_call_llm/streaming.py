@@ -2,11 +2,13 @@
 Streaming utilities for LLM responses (SSE)
 - Aggregates text and reconstructs tool_calls in streaming mode.
 - Always returns rich debug fields so callers can understand issues when no tool_calls are emitted.
+- Extended: extract non-text multimodal parts (images/files) from provider-specific content structures
+  such as Google Gemini content.parts[].inline_data / fileUri and OpenAI-style message.content[].image_url.
 """
 import json
 import logging
 import os
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 LOG = logging.getLogger(__name__)
 
@@ -78,13 +80,98 @@ def _extract_data_str(line: str) -> str | None:
     return line[5:].lstrip()
 
 
+# -------- Multimodal extraction helpers (URLs / inline images) ---------
+
+def _collect_media_from_gemini_content(content: Any) -> List[Dict[str, Any]]:
+    media: List[Dict[str, Any]] = []
+    try:
+        parts = None
+        if isinstance(content, dict) and isinstance(content.get("parts"), list):
+            parts = content["parts"]
+        elif isinstance(content, list):
+            parts = content
+        if not parts:
+            return media
+        for part in parts:
+            if not isinstance(part, dict):
+                continue
+            mime = part.get("mime_type") or part.get("mimeType")
+            # inline_data (base64)
+            inline = part.get("inline_data") or part.get("inlineData")
+            if isinstance(inline, dict) and inline.get("data"):
+                media.append({
+                    "kind": "inline",
+                    "mime_type": mime,
+                    "data_base64": _trim_str(inline.get("data"), 100000),  # trim to avoid huge payloads
+                })
+                continue
+            # fileUri / file_uri
+            file_uri = part.get("fileUri") or part.get("file_uri")
+            if isinstance(file_uri, str):
+                media.append({
+                    "kind": "url",
+                    "mime_type": mime,
+                    "url": file_uri,
+                })
+                continue
+            # file_data may contain {fileUri: ...}
+            file_data = part.get("file_data") or part.get("fileData")
+            if isinstance(file_data, dict):
+                fu = file_data.get("fileUri") or file_data.get("file_uri")
+                if isinstance(fu, str):
+                    media.append({
+                        "kind": "url",
+                        "mime_type": mime or file_data.get("mime_type") or file_data.get("mimeType"),
+                        "url": fu,
+                    })
+                    continue
+            # generic url / image_url
+            image_url = part.get("image_url")
+            if isinstance(image_url, str):
+                media.append({"kind": "url", "mime_type": mime, "url": image_url})
+                continue
+            if isinstance(image_url, dict) and isinstance(image_url.get("url"), str):
+                media.append({"kind": "url", "mime_type": mime, "url": image_url["url"]})
+                continue
+            if isinstance(part.get("url"), str):
+                media.append({"kind": "url", "mime_type": mime, "url": part.get("url")})
+                continue
+    except Exception:
+        pass
+    return media
+
+
+def _collect_media_from_openai_message_content(content: Any) -> List[Dict[str, Any]]:
+    media: List[Dict[str, Any]] = []
+    try:
+        if isinstance(content, list):
+            for item in content:
+                if not isinstance(item, dict):
+                    continue
+                typ = (item.get("type") or "").lower()
+                # image_url can be string or object {url: ...}
+                if "image_url" in item:
+                    v = item.get("image_url")
+                    if isinstance(v, str):
+                        media.append({"kind": "url", "url": v})
+                    elif isinstance(v, dict) and isinstance(v.get("url"), str):
+                        media.append({"kind": "url", "url": v["url"]})
+                # generic url
+                elif isinstance(item.get("url"), str) and typ in ("image", "image_url", "file", "media"):
+                    media.append({"kind": "url", "url": item["url"]})
+    except Exception:
+        pass
+    return media
+
+
 def process_streaming_chunks(response):
     """
     Aggregate text from SSE stream.
     Returns: {
       "content": str, "finish_reason": str, "usage": dict|None,
       "sse_stats": dict, "raw_preview": list,
-      (optional) "raw": list, "response_headers": dict
+      (optional) "raw": list, "response_headers": dict,
+      (optional) "media": list  # extracted non-text parts (urls / inline)
     }
     """
     TRACE, DUMP, DUMP_MAX, INCL_CHOICES = _flags()
@@ -94,6 +181,7 @@ def process_streaming_chunks(response):
     raw_preview = []
     raw_full = [] if DUMP else None
     sse_stats = _stats_init()
+    media: List[Dict[str, Any]] = []
 
     headers = {k.lower(): v for k, v in (response.headers or {}).items()}
 
@@ -129,12 +217,21 @@ def process_streaming_chunks(response):
                 delta = ch.get("delta", {})
                 if delta:
                     sse_stats["choices_with_delta"] += 1
-                if delta.get("content"):
+                # Text deltas (string only)
+                if isinstance(delta.get("content"), str):
                     content += delta["content"]
                     sse_stats["delta_content_bytes"] += len(delta["content"])
+                # Multimodal: Gemini-style content object with parts
+                elif isinstance(delta.get("content"), dict):
+                    media.extend(_collect_media_from_gemini_content(delta["content"]))
+                # Finish
                 if ch.get("finish_reason"):
                     finish_reason = ch["finish_reason"]
                     sse_stats["final_seen_finish_reason"] = finish_reason
+                # Also inspect message content (OpenAI-style arrays)
+                msg = ch.get("message") or {}
+                if isinstance(msg, dict) and isinstance(msg.get("content"), list):
+                    media.extend(_collect_media_from_openai_message_content(msg["content"]))
             if chunk.get("usage"):
                 usage = chunk["usage"]
         except Exception:
@@ -148,6 +245,8 @@ def process_streaming_chunks(response):
         "raw_preview": raw_preview,
         "response_headers": _trim_val(headers, 1000),
     }
+    if media:
+        out["media"] = media
     if DUMP:
         out["raw"] = raw_full
     return out
@@ -160,13 +259,14 @@ def process_tool_calls_stream(response):
       "tool_calls": [ {"id": str|None, "function": {"name": str|None, "arguments": str}}, ...],
       "text": str, "finish_reason": str, "usage": dict|None,
       "sse_stats": dict, "raw_preview": list, "response_headers": dict,
-      (optional) trace, raw, provider_preview
+      (optional) trace, raw, provider_preview,
+      (optional) "media": list  # extracted non-text parts (urls / inline)
     }
     """
     TRACE, DUMP, DUMP_MAX, INCL_CHOICES = _flags()
 
     calls: Dict[int, Dict[str, Any]] = {}
-    text_buf = []
+    text_buf: List[str] = []
     finish_reason = None
     usage = None
     trace = [] if TRACE else None
@@ -174,6 +274,7 @@ def process_tool_calls_stream(response):
     raw_full = [] if DUMP else None
     sse_stats = _stats_init()
     provider_preview = []  # list of partial provider-specific accumulators per index
+    media: List[Dict[str, Any]] = []
 
     headers = {k.lower(): v for k, v in (response.headers or {}).items()}
 
@@ -215,10 +316,13 @@ def process_tool_calls_stream(response):
             delta = ch.get("delta", {})
             if delta:
                 sse_stats["choices_with_delta"] += 1
-            # 1) Text deltas
-            if delta.get("content"):
+            # 1) Text deltas (string only)
+            if isinstance(delta.get("content"), str):
                 text_buf.append(delta["content"])
                 sse_stats["delta_content_bytes"] += len(delta["content"])
+            # 1b) Multimodal (Gemini content object)
+            elif isinstance(delta.get("content"), dict):
+                media.extend(_collect_media_from_gemini_content(delta["content"]))
             # 2) tool_calls fragments in delta (OpenAI tools)
             for item in delta.get("tool_calls", []) or []:
                 sse_stats["delta_tool_calls_total"] += 1
@@ -291,6 +395,9 @@ def process_tool_calls_stream(response):
                     entry["function"]["name"] = fnc_msg["name"]
                 if fnc_msg.get("arguments") and not entry["function"]["arguments"]:
                     entry["function"]["arguments"] = fnc_msg["arguments"]
+            # 6) Also inspect message content (OpenAI-style arrays)
+            if isinstance(msg, dict) and isinstance(msg.get("content"), list):
+                media.extend(_collect_media_from_openai_message_content(msg["content"]))
             # finish
             if ch.get("finish_reason"):
                 finish_reason = ch["finish_reason"]
@@ -317,6 +424,8 @@ def process_tool_calls_stream(response):
         "response_headers": _trim_val(headers, 1000),
         "provider_preview": provider_preview[-PREVIEW_MAX:],
     }
+    if media:
+        out["media"] = media
     if TRACE:
         out["trace"] = trace
     if DUMP:
