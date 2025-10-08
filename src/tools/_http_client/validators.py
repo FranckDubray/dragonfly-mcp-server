@@ -54,8 +54,8 @@ def validate_timeout(timeout: Any) -> Dict[str, Any]:
         if timeout < 1:
             return {"valid": False, "error": "Timeout must be at least 1 second"}
         
-        if timeout > 300:
-            return {"valid": False, "error": "Timeout cannot exceed 300 seconds"}
+        if timeout > 600:
+            return {"valid": False, "error": "Timeout cannot exceed 600 seconds"}
         
         return {"valid": True, "timeout": timeout}
         
