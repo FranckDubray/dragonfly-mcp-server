@@ -23,6 +23,7 @@ from ._git.gh_ops import (
     get_commits as gh_get_commits,
     diff as gh_diff,
     merge as gh_merge,
+    create_release as gh_create_release,
 )
 from ._git.high_level import (
     op_ensure_repo,
@@ -109,6 +110,21 @@ def run(operation: str, **params) -> Union[Dict[str, Any], str]:
         if not all(required):
             return {"error": "owner, repo, and head required for diff"}
         return gh_diff(params.get("owner"), params.get("repo"), params.get("base", "main"), params.get("head"))
+
+    if op == "create_release":
+        required = [params.get("owner"), params.get("repo"), params.get("tag_name")]
+        if not all(required):
+            return {"error": "owner, repo, and tag_name required for create_release"}
+        return gh_create_release(
+            params.get("owner"), 
+            params.get("repo"), 
+            params.get("tag_name"),
+            params.get("name", ""),
+            params.get("body", ""),
+            params.get("target_commitish", "main"),
+            params.get("draft", False),
+            params.get("prerelease", False)
+        )
 
     if op == "merge":
         owner = params.get("owner"); repo = params.get("repo")
@@ -221,7 +237,7 @@ def spec() -> Dict[str, Any]:
         "function": {
             "name": "git",
             "displayName": "Git",
-            "description": "Git unifié: GitHub API + Git local. High-level: ensure_repo, config_user, set_remote, sync_repo (push tout le dépôt). Local ops: status, fetch, pull, rebase, branch_create, checkout, add_paths, commit_all, push, merge, log, remote_info.",
+            "description": "Git unifié: GitHub API + Git local. High-level: ensure_repo, config_user, set_remote, sync_repo. Local: status, fetch, pull, rebase, checkout, commit, push, log. GitHub: create_repo, add/delete files, branches, commits, diff, merge, create_release.",
             "parameters": {
                 "type": "object",
                 "properties": {"operation": {"type": "string"}},

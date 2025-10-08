@@ -142,5 +142,33 @@ def merge(owner: str, repo: str, base: str, head: str, commit_title: Optional[st
     return gh_request("POST", f"/repos/{owner}/{repo}/merges", data)
 
 
+def create_release(owner: str, repo: str, tag_name: str, name: str = "", body: str = "", 
+                  target_commitish: str = "main", draft: bool = False, prerelease: bool = False) -> Dict[str, Any]:
+    """Create a GitHub release
+    
+    Args:
+        owner: Repository owner
+        repo: Repository name
+        tag_name: Git tag for the release (e.g., "v1.3.0")
+        name: Release title (default: same as tag_name)
+        body: Release description (Markdown supported)
+        target_commitish: Branch/commit to tag (default: "main")
+        draft: Create as draft (default: False)
+        prerelease: Mark as pre-release (default: False)
+    
+    Returns:
+        Dict with release info including html_url
+    """
+    data = {
+        "tag_name": tag_name,
+        "target_commitish": target_commitish,
+        "name": name or tag_name,
+        "body": body or "",
+        "draft": draft,
+        "prerelease": prerelease,
+    }
+    return gh_request("POST", f"/repos/{owner}/{repo}/releases", data)
+
+
 # local import to fetch headers for get_commits
 from .github_api import get_headers as _get_github_headers
