@@ -2,130 +2,168 @@
 
 All notable changes to this project will be documented in this file.
 
-<<<<<<< HEAD
-## [Unreleased]
+## [1.3.0] - 2025-10-08
 
-### Added
-- Tool `imap`: accès universel aux emails via IMAP (Gmail, Outlook, Yahoo, iCloud, Infomaniak, serveurs custom)
-  - **Multi-comptes**: support de plusieurs comptes email simultanés via variables d'env par provider
-    - `IMAP_GMAIL_EMAIL` / `IMAP_GMAIL_PASSWORD`
-    - `IMAP_INFOMANIAK_EMAIL` / `IMAP_INFOMANIAK_PASSWORD`
-    - `IMAP_OUTLOOK_EMAIL` / `IMAP_OUTLOOK_PASSWORD`
-    - `IMAP_YAHOO_EMAIL` / `IMAP_YAHOO_PASSWORD`
-    - `IMAP_ICLOUD_EMAIL` / `IMAP_ICLOUD_PASSWORD`
-    - Custom: `IMAP_CUSTOM_EMAIL`, `IMAP_CUSTOM_PASSWORD`, `IMAP_CUSTOM_SERVER`, `IMAP_CUSTOM_PORT`, `IMAP_CUSTOM_USE_SSL`
-  - **Providers supportés**: Gmail, Outlook/Hotmail, Yahoo, iCloud, **Infomaniak** (nouveau), custom
-  - **Operations**: connect, list_folders, search_messages, get_message, download_attachments, mark_read/unread, move_message, delete_message
-  - **Batch operations**: mark_read_batch, mark_unread_batch, move_messages_batch, delete_messages_batch, mark_spam
-  - Presets intégrés pour providers populaires (config automatique server/port/SSL)
-  - Setup rapide (5 min): App Password + enable IMAP (vs 30+ min pour OAuth/GCP)
-  - Parsing MIME complet (headers, body text/html, attachments)
-  - Recherche IMAP standard (FROM, SUBJECT, SINCE, UNSEEN…)
-  - Normalisation des folders via alias (`inbox`, `sent`, `trash`, `spam`)
-  - **Sécurité renforcée**: SSL par défaut, chroot projet pour attachments, passwords masqués, **aucun credential en paramètre d'appel** (tout via `.env` + `provider`)
+### 🎉 Highlights
+- **IMAP multi-account email tool** with 6 providers (Gmail, Outlook, Yahoo, iCloud, Infomaniak, Custom)
+- **Git tool enhanced** with pull, fetch, rebase operations and conflict detection
+- Complete workflow automation without manual CLI commands
 
-### Changed
-- IMAP tool architecture refactored for multi-account support
-  - Variables d'env séparées par provider (ex: `IMAP_GMAIL_EMAIL`, `IMAP_INFOMANIAK_EMAIL`)
-  - Paramètre `provider` obligatoire pour sélectionner le compte à utiliser
-  - Chaque provider a ses propres credentials isolés
-- Documentation complète ajoutée:
-  - `/README.md`: section IMAP multi-comptes avec exemples
-  - `/src/README.md`: variables d'env et exemples d'appels
-  - `/src/tools/README.md`: guide complet du tool IMAP
-  - `/src/tools/_imap/README.md`: documentation détaillée avec setup rapide
-- .gitignore: ajout de `files/imap/` pour ignorer les données sensibles du tool IMAP
+### ✨ Added
+
+#### IMAP Tool (multi-account email access)
+- **Universal IMAP access** across 6 providers: Gmail, Outlook, Yahoo, iCloud, **Infomaniak** (new), Custom
+- **Multi-account architecture**: separate environment variables per provider
+  - `IMAP_GMAIL_EMAIL` / `IMAP_GMAIL_PASSWORD`
+  - `IMAP_INFOMANIAK_EMAIL` / `IMAP_INFOMANIAK_PASSWORD`
+  - `IMAP_OUTLOOK_EMAIL` / `IMAP_OUTLOOK_PASSWORD`
+  - `IMAP_YAHOO_EMAIL` / `IMAP_YAHOO_PASSWORD`
+  - `IMAP_ICLOUD_EMAIL` / `IMAP_ICLOUD_PASSWORD`
+  - Custom: `IMAP_CUSTOM_EMAIL`, `IMAP_CUSTOM_PASSWORD`, `IMAP_CUSTOM_SERVER`, `IMAP_CUSTOM_PORT`, `IMAP_CUSTOM_USE_SSL`
+- **13 operations**:
+  - `connect`: test connection and return account info
+  - `list_folders`: list all IMAP folders
+  - `search_messages`: search by date, sender, subject, seen/unseen, flagged
+  - `get_message`: retrieve full message with body and attachments
+  - `download_attachments`: save attachments to files/
+  - `mark_read` / `mark_unread`: single message operations
+  - `mark_read_batch` / `mark_unread_batch`: bulk operations
+  - `move_message` / `move_messages_batch`: move to another folder
+  - `mark_spam`: move to spam/junk folder (batch)
+  - `delete_message` / `delete_messages_batch`: delete with optional expunge
+- **Presets**: automatic server/port/SSL configuration for popular providers
+- **Setup time**: 5 minutes (App Password + enable IMAP) vs 30+ minutes for OAuth/GCP
+- **MIME parsing**: complete headers, body (text/html), attachments metadata
+- **IMAP search**: standard criteria (FROM, SUBJECT, SINCE, UNSEEN, FLAGGED, etc.)
+- **Folder normalization**: aliases (`inbox`, `sent`, `trash`, `spam`) mapped to provider-specific names
+- **Security**:
+  - SSL by default (port 993)
+  - Project-chroot for attachments (`files/imap/`)
+  - Passwords masked in logs
+  - **Zero credentials in tool parameters** (all via `.env` + `provider` selector)
+- Architecture: `src/tools/_imap/` (presets, connection, operations, parsers, utils)
+- Complete documentation: `src/tools/_imap/README.md` with quick setup guides
+
+#### Git Tool Enhanced
+- **New operations**:
+  - `fetch`: fetch updates from remote without merging (with `--prune` option)
+  - `pull`: fetch + merge or rebase (configurable `rebase`, `ff_only` flags)
+  - `rebase`: rebase current branch with `continue`, `abort`, `skip` support
+  - `log`: commit history with `max_count`, `one_line`, `graph` options
+  - `remote_info`: get remote repository information
+- **Conflict detection**: automatic detection for pull/rebase/merge with helpful hints
+- **Error handling**: explicit messages for conflicts with resolution commands
+- Enable complete git workflow without leaving the tool environment
+
+### 🔄 Changed
+
+#### IMAP multi-account refactor
+- Variables d'env séparées par provider (ex: `IMAP_GMAIL_EMAIL`, `IMAP_INFOMANIAK_EMAIL`)
+- Paramètre `provider` obligatoire pour sélectionner le compte
+- Chaque provider a ses propres credentials isolés
+- Architecture modulaire: presets, connection, operations, parsers, utils
+
+#### Documentation updates
+- `/README.md`: complete tools catalog (15 tools) with detailed descriptions
+- `/src/README.md`: IMAP multi-account env vars and examples
+- `/src/tools/README.md`: comprehensive tool guide with architectures
+- `/src/tools/_imap/README.md`: detailed IMAP setup and usage guide
+
+#### Git ignore
+- Added `files/imap/` to ignore sensitive email data
+
+### 🐛 Fixed
+- Git tool now properly handles pull/rebase conflicts with actionable error messages
+- IMAP folder normalization works across all providers (Gmail's `[Gmail]/` syntax, etc.)
+
+### 📦 Migration notes
+- **IMAP users**: update `.env` with provider-specific variables (see documentation)
+- **Git workflows**: `pull`, `fetch`, `rebase` now available directly through the tool
+- No breaking changes for existing tools
+
+### 🎯 Next steps
+- OAuth2 support for IMAP (Gmail, Outlook) as alternative to App Passwords
+- Email composition and sending (SMTP tool)
+- Advanced filtering and rules engine for email automation
 
 ---
 
-=======
->>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
 ## [1.2.0] - 2025-10-08
 
 ### Highlights
-- FFmpeg frames: native frame-by-frame detection (PyAV) with moving average + hysteresis + NMS + native refinement. Much higher recall on compressed cuts (YouTube-like), plus per-frame similarity debug.
+- FFmpeg frames: native frame-by-frame detection (PyAV) with moving average + hysteresis + NMS + native refinement
+- Much higher recall on compressed cuts (YouTube-like), plus per-frame similarity debug
 
 ### Added
-- ffmpeg_frames: per-frame debug (t, diff, similarity_pct) and avg_similarity_pct.
-- ffmpeg_frames: returns exec_time_sec in the API response and in debug.json.
-- Native video decode dependencies auto-install in scripts/dev.sh (NumPy + PyAV).
-- Refactor for maintainability: split FFmpeg tool into `detect.py` (API), `native.py` (PyAV), and `utils.py` (helpers).
+- ffmpeg_frames: per-frame debug (t, diff, similarity_pct) and avg_similarity_pct
+- ffmpeg_frames: returns exec_time_sec in the API response and in debug.json
+- Native video decode dependencies auto-install in scripts/dev.sh (NumPy + PyAV)
+- Refactor for maintainability: split FFmpeg tool into `detect.py` (API), `native.py` (PyAV), and `utils.py` (helpers)
 
 ### Changed
-- ffmpeg_frames sensitivity (defaults): scale=96x96, ma_window=1, threshold_floor=0.05, NMS=0.2s, refine_window=0.5s, min_scene_frames=3.
-- README mentions native detection and debug fields.
+- ffmpeg_frames sensitivity (defaults): scale=96x96, ma_window=1, threshold_floor=0.05, NMS=0.2s, refine_window=0.5s, min_scene_frames=3
+- README mentions native detection and debug fields
 
 ### Fixed
-<<<<<<< HEAD
-- Cases where legacy downsampled CLI missed many hard cuts. Native pass now processes at the video's native FPS.
-=======
-- Cases where legacy downsampled CLI missed many hard cuts. Native pass now processes at the video’s native FPS.
->>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
+- Cases where legacy downsampled CLI missed many hard cuts. Native pass now processes at the video's native FPS
 
 ### Migration notes
-- Ensure Python 3.11+ and that scripts/dev.sh reinstalls dependencies to get NumPy + PyAV.
-- If results are still too conservative, consider lowering threshold_floor to 0.04 or min_scene_frames to 2.
+- Ensure Python 3.11+ and that scripts/dev.sh reinstalls dependencies to get NumPy + PyAV
+- If results are still too conservative, consider lowering threshold_floor to 0.04 or min_scene_frames to 2
 
 ---
 
 ## [1.1.0] - 2025-10-08
 
 ### Highlights
-- Math tool reliability overhaul: no more generic 500 errors. All failures return explicit, actionable error messages.
-- New tool: `ffmpeg_frames` (extract frames/images from a video via FFmpeg).
-- Dev scripts now load `.env` automatically (Bash + PowerShell).
-- Safer repository hygiene: data/runtime folders ignored by default.
+- Math tool reliability overhaul: no more generic 500 errors
+- New tool: `ffmpeg_frames` (extract frames/images from a video via FFmpeg)
+- Dev scripts now load `.env` automatically (Bash + PowerShell)
+- Safer repository hygiene: data/runtime folders ignored by default
 
 ### Added
-- Tool: `ffmpeg_frames` with its canonical spec (`src/tool_specs/ffmpeg_frames.json`).
+- Tool: `ffmpeg_frames` with its canonical spec (`src/tool_specs/ffmpeg_frames.json`)
 - App core modules:
-  - `src/app_core/safe_json.py` – robust JSON sanitizer/response (handles NaN/Infinity/very large ints safely).
-  - `src/app_core/tool_discovery.py` – tool discovery and auto‑reload logic.
+  - `src/app_core/safe_json.py` – robust JSON sanitizer/response (handles NaN/Infinity/very large ints safely)
+  - `src/app_core/tool_discovery.py` – tool discovery and auto‑reload logic
 - Math tool dispatcher (refactor + expansion):
   - New structure:
-    - `src/tools/_math/dispatch_core.py` – helpers (error/jsonify/coercions).
-    - `src/tools/_math/dispatch_basic.py` – basic ops (arith/trig/complex/log/exp/sqrt) with explicit errors only.
-    - `src/tools/_math/dispatcher.py` – high‑level router to advanced modules.
+    - `src/tools/_math/dispatch_core.py` – helpers (error/jsonify/coercions)
+    - `src/tools/_math/dispatch_basic.py` – basic ops (arith/trig/complex/log/exp/sqrt) with explicit errors only
+    - `src/tools/_math/dispatcher.py` – high‑level router to advanced modules
   - Advanced operations routed to existing modules:
-    - Symbolic: `derivative`, `integral`, `simplify`, `expand`, `factor`.
-    - Calculus: `limit`, `series`, `gradient`, `jacobian`, `hessian`.
-    - Linear algebra: `mat_add`, `mat_mul`, `mat_det`, `mat_inv`, `mat_transpose`, `mat_rank`, `mat_solve`, `eig`, `vec_add`, `dot`, `cross`, `norm`.
-    - LA extensions: `pinv`, `cond`, `trace`, `nullspace`, `lu`, `qr`.
-    - Probability/Stats: `mean`, `median`, `mode`, `stdev`, `variance`, `combination`, `permutation`.
-    - Distributions: `normal_cdf`, `normal_ppf`, `poisson_pmf`, `poisson_cdf`, `binomial_cdf`, `uniform_pdf`, `uniform_cdf`, `exponential_pdf`, `exponential_cdf`.
-    - Polynomial: `poly_roots`, `poly_factor`, `poly_expand`.
-    - Solvers: `solve_eq`, `solve_system`, `nsolve`, `root_find`, `optimize_1d`.
-    - Number theory: `nth_prime`, `prime_approx`, `is_prime`, `next_prime`, `prev_prime`, `prime_factors`, `factorize`, `euler_phi`, `primes_range`.
-    - Summations: `sum_finite`, `product_finite`, `sum_infinite`.
-    - High precision: `eval_precise` (mpmath‑based).
+    - Symbolic: `derivative`, `integral`, `simplify`, `expand`, `factor`
+    - Calculus: `limit`, `series`, `gradient`, `jacobian`, `hessian`
+    - Linear algebra: `mat_add`, `mat_mul`, `mat_det`, `mat_inv`, `mat_transpose`, `mat_rank`, `mat_solve`, `eig`, `vec_add`, `dot`, `cross`, `norm`
+    - LA extensions: `pinv`, `cond`, `trace`, `nullspace`, `lu`, `qr`
+    - Probability/Stats: `mean`, `median`, `mode`, `stdev`, `variance`, `combination`, `permutation`
+    - Distributions: `normal_cdf`, `normal_ppf`, `poisson_pmf`, `poisson_cdf`, `binomial_cdf`, `uniform_pdf`, `uniform_cdf`, `exponential_pdf`, `exponential_cdf`
+    - Polynomial: `poly_roots`, `poly_factor`, `poly_expand`
+    - Solvers: `solve_eq`, `solve_system`, `nsolve`, `root_find`, `optimize_1d`
+    - Number theory: `nth_prime`, `prime_approx`, `is_prime`, `next_prime`, `prev_prime`, `prime_factors`, `factorize`, `euler_phi`, `primes_range`
+    - Summations: `sum_finite`, `product_finite`, `sum_infinite`
+    - High precision: `eval_precise` (mpmath‑based)
 
 ### Changed
 - Scripts:
-  - `scripts/dev.sh`: now sources `.env` (export), verifies Python 3.11+, creates/activates venv, installs deps + extras (pypdf, sympy, requests), prints config, and launches `python -m server` from `src/`.
-  - `scripts/dev.ps1`: same parity as Bash (charge `.env`, venv, deps, config, start).
+  - `scripts/dev.sh`: now sources `.env` (export), verifies Python 3.11+, creates/activates venv, installs deps + extras (pypdf, sympy, requests), prints config, and launches `python -m server` from `src/`
+  - `scripts/dev.ps1`: same parity as Bash (charge `.env`, venv, deps, config, start)
 - README updated:
-  - Tools list (incl. `ffmpeg_frames`, `script_executor`, `academic_research_super`).
-  - Endpoints/config/security sections refreshed.
+  - Tools list (incl. `ffmpeg_frames`, `script_executor`, `academic_research_super`)
+  - Endpoints/config/security sections refreshed
 
 ### Fixed
 - Math tool returning generic HTTP 500 via API:
-  - All error cases now return explicit error objects (e.g., `Division by zero`, `Modulo by zero`, `Square root of negative number: set complex=true to get complex result`, `Unknown operation: …`, `Missing numeric inputs …`).
-  - Complex results are JSON‑safe as `{re, im}`.
-- Ensured `.env` is loaded by both the app and the dev scripts.
+  - All error cases now return explicit error objects
+- Ensured `.env` is loaded by both the app and the dev scripts
 
 ### Repository hygiene
 - `.gitignore` now ignores non‑source and local runtime folders:
-  - `docs/`, `files/`, `script_executor/` (top‑level), `sqlite3/`, `venv/`, `.venv/`, `.DS_Store`, `__pycache__/`, `*.pyc`.
-  - Note: source code under `src/tools/_script_executor/` remains tracked.
+  - `docs/`, `files/`, `script_executor/` (top‑level), `sqlite3/`, `venv/`, `.venv/`, `.DS_Store`, `__pycache__/`, `*.pyc`
+  - Note: source code under `src/tools/_script_executor/` remains tracked
 
 ### Migration notes
-- Python 3.11+ is now required (enforced by scripts and project metadata).
-- Dev scripts source `.env` before installing dependencies and launching the server.
-<<<<<<< HEAD
-- If you kept custom scripts under top‑level `script_executor/`, they're now ignored by Git; move them outside the repo or under a non‑tracked path.
-- For advanced math features, ensure `sympy` is installed (scripts install it automatically). For high‑precision evaluation, `mpmath` is optional but recommended.
-=======
-- If you kept custom scripts under top‑level `script_executor/`, they’re now ignored by Git; move them outside the repo or under a non‑tracked path.
-- For advanced math features, ensure `sympy` is installed (scripts install it automatically). For high‑precision evaluation, `mpmath` is optional but recommended.
-
->>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
+- Python 3.11+ is now required (enforced by scripts and project metadata)
+- Dev scripts source `.env` before installing dependencies and launching the server
+- If you kept custom scripts under top‑level `script_executor/`, they're now ignored by Git; move them outside the repo or under a non‑tracked path
+- For advanced math features, ensure `sympy` is installed (scripts install it automatically). For high‑precision evaluation, `mpmath` is optional but recommended
