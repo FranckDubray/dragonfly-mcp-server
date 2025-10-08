@@ -34,7 +34,15 @@ ENV_FILE = PROJECT_ROOT / '.env'
 GITIGNORE_FILE = PROJECT_ROOT / '.gitignore'
 
 
+def is_secret_key(key: str) -> bool:
+    """Detect if a key name suggests it's a secret."""
+    secret_patterns = ['TOKEN', 'PASSWORD', 'KEY', 'SECRET', 'API_KEY', 'PASS', 'PWD']
+    key_upper = key.upper()
+    return any(pattern in key_upper for pattern in secret_patterns)
+
+
 def mask_secret(secret: Optional[str]) -> str:
+    """Mask secret value for display."""
     if not secret:
         return ''
     try:
@@ -67,6 +75,7 @@ def load_env_file() -> None:
 
 
 def _read_env_dict() -> Dict[str, str]:
+    """Read .env file as dict."""
     data: Dict[str, str] = {}
     if ENV_FILE.exists():
         try:
@@ -84,12 +93,14 @@ def _read_env_dict() -> Dict[str, str]:
 
 
 def _write_env_dict(d: Dict[str, str]) -> None:
+    """Write dict to .env file."""
     lines = [f"{k}={v}" for k, v in d.items()]
     ENV_FILE.write_text("\n".join(lines) + "\n", encoding='utf-8')
     logger.info(f"Saved {len(d)} keys to {ENV_FILE}")
 
 
 def _ensure_env_gitignore():
+    """Ensure .env is in .gitignore."""
     try:
         if GITIGNORE_FILE.exists():
             gi = GITIGNORE_FILE.read_text(encoding='utf-8')
@@ -105,18 +116,80 @@ def _ensure_env_gitignore():
         logger.warning(f"Failed to ensure .env in .gitignore: {e}")
 
 
+def get_all_env_vars() -> Dict[str, Any]:
+    """
+    Get all environment variables from .env with metadata.
+    
+    Returns:
+        Dict with structure:
+        {
+            "vars": {
+                "KEY_NAME": {
+                    "value": "actual_value" or "masked_value",
+                    "is_secret": bool,
+                    "present": bool,
+                    "masked_value": "***xxx" (only for secrets)
+                }
+            },
+            "env_file": str (path)
+        }
+    """
+    env_dict = _read_env_dict()
+    result = {}
+    
+    for key, value in env_dict.items():
+        is_sec = is_secret_key(key)
+        result[key] = {
+            "value": value if not is_sec else '',  # Don't expose secret values
+            "is_secret": is_sec,
+            "present": bool(value),
+            "masked_value": mask_secret(value) if is_sec else value
+        }
+    
+    return {
+        "vars": result,
+        "env_file": str(ENV_FILE),
+        "project_root": str(PROJECT_ROOT)
+    }
+
+
 def save_env_vars(updates: Dict[str, Optional[str]]) -> Dict[str, Any]:
+    """
+    Save/update environment variables to .env file.
+    
+    Args:
+        updates: Dict of {KEY: value} where empty string means remove
+        
+    Returns:
+        Status dict with updated keys and summary
+    """
     updates_clean = {k: v for k, v in updates.items() if isinstance(v, str) and v.strip() != ''}
     if not updates_clean:
         return {"updated": 0, "message": "No values provided"}
 
+    # Update os.environ
     for k, v in updates_clean.items():
         os.environ[k] = v
 
+    # Read current .env, update with new values
     env_dict = _read_env_dict()
     env_dict.update(updates_clean)
+    
+    # Write back to .env
     _write_env_dict(env_dict)
     _ensure_env_gitignore()
 
-    summary = {k: mask_secret(v) for k, v in updates_clean.items()}
-    return {"updated": len(updates_clean), "masked": summary, "env_file": str(ENV_FILE)}
+    # Build summary (mask secrets)
+    summary = {}
+    for k, v in updates_clean.items():
+        if is_secret_key(k):
+            summary[k] = mask_secret(v)
+        else:
+            summary[k] = v
+
+    return {
+        "updated": len(updates_clean),
+        "keys": list(updates_clean.keys()),
+        "summary": summary,
+        "env_file": str(ENV_FILE)
+    }

@@ -564,7 +564,7 @@ CONTROL_HTML = '''<!DOCTYPE html>
         </main>
     </div>
     
-    <!-- Modal Config -->
+    <!-- Modal Config (GÉNÉRIQUE - champs générés dynamiquement) -->
     <div id="configModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -574,30 +574,11 @@ CONTROL_HTML = '''<!DOCTYPE html>
             
             <div id="configStatus" class="config-status" style="display: none;"></div>
             
+            <!-- Form section remplie dynamiquement par JS -->
             <div class="form-section">
-                <div class="form-group">
-                    <label class="form-label">
-                        GitHub Token (GITHUB_TOKEN)
-                        <span id="ghBadge" class="badge">checking...</span>
-                    </label>
-                    <input id="GITHUB_TOKEN" type="password" class="form-input" placeholder="New value (leave empty to keep current)">
-                    <div class="form-help">Personal access token for GitHub API operations</div>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">
-                        AI Portal Token (AI_PORTAL_TOKEN)
-                        <span id="aiBadge" class="badge">checking...</span>
-                    </label>
-                    <input id="AI_PORTAL_TOKEN" type="password" class="form-input" placeholder="New value (leave empty to keep current)">
-                    <div class="form-help">Token for LLM orchestration (call_llm tool)</div>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">LLM Endpoint (LLM_ENDPOINT)</label>
-                    <input id="LLM_ENDPOINT" type="text" class="form-input" placeholder="https://...">
-                    <div class="form-help">Custom LLM endpoint URL (optional)</div>
-                </div>
+                <p class="form-help" style="text-align: center; color: var(--text-secondary);">
+                    Loading configuration...
+                </p>
             </div>
             
             <button onclick="saveConfig()" class="execute-btn">💾 Save Configuration</button>
