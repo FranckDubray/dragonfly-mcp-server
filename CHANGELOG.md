@@ -10,6 +10,63 @@ All notable changes to this project will be documented in this file.
 - PDF metadata search (find PDFs by author/title/date)
 - Batch PDF download (download multiple PDFs from a list)
 - PDF cache (avoid re-downloading identical files)
+- Vélib' geolocation search (find nearest stations)
+
+---
+
+## [1.5.0] - 2025-10-08
+
+### 🎉 Highlights
+- **Vélib' Métropole Tool** for Paris bike-sharing data
+- SQLite cache management for station data
+- Real-time availability API integration
+- Clean architecture with minimal tool scope
+
+### ✨ Added
+
+#### Vélib' Tool 🆕
+- **New tool**: `velib` for managing Vélib' Métropole station data
+- **Features**:
+  - SQLite cache for ~1494 stations (static data)
+  - Real-time availability API (bikes mechanical/electric, docks free)
+  - 3 operations: `refresh_stations`, `get_availability`, `check_cache`
+  - Integration with `sqlite_db` tool for complex searches
+  - Open Data API (no authentication required)
+- **Database schema**:
+  - `station_code` (TEXT, PRIMARY KEY)
+  - `station_id` (INTEGER, system ID)
+  - `name` (TEXT, station name)
+  - `lat`, `lon` (REAL, GPS coordinates)
+  - `capacity` (INTEGER, total docks)
+  - `station_opening_hours` (TEXT, usually null)
+- **Architecture**: `_velib/` (api, core, db, fetcher, validators, utils)
+- **Spec**: `src/tool_specs/velib.json` (canonical source of truth)
+- **Security**:
+  - SQLite chroot to `sqlite3/velib.db`
+  - Input validation (station_code: alphanumeric, max 20 chars)
+  - Parameterized queries (SQL injection protection)
+  - HTTP timeout: 30s
+  - No secrets required (public API)
+
+### 📚 Documentation
+- Updated main README with velib tool (17 tools total)
+- Updated src/README.md with velib examples
+- Updated src/tools/README.md with velib details
+- Added comprehensive README in `src/tools/_velib/`
+- Created VELIB_TOOL_SUMMARY.md with complete specifications
+
+### 🔄 Changed
+- Tool count increased from 16 to 17
+- Enhanced transport & mobility capabilities
+
+### 🐛 Fixed
+- No bug fixes in this release (new feature only)
+
+### 📦 Migration notes
+- **New users**: Start using the tool immediately (see documentation)
+- **Existing users**: No breaking changes, new transport feature available
+- Vélib' data is public, no API key required
+- First run requires `refresh_stations` to populate cache
 
 ---
 
