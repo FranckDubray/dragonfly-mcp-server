@@ -1,3 +1,11 @@
+
+
+
+
+
+
+
+
 from __future__ import annotations
 import os
 import sys
@@ -59,7 +67,7 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
-        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_methods=["GET", "POST", "OPTIONS", "HEAD"],
         allow_headers=["*"],
         allow_credentials=True,
     )
@@ -81,6 +89,23 @@ def create_app() -> FastAPI:
     @app.options("/tools")
     async def tools_options():
         return Response(status_code=204)
+
+    @app.head("/tools")
+    async def tools_head(request: Request):
+        """HEAD endpoint for ETag checking without payload (used by auto-reload)."""
+        registry = get_registry()
+        if should_reload_tools(request, AUTO_RELOAD_TOOLS, RELOAD_ENV, len(registry)):
+            discover_tools()
+            registry = get_registry()
+        # Build minimal payload for ETag calculation
+        items = []
+        for tool in registry.values():
+            item = {k: v for k, v in tool.items() if k != 'func'}
+            items.append(item)
+        items.sort(key=lambda x: x.get("name", ""))
+        payload = json.dumps(sanitize_for_json(items), separators=(",", ":"), ensure_ascii=False)
+        etag = sha1(payload.encode("utf-8")).hexdigest()
+        return Response(status_code=200, headers={"Cache-Control": "no-cache", "ETag": etag})
 
     @app.get("/tools")
     async def get_tools(request: Request):
