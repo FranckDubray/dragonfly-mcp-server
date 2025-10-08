@@ -2,16 +2,6 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
-
-### 🎯 Next steps
-- SMTP tool for email sending
-- OAuth2 support for IMAP (Gmail, Outlook)
-- PDF metadata search (find PDFs by author/title/date)
-- Batch PDF download (download multiple PDFs from a list)
-- PDF cache (avoid re-downloading identical files)
-- Vélib' geolocation search (find nearest stations)
-
 ---
 
 ## [1.5.0] - 2025-10-08
@@ -59,9 +49,6 @@ All notable changes to this project will be documented in this file.
 - Tool count increased from 16 to 17
 - Enhanced transport & mobility capabilities
 
-### 🐛 Fixed
-- No bug fixes in this release (new feature only)
-
 ### 📦 Migration notes
 - **New users**: Start using the tool immediately (see documentation)
 - **Existing users**: No breaking changes, new transport feature available
@@ -106,9 +93,6 @@ All notable changes to this project will be documented in this file.
 ### 🔄 Changed
 - Tool count increased from 15 to 16
 - Enhanced PDF workflow capabilities
-
-### 🐛 Fixed
-- No bug fixes in this release (new feature only)
 
 ### 📦 Migration notes
 - **New users**: Start using the tool immediately (see documentation)
@@ -195,11 +179,6 @@ All notable changes to this project will be documented in this file.
 - **IMAP users**: update `.env` with provider-specific variables (see documentation)
 - **Git workflows**: `pull`, `fetch`, `rebase` now available directly through the tool
 - No breaking changes for existing tools
-
-### 🎯 Next steps
-- OAuth2 support for IMAP (Gmail, Outlook) as alternative to App Passwords
-- Email composition and sending (SMTP tool)
-- Advanced filtering and rules engine for email automation
 
 ---
 
