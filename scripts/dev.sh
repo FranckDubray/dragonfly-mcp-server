@@ -83,6 +83,21 @@ else
   echo -e "${GREEN}🌐 requests available${NC}"
 fi
 
+# Native video decoding requirements (PyAV + NumPy)
+if ! python -c "import numpy" >/dev/null 2>&1; then
+  echo -e "${YELLOW}🧮 Installing NumPy...${NC}"
+  pip install -q "numpy>=1.23.0"
+else
+  echo -e "${GREEN}🧮 NumPy available${NC}"
+fi
+
+if ! python -c "import av" >/dev/null 2>&1; then
+  echo -e "${YELLOW}🎞️  Installing PyAV (native video decode)...${NC}"
+  pip install -q "av>=10.0.0"
+else
+  echo -e "${GREEN}🎞️  PyAV available${NC}"
+fi
+
 # Environment variables (use .env values if already set)
 export MCP_HOST="${MCP_HOST:-127.0.0.1}"
 export MCP_PORT="${MCP_PORT:-8000}"
