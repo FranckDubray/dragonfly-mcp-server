@@ -1,7 +1,10 @@
 
 
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
 <div align="center">
 
 <!-- Local logo for reliability (placed in assets/) -->
@@ -11,7 +14,11 @@
 
 Serveur MCP multi‑outils, rapide et extensible, propulsé par FastAPI. Découverte automatique des tools, exécution sécurisée, orchestrateur LLM avancé, et panneau de contrôle web.
 
+<<<<<<< HEAD
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+=======
+[![License: MIT](./LICENSE)](./LICENSE)
+>>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB)
 ![FastAPI](https://img.shields.io/badge/FastAPI-%F0%9F%9A%80-009688)
 ![Status](https://img.shields.io/badge/Status-Active-success)
@@ -46,6 +53,7 @@ Dragonfly MCP Server expose des « tools » (au format OpenAI tools) via des end
 - [Migration notes](#-migration-notes)
 - [Pour les LLM « développeurs »](#-pour-les-llm-développeurs)
 - [Feuille de route](#-feuille-de-route)
+- [Migration notes](#-migration-notes)
 - [Licence](#-licence)
 
 ---
@@ -55,7 +63,11 @@ Dragonfly MCP Server expose des « tools » (au format OpenAI tools) via des end
 - JSON « sûr »: grands entiers, NaN/Infinity sanitisés
 - Orchestration LLM streaming en 2 phases (avec cumul d'usage multi‑niveaux)
 - Panneau de contrôle web (`/control`)
+<<<<<<< HEAD
 - Outils prêts à l'emploi: Git/GitHub, SQLite, PDF, Date/Heure, Math (HP), GitBook, Reddit, Universal Doc Scraper, Script Executor, FFmpeg frames, Academic Research, **IMAP email (multi-comptes)**, etc.
+=======
+- Outils prêts à l’emploi: Git/GitHub, SQLite, PDF, Date/Heure, Math (HP), GitBook, Reddit, Universal Doc Scraper, Script Executor, FFmpeg frames, Academic Research, etc.
+>>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
 
 ---
 
@@ -157,9 +169,15 @@ Détails étendus: [src/README.md](./src/README.md)
 - `reddit_intelligence`
 - `universal_doc_scraper`
 - `script_executor`: exécution de scripts Python sandboxés orchestrant des tools
+<<<<<<< HEAD
 - `ffmpeg_frames`: extraction d'images/frames d'une vidéo via FFmpeg (détection native PyAV, debug de similarité, exec_time_sec)
 - `academic_research_super`: pipeline avancé de recherche académique (agrégation, scraping, synthèse)
 - `imap`: **accès universel aux emails via IMAP** (Gmail, Outlook, Yahoo, iCloud, Infomaniak, serveurs custom) avec gestion multi-comptes
+=======
+- `ffmpeg_frames`: extraction d'images/frames d'une vidéo via FFmpeg
+- `academic_research_super`: pipeline avancé de recherche académique (agrégation, scraping, synthèse)
+- `discord_webhook`: publication et gestion d'articles sur Discord via webhook (CRUD avec persistance SQLite)
+>>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
 
 Specs JSON (OpenAI tools) correspondantes dans `src/tool_specs/`.
 
@@ -278,8 +296,12 @@ Configurer via `/control` (recommandé) ou via `.env`.
 ## 🔒 Sécurité
 - SQLite chroot: DBs sous `<projet>/sqlite3` (noms validés)
 - Git local: opérations limitées à la racine du projet
+<<<<<<< HEAD
 - `script_executor`: sandbox stricte (pas d'accès non autorisé)
 - **IMAP**: credentials en `.env` uniquement, jamais en paramètres d'appel
+=======
+- `script_executor`: sandbox stricte (pas d’accès non autorisé)
+>>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
 - Safe JSON: sérialisation robuste (NaN/Infinity, très grands entiers)
 
 ---
@@ -303,8 +325,13 @@ src/
 ---
 
 ## 🧭 Migration notes
+<<<<<<< HEAD
 - Python 3.11+ requis (scripts et metadata l'imposent).
 - Les scripts de dev chargent maintenant `.env` avant l'install et le lancement.
+=======
+- Python 3.11+ requis (scripts et metadata l’imposent).
+- Les scripts de dev chargent maintenant `.env` avant l’install et le lancement.
+>>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
 - Le dossier top-level `script_executor/` est ignoré par Git: déplacez vos scripts utilisateurs dans un dossier hors repo si besoin.
 - Pour les fonctionnalités math avancées, installez `sympy`; pour haute précision, `mpmath` (optionnel).
 

@@ -1,4 +1,5 @@
 
+<<<<<<< HEAD
 
 
 
@@ -8,6 +9,8 @@
 
 
 
+=======
+>>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
 """
 ffmpeg_frames MCP Tool (native frame-by-frame + moving average + hysteresis, start/end only)
 - Native: PyAV decoding @ fps natif, 96x96 gray, diff L1 frame->frame
@@ -174,6 +177,7 @@ def run(operation: str = None, **params):
 
 
 def spec():
+<<<<<<< HEAD
     """Load and return the canonical JSON spec (source of truth)."""
     here = os.path.dirname(__file__)
     spec_path = os.path.abspath(os.path.join(here, '..', 'tool_specs', 'ffmpeg_frames.json'))
@@ -190,3 +194,25 @@ def spec():
  
  
  
+=======
+    return {
+        'type': 'function',
+        'function': {
+            'name': 'ffmpeg_frames',
+            'displayName': 'FFmpeg Frames',
+            'description': "2 images par plan (start/end) avec détection native frame-by-frame (MA + hystérésis), raffinement natif si dispo, debug complet.",
+            'parameters': {
+                'type': 'object',
+                'properties': {
+                    'operation': { 'type': 'string', 'enum': ['extract_frames'] },
+                    'path': { 'type': 'string', 'description': 'Chemin de la vidéo sous docs/video/' },
+                    'output_dir': { 'type': 'string', 'description': 'Dossier de sortie (optionnel)' },
+                    'overwrite': { 'type': 'boolean', 'default': True }
+                },
+                'required': ['operation','path'],
+                'additionalProperties': False
+            }
+        }
+    }
+
+>>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
