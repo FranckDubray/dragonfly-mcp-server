@@ -38,6 +38,7 @@ Available tools (overview)
 - script_executor: sandboxed execution of Python scripts orchestrating tools
 - academic_research_super
 - ffmpeg_frames: extract images/frames with native PyAV shot detection (frame‑by‑frame), debug per‑frame similarity and exec_time_sec
+<<<<<<< HEAD
 - **imap**: universal IMAP email access (Gmail, Outlook, Yahoo, iCloud, Infomaniak, custom servers) with multi-account support
 
 ## IMAP Tool
@@ -145,6 +146,15 @@ Spec JSON location and naming
 - The `function.name` must match the Python tool package/module name exposed by the server.
 - Example Python adapter to load JSON spec:
 
+=======
+- discord_webhook: publish and manage articles as Discord Embeds via webhook; supports CRUD operations (create/update/upsert/delete/get/list) with SQLite persistence, automatic content splitting for long messages
+
+Spec JSON location and naming
+- Location: src/tool_specs/<tool_name>.json
+- The `function.name` must match the Python tool package/module name exposed by the server.
+- Example Python adapter to load JSON spec:
+
+>>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
   def spec():
       import json, os
       here = os.path.dirname(__file__)
@@ -160,7 +170,12 @@ Adding a new tool (required steps)
 5) Start the server and GET /tools to see the tool registered.
 
 Notes
+<<<<<<< HEAD
 - Tests and examples are recommended but kept outside the repo's ignored data paths (e.g., not under docs/ unless explicitly whitelisted).
 - Do not commit user data or runtime outputs; use chrooted, ignored folders.
 
  
+=======
+- Tests and examples are recommended but kept outside the repo’s ignored data paths (e.g., not under docs/ unless explicitly whitelisted).
+- Do not commit user data or runtime outputs; use chrooted, ignored folders.
+>>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550

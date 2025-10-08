@@ -18,6 +18,9 @@ script_executor/
 # Virtual environments
 venv/
 .venv/
+<<<<<<< HEAD
 
 # IMAP tool data (credentials, attachments, cache)
 files/imap/
+=======
+>>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
