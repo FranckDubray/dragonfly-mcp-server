@@ -1,3 +1,34 @@
+Metadata-Version: 2.4
+Name: dragonfly-mcp-server
+Version: 1.0.0
+Summary: Dragonfly MCP Server (FastAPI)
+Author-email: MCP Developer <dev@example.com>
+License: MIT
+Project-URL: Homepage, https://github.com/FranckDubray/dragonfly-mcp-server
+Project-URL: Repository, https://github.com/FranckDubray/dragonfly-mcp-server.git
+Project-URL: Issues, https://github.com/FranckDubray/dragonfly-mcp-server/issues
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi>=0.104.0
+Requires-Dist: uvicorn[standard]>=0.24.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: requests>=2.28.0
+Requires-Dist: beautifulsoup4>=4.12.0
+Requires-Dist: pypdf>=4.2.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Requires-Dist: httpx>=0.24.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: isort>=5.12.0; extra == "dev"
+Requires-Dist: flake8>=6.0.0; extra == "dev"
+
 
 
 
@@ -139,9 +170,8 @@ Détails étendus: [src/README.md](./src/README.md)
 - `reddit_intelligence`
 - `universal_doc_scraper`
 - `script_executor`: exécution de scripts Python sandboxés orchestrant des tools
-- `ffmpeg_frames`: extraction d'images/frames d'une vidéo via FFmpeg
+- `ffmpeg_frames`: extraction d’images/frames d’une vidéo via FFmpeg
 - `academic_research_super`: pipeline avancé de recherche académique (agrégation, scraping, synthèse)
-- `discord_webhook`: publication et gestion d'articles sur Discord via webhook (CRUD avec persistance SQLite)
 
 Specs JSON (OpenAI tools) correspondantes dans `src/tool_specs/`.
 

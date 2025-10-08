@@ -36,6 +36,7 @@ Available tools (overview)
 - script_executor: sandboxed execution of Python scripts orchestrating tools
 - academic_research_super
 - ffmpeg_frames: extract images/frames with native PyAV shot detection (frame‑by‑frame), debug per‑frame similarity and exec_time_sec
+- discord_webhook: publish and manage articles as Discord Embeds via webhook; supports CRUD operations (create/update/upsert/delete/get/list) with SQLite persistence, automatic content splitting for long messages
 
 Spec JSON location and naming
 - Location: src/tool_specs/<tool_name>.json
