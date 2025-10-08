@@ -3,71 +3,607 @@ CONTROL_HTML = '''<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MCP Server Control</title>
+    <title>🐉 Dragonfly MCP Control</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        .header { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .tool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 20px; }
-        .tool-card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .tool-title { font-size: 1.2em; font-weight: bold; margin-bottom: 10px; color: #333; }
-        .tool-description { color: #666; margin-bottom: 15px; font-size: 0.9em; }
-        .param-group { margin-bottom: 15px; }
-        .param-label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; font-size: 0.9em; }
-        .param-input, .param-select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 0.9em; }
-        .param-select { background: white; cursor: pointer; }
-        .param-select:focus, .param-input:focus { border-color: #007bff; outline: none; box-shadow: 0 0 0 2px rgba(0,123,255,0.25); }
-        .param-help { font-size: 0.8em; color: #888; margin-top: 2px; line-height: 1.3; }
-        .execute-btn { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 1em; margin-top: 10px; }
-        .execute-btn:hover { background: #0056b3; }
-        .result-area { margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px; min-height: 20px; border: 1px solid #e9ecef; font-family: monospace; font-size: 0.85em; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
-        .error { background: #f8d7da; border-color: #f5c6cb; color: #721c24; }
-        .success { background: #d4edda; border-color: #c3e6cb; color: #155724; }
-        .status { margin-bottom: 20px; padding: 10px; border-radius: 4px; }
-        .loading { opacity: 0.6; pointer-events: none; }
-        .enum-options { font-size: 0.75em; color: #007bff; margin-top: 2px; font-style: italic; }
-        .required-mark { color: #dc3545; font-weight: bold; }
-        .reload-notice { background: #d1ecf1; border-color: #bee5eb; color: #0c5460; margin-bottom: 10px; padding: 8px 12px; border-radius: 4px; font-size: 0.85em; }
-        .auto-reload-status { background: #d4edda; border-color: #c3e6cb; color: #155724; margin-bottom: 10px; padding: 8px 12px; border-radius: 4px; font-size: 0.85em; }
-        .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.75em; background: #eee; color: #333; margin-left: 8px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --sidebar-width: 280px;
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --bg-main: #ffffff;
+            --bg-sidebar: #f8fafc;
+            --bg-hover: #f1f5f9;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border: #e2e8f0;
+            --shadow: 0 1px 3px rgba(0,0,0,0.1);
+            --shadow-lg: 0 10px 25px rgba(0,0,0,0.15);
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        /* Layout principal */
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .sidebar-header {
+            padding: 24px 20px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        
+        .subtitle {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .search-box {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s;
+        }
+        
+        .search-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        
+        .tools-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0;
+        }
+        
+        .tool-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .tool-item:hover {
+            background: var(--bg-hover);
+        }
+        
+        .tool-item.active {
+            background: var(--bg-main);
+            border-left-color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .tool-icon {
+            font-size: 18px;
+            width: 24px;
+            text-align: center;
+        }
+        
+        .tool-name {
+            flex: 1;
+            font-size: 14px;
+        }
+        
+        .tool-badge {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: var(--border);
+            color: var(--text-secondary);
+        }
+        
+        .sidebar-footer {
+            padding: 12px 16px;
+            border-top: 1px solid var(--border);
+        }
+        
+        .config-btn {
+            width: 100%;
+            padding: 10px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        .config-btn:hover {
+            background: var(--primary-hover);
+        }
+        
+        /* Zone principale */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .main-header {
+            padding: 20px 32px;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-main);
+        }
+        
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 16px;
+            background: #f0f9ff;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #0369a1;
+        }
+        
+        .status-bar.success { background: #f0fdf4; color: #15803d; }
+        .status-bar.error { background: #fef2f2; color: #b91c1c; }
+        
+        .main-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 32px;
+        }
+        
+        .tool-view {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .tool-header {
+            margin-bottom: 32px;
+        }
+        
+        .tool-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .tool-description {
+            font-size: 15px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        
+        /* Formulaire */
+        .form-section {
+            background: var(--bg-main);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+        
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+        
+        .required-mark {
+            color: var(--error);
+            margin-left: 2px;
+        }
+        
+        .form-input, .form-select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        
+        .form-select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M10.293 3.293L6 7.586 1.707 3.293A1 1 0 00.293 4.707l5 5a1 1 0 001.414 0l5-5a1 1 0 10-1.414-1.414z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 36px;
+        }
+        
+        .form-help {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            line-height: 1.4;
+        }
+        
+        .enum-hint {
+            font-size: 12px;
+            color: var(--primary);
+            margin-top: 4px;
+            font-style: italic;
+        }
+        
+        .execute-btn {
+            width: 100%;
+            padding: 14px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: var(--shadow);
+        }
+        
+        .execute-btn:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .execute-btn:active {
+            transform: translateY(0);
+        }
+        
+        .execute-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        /* Résultat */
+        .result-section {
+            background: var(--bg-sidebar);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .result-header {
+            padding: 16px 20px;
+            background: var(--bg-main);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .result-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .result-body {
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--text-primary);
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .result-body.success {
+            background: #f0fdf4;
+            color: #15803d;
+        }
+        
+        .result-body.error {
+            background: #fef2f2;
+            color: #b91c1c;
+        }
+        
+        .result-body.empty {
+            text-align: center;
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-style: italic;
+        }
+        
+        /* Modal Config */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: var(--bg-main);
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+        
+        .modal-title {
+            font-size: 24px;
+            font-weight: 700;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        
+        .close-btn:hover {
+            background: var(--bg-hover);
+        }
+        
+        .config-status {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .config-status.success {
+            background: #f0fdf4;
+            color: #15803d;
+        }
+        
+        .config-status.error {
+            background: #fef2f2;
+            color: #b91c1c;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        
+        .badge.present {
+            background: #dcfce7;
+            color: #15803d;
+        }
+        
+        .badge.absent {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+        
+        /* Loading */
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: var(--text-secondary);
+        }
+        
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+        
+        .empty-state-text {
+            font-size: 16px;
+        }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: -280px;
+                height: 100vh;
+                z-index: 100;
+                transition: left 0.3s;
+            }
+            
+            .sidebar.mobile-open {
+                left: 0;
+            }
+            
+            .main-body {
+                padding: 20px;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🔧 MCP Server Control Panel</h1>
-            <div id="status" class="status">Loading tools...</div>
-            <div class="auto-reload-status">🔄 Auto-reload enabled - New tools detected automatically!</div>
-            <button onclick="reloadTools()" class="execute-btn">🔄 Force Reload Tools</button>
-            <div class="reload-notice">💡 Form values are preserved when reloading tools</div>
-        </div>
-
-        <div class="tool-card">
-            <div class="tool-title">🔑 Secrets & Tokens</div>
-            <div class="tool-description">Saisissez vos tokens (ils seront stockés dans un fichier .env local non versionné). Les valeurs existantes ne sont pas affichées.</div>
-            <div class="config-grid">
-                <div class="param-group">
-                    <label class="param-label">GitHub Token (GITHUB_TOKEN) <span id="ghBadge" class="badge">checking...</span></label>
-                    <input id="GITHUB_TOKEN" type="password" class="param-input" placeholder="nouvelle valeur (laisser vide pour ne pas changer)">
-                </div>
-                <div class="param-group">
-                    <label class="param-label">AI Portal Token (AI_PORTAL_TOKEN) <span id="aiBadge" class="badge">checking...</span></label>
-                    <input id="AI_PORTAL_TOKEN" type="password" class="param-input" placeholder="nouvelle valeur (laisser vide pour ne pas changer)">
-                </div>
-                <div class="param-group" style="grid-column: 1 / span 2;">
-                    <label class="param-label">LLM Endpoint (LLM_ENDPOINT)</label>
-                    <input id="LLM_ENDPOINT" type="text" class="param-input" placeholder="https://... (optionnel)">
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">🐉 Dragonfly</div>
+                <div class="subtitle">MCP Control Panel</div>
+            </div>
+            
+            <div class="search-box">
+                <input type="text" id="searchInput" class="search-input" placeholder="🔍 Search tools...">
+            </div>
+            
+            <div class="tools-list" id="toolsList">
+                <!-- Tools seront injectés ici -->
+            </div>
+            
+            <div class="sidebar-footer">
+                <button class="config-btn" onclick="openConfig()">🔑 Configuration</button>
+            </div>
+        </aside>
+        
+        <!-- Zone principale -->
+        <main class="main-content">
+            <div class="main-header">
+                <div id="statusBar" class="status-bar">
+                    ⏳ Loading tools...
                 </div>
             </div>
-            <button onclick="saveConfig()" class="execute-btn">💾 Enregistrer la configuration</button>
-            <div id="configStatus" class="status" style="margin-top:10px;"></div>
-        </div>
-
-        <div id="toolGrid" class="tool-grid">
-            <!-- Tools will be loaded here -->
+            
+            <div class="main-body">
+                <div id="mainView">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🔧</div>
+                        <div class="empty-state-text">Select a tool from the sidebar to get started</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Modal Config -->
+    <div id="configModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">🔑 Configuration</h2>
+                <button class="close-btn" onclick="closeConfig()">×</button>
+            </div>
+            
+            <div id="configStatus" class="config-status" style="display: none;"></div>
+            
+            <div class="form-section">
+                <div class="form-group">
+                    <label class="form-label">
+                        GitHub Token (GITHUB_TOKEN)
+                        <span id="ghBadge" class="badge">checking...</span>
+                    </label>
+                    <input id="GITHUB_TOKEN" type="password" class="form-input" placeholder="New value (leave empty to keep current)">
+                    <div class="form-help">Personal access token for GitHub API operations</div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">
+                        AI Portal Token (AI_PORTAL_TOKEN)
+                        <span id="aiBadge" class="badge">checking...</span>
+                    </label>
+                    <input id="AI_PORTAL_TOKEN" type="password" class="form-input" placeholder="New value (leave empty to keep current)">
+                    <div class="form-help">Token for LLM orchestration (call_llm tool)</div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">LLM Endpoint (LLM_ENDPOINT)</label>
+                    <input id="LLM_ENDPOINT" type="text" class="form-input" placeholder="https://...">
+                    <div class="form-help">Custom LLM endpoint URL (optional)</div>
+                </div>
+            </div>
+            
+            <button onclick="saveConfig()" class="execute-btn">💾 Save Configuration</button>
         </div>
     </div>
+    
     <script src="/control.js"></script>
 </body>
 </html>'''
