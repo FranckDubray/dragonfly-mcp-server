@@ -1,3 +1,0 @@
-app_core
-tool_specs
-tools

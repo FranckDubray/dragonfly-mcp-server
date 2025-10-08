@@ -1,10 +1,3 @@
-
-
-
-<<<<<<< HEAD
-
-=======
->>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
 <div align="center">
 
 <!-- Local logo for reliability (placed in assets/) -->
@@ -14,11 +7,7 @@
 
 Serveur MCP multi‑outils, rapide et extensible, propulsé par FastAPI. Découverte automatique des tools, exécution sécurisée, orchestrateur LLM avancé, et panneau de contrôle web.
 
-<<<<<<< HEAD
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
-=======
-[![License: MIT](./LICENSE)](./LICENSE)
->>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB)
 ![FastAPI](https://img.shields.io/badge/FastAPI-%F0%9F%9A%80-009688)
 ![Status](https://img.shields.io/badge/Status-Active-success)
@@ -42,18 +31,11 @@ Dragonfly MCP Server expose des « tools » (au format OpenAI tools) via des end
 - [Fonctionnalités](#-fonctionnalités)
 - [Demo rapide](#-demo-rapide)
 - [Installation](#-installation)
-- [Démarrage](#-démarrage)
-- [Prerequis Python](#-prerequis-python)
-- [Endpoints](#-endpoints)
 - [Outils inclus](#-outils-inclus)
-- [Orchestrateur LLM (call_llm)](#-orchestrateur-llm-call_llm)
 - [Configuration](#-configuration)
 - [Sécurité](#-sécurité)
 - [Structure du projet](#-structure-du-projet)
-- [Migration notes](#-migration-notes)
 - [Pour les LLM « développeurs »](#-pour-les-llm-développeurs)
-- [Feuille de route](#-feuille-de-route)
-- [Migration notes](#-migration-notes)
 - [Licence](#-licence)
 
 ---
@@ -63,25 +45,20 @@ Dragonfly MCP Server expose des « tools » (au format OpenAI tools) via des end
 - JSON « sûr »: grands entiers, NaN/Infinity sanitisés
 - Orchestration LLM streaming en 2 phases (avec cumul d'usage multi‑niveaux)
 - Panneau de contrôle web (`/control`)
-<<<<<<< HEAD
-- Outils prêts à l'emploi: Git/GitHub, SQLite, PDF, Date/Heure, Math (HP), GitBook, Reddit, Universal Doc Scraper, Script Executor, FFmpeg frames, Academic Research, **IMAP email (multi-comptes)**, etc.
-=======
-- Outils prêts à l’emploi: Git/GitHub, SQLite, PDF, Date/Heure, Math (HP), GitBook, Reddit, Universal Doc Scraper, Script Executor, FFmpeg frames, Academic Research, etc.
->>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
+- **15 tools prêts à l'emploi** couvrant Git, bases de données, PDF, IA, emails, Discord, calcul, etc.
 
 ---
 
 ## ⚡ Demo rapide
-Exécuter un tool en une requête:
 
+### Exécuter un tool de base
 ```bash
 curl -s -X POST http://127.0.0.1:8000/execute \
  -H 'Content-Type: application/json' \
  -d '{"tool":"date","params":{"operation":"today"}}'
 ```
 
-Lire les emails non lus (IMAP):
-
+### Lire les emails non lus (IMAP multi-comptes)
 ```bash
 curl -s -X POST http://127.0.0.1:8000/execute \
  -H 'Content-Type: application/json' \
@@ -97,27 +74,21 @@ curl -s -X POST http://127.0.0.1:8000/execute \
  }'
 ```
 
-Orchestrer un LLM (réponse texte) :
-
+### Orchestrer un LLM
 ```bash
 curl -s -X POST http://127.0.0.1:8000/execute \
  -H 'Content-Type: application/json' \
  -d '{
    "tool":"call_llm",
-   "params":{ "message":"Dis bonjour en français.", "model":"gpt-4o" }
+   "params":{"message":"Dis bonjour en français.","model":"gpt-4o"}
  }'
-```
-
-Lister les tools disponibles:
-
-```bash
-curl -s http://127.0.0.1:8000/tools
 ```
 
 ---
 
 ## 🛠 Installation
-Prérequis: Python 3.11 ou 3.12. Vérifiez avec: `python3 --version`. Si votre version est < 3.11, installez via pyenv/conda ou depuis python.org.
+
+**Prérequis:** Python 3.11 ou 3.12
 
 ```bash
 git clone https://github.com/FranckDubray/dragonfly-mcp-server.git
@@ -128,7 +99,7 @@ pip install -U pip
 pip install -e ".[dev]"
 ```
 
-## ▶️ Démarrage
+**Démarrage:**
 - Linux/macOS: `./scripts/dev.sh`
 - Windows: `scripts\dev.ps1`
 
@@ -138,223 +109,210 @@ Panneau de contrôle: http://127.0.0.1:8000/control
 
 ---
 
-## 🐍 Prerequis Python
-- Version minimale recommandée: Python 3.11 ou 3.12.
-- Le projet utilise des fonctionnalités modernes (annotations/typing, comportement de json/ints, etc.) pouvant échouer avec des versions trop anciennes.
-- Les scripts de démarrage vérifient automatiquement la version installée et abortent si la version est trop ancienne.
+## 🧪 Outils inclus (15 tools)
 
-> Astuce: utilisez pyenv pour installer la bonne version, ou conda/mamba.
+### 🤖 Intelligence & Orchestration
 
----
+#### **call_llm** — Orchestrateur LLM avancé
+- 2 phases: tools → texte final
+- Usage cumulatif automatique
+- Support streaming
+- Paramètres: `message`, `model`, `tool_names`, `promptSystem`
 
-## 🔗 Endpoints
-- `GET /tools` — liste des tools (spec incluse). Ajouter `?reload=1` pour forcer un rescannage.
-- `POST /execute` — exécuter un tool: `{ tool: string, params: object }`
-- `GET /config` / `POST /config` — lire/écrire la configuration (.env)
-- `GET /control` — panneau HTML
-- `GET /control.js` — script du panneau
+#### **academic_research_super** — Recherche académique
+- Pipeline complet: agrégation, scraping, synthèse
+- Sources multiples (arXiv, PubMed, etc.)
+- Export formaté
 
-Détails étendus: [src/README.md](./src/README.md)
-
----
-
-## 🧪 Outils inclus
-- `call_llm`: orchestrateur LLM (2 phases, usage cumulatif)
-- `math`: calcul numérique/HP, symbolique, algèbre linéaire (+ extensions), solveurs, séries, nombres premiers, sommes
-- `date`: now/today, diff, add, format, parse, weekday, week_number
-- `git`: GitHub API + Git local (opérations sécurisées)
-- `gitbook`: discovery/lecture/search GitBook
-- `sqlite_db`: SQLite chroot (bases sous `<projet>/sqlite3`)
-- `pdf_search` / `pdf2text`
-- `reddit_intelligence`
-- `universal_doc_scraper`
-- `script_executor`: exécution de scripts Python sandboxés orchestrant des tools
-<<<<<<< HEAD
-- `ffmpeg_frames`: extraction d'images/frames d'une vidéo via FFmpeg (détection native PyAV, debug de similarité, exec_time_sec)
-- `academic_research_super`: pipeline avancé de recherche académique (agrégation, scraping, synthèse)
-- `imap`: **accès universel aux emails via IMAP** (Gmail, Outlook, Yahoo, iCloud, Infomaniak, serveurs custom) avec gestion multi-comptes
-=======
-- `ffmpeg_frames`: extraction d'images/frames d'une vidéo via FFmpeg
-- `academic_research_super`: pipeline avancé de recherche académique (agrégation, scraping, synthèse)
-- `discord_webhook`: publication et gestion d'articles sur Discord via webhook (CRUD avec persistance SQLite)
->>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
-
-Specs JSON (OpenAI tools) correspondantes dans `src/tool_specs/`.
+#### **script_executor** — Exécution de scripts Python
+- Sandbox sécurisé
+- Orchestration de tools
+- Isolation complète
 
 ---
 
-## 📧 Tool IMAP (multi-comptes)
+### 📧 Communication & Collaboration
 
-Le tool IMAP permet de gérer plusieurs comptes email simultanément via IMAP.
+#### **imap** — Emails multi-comptes ⭐ NOUVEAU
+- **6 providers**: Gmail, Outlook, Yahoo, iCloud, Infomaniak, Custom
+- **Multi-comptes simultanés** via variables d'env par provider
+- **13 opérations**: connect, list_folders, search, get, download, mark read/unread (batch), move (batch), spam, delete (batch)
+- **Sécurité**: credentials uniquement en `.env`, jamais en paramètres
+- Configuration:
+  ```bash
+  IMAP_GMAIL_EMAIL=user@gmail.com
+  IMAP_GMAIL_PASSWORD=app_password
+  IMAP_INFOMANIAK_EMAIL=contact@domain.com
+  IMAP_INFOMANIAK_PASSWORD=password
+  ```
 
-### Providers supportés
-- **Gmail** : `provider: "gmail"`
-- **Outlook** : `provider: "outlook"`
-- **Yahoo** : `provider: "yahoo"`
-- **iCloud** : `provider: "icloud"`
-- **Infomaniak** : `provider: "infomaniak"`
-- **Custom** : `provider: "custom"` (serveur personnalisé)
-
-### Configuration multi-comptes
-
-Variables d'environnement par provider (dans `.env`) :
-
-```bash
-# Gmail
-IMAP_GMAIL_EMAIL=votre.email@gmail.com
-IMAP_GMAIL_PASSWORD=votre_mot_de_passe
-
-# Infomaniak
-IMAP_INFOMANIAK_EMAIL=contact@votredomaine.com
-IMAP_INFOMANIAK_PASSWORD=mot_de_passe
-
-# Outlook
-IMAP_OUTLOOK_EMAIL=votre@outlook.com
-IMAP_OUTLOOK_PASSWORD=mot_de_passe
-
-# Custom (serveur personnalisé)
-IMAP_EMAIL=user@example.com
-IMAP_PASSWORD=password
-IMAP_SERVER=mail.example.com
-IMAP_PORT=993
-IMAP_USE_SSL=true
-```
-
-### Opérations disponibles
-- `connect` : tester la connexion
-- `list_folders` : lister les dossiers IMAP
-- `search_messages` : rechercher des emails (par date, expéditeur, sujet, statut lu/non lu, etc.)
-- `get_message` : récupérer un email complet
-- `download_attachments` : télécharger les pièces jointes
-- `mark_read` / `mark_unread` : marquer comme lu/non lu
-- `mark_read_batch` / `mark_unread_batch` : opérations en lot
-- `move_message` / `move_messages_batch` : déplacer vers un autre dossier
-- `mark_spam` : marquer comme spam
-- `delete_message` / `delete_messages_batch` : supprimer (avec expunge optionnel)
-
-### Exemples
-
-**Lister les emails non lus (Gmail) :**
-```bash
-curl -X POST http://127.0.0.1:8000/execute \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "tool":"imap",
-    "params":{
-      "provider":"gmail",
-      "operation":"search_messages",
-      "folder":"inbox",
-      "query":{"unseen":true},
-      "max_results":20
-    }
-  }'
-```
-
-**Marquer des emails comme lus (Infomaniak) :**
-```bash
-curl -X POST http://127.0.0.1:8000/execute \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "tool":"imap",
-    "params":{
-      "provider":"infomaniak",
-      "operation":"mark_read_batch",
-      "folder":"inbox",
-      "message_ids":["123","456","789"]
-    }
-  }'
-```
-
-**Sécurité :**
-- ✅ Aucun credential n'est passé en paramètre du tool
-- ✅ Tout est lu depuis `.env` via le paramètre `provider`
-- ✅ Passwords masqués dans les logs
+#### **discord_webhook** — Publication Discord
+- CRUD complet avec persistance SQLite
+- Publication d'articles (Embeds)
+- Split automatique des longs messages
+- Gestion des webhooks multiples
 
 ---
 
-## 🧠 Orchestrateur LLM (`call_llm`)
-- 1er stream (avec tools): collecte des `tool_calls`, exécution côté serveur
-- 2e stream (sans tools): génération du texte final
-- Usage cumulatif: additionne automatiquement les usages des 2 streams et de tous les appels imbriqués (ex: A → B → sonar)
-- Paramètres clés: `message`, `model`, `tool_names` (liste des tools exposés au modèle), `promptSystem`, `debug`
+### 🔧 Développement & Git
+
+#### **git** — Git unifié (GitHub API + local)
+- **GitHub API**: create_repo, add/delete files, branches, commits, diff, merge
+- **Git local**: status, fetch, pull, rebase, branch_create, checkout, commit, push, log
+- **Sécurité**: opérations chroot au projet
+- Support des conflits avec hints
+
+#### **gitbook** — GitBook discovery/search
+- Discovery automatique de GitBook sites
+- Recherche full-text
+- Extraction de contenu
+
+---
+
+### 🗄️ Bases de données & Storage
+
+#### **sqlite_db** — SQLite chroot
+- Bases sous `<projet>/sqlite3`
+- Exécution sécurisée de requêtes
+- Support transactions
+- Noms de DB validés
+
+---
+
+### 📄 Documents & PDF
+
+#### **pdf_search** — Recherche dans PDF
+- Recherche par mots-clés
+- Extraction de contexte
+- Support multi-pages
+
+#### **pdf2text** — Extraction texte PDF
+- Conversion PDF → texte
+- Préservation de la structure
+- Support batch
+
+#### **universal_doc_scraper** — Scraper web universel
+- Extraction intelligente de contenu
+- Support multi-formats
+- Nettoyage automatique
+
+---
+
+### 🎬 Média & FFmpeg
+
+#### **ffmpeg_frames** — Extraction de frames vidéo
+- **Détection native PyAV** (frame-by-frame)
+- Moving average + hysteresis + NMS + refinement
+- Debug per-frame: temps, diff, similarité%
+- Haute précision sur vidéos compressées (YouTube)
+- Export: images + timestamps + debug.json
+
+---
+
+### 🔢 Calcul & Math
+
+#### **math** — Calcul avancé
+- **Numérique**: arithmétique, trig, log, exp, sqrt
+- **High-precision**: mpmath pour grandes précisions
+- **Symbolique**: dérivées, intégrales, simplification (sympy)
+- **Algèbre linéaire**: matrices, vecteurs, eigenvalues, SVD, LU, QR
+- **Probabilités**: stats, distributions (normale, Poisson, binomiale, etc.)
+- **Polynômes**: racines, factorisation
+- **Solveurs**: équations, systèmes, optimisation
+- **Nombres premiers**: nth_prime, factorisation, Euler phi
+- **Séries**: sommes finies/infinies, produits
+
+#### **date** — Manipulation de dates
+- Opérations: now, today, diff, add, format, parse, weekday, week_number
+- Timezone aware
+- Formats multiples
+
+---
+
+### 🌐 Social Media
+
+#### **reddit_intelligence** — Reddit scraping/analysis
+- Extraction de posts/comments
+- Analyse de sentiment
+- Trending topics
 
 ---
 
 ## ⚙️ Configuration
-Variables principales:
-- Réseau/serveur: `MCP_HOST`, `MCP_PORT`, `LOG_LEVEL`
-- Exécution: `EXECUTE_TIMEOUT_SEC`, `AUTO_RELOAD_TOOLS`, `RELOAD`
-- LLM: `AI_PORTAL_TOKEN`, `LLM_ENDPOINT`, `LLM_REQUEST_TIMEOUT_SEC`, `LLM_RETURN_DEBUG`, `MCP_URL`
-- JSON/entiers: `BIGINT_AS_STRING`, `BIGINT_STR_THRESHOLD`, `PY_INT_MAX_STR_DIGITS`
-- IMAP: `IMAP_<PROVIDER>_EMAIL`, `IMAP_<PROVIDER>_PASSWORD` (ex: `IMAP_GMAIL_EMAIL`)
-- Divers: `GITHUB_TOKEN`
 
-Configurer via `/control` (recommandé) ou via `.env`.
+Variables principales (`.env` ou `/control`):
+
+```bash
+# Réseau
+MCP_HOST=127.0.0.1
+MCP_PORT=8000
+
+# LLM
+AI_PORTAL_TOKEN=your_token
+LLM_ENDPOINT=https://api.example.com
+
+# IMAP (multi-comptes)
+IMAP_GMAIL_EMAIL=user@gmail.com
+IMAP_GMAIL_PASSWORD=app_password
+IMAP_INFOMANIAK_EMAIL=contact@domain.com
+IMAP_INFOMANIAK_PASSWORD=password
+
+# Git
+GITHUB_TOKEN=ghp_xxxxx
+
+# Divers
+EXECUTE_TIMEOUT_SEC=300
+AUTO_RELOAD_TOOLS=1
+```
 
 ---
 
 ## 🔒 Sécurité
-- SQLite chroot: DBs sous `<projet>/sqlite3` (noms validés)
-- Git local: opérations limitées à la racine du projet
-<<<<<<< HEAD
-- `script_executor`: sandbox stricte (pas d'accès non autorisé)
-- **IMAP**: credentials en `.env` uniquement, jamais en paramètres d'appel
-=======
-- `script_executor`: sandbox stricte (pas d’accès non autorisé)
->>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
-- Safe JSON: sérialisation robuste (NaN/Infinity, très grands entiers)
+
+- **SQLite chroot**: DBs sous `<projet>/sqlite3`
+- **Git local**: opérations limitées à la racine projet
+- **Script executor**: sandbox stricte
+- **IMAP**: credentials en `.env` uniquement, jamais en paramètres
+- **Safe JSON**: NaN/Infinity/grands entiers sanitisés
 
 ---
 
 ## 🗂 Structure du projet
+
 ```
 src/
-  app_factory.py     # FastAPI app, endpoints, auto-reload, Safe JSON
-  server.py          # Entrée (Uvicorn) — crée l'app et lance le serveur
-  config.py          # .env (load/save), masquage des secrets
-  tools/             # Tous les tools (run() + spec())
-    _call_llm/       # Orchestrateur LLM: core, payloads, streaming, http_client...
-    _math/           # Arithmétique, symbolique, proba, algèbre linéaire, etc.
-    _ffmpeg/         # Utilitaires FFmpeg (frames, conversion)
-    _script/         # Sandbox du ScriptExecutor
-    _imap/           # IMAP: presets, connection, operations, parsers, utils
-  tool_specs/        # Specs JSON canoniques (OpenAI tools)
-  README.md          # Doc API interne (endpoints + composants)
+  app_factory.py     # FastAPI app, endpoints, auto-reload
+  server.py          # Entrée Uvicorn
+  config.py          # .env (load/save), masquage secrets
+  tools/             # 15 tools (run() + spec())
+    _call_llm/       # Orchestrateur LLM
+    _math/           # Modules calcul
+    _ffmpeg/         # FFmpeg utils
+    _git/            # Git local + GitHub
+    _imap/           # IMAP multi-comptes
+    _discord_webhook/# Discord integration
+    _script/         # Sandbox ScriptExecutor
+    # ... + tools simples (date, pdf, reddit, etc.)
+  tool_specs/        # Specs JSON canoniques
 ```
-
----
-
-## 🧭 Migration notes
-<<<<<<< HEAD
-- Python 3.11+ requis (scripts et metadata l'imposent).
-- Les scripts de dev chargent maintenant `.env` avant l'install et le lancement.
-=======
-- Python 3.11+ requis (scripts et metadata l’imposent).
-- Les scripts de dev chargent maintenant `.env` avant l’install et le lancement.
->>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
-- Le dossier top-level `script_executor/` est ignoré par Git: déplacez vos scripts utilisateurs dans un dossier hors repo si besoin.
-- Pour les fonctionnalités math avancées, installez `sympy`; pour haute précision, `mpmath` (optionnel).
 
 ---
 
 ## 👩‍💻 Pour les LLM « développeurs »
-Vous modifiez/étendez le dépôt ? Lisez ce guide:
-- [LLM_DEV_GUIDE.md](./LLM_DEV_GUIDE.md)
-  - Conventions, invariants, checklists, pièges à éviter
-  - Règles de spec JSON (parameters = object, arrays → items)
-  - Détails sur `call_llm` (streaming, usage cumulatif) et le JSON sûr
 
----
+Guide complet: [LLM_DEV_GUIDE.md](./LLM_DEV_GUIDE.md)
 
-## 🗺️ Feuille de route (extraits)
-- [ ] Tests automatisés (tools + orchestrateur)
-- [ ] Exemples interactifs dans `/control`
-- [ ] Intégration d'auth facultative sur les endpoints sensibles
-- [ ] Export de métriques (Prometheus)
-
-Contributions bienvenues — issues & PRs !
+- Conventions, invariants, checklists
+- Règles spec JSON (parameters = object, arrays → items)
+- Détails `call_llm` (streaming, usage cumulatif)
+- Safe JSON
 
 ---
 
 ## 📄 Licence
+
 MIT — voir [LICENSE](./LICENSE)
+
+---
+
+**Contributions bienvenues** — Issues & PRs sur [GitHub](https://github.com/FranckDubray/dragonfly-mcp-server) !
