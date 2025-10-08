@@ -41,7 +41,7 @@ Requires-Dist: flake8>=6.0.0; extra == "dev"
 
 Serveur MCP multi‑outils, rapide et extensible, propulsé par FastAPI. Découverte automatique des tools, exécution sécurisée, orchestrateur LLM avancé, et panneau de contrôle web.
 
-[![License: MIT](./LICENSE)](./LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB)
 ![FastAPI](https://img.shields.io/badge/FastAPI-%F0%9F%9A%80-009688)
 ![Status](https://img.shields.io/badge/Status-Active-success)
@@ -73,9 +73,9 @@ Dragonfly MCP Server expose des « tools » (au format OpenAI tools) via des end
 - [Configuration](#-configuration)
 - [Sécurité](#-sécurité)
 - [Structure du projet](#-structure-du-projet)
+- [Migration notes](#-migration-notes)
 - [Pour les LLM « développeurs »](#-pour-les-llm-développeurs)
 - [Feuille de route](#-feuille-de-route)
-- [Migration notes](#-migration-notes)
 - [Licence](#-licence)
 
 ---
@@ -170,7 +170,7 @@ Détails étendus: [src/README.md](./src/README.md)
 - `reddit_intelligence`
 - `universal_doc_scraper`
 - `script_executor`: exécution de scripts Python sandboxés orchestrant des tools
-- `ffmpeg_frames`: extraction d’images/frames d’une vidéo via FFmpeg
+- `ffmpeg_frames`: extraction d’images/frames d’une vidéo via FFmpeg (détection native PyAV, debug de similarité, exec_time_sec)
 - `academic_research_super`: pipeline avancé de recherche académique (agrégation, scraping, synthèse)
 
 Specs JSON (OpenAI tools) correspondantes dans `src/tool_specs/`.

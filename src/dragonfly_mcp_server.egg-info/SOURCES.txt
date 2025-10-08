@@ -14,6 +14,7 @@ src/tools/date.py
 src/tools/ffmpeg_frames.py
 src/tools/git.py
 src/tools/gitbook.py
+src/tools/imap.py
 src/tools/math.py
 src/tools/pdf2text.py
 src/tools/pdf_search.py
@@ -50,6 +51,12 @@ src/tools/_gitbook/content.py
 src/tools/_gitbook/discovery.py
 src/tools/_gitbook/sitemap.py
 src/tools/_gitbook/utils.py
+src/tools/_imap/__init__.py
+src/tools/_imap/connection.py
+src/tools/_imap/operations.py
+src/tools/_imap/parsers.py
+src/tools/_imap/presets.py
+src/tools/_imap/utils.py
 src/tools/_math/__init__.py
 src/tools/_math/advanced.py
 src/tools/_math/arithmetic.py
