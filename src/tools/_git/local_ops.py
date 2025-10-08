@@ -33,6 +33,68 @@ class GitLocalOps:
             "errors": [e for e in [head.get("stderr"), por.get("stderr"), rem.get("stderr")] if e],
         }
 
+    def handle_fetch(self, repo_dir: Path, remote: str = "origin", prune: bool = False) -> Dict[str, Any]:
+        """Fetch updates from remote without merging"""
+        cmd = ["git", "fetch", remote]
+        if prune:
+            cmd.append("--prune")
+        res = self._run(cmd, repo_dir)
+        return {"success": res["ok"], "result": res}
+
+    def handle_pull(self, repo_dir: Path, remote: str = "origin", branch: str = None, 
+                   rebase: bool = False, ff_only: bool = False) -> Dict[str, Any]:
+        """Pull changes from remote (fetch + merge or rebase)"""
+        cmd = ["git", "pull"]
+        
+        if rebase:
+            cmd.append("--rebase")
+        if ff_only:
+            cmd.append("--ff-only")
+        
+        cmd.append(remote)
+        if branch:
+            cmd.append(branch)
+        
+        res = self._run(cmd, repo_dir)
+        result = {"success": res.get("ok", False), "result": res}
+        
+        # Check for conflicts
+        if not res.get("ok", False):
+            conflicts = self._get_conflicts(repo_dir)
+            if conflicts:
+                result["conflicts"] = conflicts
+                result["hint"] = "Resolve conflicts then run: git rebase --continue (if rebase) or git merge --continue (if merge)"
+        
+        return result
+
+    def handle_rebase(self, repo_dir: Path, branch: str = None, 
+                     continue_rebase: bool = False, abort: bool = False, skip: bool = False) -> Dict[str, Any]:
+        """Rebase current branch onto another branch"""
+        cmd = ["git", "rebase"]
+        
+        if continue_rebase:
+            cmd.append("--continue")
+        elif abort:
+            cmd.append("--abort")
+        elif skip:
+            cmd.append("--skip")
+        elif branch:
+            cmd.append(branch)
+        else:
+            return {"error": "branch parameter required (or use continue_rebase/abort/skip)"}
+        
+        res = self._run(cmd, repo_dir)
+        result = {"success": res.get("ok", False), "result": res}
+        
+        # Check for conflicts
+        if not res.get("ok", False) and not abort:
+            conflicts = self._get_conflicts(repo_dir)
+            if conflicts:
+                result["conflicts"] = conflicts
+                result["hint"] = "Resolve conflicts then run rebase with continue_rebase=true"
+        
+        return result
+
     def handle_branch_create(self, repo_dir: Path, branch_name: str, from_branch: str = None) -> Dict[str, Any]:
         if from_branch:
             chk = self._run(["git", "checkout", from_branch], repo_dir)
@@ -56,8 +118,11 @@ class GitLocalOps:
         res = self._run(["git", "commit", "-m", message], repo_dir)
         return {"success": res["ok"], "result": res}
 
-    def handle_push(self, repo_dir: Path, branch: str, remote: str = "origin", set_upstream: bool = True) -> Dict[str, Any]:
+    def handle_push(self, repo_dir: Path, branch: str, remote: str = "origin", 
+                   set_upstream: bool = True, force: bool = False) -> Dict[str, Any]:
         cmd = ["git", "push"]
+        if force:
+            cmd.append("--force-with-lease")
         if set_upstream:
             cmd += ["-u", remote, branch]
         else:
@@ -88,6 +153,29 @@ class GitLocalOps:
             result["conflicts"] = conflicts
         
         return result
+
+    def handle_log(self, repo_dir: Path, max_count: int = 10, 
+                  one_line: bool = False, graph: bool = False) -> Dict[str, Any]:
+        """Get commit history"""
+        cmd = ["git", "log", f"--max-count={max_count}"]
+        if one_line:
+            cmd.append("--oneline")
+        if graph:
+            cmd.append("--graph")
+        
+        res = self._run(cmd, repo_dir)
+        return {"success": res["ok"], "result": res}
+
+    def handle_remote_info(self, repo_dir: Path) -> Dict[str, Any]:
+        """Get remote repository information"""
+        remotes = self._run(["git", "remote", "-v"], repo_dir)
+        url = self._run(["git", "config", "--get", "remote.origin.url"], repo_dir)
+        
+        return {
+            "success": remotes["ok"],
+            "remotes": remotes.get("stdout", ""),
+            "origin_url": url.get("stdout", "").strip()
+        }
 
     def _get_conflicts(self, repo_dir: Path) -> List[str]:
         st = self._run(["git", "status", "--porcelain"], repo_dir)
