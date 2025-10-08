@@ -1,4 +1,3 @@
-
 # MCP Server Development Script (PowerShell)
 
 param(
@@ -17,10 +16,10 @@ if (-not (Test-Path "pyproject.toml")) {
 
 # Check Python version (>= 3.11)
 try {
-    $version = & python - << 'PY'
+    $version = & python -c @"
 import sys
 print(f"{sys.version_info.major}.{sys.version_info.minor}")
-PY
+"@
     if (-not $version) { throw "Python not found" }
     $parts = $version.Split('.')
     $maj = [int]$parts[0]
@@ -36,6 +35,23 @@ PY
     exit 1
 }
 
+# Create .env from .env.example if not exists
+if (-not (Test-Path ".env")) {
+    if (Test-Path ".env.example") {
+        Write-Host "📝 No .env found, creating from .env.example..." -ForegroundColor Yellow
+        Copy-Item ".env.example" ".env"
+        Write-Host "✅ Created .env from template" -ForegroundColor Green
+        Write-Host "⚠️  Please edit .env and fill in your tokens/passwords before starting" -ForegroundColor Yellow
+        Write-Host "   notepad .env" -ForegroundColor Yellow
+        $response = Read-Host "Press Enter to continue or Ctrl+C to exit and edit .env"
+    } else {
+        Write-Host "⚠️  Warning: No .env or .env.example found" -ForegroundColor Yellow
+        Write-Host "   The server will start with default values" -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "✅ Found existing .env" -ForegroundColor Green
+}
+
 # Load .env if present (export)
 if (Test-Path ".env") {
     Write-Host "🔑 Loading .env..." -ForegroundColor Yellow
@@ -45,7 +61,9 @@ if (Test-Path ".env") {
         $kv = $_.Split("=",2)
         $k = $kv[0].Trim()
         $v = $kv[1].Trim().Trim('"').Trim("'")
-        if ($k) { $env:$k = $v }
+        if ($k) { 
+            Set-Item -Path "Env:$k" -Value $v
+        }
     }
 }
 
@@ -64,43 +82,58 @@ pip install --quiet --upgrade pip
 pip install --quiet -e ".[dev]"
 
 # Optional extras (parité avec dev.sh)
-python -c "import pypdf" *> $null
+python -c "import pypdf" 2>$null
 if ($LASTEXITCODE -ne 0) {
-  Write-Host "📄 Installing pypdf (PDF support)..." -ForegroundColor Yellow
-  pip install --quiet "pypdf>=4.2.0"
+    Write-Host "📄 Installing pypdf (PDF support)..." -ForegroundColor Yellow
+    pip install --quiet "pypdf>=4.2.0"
 } else {
-  Write-Host "📄 pypdf available" -ForegroundColor Green
+    Write-Host "📄 pypdf available" -ForegroundColor Green
 }
 
-python -c "import sympy" *> $null
+python -c "import sympy" 2>$null
 if ($LASTEXITCODE -ne 0) {
-  Write-Host "∑ Installing SymPy (symbolic math)..." -ForegroundColor Yellow
-  pip install --quiet "sympy>=1.12.0"
+    Write-Host "∑ Installing SymPy (symbolic math)..." -ForegroundColor Yellow
+    pip install --quiet "sympy>=1.12.0"
 } else {
-  Write-Host "∑ SymPy available" -ForegroundColor Green
+    Write-Host "∑ SymPy available" -ForegroundColor Green
 }
 
-python -c "import requests" *> $null
+python -c "import requests" 2>$null
 if ($LASTEXITCODE -ne 0) {
-  Write-Host "🌐 Installing requests (HTTP client)..." -ForegroundColor Yellow
-  pip install --quiet "requests>=2.31.0"
+    Write-Host "🌐 Installing requests (HTTP client)..." -ForegroundColor Yellow
+    pip install --quiet "requests>=2.31.0"
 } else {
-  Write-Host "🌐 requests available" -ForegroundColor Green
+    Write-Host "🌐 requests available" -ForegroundColor Green
 }
 
-# Environment variables
-$env:MCP_HOST = $Host
-$env:MCP_PORT = $Port.ToString()
-$env:LOG_LEVEL = $LogLevel
-$env:RELOAD = "1"
-$env:AUTO_RELOAD_TOOLS = "1"
-$env:EXECUTE_TIMEOUT_SEC = "30"
+# Native video decoding requirements (PyAV + NumPy)
+python -c "import numpy" 2>$null
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "🧮 Installing NumPy..." -ForegroundColor Yellow
+    pip install --quiet "numpy>=1.23.0"
+} else {
+    Write-Host "🧮 NumPy available" -ForegroundColor Green
+}
+
+python -c "import av" 2>$null
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "🎞️  Installing PyAV (native video decode)..." -ForegroundColor Yellow
+    pip install --quiet "av>=10.0.0"
+} else {
+    Write-Host "🎞️  PyAV available" -ForegroundColor Green
+}
+
+# Environment variables (use .env values if already set)
+if (-not $env:MCP_HOST) { $env:MCP_HOST = "127.0.0.1" }
+if (-not $env:MCP_PORT) { $env:MCP_PORT = "8000" }
+if (-not $env:LOG_LEVEL) { $env:LOG_LEVEL = "INFO" }
+if (-not $env:AUTO_RELOAD_TOOLS) { $env:AUTO_RELOAD_TOOLS = "1" }
+if (-not $env:EXECUTE_TIMEOUT_SEC) { $env:EXECUTE_TIMEOUT_SEC = "300" }
 
 Write-Host "🌐 Server Configuration:" -ForegroundColor Green
 Write-Host "  Host: $($env:MCP_HOST)"
 Write-Host "  Port: $($env:MCP_PORT)"
 Write-Host "  Log Level: $($env:LOG_LEVEL)"
-Write-Host "  Hot Reload: $($env:RELOAD)"
 Write-Host "  Auto Reload Tools: $($env:AUTO_RELOAD_TOOLS)"
 Write-Host "  Timeout: $($env:EXECUTE_TIMEOUT_SEC)s"
 
