@@ -1,0 +1,46 @@
+{
+  "type": "function",
+  "function": {
+    "name": "youtube_download",
+    "displayName": "YouTube Downloader",
+    "description": "Download videos or audio from YouTube URLs. Supports audio-only (for transcription), video, or both. Files saved to docs/video/ for integration with video_transcribe tool.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["download", "get_info"],
+          "description": "Operation to perform: 'download' downloads media, 'get_info' retrieves metadata only"
+        },
+        "url": {
+          "type": "string",
+          "description": "YouTube video URL (supports youtube.com/watch?v=, youtu.be/, youtube.com/shorts/, etc.)"
+        },
+        "media_type": {
+          "type": "string",
+          "enum": ["audio", "video", "both"],
+          "description": "Type of media to download: 'audio' (MP3, best for transcription), 'video' (MP4), or 'both' (separate files). Default: 'audio'"
+        },
+        "quality": {
+          "type": "string",
+          "enum": ["best", "720p", "480p", "360p"],
+          "description": "Video quality (ignored for audio-only). 'best' selects highest available. Default: 'best'"
+        },
+        "filename": {
+          "type": "string",
+          "description": "Custom filename (without extension). If omitted, uses sanitized video title. Unique suffix (_1, _2, etc.) added if file exists"
+        },
+        "max_duration": {
+          "type": "integer",
+          "description": "Maximum video duration in seconds. Rejects longer videos to avoid excessive downloads. Default: 7200 (2 hours)"
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Download timeout in seconds (5-600). Default: 300"
+        }
+      },
+      "required": ["url"],
+      "additionalProperties": false
+    }
+  }
+}
