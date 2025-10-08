@@ -75,6 +75,7 @@ Dragonfly MCP Server expose des « tools » (au format OpenAI tools) via des end
 - [Structure du projet](#-structure-du-projet)
 - [Pour les LLM « développeurs »](#-pour-les-llm-développeurs)
 - [Feuille de route](#-feuille-de-route)
+- [Migration notes](#-migration-notes)
 - [Licence](#-licence)
 
 ---
@@ -160,7 +161,7 @@ Détails étendus: [src/README.md](./src/README.md)
 
 ## 🧪 Outils inclus
 - `call_llm`: orchestrateur LLM (2 phases, usage cumulatif)
-- `math`: calcul numérique/HP, symbolique, algèbre linéaire
+- `math`: calcul numérique/HP, symbolique, algèbre linéaire (+ extensions), solveurs, séries, nombres premiers, sommes
 - `date`: now/today, diff, add, format, parse, weekday, week_number
 - `git`: GitHub API + Git local (opérations sécurisées)
 - `gitbook`: discovery/lecture/search GitBook
@@ -198,7 +199,7 @@ Configurer via `/control` (recommandé) ou via `.env`.
 
 ## 🔒 Sécurité
 - SQLite chroot: DBs sous `<projet>/sqlite3` (noms validés)
-- Git local: opérations limités à la racine du projet
+- Git local: opérations limitées à la racine du projet
 - `script_executor`: sandbox stricte (pas d’accès non autorisé)
 - Safe JSON: sérialisation robuste (NaN/Infinity, très grands entiers)
 
@@ -218,6 +219,14 @@ src/
   tool_specs/        # Specs JSON canoniques (OpenAI tools)
   README.md          # Doc API interne (endpoints + composants)
 ```
+
+---
+
+## 🧭 Migration notes
+- Python 3.11+ requis (scripts et metadata l’imposent).
+- Les scripts de dev chargent maintenant `.env` avant l’install et le lancement.
+- Le dossier top-level `script_executor/` est ignoré par Git: déplacez vos scripts utilisateurs dans un dossier hors repo si besoin.
+- Pour les fonctionnalités math avancées, installez `sympy`; pour haute précision, `mpmath` (optionnel).
 
 ---
 
@@ -242,7 +251,3 @@ Contributions bienvenues — issues & PRs !
 
 ## 📄 Licence
 MIT — voir [LICENSE](./LICENSE)
-
- 
- 
- 

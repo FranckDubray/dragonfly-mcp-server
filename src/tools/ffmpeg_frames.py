@@ -1,28 +1,34 @@
+
 """
-ffmpeg_frames MCP Tool (coarse smoothing + native refinement, start/end only)
-- Coarse: RGB24 @ 12fps, 24x24, EMA fast/slow + residual R_t + median filter, hysteresis thresholds + NMS
-- Refine: native FPS window, exact cut localization; export 2 images per plan (start/end)
-- Debug: diffs (coarse), r_values (coarse), thresholds, refined cuts, scene durations
-NOTE: Aucune contrainte max 15s codée — 15s est un indicateur d'évaluation seulement (report dans debug.json)
+ffmpeg_frames MCP Tool (native frame-by-frame + moving average + hysteresis, start/end only)
+- Native: PyAV decoding @ fps natif, 96x96 gray, diff L1 frame->frame
+- Lissage: moyenne mobile (ma_window=1), hystérésis (P75/P95) + NMS 0.2s
+- Raffinement: natif (PyAV) dans une fenêtre ±0.5s (fallback: pas de raffinement)
+- Export: 2 images par plan (start/end)
+- Debug: frames_debug (t, diff, similarity_pct), avg_similarity_pct, diffs, r_values, thresholds
 """
 from __future__ import annotations
-import os, json
+import os, json, time
 from typing import Dict, Any, List
 from ._ffmpeg import paths as ffpaths
 from ._ffmpeg import detect as ffdetect
+from ._ffmpeg import native as ffnative
 from ._ffmpeg import extract as ffextract
 from ._ffmpeg import timestamps as ffts
 
-# Coarse params (internes)
-_ANALYZE_FPS = 12.0
-_SIM_SCALE_W = 24
-_SIM_SCALE_H = 24
-_SIM_THRESHOLD = 0.25  # floor; dyn thresholds via P60/P80 on residual R_t
-_HARD_CUT_THRESHOLD = 0.60
-_MIN_SCENE_FRAMES = 6
+# Params (sensibilité haute par défaut)
+_SIM_SCALE_W = 96
+_SIM_SCALE_H = 96
+_SIM_THRESHOLD = 0.05  # floor; dynamic thresholds via percentiles sur R
+_HARD_CUT_THRESHOLD = 0.50
+_MIN_SCENE_FRAMES = 3
+_MA_WINDOW = 1
+_REFINE_WINDOW_SEC = 0.5
 
 
 def run(operation: str = None, **params):
+    t0 = time.monotonic()
+
     if operation != 'extract_frames':
         return {"error": f"Unsupported operation: {operation}"}
 
@@ -50,14 +56,25 @@ def run(operation: str = None, **params):
     avg_fps = ffdetect.get_avg_fps(path_abs)
     min_scene_sec = max(0.02, _MIN_SCENE_FRAMES / max(1.0, avg_fps))
 
-    # 1) Coarse detection with smoothing + hysteresis
-    info = ffdetect.detect_cuts_similarity_info(
+    used_native = True
+    # 1) Native detection (frame-by-frame, MA + hystérésis)
+    info = ffdetect.detect_cuts_similarity_info_native(
         path_abs,
-        analyze_fps=_ANALYZE_FPS,
         scale_w=_SIM_SCALE_W,
         scale_h=_SIM_SCALE_H,
+        ma_window=_MA_WINDOW,
         threshold_floor=_SIM_THRESHOLD,
     )
+    if info.get('error') or not info.get('frames_analyzed'):
+        # Fallback legacy coarse (CLI)
+        used_native = False
+        info = ffdetect.detect_cuts_similarity_info(
+            path_abs,
+            analyze_fps=max(12.0, min(30.0, avg_fps or 24.0)),
+            scale_w=_SIM_SCALE_W,
+            scale_h=_SIM_SCALE_H,
+            threshold_floor=_SIM_THRESHOLD,
+        )
     cuts_coarse = info.get('cuts', [])  # list of (t, score_like)
 
     # 2) Pruning min scene length (keep hard cuts)
@@ -68,23 +85,34 @@ def run(operation: str = None, **params):
         hard_threshold=_HARD_CUT_THRESHOLD,
     )
 
-    # 3) Refine at native FPS
-    refined = ffdetect.refine_cuts_native(
-        path_abs,
-        cuts_with_strength=[(t, 1.0) for t in cuts_pruned],
-        fps_native=avg_fps,
-        duration=duration,
-        window_sec=0.33,
-    )
+    # 3) Refine
+    if used_native:
+        refined = ffnative.refine_cuts_native(
+            path_abs,
+            cuts_with_strength=[(t, 1.0) for t in cuts_pruned],
+            duration=duration,
+            window_sec=_REFINE_WINDOW_SEC,
+            scale=64,
+        )
+    else:
+        # No native refine available: keep coarse times as refined
+        refined = [{
+            'time': round(t, 6),
+            'best_diff': s,
+            'window_start': max(0.0, t - _REFINE_WINDOW_SEC),
+            'fps': None,
+            'local_diffs': []
+        } for (t, s) in cuts_pruned]
+
     cuts = [x['time'] for x in refined]
 
     # 4) Build scenes and export strictly start/end per scene
-    shots = ffts.build_shots_with_labels(cuts, duration, 0, end_eps=0.0)
+    shots = ffts.build_shots_with_labels(cuts, duration, 0, end_eps=0.05)
     frames = ffextract.extract_shots_labeled(path_abs, outdir_abs, shots, image_format, overwrite)
 
-    # Debug manifest (inclut métriques d'évaluation, pas d'enforcement)
+    # Debug manifest riche
+    exec_time = round(time.monotonic() - t0, 3)
     try:
-        # Durées par plan et métriques (min/median/max, count > 15s)
         durations = [round(s['end'] - s['start'], 6) for s in shots]
         if durations:
             sorted_d = sorted(durations)
@@ -98,18 +126,23 @@ def run(operation: str = None, **params):
         else:
             stats = {'min': 0.0, 'median': 0.0, 'max': 0.0, 'count_over_15s': 0}
         man = {
-            'avg_fps': avg_fps,
+            'avg_fps_probe': avg_fps,
+            'native_analyzed_fps': info.get('analyzed_fps'),
+            'used_native': used_native,
             'min_scene_sec': min_scene_sec,
             'thresholds': info.get('thresholds'),
+            'avg_similarity_pct': info.get('avg_similarity_pct'),
             'coarse_frames_analyzed': info.get('frames_analyzed'),
             'coarse_time_sec': info.get('time_sec'),
+            'frames_debug': info.get('frames_debug'),  # frame-by-frame: t, diff, similarity_pct
             'diffs': info.get('diffs'),        # capped
             'r_values': info.get('r_values'),  # capped residuals
             'cuts_coarse': cuts_coarse,
             'cuts_pruned': cuts_pruned,
             'cuts_refined': refined,
             'scenes': [{'index': s['index'], 'start': s['start'], 'end': s['end']} for s in shots],
-            'scene_duration_stats': stats
+            'scene_duration_stats': stats,
+            'exec_time_sec': exec_time
         }
         os.makedirs(outdir_abs, exist_ok=True)
         with open(os.path.join(outdir_abs, 'debug.json'), 'w') as f:
@@ -119,13 +152,15 @@ def run(operation: str = None, **params):
 
     return {
         'success': True,
-        'mode_used': 'coarse_smooth_native_refine_start_end',
+        'mode_used': 'native_frame_by_frame_ma_hysteresis_refine_v1' if used_native else 'legacy_coarse_cli_hysteresis_no_refine',
         'duration': duration,
-        'avg_fps': avg_fps,
+        'avg_fps_probe': avg_fps,
+        'native_analyzed_fps': info.get('analyzed_fps'),
         'min_scene_sec': min_scene_sec,
         'scenes_count': len(cuts),
         'frames': frames,
-        'output_dir': output_dir
+        'output_dir': output_dir,
+        'exec_time_sec': exec_time
     }
 
 
@@ -135,7 +170,7 @@ def spec():
         'function': {
             'name': 'ffmpeg_frames',
             'displayName': 'FFmpeg Frames',
-            'description': "2 images par plan (start/end) avec lissage coarse + raffinement natif, debug des similarités.",
+            'description': "2 images par plan (start/end) avec détection native frame-by-frame (MA + hystérésis), raffinement natif si dispo, debug complet.",
             'parameters': {
                 'type': 'object',
                 'properties': {
@@ -149,3 +184,4 @@ def spec():
             }
         }
     }
+

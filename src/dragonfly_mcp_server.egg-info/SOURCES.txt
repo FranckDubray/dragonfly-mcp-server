@@ -33,9 +33,11 @@ src/tools/_call_llm/tools_exec.py
 src/tools/_ffmpeg/__init__.py
 src/tools/_ffmpeg/detect.py
 src/tools/_ffmpeg/extract.py
+src/tools/_ffmpeg/native.py
 src/tools/_ffmpeg/paths.py
 src/tools/_ffmpeg/shell.py
 src/tools/_ffmpeg/timestamps.py
+src/tools/_ffmpeg/utils.py
 src/tools/_git/__init__.py
 src/tools/_git/chroot.py
 src/tools/_git/gh_ops.py
