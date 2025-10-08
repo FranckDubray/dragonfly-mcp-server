@@ -2,6 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
+<<<<<<< HEAD
 ## [Unreleased]
 
 ### Added
@@ -37,6 +38,8 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+=======
+>>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
 ## [1.2.0] - 2025-10-08
 
 ### Highlights
@@ -53,7 +56,11 @@ All notable changes to this project will be documented in this file.
 - README mentions native detection and debug fields.
 
 ### Fixed
+<<<<<<< HEAD
 - Cases where legacy downsampled CLI missed many hard cuts. Native pass now processes at the video's native FPS.
+=======
+- Cases where legacy downsampled CLI missed many hard cuts. Native pass now processes at the video’s native FPS.
+>>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
 
 ### Migration notes
 - Ensure Python 3.11+ and that scripts/dev.sh reinstalls dependencies to get NumPy + PyAV.
@@ -114,5 +121,11 @@ All notable changes to this project will be documented in this file.
 ### Migration notes
 - Python 3.11+ is now required (enforced by scripts and project metadata).
 - Dev scripts source `.env` before installing dependencies and launching the server.
+<<<<<<< HEAD
 - If you kept custom scripts under top‑level `script_executor/`, they're now ignored by Git; move them outside the repo or under a non‑tracked path.
 - For advanced math features, ensure `sympy` is installed (scripts install it automatically). For high‑precision evaluation, `mpmath` is optional but recommended.
+=======
+- If you kept custom scripts under top‑level `script_executor/`, they’re now ignored by Git; move them outside the repo or under a non‑tracked path.
+- For advanced math features, ensure `sympy` is installed (scripts install it automatically). For high‑precision evaluation, `mpmath` is optional but recommended.
+
+>>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550

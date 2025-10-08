@@ -1,0 +1,167 @@
+{
+  "type": "function",
+  "function": {
+    "name": "discord_webhook",
+    "displayName": "Discord Webhook",
+    "description": "Publie et gère des articles sous forme d'Embeds sur Discord via un webhook global (DISCORD_WEBHOOK_URL). Supporte create/update/upsert/delete/get/list avec persistance article_key → messages en SQLite. Découpe automatiquement le contenu long.",
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["create", "update", "upsert", "delete", "get", "list"],
+          "default": "create",
+          "description": "Opération à effectuer."
+        },
+        "article_key": {
+          "type": "string",
+          "description": "Identifiant unique et stable de l'article (slug). Sert de clé pour les mises à jour.",
+          "maxLength": 200
+        },
+        "article": {
+          "type": "object",
+          "description": "Article structuré à publier sous forme d'embed(s). Si présent (create/upsert/update), 'embeds' est ignoré.",
+          "additionalProperties": false,
+          "properties": {
+            "title": { "type": "string", "maxLength": 256, "description": "Titre de l'article (<=256)." },
+            "url": { "type": "string", "format": "uri", "description": "URL canonique de l'article." },
+            "excerpt": { "type": "string", "maxLength": 4096, "description": "Résumé court pour l'embed principal (<=4096)." },
+            "body": { "type": "string", "description": "Texte long (markdown autorisé). Sera découpé automatiquement en plusieurs embeds si nécessaire." },
+            "author_name": { "type": "string", "maxLength": 256, "description": "Nom de l'auteur." },
+            "image_url": { "type": "string", "format": "uri", "description": "Image de couverture (image.url)." },
+            "thumbnail_url": { "type": "string", "format": "uri", "description": "Vignette (thumbnail.url)." },
+            "tags": {
+              "type": "array",
+              "description": "Mots-clés (affichés en champ).",
+              "maxItems": 32,
+              "items": { "type": "string", "maxLength": 64 }
+            },
+            "published_at": { "type": "string", "description": "Date de publication (ISO 8601 ou texte)." },
+            "color": { "type": "integer", "minimum": 0, "maximum": 16777215, "description": "Couleur décimale (0..16777215)." }
+          },
+          "required": ["title", "url"]
+        },
+        "embeds": {
+          "type": "array",
+          "description": "Embeds prêts à poster (utilisés si 'article' n'est pas fourni). Limite Discord: 10 embeds par message.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "title": { "type": "string", "maxLength": 256 },
+              "url": { "type": "string", "format": "uri" },
+              "description": { "type": "string", "maxLength": 4096 },
+              "color": { "type": "integer", "minimum": 0, "maximum": 16777215 },
+              "timestamp": { "type": "string", "description": "ISO 8601" },
+              "author": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": { "type": "string", "maxLength": 256 },
+                  "url": { "type": "string", "format": "uri" },
+                  "icon_url": { "type": "string", "format": "uri" }
+                }
+              },
+              "footer": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "text": { "type": "string", "maxLength": 2048 },
+                  "icon_url": { "type": "string", "format": "uri" }
+                }
+              },
+              "image": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": { "url": { "type": "string", "format": "uri" } }
+              },
+              "thumbnail": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": { "url": { "type": "string", "format": "uri" } }
+              },
+              "fields": {
+                "type": "array",
+                "maxItems": 25,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": { "type": "string", "maxLength": 256 },
+                    "value": { "type": "string", "maxLength": 1024 },
+                    "inline": { "type": "boolean" }
+                  },
+                  "required": ["name", "value"]
+                }
+              }
+            }
+          }
+        },
+        "content": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "Texte simple accompagnant les embeds (<=2000). Optionnel."
+        },
+        "username": { "type": "string", "description": "Nom d'affichage du bot. Optionnel." },
+        "avatar_url": { "type": "string", "format": "uri", "description": "Avatar du bot. Optionnel." },
+        "tts": { "type": "boolean", "default": false, "description": "Text-to-speech. Optionnel." },
+        "wait": {
+          "type": "boolean",
+          "default": true,
+          "description": "Si true, retourne les objets message Discord créés/édités. Sinon, 204 No Content côté Discord et résumé local."
+        },
+        "split_long_messages": {
+          "type": "boolean",
+          "default": true,
+          "description": "Découper automatiquement le body long en plusieurs embeds/messages."
+        },
+        "allowed_mentions": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Contrôle des mentions (@users/@roles/@everyone). Optionnel.",
+          "properties": {
+            "parse": {
+              "type": "array",
+              "maxItems": 3,
+              "items": { "type": "string", "enum": ["roles", "users", "everyone"] }
+            },
+            "users": { "type": "array", "maxItems": 50, "items": { "type": "string" } },
+            "roles": { "type": "array", "maxItems": 50, "items": { "type": "string" } },
+            "replied_user": { "type": "boolean" }
+          }
+        },
+        "target_message_ids": {
+          "type": "array",
+          "description": "Mode manuel (optionnel) pour update/delete: liste des message_ids à éditer/supprimer. Si fourni avec article_key en update, la store sera mise à jour avec le nouveau set.",
+          "items": { "type": "string" }
+        },
+        "dry_run": {
+          "type": "boolean",
+          "default": false,
+          "description": "Si true, ne poste rien: retourne le plan (embeds générés, batches) pour vérification."
+        },
+        "upload_image_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL d'une image à télécharger et joindre en pièce jointe. L'embed principal référencera attachment://<filename>. Ignoré si 'attachments' non vide."
+        },
+        "attachments": {
+          "type": "array",
+          "description": "Pièces jointes à envoyer avec le premier message (batch 0). Utilisez de préférence 'upload_image_url' si vous partez d'une URL.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "filename": {"type": "string"},
+              "content_base64": {"type": "string"},
+              "content_type": {"type": "string"}
+            },
+            "required": ["filename", "content_base64"]
+          },
+          "maxItems": 10
+        }
+      }
+    }
+  }
+}

@@ -32,7 +32,10 @@ Requires-Dist: flake8>=6.0.0; extra == "dev"
 
 
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
 <div align="center">
 
 <!-- Local logo for reliability (placed in assets/) -->
@@ -42,7 +45,11 @@ Requires-Dist: flake8>=6.0.0; extra == "dev"
 
 Serveur MCP multi‑outils, rapide et extensible, propulsé par FastAPI. Découverte automatique des tools, exécution sécurisée, orchestrateur LLM avancé, et panneau de contrôle web.
 
+<<<<<<< HEAD
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+=======
+[![License: MIT](./LICENSE)](./LICENSE)
+>>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB)
 ![FastAPI](https://img.shields.io/badge/FastAPI-%F0%9F%9A%80-009688)
 ![Status](https://img.shields.io/badge/Status-Active-success)
@@ -51,6 +58,7 @@ Serveur MCP multi‑outils, rapide et extensible, propulsé par FastAPI. Découv
 
 ---
 
+<<<<<<< HEAD
 ## ✨ Vue d'ensemble
 Dragonfly MCP Server expose des « tools » (au format OpenAI tools) via des endpoints HTTP simples:
 - Découverte automatique des outils sous `src/tools/`
@@ -59,6 +67,16 @@ Dragonfly MCP Server expose des « tools » (au format OpenAI tools) via des end
 - Panneau de contrôle web pour configurer et tester (`/control`)
 
 > Pour les détails d'API (endpoints, sérialisation JSON, etc.), consultez aussi [src/README.md](./src/README.md).
+=======
+## ✨ Vue d’ensemble
+Dragonfly MCP Server expose des « tools » (au format OpenAI tools) via des endpoints HTTP simples:
+- Découverte automatique des outils sous `src/tools/`
+- Exécution d’un tool via `POST /execute`
+- Orchestration LLM en 2 phases via `call_llm` (avec usage cumulatif)
+- Panneau de contrôle web pour configurer et tester (`/control`)
+
+> Pour les détails d’API (endpoints, sérialisation JSON, etc.), consultez aussi [src/README.md](./src/README.md).
+>>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
 
 ---
 
@@ -74,9 +92,15 @@ Dragonfly MCP Server expose des « tools » (au format OpenAI tools) via des end
 - [Configuration](#-configuration)
 - [Sécurité](#-sécurité)
 - [Structure du projet](#-structure-du-projet)
+<<<<<<< HEAD
 - [Migration notes](#-migration-notes)
 - [Pour les LLM « développeurs »](#-pour-les-llm-développeurs)
 - [Feuille de route](#-feuille-de-route)
+=======
+- [Pour les LLM « développeurs »](#-pour-les-llm-développeurs)
+- [Feuille de route](#-feuille-de-route)
+- [Migration notes](#-migration-notes)
+>>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
 - [Licence](#-licence)
 
 ---
@@ -84,9 +108,15 @@ Dragonfly MCP Server expose des « tools » (au format OpenAI tools) via des end
 ## 🚀 Fonctionnalités
 - Auto‑reload des tools (détection de nouveaux fichiers dans `src/tools/`)
 - JSON « sûr »: grands entiers, NaN/Infinity sanitisés
+<<<<<<< HEAD
 - Orchestration LLM streaming en 2 phases (avec cumul d'usage multi‑niveaux)
 - Panneau de contrôle web (`/control`)
 - Outils prêts à l'emploi: Git/GitHub, SQLite, PDF, Date/Heure, Math (HP), GitBook, Reddit, Universal Doc Scraper, Script Executor, FFmpeg frames, Academic Research, **IMAP email (multi-comptes)**, etc.
+=======
+- Orchestration LLM streaming en 2 phases (avec cumul d’usage multi‑niveaux)
+- Panneau de contrôle web (`/control`)
+- Outils prêts à l’emploi: Git/GitHub, SQLite, PDF, Date/Heure, Math (HP), GitBook, Reddit, Universal Doc Scraper, Script Executor, FFmpeg frames, Academic Research, etc.
+>>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
 
 ---
 
@@ -99,6 +129,7 @@ curl -s -X POST http://127.0.0.1:8000/execute \
  -d '{"tool":"date","params":{"operation":"today"}}'
 ```
 
+<<<<<<< HEAD
 Lire les emails non lus (IMAP):
 
 ```bash
@@ -117,6 +148,9 @@ curl -s -X POST http://127.0.0.1:8000/execute \
 ```
 
 Orchestrer un LLM (réponse texte) :
+=======
+Orchestrer un LLM (réponse texte) :
+>>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
 
 ```bash
 curl -s -X POST http://127.0.0.1:8000/execute \
@@ -188,14 +222,20 @@ Détails étendus: [src/README.md](./src/README.md)
 - `reddit_intelligence`
 - `universal_doc_scraper`
 - `script_executor`: exécution de scripts Python sandboxés orchestrant des tools
+<<<<<<< HEAD
 - `ffmpeg_frames`: extraction d'images/frames d'une vidéo via FFmpeg (détection native PyAV, debug de similarité, exec_time_sec)
 - `academic_research_super`: pipeline avancé de recherche académique (agrégation, scraping, synthèse)
 - `imap`: **accès universel aux emails via IMAP** (Gmail, Outlook, Yahoo, iCloud, Infomaniak, serveurs custom) avec gestion multi-comptes
+=======
+- `ffmpeg_frames`: extraction d’images/frames d’une vidéo via FFmpeg
+- `academic_research_super`: pipeline avancé de recherche académique (agrégation, scraping, synthèse)
+>>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
 
 Specs JSON (OpenAI tools) correspondantes dans `src/tool_specs/`.
 
 ---
 
+<<<<<<< HEAD
 ## 📧 Tool IMAP (multi-comptes)
 
 Le tool IMAP permet de gérer plusieurs comptes email simultanément via IMAP.
@@ -285,6 +325,8 @@ curl -X POST http://127.0.0.1:8000/execute \
 
 ---
 
+=======
+>>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
 ## 🧠 Orchestrateur LLM (`call_llm`)
 - 1er stream (avec tools): collecte des `tool_calls`, exécution côté serveur
 - 2e stream (sans tools): génération du texte final
@@ -299,7 +341,10 @@ Variables principales:
 - Exécution: `EXECUTE_TIMEOUT_SEC`, `AUTO_RELOAD_TOOLS`, `RELOAD`
 - LLM: `AI_PORTAL_TOKEN`, `LLM_ENDPOINT`, `LLM_REQUEST_TIMEOUT_SEC`, `LLM_RETURN_DEBUG`, `MCP_URL`
 - JSON/entiers: `BIGINT_AS_STRING`, `BIGINT_STR_THRESHOLD`, `PY_INT_MAX_STR_DIGITS`
+<<<<<<< HEAD
 - IMAP: `IMAP_<PROVIDER>_EMAIL`, `IMAP_<PROVIDER>_PASSWORD` (ex: `IMAP_GMAIL_EMAIL`)
+=======
+>>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
 - Divers: `GITHUB_TOKEN`
 
 Configurer via `/control` (recommandé) ou via `.env`.
@@ -309,8 +354,12 @@ Configurer via `/control` (recommandé) ou via `.env`.
 ## 🔒 Sécurité
 - SQLite chroot: DBs sous `<projet>/sqlite3` (noms validés)
 - Git local: opérations limitées à la racine du projet
+<<<<<<< HEAD
 - `script_executor`: sandbox stricte (pas d'accès non autorisé)
 - **IMAP**: credentials en `.env` uniquement, jamais en paramètres d'appel
+=======
+- `script_executor`: sandbox stricte (pas d’accès non autorisé)
+>>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
 - Safe JSON: sérialisation robuste (NaN/Infinity, très grands entiers)
 
 ---
@@ -319,14 +368,21 @@ Configurer via `/control` (recommandé) ou via `.env`.
 ```
 src/
   app_factory.py     # FastAPI app, endpoints, auto-reload, Safe JSON
+<<<<<<< HEAD
   server.py          # Entrée (Uvicorn) — crée l'app et lance le serveur
+=======
+  server.py          # Entrée (Uvicorn) — crée l’app et lance le serveur
+>>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
   config.py          # .env (load/save), masquage des secrets
   tools/             # Tous les tools (run() + spec())
     _call_llm/       # Orchestrateur LLM: core, payloads, streaming, http_client...
     _math/           # Arithmétique, symbolique, proba, algèbre linéaire, etc.
     _ffmpeg/         # Utilitaires FFmpeg (frames, conversion)
     _script/         # Sandbox du ScriptExecutor
+<<<<<<< HEAD
     _imap/           # IMAP: presets, connection, operations, parsers, utils
+=======
+>>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
   tool_specs/        # Specs JSON canoniques (OpenAI tools)
   README.md          # Doc API interne (endpoints + composants)
 ```
@@ -334,8 +390,13 @@ src/
 ---
 
 ## 🧭 Migration notes
+<<<<<<< HEAD
 - Python 3.11+ requis (scripts et metadata l'imposent).
 - Les scripts de dev chargent maintenant `.env` avant l'install et le lancement.
+=======
+- Python 3.11+ requis (scripts et metadata l’imposent).
+- Les scripts de dev chargent maintenant `.env` avant l’install et le lancement.
+>>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
 - Le dossier top-level `script_executor/` est ignoré par Git: déplacez vos scripts utilisateurs dans un dossier hors repo si besoin.
 - Pour les fonctionnalités math avancées, installez `sympy`; pour haute précision, `mpmath` (optionnel).
 
@@ -353,7 +414,11 @@ Vous modifiez/étendez le dépôt ? Lisez ce guide:
 ## 🗺️ Feuille de route (extraits)
 - [ ] Tests automatisés (tools + orchestrateur)
 - [ ] Exemples interactifs dans `/control`
+<<<<<<< HEAD
 - [ ] Intégration d'auth facultative sur les endpoints sensibles
+=======
+- [ ] Intégration d’auth facultative sur les endpoints sensibles
+>>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
 - [ ] Export de métriques (Prometheus)
 
 Contributions bienvenues — issues & PRs !
