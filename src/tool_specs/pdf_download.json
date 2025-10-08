@@ -1,0 +1,40 @@
+{
+  "type": "function",
+  "function": {
+    "name": "pdf_download",
+    "displayName": "PDF Download",
+    "description": "Télécharge un fichier PDF depuis une URL et le sauvegarde dans docs/pdfs. Gère automatiquement les conflits de noms avec suffixes numériques.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["download"],
+          "description": "Opération à effectuer (actuellement: download uniquement)"
+        },
+        "url": {
+          "type": "string",
+          "description": "URL complète du fichier PDF à télécharger (http/https)"
+        },
+        "filename": {
+          "type": "string",
+          "description": "Nom de fichier personnalisé (optionnel, extrait de l'URL si absent). Extension .pdf ajoutée automatiquement si manquante."
+        },
+        "overwrite": {
+          "type": "boolean",
+          "default": false,
+          "description": "Si true, écrase le fichier existant. Si false (défaut), ajoute un suffixe numérique (file_1.pdf, file_2.pdf, etc.)"
+        },
+        "timeout": {
+          "type": "integer",
+          "default": 60,
+          "minimum": 5,
+          "maximum": 300,
+          "description": "Timeout du téléchargement en secondes (défaut: 60s, max: 300s)"
+        }
+      },
+      "required": ["operation", "url"],
+      "additionalProperties": false
+    }
+  }
+}

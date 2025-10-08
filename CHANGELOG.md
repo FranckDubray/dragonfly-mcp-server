@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### ✨ Added
+
+#### PDF Download Tool 🆕
+- **New tool**: `pdf_download` for downloading PDFs from URLs to `docs/pdfs`
+- **Features**:
+  - HTTP/HTTPS download with configurable timeout (5-300s, default 60s)
+  - PDF validation via magic bytes (`%PDF-`)
+  - **Automatic metadata extraction**: page count, title, author, creator
+  - Automatic unique filename generation (suffixes `_1`, `_2`, etc.)
+  - Optional overwrite mode
+  - Filename extraction from URL if not provided
+  - User-Agent header for compatibility
+- **Security**:
+  - Chroot to `docs/pdfs` directory
+  - URL validation (http/https only)
+  - Filename sanitization (no path traversal)
+  - Magic bytes verification
+- **Architecture**: `_pdf_download/` (api, core, validators, utils, services/downloader)
+- **Spec**: `src/tool_specs/pdf_download.json` (canonical source of truth)
+
+### 📚 Documentation
+- Updated main README with pdf_download tool
+- Updated src/README.md with pdf_download examples
+- Updated src/tools/README.md with complete tool catalog (16 tools)
+- Added comprehensive README in `src/tools/_pdf_download/`
+
+---
+
 ## [1.3.0] - 2025-10-08
 
 ### 🎉 Highlights
