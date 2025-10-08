@@ -6,3 +6,5 @@ __pycache__/
 **/__pycache__/
 *.pyc
 src/add_mcp_server.egg-info/
+.DS_Store
+docs/
