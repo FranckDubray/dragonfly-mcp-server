@@ -5,7 +5,7 @@
 
 # 🐉 Dragonfly MCP Server
 
-Serveur MCP multi‑outils, rapide et extensible, propulsé par FastAPI. Découverte automatique des tools, exécution sécurisée, orchestrateur LLM avancé, et panneau de contrôle web.
+Serveur MCP multi‑outils, rapide et extensible, propulsé par FastAPI. Découverte automatique des tools, exécution sécurisée, orchestrateur LLM avancé, et panneau de contrôle web moderne.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB)
@@ -21,7 +21,8 @@ Dragonfly MCP Server expose des « tools » (au format OpenAI tools) via des end
 - Découverte automatique des outils sous `src/tools/`
 - Exécution d'un tool via `POST /execute`
 - Orchestration LLM en 2 phases via `call_llm` (avec usage cumulatif)
-- Panneau de contrôle web pour configurer et tester (`/control`)
+- **Panneau de contrôle web moderne** pour configurer et tester (`/control`)
+- **Configuration automatique** des variables d'environnement
 
 > Pour les détails d'API (endpoints, sérialisation JSON, etc.), consultez aussi [src/README.md](./src/README.md).
 
@@ -33,6 +34,7 @@ Dragonfly MCP Server expose des « tools » (au format OpenAI tools) via des end
 - [Installation](#-installation)
 - [Outils inclus](#-outils-inclus)
 - [Configuration](#-configuration)
+- [Panneau de contrôle](#-panneau-de-contrôle)
 - [Sécurité](#-sécurité)
 - [Structure du projet](#-structure-du-projet)
 - [Pour les LLM « développeurs »](#-pour-les-llm-développeurs)
@@ -44,8 +46,10 @@ Dragonfly MCP Server expose des « tools » (au format OpenAI tools) via des end
 - Auto‑reload des tools (détection de nouveaux fichiers dans `src/tools/`)
 - JSON « sûr »: grands entiers, NaN/Infinity sanitisés
 - Orchestration LLM streaming en 2 phases (avec cumul d'usage multi‑niveaux)
-- Panneau de contrôle web (`/control`)
-- **17 tools prêts à l'emploi** couvrant Git, bases de données, PDF, IA, emails, Discord, transport, calcul, etc.
+- **Panneau de contrôle web moderne** (design épuré, sidebar, logo HD)
+- **Configuration générique** : gestion automatique de toutes les variables d'environnement
+- **Hot-reload** : modifiez les variables en live sans restart (via `/control`)
+- **18 tools prêts à l'emploi** couvrant Git, bases de données, PDF, IA, emails, Discord, transport, calcul, etc.
 
 ---
 
@@ -130,25 +134,33 @@ curl -s -X POST http://127.0.0.1:8000/execute \
 **Prérequis:** Python 3.11 ou 3.12
 
 ```bash
+# 1. Cloner le repo
 git clone https://github.com/FranckDubray/dragonfly-mcp-server.git
 cd dragonfly-mcp-server
+
+# 2. Créer l'environnement virtuel
 python -m venv venv
 source venv/bin/activate   # Windows: venv\Scripts\Activate.ps1
+
+# 3. Installer les dépendances
 pip install -U pip
 pip install -e ".[dev]"
+
+# 4. Démarrer le serveur (crée automatiquement .env depuis .env.example)
+./scripts/dev.sh
 ```
 
-**Démarrage:**
-- Linux/macOS: `./scripts/dev.sh`
-- Windows: `scripts\dev.ps1`
+**Le script `dev.sh` fait automatiquement** :
+- ✅ Copie `.env.example` → `.env` si absent
+- ✅ Crée le venv si nécessaire
+- ✅ Installe toutes les dépendances
+- ✅ Démarre le serveur
 
 Par défaut: http://127.0.0.1:8000
 
-Panneau de contrôle: http://127.0.0.1:8000/control
-
 ---
 
-## 🧪 Outils inclus (17 tools)
+## 🧪 Outils inclus (18 tools)
 
 ### 🤖 Intelligence & Orchestration
 
@@ -177,13 +189,7 @@ Panneau de contrôle: http://127.0.0.1:8000/control
 - **Multi-comptes simultanés** via variables d'env par provider
 - **13 opérations**: connect, list_folders, search, get, download, mark read/unread (batch), move (batch), spam, delete (batch)
 - **Sécurité**: credentials uniquement en `.env`, jamais en paramètres
-- Configuration:
-  ```bash
-  IMAP_GMAIL_EMAIL=user@gmail.com
-  IMAP_GMAIL_PASSWORD=app_password
-  IMAP_INFOMANIAK_EMAIL=contact@domain.com
-  IMAP_INFOMANIAK_PASSWORD=password
-  ```
+- Configuration automatique via panneau `/control`
 
 #### **discord_webhook** — Publication Discord
 - CRUD complet avec persistance SQLite
@@ -226,17 +232,6 @@ Panneau de contrôle: http://127.0.0.1:8000/control
 - **Métadonnées automatiques** : pages, titre, auteur
 - Noms de fichiers uniques (suffixes `_1`, `_2`, etc.)
 - Timeout configurable (5-300s)
-- Exemple:
-  ```json
-  {
-    "tool": "pdf_download",
-    "params": {
-      "url": "https://arxiv.org/pdf/2301.00001.pdf",
-      "filename": "paper",
-      "timeout": 90
-    }
-  }
-  ```
 
 #### **pdf_search** — Recherche dans PDF
 - Recherche par mots-clés
@@ -275,16 +270,18 @@ Panneau de contrôle: http://127.0.0.1:8000/control
 - **Temps réel** : vélos mécaniques/électriques, places libres
 - **Recherches** via `sqlite_db` (db_name: 'velib')
 - **API Open Data** : pas d'authentification requise
-- Exemple:
-  ```json
-  {
-    "tool": "velib",
-    "params": {
-      "operation": "get_availability",
-      "station_code": "16107"
-    }
-  }
-  ```
+
+---
+
+### 🌐 Networking & API
+
+#### **http_client** — Client HTTP universel 🆕
+- **Tous les verbes HTTP** : GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS
+- **Authentification** : Basic, Bearer, API Key
+- **Body formats** : JSON, Form data, Raw text/XML
+- **Features avancées** : Retry avec backoff, Proxy, Timeout, SSL verification
+- **Response parsing** : auto-detect, JSON, text, raw
+- **Sauvegarde optionnelle** des réponses
 
 ---
 
@@ -319,7 +316,30 @@ Panneau de contrôle: http://127.0.0.1:8000/control
 
 ## ⚙️ Configuration
 
-Variables principales (`.env` ou `/control`):
+### 🎯 Configuration automatique (recommandé)
+
+**Au premier démarrage** :
+```bash
+./scripts/dev.sh
+```
+
+Le script crée automatiquement `.env` depuis `.env.example`.
+
+**Modifier les variables** :
+1. Ouvrir http://127.0.0.1:8000/control
+2. Cliquer **🔑 Configuration**
+3. Toutes les variables s'affichent automatiquement
+4. Modifier les valeurs → **Save**
+5. **Hot-reload** : effet immédiat pour 90% des variables !
+
+### 📝 Configuration manuelle (optionnel)
+
+```bash
+# Éditer directement le .env
+nano .env
+```
+
+Variables principales (32 variables disponibles) :
 
 ```bash
 # Réseau
@@ -339,14 +359,36 @@ IMAP_INFOMANIAK_PASSWORD=password
 # Git
 GITHUB_TOKEN=ghp_xxxxx
 
-# Vélib' (optionnel, URLs par défaut fournies)
-VELIB_STATION_INFO_URL=https://velib-metropole-opendata.smovengo.cloud/...
-VELIB_STATION_STATUS_URL=https://velib-metropole-opendata.smovengo.cloud/...
-
-# Divers
-EXECUTE_TIMEOUT_SEC=300
-AUTO_RELOAD_TOOLS=1
+# Voir .env.example pour la liste complète (32 variables)
 ```
+
+**Documentation complète** : [ENV_VARIABLES.md](./ENV_VARIABLES.md)
+
+---
+
+## 🎨 Panneau de contrôle
+
+### Interface moderne (v1.7.0)
+
+Accès : **http://127.0.0.1:8000/control**
+
+**Design** :
+- ✅ Layout 2 colonnes (Sidebar + Zone de travail)
+- ✅ Logo HD Dragonfly professionnel
+- ✅ Un seul tool visible à la fois (fini le scroll d'enfer)
+- ✅ Search bar pour filtrer les 18 tools
+- ✅ Fond blanc propre, design épuré
+- ✅ Responsive mobile-ready
+
+**Features** :
+- 🔧 **Tools** : formulaire complet pour chaque tool avec paramètres
+- 🔑 **Configuration** : modification des variables d'environnement
+  - Génération automatique de tous les champs depuis `.env`
+  - Détection automatique des secrets (masquage total `••••••••`)
+  - Hot-reload : 90% des variables sans restart
+  - Badges colorés (present/absent)
+- 🔍 **Recherche** : filtre instantané des tools
+- ⚡ **Exécution** : test direct des tools avec affichage des résultats
 
 ---
 
@@ -358,7 +400,10 @@ AUTO_RELOAD_TOOLS=1
 - **IMAP**: credentials en `.env` uniquement, jamais en paramètres
 - **PDF download**: validation magic bytes, chroot `docs/pdfs`
 - **Vélib'**: API publique (pas de secrets), chroot SQLite
+- **HTTP Client**: timeout, SSL verification, credentials masqués
 - **Safe JSON**: NaN/Infinity/grands entiers sanitisés
+- **Secrets masqués totalement** : zéro caractère exposé (OWASP compliant)
+- **.env ignoré par git** : aucun risque de commit de secrets
 
 ---
 
@@ -369,18 +414,26 @@ src/
   app_factory.py     # FastAPI app, endpoints, auto-reload
   server.py          # Entrée Uvicorn
   config.py          # .env (load/save), masquage secrets
-  tools/             # 17 tools (run() + spec())
+  ui_html.py         # Panneau de contrôle HTML
+  ui_js.py           # Panneau de contrôle JavaScript
+  tools/             # 18 tools (run() + spec())
     _call_llm/       # Orchestrateur LLM
     _math/           # Modules calcul
     _ffmpeg/         # FFmpeg utils
     _git/            # Git local + GitHub
     _imap/           # IMAP multi-comptes
     _pdf_download/   # PDF download
+    _http_client/    # HTTP client universel
     _discord_webhook/# Discord integration
     _script/         # Sandbox ScriptExecutor
     _velib/          # Vélib' cache manager
     # ... + tools simples (date, pdf, reddit, etc.)
   tool_specs/        # Specs JSON canoniques
+scripts/
+  dev.sh             # Script de démarrage (Linux/macOS)
+  dev.ps1            # Script de démarrage (Windows)
+.env.example         # Template de configuration (32 variables)
+ENV_VARIABLES.md     # Documentation des variables
 ```
 
 ---
