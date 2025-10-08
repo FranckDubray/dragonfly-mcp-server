@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 import sys
 import json
+import time
 import asyncio
 import logging
 from hashlib import sha1
@@ -159,23 +160,45 @@ def create_app() -> FastAPI:
             registry = get_registry()
         tool_name = request.get_tool_name()
         params = request.params
-        logger.info(f"🔧 Executing tool: {tool_name} with params: {params}")
+        
         if tool_name not in registry:
             raise HTTPException(status_code=404, detail=f"Tool '{tool_name}' not found")
+        
         tool = registry[tool_name]
+        display_name = tool.get('displayName', tool_name)
         func = tool['func']
+        
+        # Log start with displayName
+        logger.info(f"🔧 Executing '{display_name}' ({tool_name})")
+        
+        # Start timer
+        start_time = time.perf_counter()
+        
         try:
             loop = asyncio.get_event_loop()
             result = await asyncio.wait_for(loop.run_in_executor(None, lambda: func(**params)), timeout=EXECUTE_TIMEOUT_SEC)
+            
+            # Calculate duration
+            duration = time.perf_counter() - start_time
+            
+            # Log success with timing
+            logger.info(f"✅ '{display_name}' completed in {duration:.3f}s")
+            
             return SafeJSONResponse(content={"result": result})
         except asyncio.TimeoutError:
+            duration = time.perf_counter() - start_time
+            logger.error(f"⏱️ '{display_name}' timed out after {duration:.3f}s")
             raise HTTPException(status_code=504, detail="Tool execution timed out")
         except TypeError as e:
+            duration = time.perf_counter() - start_time
             if "unexpected keyword argument" in str(e) or "missing" in str(e):
+                logger.error(f"❌ '{display_name}' failed after {duration:.3f}s: Invalid parameters")
                 raise HTTPException(status_code=400, detail=f"Invalid parameters: {e}")
+            logger.error(f"❌ '{display_name}' failed after {duration:.3f}s: {e}")
             raise HTTPException(status_code=500, detail=f"Execution error: {e}")
         except Exception as e:
-            logger.error(f"Tool execution error: {e}")
+            duration = time.perf_counter() - start_time
+            logger.error(f"❌ '{display_name}' failed after {duration:.3f}s: {e}")
             return SafeJSONResponse(
                 content={
                     "error": "Execution error",
