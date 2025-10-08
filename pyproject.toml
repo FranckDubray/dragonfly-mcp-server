@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dragonfly-mcp-server"
-version = "1.0.0"
+version = "1.9.1"
 description = "Dragonfly MCP Server (FastAPI)"
 authors = [
     {name = "MCP Developer", email = "dev@example.com"}
