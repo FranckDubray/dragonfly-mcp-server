@@ -1,7 +1,10 @@
 from __future__ import annotations
-import time
-import subprocess
-from typing import List, Tuple, Dict, Any
+from typing import Dict, Any, List, Tuple
+import time, subprocess
+
+# Prefer native decoding via PyAV when available
+from .native import detect_cuts_native, frames_luma_diffs
+from .utils import percentile, median_window, moving_average, read_exact, hysteresis_segments, nms_time
 from .shell import run
 
 # --------------------
@@ -9,6 +12,7 @@ from .shell import run
 # --------------------
 
 def probe_duration(path_abs: str) -> float:
+    # Try ffprobe (simple and robust)
     code, out, err = run(f'ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "{path_abs}"')
     if code != 0:
         return 0.0
@@ -19,7 +23,6 @@ def probe_duration(path_abs: str) -> float:
 
 
 def get_avg_fps(path_abs: str) -> float:
-    # Try avg_frame_rate then r_frame_rate
     for entry in ("avg_frame_rate", "r_frame_rate"):
         code, out, err = run(f'ffprobe -v error -select_streams v:0 -show_entries stream={entry} -of default=noprint_wrappers=1:nokey=1 "{path_abs}"')
         if code == 0:
@@ -37,64 +40,21 @@ def get_avg_fps(path_abs: str) -> float:
     return 25.0
 
 # --------------------
-# Utilities
+# Public API
 # --------------------
 
-def _percentile(values: List[float], p: float) -> float:
-    if not values:
-        return 0.0
-    v = sorted(values)
-    idx = max(0, min(len(v) - 1, int(p * (len(v) - 1))))
-    return v[idx]
+def detect_cuts_similarity_info_native(path_abs: str, scale_w: int = 64, scale_h: int = 64, ma_window: int = 3, threshold_floor: float = 0.0) -> Dict[str, Any]:
+    return detect_cuts_native(path_abs, scale_w=scale_w, scale_h=scale_h, ma_window=ma_window, threshold_floor=threshold_floor)
 
-
-def _median_window(vals: List[float], k: int = 3) -> List[float]:
-    if not vals:
-        return []
-    n = len(vals)
-    if k <= 1 or k > n:
-        return vals[:]
-    half = k // 2
-    out: List[float] = []
-    for i in range(n):
-        a = max(0, i - half)
-        b = min(n, i + half + 1)
-        window = sorted(vals[a:b])
-        m = window[len(window)//2]
-        out.append(m)
-    return out
-
-
-def _read_exact(pipe, n: int) -> bytes:
-    """Read exactly n bytes from pipe or return fewer if EOF."""
-    buf = bytearray()
-    need = n
-    while need > 0:
-        chunk = pipe.read(need)
-        if not chunk:
-            break
-        buf += chunk
-        need -= len(chunk)
-    return bytes(buf)
-
-# --------------------
-# Coarse detection (palier 5: luma + smoothing + hysteresis)
-# --------------------
 
 def detect_cuts_similarity_info(path_abs: str, analyze_fps: float, scale_w: int, scale_h: int, threshold_floor: float) -> Dict[str, Any]:
     """
-    Coarse pass haute sensibilité (luma):
-    - fps analyse (def 24), scale (def 48x48), format=gray
-    - Diff L1 frame->frame (luma)
-    - Lissage EMA rapide/lente + médiane (k=3)
-    - Hystérésis: T_low=max(0.08,P40), T_high=max(0.18,P70)
-    - NMS 0.05s
-    Retourne: cuts, diffs (t,d), r_values (t,R), thresholds, stats
+    Legacy coarse detection via ffmpeg CLI (downsampled). Native pass is preferred.
+    (Kept for compatibility; not used when PyAV native is available.)
     """
     t0 = time.monotonic()
     if analyze_fps <= 0:
         analyze_fps = 24.0
-    # Build ffmpeg command streaming raw luma frames
     cmd = [
         'ffmpeg', '-hide_banner', '-loglevel', 'error',
         '-i', path_abs,
@@ -102,20 +62,29 @@ def detect_cuts_similarity_info(path_abs: str, analyze_fps: float, scale_w: int,
         '-f', 'rawvideo', '-'
     ]
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    frame_size = scale_w * scale_h  # 1 byte per pixel (Y)
+    frame_size = scale_w * scale_h
     prev = None
     idx = 0
     times: List[float] = []
     diffs: List[float] = []
     sum_diff = 0.0
     max_diff = 0.0
+    def _read_exact(pipe, n: int) -> bytes:
+        buf = bytearray()
+        need = n
+        while need > 0:
+            chunk = pipe.read(need)
+            if not chunk:
+                break
+            buf += chunk
+            need -= len(chunk)
+        return bytes(buf)
     while True:
         buf = _read_exact(p.stdout, frame_size) if p.stdout else b''
         if len(buf) < frame_size:
             break
         if prev is not None:
             total = 0
-            # L1 on luma
             for i in range(frame_size):
                 total += abs(buf[i] - prev[i])
             diff = total / float(frame_size * 255.0)
@@ -148,35 +117,27 @@ def detect_cuts_similarity_info(path_abs: str, analyze_fps: float, scale_w: int,
             F.append((1 - alpha_f) * F[-1] + alpha_f * d)
             S.append((1 - alpha_s) * S[-1] + alpha_s * d)
     R = [max(0.0, f - s) for f, s in zip(F, S)]
+    # median on R
+    from .utils import median_window as _median_window
     Rm = _median_window(R, k=3)
 
-    # Hysteresis thresholds on Rm
+    # thresholds
+    from .utils import percentile as _percentile
     cuts: List[Tuple[float, float]] = []
-    thresholds = {'low': 0.08, 'high': 0.18}
+    thresholds = {'low': 0.0, 'high': 0.0, 'mode': 'percentile'}
     if Rm:
-        T_low = max(0.08, _percentile(Rm, 0.40))
-        T_high = max(0.18, _percentile(Rm, 0.70))
-        thresholds = {'low': T_low, 'high': T_high}
-        # candidates above high
-        cand: List[Tuple[float, float]] = []
-        for t, r in zip(times, Rm):
-            if r > T_high:
-                cand.append((t, r))
-        # NMS 0.05s
-        cand.sort(key=lambda x: x[0])
-        nms: List[Tuple[float, float]] = []
-        last_t = -1e9
-        for (t, r) in cand:
-            if nms and (t - last_t) < 0.05:
-                if r > nms[-1][1]:
-                    nms[-1] = (t, r)
-                    last_t = t
-                continue
-            nms.append((t, r))
-            last_t = t
-        cuts = nms
+        P_low = _percentile(Rm, 0.75)
+        P_high = _percentile(Rm, 0.95)
+        T_high = max(float(threshold_floor or 0.0), P_high)
+        T_low = min(P_low, T_high * 0.9)
+        if T_low >= T_high:
+            T_low = max(0.0, T_high * 0.8)
+        thresholds = {'low': T_low, 'high': T_high, 'mode': 'percentile'}
 
-    # Cap for debug size
+        from .utils import hysteresis_segments as _hyst, nms_time as _nms
+        segs = _hyst(times, Rm, T_low, T_high)
+        cuts = _nms(segs, window_sec=0.2)
+
     cap = 2000
     diffs_out = list(zip(times[:cap], diffs[:cap]))
     r_out = list(zip(times[:cap], Rm[:cap] if Rm else []))
@@ -194,94 +155,3 @@ def detect_cuts_similarity_info(path_abs: str, analyze_fps: float, scale_w: int,
         'scale': [scale_w, scale_h],
         'time_sec': round(t1 - t0, 3)
     }
-
-# --------------------
-# Native FPS refinement (read-exact)
-# --------------------
-
-def refine_cuts_native(path_abs: str, cuts_with_strength: List[Tuple[float, float]], fps_native: float, duration: float, window_sec: float = 0.33) -> List[Dict[str, Any]]:
-    refined: List[Dict[str, Any]] = []
-    if not cuts_with_strength:
-        return refined
-    for (tc, strength) in cuts_with_strength:
-        start = max(0.0, tc - window_sec)
-        end = min(duration, tc + window_sec)
-        dur = max(0.0, end - start)
-        if dur <= 0.0:
-            continue
-        cmd = [
-            'ffmpeg', '-hide_banner', '-loglevel', 'error',
-            '-ss', f'{start}', '-t', f'{dur}', '-i', path_abs,
-            '-vf', f'fps={fps_native},scale=48:48,format=gray',
-            '-f', 'rawvideo', '-'
-        ]
-        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        frame_size = 48 * 48
-        prev = None
-        idx = 0
-        best_d = -1.0
-        best_i = -1
-        local: List[Tuple[float, float]] = []
-        while True:
-            buf = _read_exact(p.stdout, frame_size) if p.stdout else b''
-            if len(buf) < frame_size:
-                break
-            if prev is not None:
-                total = 0
-                for i in range(frame_size):
-                    total += abs(buf[i] - prev[i])
-                diff = total / float(frame_size * 255.0)
-                t_local = start + (idx / max(1.0, fps_native))
-                local.append((round(t_local, 6), float(diff)))
-                if diff > best_d:
-                    best_d = diff
-                    best_i = idx
-            prev = buf
-            idx += 1
-        try:
-            p.terminate()
-        except Exception:
-            pass
-        if best_i <= 0:
-            refined.append({'time': tc, 'best_diff': strength, 'window_start': start, 'fps': fps_native, 'local_diffs': local})
-        else:
-            t_ref = start + (best_i / max(1.0, fps_native))
-            refined.append({'time': round(t_ref, 6), 'best_diff': float(best_d), 'window_start': start, 'fps': fps_native, 'local_diffs': local})
-    refined.sort(key=lambda x: x['time'])
-    return refined
-
-# (Optional) segment diffs at native fps (kept for future use)
-
-def segment_diffs_native(path_abs: str, start: float, end: float, fps_native: float, scale: int = 32) -> List[Tuple[float, float]]:
-    dur = max(0.0, end - start)
-    if dur <= 0.0:
-        return []
-    cmd = [
-        'ffmpeg', '-hide_banner', '-loglevel', 'error',
-        '-ss', f'{start}', '-t', f'{dur}', '-i', path_abs,
-        '-vf', f'fps={fps_native},scale={scale}:{scale},format=gray',
-        '-f', 'rawvideo', '-'
-    ]
-    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    frame_size = scale * scale
-    prev = None
-    idx = 0
-    out: List[Tuple[float, float]] = []
-    while True:
-        buf = _read_exact(p.stdout, frame_size) if p.stdout else b''
-        if len(buf) < frame_size:
-            break
-        if prev is not None:
-            total = 0
-            for i in range(frame_size):
-                total += abs(buf[i] - prev[i])
-            diff = total / float(frame_size * 255.0)
-            t_local = start + (idx / max(1.0, fps_native))
-            out.append((round(t_local, 6), float(diff)))
-        prev = buf
-        idx += 1
-    try:
-        p.terminate()
-    except Exception:
-        pass
-    return out
