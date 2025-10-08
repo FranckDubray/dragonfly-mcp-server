@@ -195,3 +195,137 @@ Guide à l’attention d’un LLM « développeur » qui modifie/étend ce dép�
 ---
 
 Contribuez avec de petits commits explicites. Mettez à jour ce guide si vous changez les invariants/outils fondamentaux.
+
+
+## 16) Guide express: créer un tool MCP du premier coup
+
+Objectif: livrer un outil qui s’enregistre sans erreur, passe les validations, et fonctionne immédiatement via POST /execute.
+
+A. Fichiers à créer
+- src/tools/<tool_name>.py
+  - Doit exporter run(...) et spec()
+  - Convention recommandée pour run: run(operation: str = None, **params)
+- (Optionnel) src/tool_specs/<tool_name>.json
+  - Spec JSON canonique (le serveur peut l’utiliser comme source de vérité). Garder la même structure que spec().
+
+B. Spécification (format OpenAI tools) — règles d’or
+- Toujours renvoyer depuis spec() un objet de forme:
+  {
+    "type": "function",
+    "function": {
+      "name": "<tool_name>",
+      "displayName": "<Label lisible>",
+      "description": "<Description courte>",
+      "parameters": {
+        "type": "object",
+        "properties": { ... },
+        "required": [ ... ],
+        "additionalProperties": false
+      }
+    }
+  }
+- parameters doit être un objet (jamais un tableau)
+- Tout type array doit définir items
+- Garder additionalProperties: false quand pertinent (évite les champs surprises)
+- Le function.name doit correspondre au nom du tool exposé
+
+C. Squelette minimal Python
+```
+# src/tools/hello_world.py
+from __future__ import annotations
+from typing import Any, Dict
+
+def run(operation: str = None, **params) -> Dict[str, Any]:
+    op = operation or params.get("operation") or "say"
+    if op != "say":
+        return {"error": f"Unsupported operation: {op}"}
+    name = params.get("name") or "world"
+    return {"result": f"Hello, {name}!"}
+
+def spec() -> Dict[str, Any]:
+    return {
+        "type": "function",
+        "function": {
+            "name": "hello_world",
+            "displayName": "Hello World",
+            "description": "Exemple de tool minimal.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "operation": {"type": "string", "enum": ["say"]},
+                    "name": {"type": "string"}
+                },
+                "required": ["operation"],
+                "additionalProperties": False
+            }
+        }
+    }
+```
+
+D. Exemple de spec JSON (src/tool_specs/hello_world.json)
+```
+{
+  "type": "function",
+  "function": {
+    "name": "hello_world",
+    "displayName": "Hello World",
+    "description": "Exemple de tool minimal.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {"type": "string", "enum": ["say"]},
+        "name": {"type": "string"}
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}
+```
+
+E. Sécurité et hygiène (crucial)
+- Entrées: valider et normaliser (types, bornes, valeurs par défaut)
+- Fichiers: restreindre les chemins (ex: sous docs/...), refuser les chemins absolus non attendus
+- Réseau/API: masquer les secrets en logs, timeouts raisonnables, retries/backoff si nécessaire
+- Sous‑processus (ex: ffmpeg): quote/escape correct, capturer stdout/stderr, vérifier le code retour
+- Retour: uniquement des types JSON sûrs (str, int, float, bool, dict, list)
+- Logs: messages actionnables, pas de dumps volumineux ni de secrets
+
+F. Test rapide (manuel)
+1) Reload des tools: GET /tools?reload=1
+2) Vérifier l’apparition du tool et sa spec
+3) Exécuter: POST /execute {"tool":"hello_world","params":{"operation":"say","name":"Alice"}}
+4) Gérer les erreurs de spec: 
+   - Invalid function.parameters: corriger parameters → object
+   - Arrays sans items: ajouter "items"
+   - Clé function manquante: ajouter {"type":"function","function":{...}}
+
+G. Patterns utiles
+- run avec opérations:
+  - if op == "op1": ... elif op == "op2": ... else: error
+- Normalisation de chemin (exemple):
+  - refuser tout ce qui ne commence pas par "docs/..."
+  - convertir en chemin absolu basé sur la racine projet pour appeler un binaire externe
+- Sorties de fichiers: retourner des chemins relatifs au projet (pas absolus) pour l’UI
+
+H. Pièges fréquents et corrections
+- "'function' missing" lors du registre: la spec n’a pas le wrapper type=function → corriger
+- parameters défini comme []: interdit → mettre un objet avec properties
+- Oubli de required: si l’outil nécessite un champ (ex: path), ajouter dans required
+- Longs traitements: prévoir des timeouts, ou découper (outil dédié ou script_executor)
+
+I. Check‑list “first‑time‑right”
+- [ ] spec() retourne {type:function,function:{...}} valide
+- [ ] parameters = object; arrays ont items; additionalProperties: false si utile
+- [ ] run() gère operation inconnu proprement
+- [ ] Entrées validées; chemins restreints; pas de secrets en logs
+- [ ] Testé avec /tools?reload=1 puis /execute sur 1–2 cas
+- [ ] Messages d’erreur clairs et actionnables
+
+J. Cas pratique: outil ffmpeg (extrait)
+- Chemins: n’autoriser que docs/video/
+- Normaliser vers chemin absolu avant d’appeler ffmpeg/ffprobe
+- Fallbacks: si pas de fades détectés, utiliser détection de scènes; sinon intervalle de 10s
+- Retour: liste de frames avec chemins relatifs, stats (durée, nombre de scènes, segments détectés)
+
+Cette section résume toutes les règles qui provoquent 90% des erreurs d’enregistrement. En cas de doute, comparez votre spec avec celles de src/tool_specs/date.json ou sqlite_db.json, puis rechargez avec /tools?reload=1.

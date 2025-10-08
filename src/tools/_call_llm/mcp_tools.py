@@ -4,8 +4,13 @@ MCP tools integration utilities
 import json
 import requests
 import logging
+import os
 
 LOG = logging.getLogger(__name__)
+
+# Use server EXECUTE_TIMEOUT_SEC to align tool call timeouts with MCP server settings
+EXECUTE_TIMEOUT_SEC = int(os.getenv("EXECUTE_TIMEOUT_SEC", "180"))
+
 
 def fetch_and_prepare_tools(tool_names, mcp_url):
     """
@@ -97,7 +102,7 @@ def execute_mcp_tool(fname, args, name_to_reg, mcp_url):
             f"{mcp_url}/execute",
             json=mcp_payload,
             headers={"Content-Type": "application/json"},
-            timeout=30
+            timeout=EXECUTE_TIMEOUT_SEC
         )
         
         if LOG.isEnabledFor(logging.DEBUG):

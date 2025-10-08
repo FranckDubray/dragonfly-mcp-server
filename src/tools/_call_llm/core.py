@@ -105,6 +105,7 @@ def execute_call_llm(
     tc_data = process_tool_calls_stream(resp)
     tool_calls = tc_data.get("tool_calls") or []
     streamed_text = (tc_data.get("text") or "").strip()
+    media = tc_data.get("media") or []
 
     # Aggregate usage from first stream
     first_usage = tc_data.get("usage")
@@ -118,26 +119,33 @@ def execute_call_llm(
             "text_len": len(streamed_text),
             "finish_reason": tc_data.get("finish_reason"),
             "usage": first_usage,
+            "media_count": len(media),
         }
+        if media:
+            first_stream["media_preview"] = [{k: v for k, v in m.items() if k in ("kind", "mime_type", "url") } for m in media][:5]
         attach_stream_debug(first_stream, tc_data)
         debug["first"]["stream"] = first_stream
 
-    # If no tool_calls but text arrived, return the text
+    # If no tool_calls but text or media arrived, return the text/media
     if not tool_calls:
-        if streamed_text:
+        if streamed_text or media:
             out = {
                 "success": True,
                 "content": streamed_text,
+                "media": media if media else None,
                 "finish_reason": tc_data.get("finish_reason", "stop"),
                 "usage": usage_cumulative if usage_cumulative else first_usage,
             }
+            # remove None field for cleanliness
+            if out.get("media") is None:
+                del out["media"]
             if debug_enabled:
                 debug["usage_cumulative"] = usage_cumulative
                 if usage_breakdown:
                     debug["usage_breakdown"] = usage_breakdown
                 out["debug"] = debug
             return out
-        return {"error": "No tool_calls and no text returned in streaming response", **({"debug": debug} if debug_enabled else {})}
+        return {"error": "No tool_calls, no text, and no media in streaming response", **({"debug": debug} if debug_enabled else {})}
 
     # Build assistant tool_calls message and execute MCP tools
     assistant_msg = build_assistant_tool_message(tool_calls)
@@ -194,6 +202,7 @@ def execute_call_llm(
             "finish_reason": final_result.get("finish_reason"),
             "text_len": len(final_result.get("content") or ""),
             "usage": final_usage,
+            "media_count": len(final_result.get("media") or []),
         }
         attach_stream_debug(second_stream, final_result, keys=("sse_stats", "raw_preview", "response_headers", "raw"))
         debug["second"]["stream"] = second_stream
@@ -204,9 +213,12 @@ def execute_call_llm(
     out = {
         "success": True,
         "content": final_result.get("content", ""),
+        "media": final_result.get("media") or (media if media else None),
         "finish_reason": final_result.get("finish_reason", "stop"),
         "usage": usage_cumulative if usage_cumulative else final_usage,
     }
+    if out.get("media") is None:
+        del out["media"]
     if debug_enabled:
         out["debug"] = debug
     return out

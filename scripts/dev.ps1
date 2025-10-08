@@ -36,6 +36,19 @@ PY
     exit 1
 }
 
+# Load .env if present (export)
+if (Test-Path ".env") {
+    Write-Host "🔑 Loading .env..." -ForegroundColor Yellow
+    Get-Content .env | ForEach-Object {
+        if ($_ -match "^\s*#") { return }
+        if (-not ($_ -match "=")) { return }
+        $kv = $_.Split("=",2)
+        $k = $kv[0].Trim()
+        $v = $kv[1].Trim().Trim('"').Trim("'")
+        if ($k) { $env:$k = $v }
+    }
+}
+
 # Create venv if needed
 if (-not (Test-Path "venv")) {
     Write-Host "📦 Creating virtual environment..." -ForegroundColor Yellow
@@ -49,6 +62,31 @@ Write-Host "📦 Activating virtual environment..." -ForegroundColor Yellow
 Write-Host "📦 Installing dependencies..." -ForegroundColor Yellow
 pip install --quiet --upgrade pip
 pip install --quiet -e ".[dev]"
+
+# Optional extras (parité avec dev.sh)
+python -c "import pypdf" *> $null
+if ($LASTEXITCODE -ne 0) {
+  Write-Host "📄 Installing pypdf (PDF support)..." -ForegroundColor Yellow
+  pip install --quiet "pypdf>=4.2.0"
+} else {
+  Write-Host "📄 pypdf available" -ForegroundColor Green
+}
+
+python -c "import sympy" *> $null
+if ($LASTEXITCODE -ne 0) {
+  Write-Host "∑ Installing SymPy (symbolic math)..." -ForegroundColor Yellow
+  pip install --quiet "sympy>=1.12.0"
+} else {
+  Write-Host "∑ SymPy available" -ForegroundColor Green
+}
+
+python -c "import requests" *> $null
+if ($LASTEXITCODE -ne 0) {
+  Write-Host "🌐 Installing requests (HTTP client)..." -ForegroundColor Yellow
+  pip install --quiet "requests>=2.31.0"
+} else {
+  Write-Host "🌐 requests available" -ForegroundColor Green
+}
 
 # Environment variables
 $env:MCP_HOST = $Host

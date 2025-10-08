@@ -1,6 +1,11 @@
 from typing import Any, Dict, Tuple
 import json
 import requests
+import os
+
+# Use the server's global tool execution timeout for internal tool calls
+# Falls back to 180s (same default as app_factory.EXECUTE_TIMEOUT_SEC)
+EXECUTE_TIMEOUT_SEC = int(os.getenv("EXECUTE_TIMEOUT_SEC", "180"))
 
 
 def fetch_and_prepare_tools(tool_names, mcp_url):
@@ -41,7 +46,7 @@ def execute_mcp_tool(fname: str, args: Dict[str, Any], name_to_reg: Dict[str, st
             mcp_url_exec,
             json=mcp_payload,
             headers={"Content-Type": "application/json"},
-            timeout=30,
+            timeout=EXECUTE_TIMEOUT_SEC,
         )
         if dbg:
             mcp_debug["status_code"] = mcp_resp.status_code

@@ -3,32 +3,41 @@
   "function": {
     "name": "script_executor",
     "displayName": "Script Executor",
-    "description": "Execute des scripts Python qui orchestrent des outils MCP dans un bac à sable (sécurisé).",
+    "description": "Exécute des scripts Python qui orchestrent des outils MCP dans une sandbox stricte. Inclut le stockage minimal (store / run_named / list / get).",
     "parameters": {
       "type": "object",
       "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["run", "store", "run_named", "list", "get"],
+          "description": "Action à effectuer"
+        },
         "script": {
           "type": "string",
-          "description": "Script Python. Utilise call_tool('nom', {params}) ou tools.nom(params=...) pour appeler les outils MCP. La valeur finale doit être dans une variable 'result' ou via print()."
+          "description": "Code Python à exécuter (pour operation=run) ou contenu à stocker (si operation=store)",
+          "maxLength": 20000
         },
         "variables": {
           "type": "object",
-          "description": "Variables optionnelles injectées dans l'espace du script (ex: {'topic': 'AI', 'max_results': 5}).",
+          "description": "Variables optionnelles injectées dans l'espace du script.",
           "additionalProperties": true
         },
         "timeout": {
           "type": "integer",
           "minimum": 1,
           "maximum": 300,
-          "description": "Délai d'exécution en secondes (défaut: 60)."
+          "description": "Délai d'exécution du script (secondes)."
         },
         "allowed_tools": {
           "type": "array",
-          "description": "Liste blanche facultative des outils autorisés dans le script.",
+          "description": "Liste blanche des outils autorisés (par nom technique retourné par /tools).",
           "items": { "type": "string" }
-        }
+        },
+        "name": { "type": "string", "description": "Nom du script (store / run_named / get)" },
+        "content": { "type": "string", "description": "Contenu du script (alias de script pour store)" },
+        "overwrite": { "type": "boolean", "description": "Écrase le fichier s'il existe (store)" }
       },
-      "required": ["script"],
+      "required": [],
       "additionalProperties": false
     }
   }
