@@ -88,10 +88,11 @@ Vous trouverez ci‑dessous:
       - `core.py` : logique principale (depuis 2025‑09, agrégation de l’usage cumulative à travers les phases et appels imbriqués)
       - `payloads.py`, `http_client.py`, `streaming.py`, `tools_exec.py`, `debug_utils.py`
     - `_math/` : sous‑modules pour arithmétique, symbolique, proba, algèbre linéaire, HP, etc.
-    - `_script/` : exécution sandbox (ScriptExecutor) utilisée par `script_executor`.
+    - `_ffmpeg/` : détection de plans (native PyAV), extraction d’images; debug par frame (similarité%), exec_time_sec
+    - `_script/` : exécution sandbox (ScriptExecutor)
 
 - tool_specs/
-  - Spécifications JSON canoniques pour certains tools (ex: `call_llm.json`, `script_executor.json`, …). Le code Python peut utiliser un fallback minimal si le JSON n’est pas disponible.
+  - Spécifications JSON canoniques pour certains tools (ex: `call_llm.json`, `script_executor.json`, `ffmpeg_frames.json`). Le code Python peut utiliser un fallback minimal si le JSON n’est pas disponible.
 
 ---
 
@@ -128,8 +129,8 @@ Vous trouverez ci‑dessous:
   - `python -m server` (ou via scripts fournis)
 
 - Ajouter un tool
-  - Créez `src/tools/mon_tool.py` avec `run()` et `spec()`.
-  - Optionnel: ajoutez `src/tool_specs/mon_tool.json`.
+  - Créez `src/tools/<tool_name>.py` avec `run()` et `spec()`.
+  - Optionnel: ajoutez `src/tool_specs/<tool_name>.json`.
   - Si `AUTO_RELOAD_TOOLS=1`, le nouveau tool sera détecté automatiquement.
 
 ---
