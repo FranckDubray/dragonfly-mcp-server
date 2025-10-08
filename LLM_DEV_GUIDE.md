@@ -4,33 +4,6 @@ Guide à l'attention d'un LLM « développeur » qui modifie/étend ce dépôt. 
 
 ---
 
-## 0) Changements récents (à ne pas casser)
-- Specs JSON
-  - Les `function.parameters` DOIVENT être un objet (ou booléen), jamais un tableau. Cas corrigé: `script_executor.json` (remplacé un `[]` invalide).
-  - Toute propriété de type `array` doit définir `items` (ex: `tool_names` de `call_llm`).
-  - Garder `additionalProperties: false` quand pertinent.
-- call_llm (orchestration 2 phases)
-  - Paramètre pour exposer des outils: `tool_names` (array de strings = noms techniques retournés par `/tools`).
-  - En mode debug, on n'expose plus `tool_choice` ni `parallel_tool_calls` dans les payload summaries.
-- script_executor (sandbox)
-  - Supporte une whitelist `allowed_tools` (liste de noms d'outils). Un fallback de compatibilité existe si l'ancienne signature est rencontrée.
-  - Rappels sécurité: pas d'imports, API limitée, appels aux outils via `call_tool(...)` ou `tools.<nom>(...)`.
-- academic_research_super (Recherche multi‑sources)
-  - Sources intégrées: arXiv, PubMed (ESearch+ESummary), CrossRef, HAL.
-  - Filtre client du segment `submittedDate:[NOW‑XDAYS TO NOW]` + post‑filtrage locale des dates.
-  - Déduplication/fusion cross‑sources par DOI→URL→titre+date, tri global par date desc.
-  - Garde‑fous de taille: `include_abstracts`, `max_total_items` (def 50), `max_abstract_chars` (def 2000), `max_bytes` (def ≈200KB).
-- pdf_download (Téléchargement PDF)
-  - Validation magic bytes (`%PDF-`)
-  - Extraction métadonnées (pages, titre, auteur) via pypdf
-  - Gestion noms uniques avec suffixes (_1, _2, etc.)
-  - Chroot `docs/pdfs`
-- Hygiène Git (public)
-  - Ignorés: `.dgy_backup/`, `sqlite3/` (bases locales), `__pycache__/`, `**/__pycache__/`, `*.pyc`, `src/add_mcp_server.egg-info/`.
-  - Les artefacts déjà poussés ont été supprimés de `main`.
-
----
-
 ## 1) Objectif et architecture
 - Serveur MCP (FastAPI) exposant des « tools » (OpenAI tools) en HTTP.
 - Découverte dynamique des tools dans `src/tools/` (chaque outil = module Python avec `run()` et `spec()`).
