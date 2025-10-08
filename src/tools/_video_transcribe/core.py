@@ -50,7 +50,7 @@ def _process_chunk(video_path: Path, start: float, end: float, index: int) -> Di
         index: Chunk index (for ordering)
         
     Returns:
-        Dict with index, start, end, text, or error
+        Dict with index, start, end, text, or error (or empty flag)
     """
     chunk_dur = end - start
     
@@ -78,6 +78,16 @@ def _process_chunk(video_path: Path, start: float, end: float, index: int) -> Di
         return {
             "index": index,
             "error": f"Transcription failed at {format_time(start)}: {transcribe_result.get('error')}"
+        }
+    
+    # Check if transcription is empty (silence/music)
+    if transcribe_result.get("empty", False):
+        return {
+            "index": index,
+            "start": start,
+            "end": end,
+            "text": "",
+            "empty": True  # Flag to indicate this chunk was empty
         }
     
     # Return segment
@@ -194,13 +204,22 @@ def handle_transcribe(
     # 8. Sort by index to preserve order
     results.sort(key=lambda x: x["index"])
     
-    # 9. Build segments list
-    segments = [
-        {"start": r["start"], "end": r["end"], "text": r["text"]}
-        for r in results
-    ]
+    # 9. Build segments list (filter out empty chunks)
+    segments = []
+    empty_chunks = 0
     
-    # 10. Assemble full text
+    for r in results:
+        if r.get("empty", False):
+            # Skip empty chunks (silence/music)
+            empty_chunks += 1
+        else:
+            segments.append({
+                "start": r["start"],
+                "end": r["end"],
+                "text": r["text"]
+            })
+    
+    # 10. Assemble full text (only non-empty segments)
     full_text = " ".join(seg["text"] for seg in segments)
     
     # 11. Return result
@@ -214,6 +233,7 @@ def handle_transcribe(
         "full_text": full_text,
         "metadata": {
             "total_segments": len(segments),
+            "empty_segments": empty_chunks,  # Number of chunks skipped (silence/music)
             "video_duration_total": duration,
             "audio_codec": info["audio_codec"],
             "chunk_duration": chunk_duration,
