@@ -1,3 +1,4 @@
+
 #!/bin/bash
 # MCP Server Development Script
 
@@ -32,6 +33,15 @@ if [ "$MAJOR" -lt "$MIN_MAJOR" ] || { [ "$MAJOR" -eq "$MIN_MAJOR" ] && [ "$MINOR
   echo -e "${RED}❌ Python $PYV_RAW detected, but ${MIN_MAJOR}.${MIN_MINOR}+ is required. Aborting.${NC}"
   echo -e "${YELLOW}Tip:${NC} install via pyenv/conda or download from python.org"
   exit 1
+fi
+
+# Load .env if present (export all keys temporarily)
+if [ -f ".env" ]; then
+  echo -e "${YELLOW}🔑 Loading .env...${NC}"
+  set -a
+  # shellcheck disable=SC1090
+  . ./.env
+  set +a
 fi
 
 echo -e "${YELLOW}🐍 Using Python $PYV_RAW${NC}"
@@ -73,7 +83,7 @@ else
   echo -e "${GREEN}🌐 requests available${NC}"
 fi
 
-# Environment variables
+# Environment variables (use .env values if already set)
 export MCP_HOST="${MCP_HOST:-127.0.0.1}"
 export MCP_PORT="${MCP_PORT:-8000}"
 export LOG_LEVEL="${LOG_LEVEL:-INFO}"
