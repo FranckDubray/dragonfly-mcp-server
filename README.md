@@ -45,7 +45,7 @@ Dragonfly MCP Server expose des « tools » (au format OpenAI tools) via des end
 - JSON « sûr »: grands entiers, NaN/Infinity sanitisés
 - Orchestration LLM streaming en 2 phases (avec cumul d'usage multi‑niveaux)
 - Panneau de contrôle web (`/control`)
-- **16 tools prêts à l'emploi** couvrant Git, bases de données, PDF, IA, emails, Discord, calcul, etc.
+- **17 tools prêts à l'emploi** couvrant Git, bases de données, PDF, IA, emails, Discord, transport, calcul, etc.
 
 ---
 
@@ -88,6 +88,31 @@ curl -s -X POST http://127.0.0.1:8000/execute \
  }'
 ```
 
+### Trouver une station Vélib' disponible
+```bash
+# 1. Rechercher stations près de Bastille
+curl -s -X POST http://127.0.0.1:8000/execute \
+ -H 'Content-Type: application/json' \
+ -d '{
+   "tool":"sqlite_db",
+   "params":{
+     "db_name":"velib",
+     "query":"SELECT station_code, name, capacity FROM stations WHERE name LIKE '\''%Bastille%'\'' ORDER BY capacity DESC LIMIT 3"
+   }
+ }'
+
+# 2. Obtenir disponibilité temps réel
+curl -s -X POST http://127.0.0.1:8000/execute \
+ -H 'Content-Type: application/json' \
+ -d '{
+   "tool":"velib",
+   "params":{
+     "operation":"get_availability",
+     "station_code":"12001"
+   }
+ }'
+```
+
 ### Orchestrer un LLM
 ```bash
 curl -s -X POST http://127.0.0.1:8000/execute \
@@ -123,7 +148,7 @@ Panneau de contrôle: http://127.0.0.1:8000/control
 
 ---
 
-## 🧪 Outils inclus (16 tools)
+## 🧪 Outils inclus (17 tools)
 
 ### 🤖 Intelligence & Orchestration
 
@@ -241,6 +266,28 @@ Panneau de contrôle: http://127.0.0.1:8000/control
 
 ---
 
+### 🚲 Transport & Mobilité
+
+#### **velib** — Vélib' Métropole Paris 🆕
+- **Gestionnaire de cache** des stations Vélib' (~1494 stations)
+- **3 opérations**: refresh_stations, get_availability, check_cache
+- **Cache SQLite** : station_code, name, lat, lon, capacity
+- **Temps réel** : vélos mécaniques/électriques, places libres
+- **Recherches** via `sqlite_db` (db_name: 'velib')
+- **API Open Data** : pas d'authentification requise
+- Exemple:
+  ```json
+  {
+    "tool": "velib",
+    "params": {
+      "operation": "get_availability",
+      "station_code": "16107"
+    }
+  }
+  ```
+
+---
+
 ### 🔢 Calcul & Math
 
 #### **math** — Calcul avancé
@@ -292,6 +339,10 @@ IMAP_INFOMANIAK_PASSWORD=password
 # Git
 GITHUB_TOKEN=ghp_xxxxx
 
+# Vélib' (optionnel, URLs par défaut fournies)
+VELIB_STATION_INFO_URL=https://velib-metropole-opendata.smovengo.cloud/...
+VELIB_STATION_STATUS_URL=https://velib-metropole-opendata.smovengo.cloud/...
+
 # Divers
 EXECUTE_TIMEOUT_SEC=300
 AUTO_RELOAD_TOOLS=1
@@ -306,6 +357,7 @@ AUTO_RELOAD_TOOLS=1
 - **Script executor**: sandbox stricte
 - **IMAP**: credentials en `.env` uniquement, jamais en paramètres
 - **PDF download**: validation magic bytes, chroot `docs/pdfs`
+- **Vélib'**: API publique (pas de secrets), chroot SQLite
 - **Safe JSON**: NaN/Infinity/grands entiers sanitisés
 
 ---
@@ -317,7 +369,7 @@ src/
   app_factory.py     # FastAPI app, endpoints, auto-reload
   server.py          # Entrée Uvicorn
   config.py          # .env (load/save), masquage secrets
-  tools/             # 16 tools (run() + spec())
+  tools/             # 17 tools (run() + spec())
     _call_llm/       # Orchestrateur LLM
     _math/           # Modules calcul
     _ffmpeg/         # FFmpeg utils
@@ -326,6 +378,7 @@ src/
     _pdf_download/   # PDF download
     _discord_webhook/# Discord integration
     _script/         # Sandbox ScriptExecutor
+    _velib/          # Vélib' cache manager
     # ... + tools simples (date, pdf, reddit, etc.)
   tool_specs/        # Specs JSON canoniques
 ```
