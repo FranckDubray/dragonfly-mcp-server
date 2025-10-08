@@ -1,0 +1,111 @@
+{
+  "type": "function",
+  "function": {
+    "name": "http_client",
+    "displayName": "HTTP Client",
+    "description": "Client HTTP/REST générique pour interagir avec n'importe quelle API. Supporte GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS avec authentification (Basic, Bearer, API Key), retry automatique, timeout, proxy, et parsing intelligent des réponses.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "type": "string",
+          "enum": ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"],
+          "description": "Méthode HTTP (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS)"
+        },
+        "url": {
+          "type": "string",
+          "description": "URL complète (http:// ou https://). Ex: 'https://api.example.com/users'"
+        },
+        "headers": {
+          "type": "object",
+          "description": "Headers HTTP custom. Ex: {'Content-Type': 'application/json', 'X-API-Key': 'secret'}",
+          "additionalProperties": {"type": "string"}
+        },
+        "params": {
+          "type": "object",
+          "description": "Query string parameters. Ex: {'page': '1', 'limit': '10'} → ?page=1&limit=10",
+          "additionalProperties": {"type": "string"}
+        },
+        "body": {
+          "type": "string",
+          "description": "Body raw (text/xml/etc). Pour JSON, utilisez 'json' au lieu de 'body'."
+        },
+        "json": {
+          "type": "object",
+          "description": "Body JSON (sera sérialisé automatiquement avec Content-Type: application/json)"
+        },
+        "form_data": {
+          "type": "object",
+          "description": "Form data (application/x-www-form-urlencoded). Ex: {'username': 'user', 'password': 'pass'}",
+          "additionalProperties": {"type": "string"}
+        },
+        "auth_type": {
+          "type": "string",
+          "enum": ["basic", "bearer", "api_key", "none"],
+          "description": "Type d'authentification (basic, bearer, api_key, none)"
+        },
+        "auth_user": {
+          "type": "string",
+          "description": "Username pour Basic Auth"
+        },
+        "auth_password": {
+          "type": "string",
+          "description": "Password pour Basic Auth"
+        },
+        "auth_token": {
+          "type": "string",
+          "description": "Token pour Bearer Auth (sera ajouté comme 'Authorization: Bearer TOKEN')"
+        },
+        "auth_api_key_name": {
+          "type": "string",
+          "description": "Nom du header pour API Key (ex: 'X-API-Key')"
+        },
+        "auth_api_key_value": {
+          "type": "string",
+          "description": "Valeur de l'API Key"
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Timeout en secondes (default: 30, min: 1, max: 300)",
+          "minimum": 1,
+          "maximum": 300
+        },
+        "follow_redirects": {
+          "type": "boolean",
+          "description": "Suivre les redirections automatiquement (default: true)"
+        },
+        "verify_ssl": {
+          "type": "boolean",
+          "description": "Vérifier les certificats SSL (default: true)"
+        },
+        "proxy": {
+          "type": "string",
+          "description": "URL du proxy (ex: 'http://proxy.example.com:8080')"
+        },
+        "max_retries": {
+          "type": "integer",
+          "description": "Nombre de tentatives en cas d'échec (default: 0, max: 5)",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "retry_delay": {
+          "type": "number",
+          "description": "Délai entre les tentatives en secondes (default: 1.0, exponential backoff)",
+          "minimum": 0.1,
+          "maximum": 10.0
+        },
+        "response_format": {
+          "type": "string",
+          "enum": ["auto", "json", "text", "raw"],
+          "description": "Format de la réponse (auto: détection automatique, json: parse JSON, text: string, raw: bytes)"
+        },
+        "save_response": {
+          "type": "boolean",
+          "description": "Sauvegarder la réponse dans files/http_responses/ (default: false)"
+        }
+      },
+      "required": ["method", "url"],
+      "additionalProperties": false
+    }
+  }
+}

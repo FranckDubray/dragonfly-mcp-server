@@ -4,6 +4,64 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.6.0] - 2025-10-08
+
+### 🎉 Highlights
+- **HTTP Client Tool** for universal REST/API interactions
+- All HTTP methods supported (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS)
+- Complete authentication suite (Basic, Bearer, API Key)
+- Retry logic with exponential backoff
+- Production-ready error handling
+
+### ✨ Added
+
+#### HTTP Client Tool 🆕
+- **New tool**: `http_client` for interacting with any REST/API
+- **HTTP Methods**: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS
+- **Authentication**:
+  - Basic Auth (username + password)
+  - Bearer Auth (JWT/token)
+  - API Key (custom header)
+- **Body formats**:
+  - JSON (auto-serialized with Content-Type)
+  - Form data (application/x-www-form-urlencoded)
+  - Raw text/XML
+- **Advanced features**:
+  - Retry logic with exponential backoff (0-5 retries)
+  - Configurable timeout (1-300s, default 30s)
+  - Proxy support (HTTP/HTTPS/SOCKS5)
+  - SSL verification toggle
+  - Response parsing (auto-detect, JSON, text, raw)
+  - Optional response saving to files/
+  - Follow redirects (configurable)
+- **Architecture**: `_http_client/` (api, core, auth, retry, validators, utils)
+- **Spec**: `src/tool_specs/http_client.json` (canonical source of truth)
+- **Security**:
+  - URL validation (http/https only)
+  - Timeout enforcement (prevents infinite hangs)
+  - SSL verification enabled by default
+  - Auth credentials masked in logs
+  - Chroot saves to `files/http_responses/`
+
+### 📚 Documentation
+- Updated main README with http_client tool (18 tools total)
+- Added comprehensive README in `src/tools/_http_client/`
+- Created HTTP_CLIENT_SUMMARY.md with complete specifications
+
+### 🔄 Changed
+- Tool count increased from 17 to 18
+- Enhanced networking & API integration capabilities
+
+### 🐛 Fixed
+- No bug fixes in this release (new feature only)
+
+### 📦 Migration notes
+- **New users**: Start using the tool immediately (see documentation)
+- **Existing users**: No breaking changes, new HTTP client available
+- Requires `requests` library (already in dependencies)
+
+---
+
 ## [1.5.0] - 2025-10-08
 
 ### 🎉 Highlights
