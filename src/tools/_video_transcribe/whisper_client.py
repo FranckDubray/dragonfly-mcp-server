@@ -64,12 +64,15 @@ def transcribe_audio_file(audio_path: Path, api_token: str = None) -> Dict[str, 
         
         # Parse JSON response
         data = response.json()
-        transcription = data.get('transcription', '')
+        transcription = data.get('transcription', '').strip()
         
+        # If transcription is empty (silence/music), return success with empty text
+        # This allows the caller to handle it (skip the chunk or keep it)
         if not transcription:
             return {
-                "success": False,
-                "error": "Empty transcription received from API"
+                "success": True,
+                "transcription": "",
+                "empty": True  # Flag to indicate this was empty (silence/music)
             }
         
         return {
