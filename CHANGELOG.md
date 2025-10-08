@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [Unreleased]
+## [1.9.1] - 2025-10-08
 
 ### Added
 - **flight_tracker** tool: real-time aircraft tracking via OpenSky Network API
