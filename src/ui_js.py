@@ -1,5 +1,6 @@
 CONTROL_JS = '''
 let tools = [];
+let currentTool = null;
 let currentETag = null;
 
 // ----------------------
@@ -10,15 +11,20 @@ async function loadConfig() {
         const resp = await fetch('/config');
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const cfg = await resp.json();
+        
         const ghBadge = document.getElementById('ghBadge');
         const aiBadge = document.getElementById('aiBadge');
         const epInput = document.getElementById('LLM_ENDPOINT');
-        ghBadge.textContent = cfg.GITHUB_TOKEN.present ? ('present ' + (cfg.GITHUB_TOKEN.masked || '')) : 'absent';
-        aiBadge.textContent = cfg.AI_PORTAL_TOKEN.present ? ('present ' + (cfg.AI_PORTAL_TOKEN.masked || '')) : 'absent';
+        
+        ghBadge.textContent = cfg.GITHUB_TOKEN.present ? 'present' : 'absent';
+        ghBadge.className = 'badge ' + (cfg.GITHUB_TOKEN.present ? 'present' : 'absent');
+        
+        aiBadge.textContent = cfg.AI_PORTAL_TOKEN.present ? 'present' : 'absent';
+        aiBadge.className = 'badge ' + (cfg.AI_PORTAL_TOKEN.present ? 'present' : 'absent');
+        
         if (epInput) epInput.value = cfg.LLM_ENDPOINT || '';
-        updateConfigStatus('✅ Configuration chargée', 'success');
     } catch (e) {
-        updateConfigStatus('❌ Impossible de charger la configuration: ' + e.message, 'error');
+        console.error('Failed to load config:', e);
     }
 }
 
@@ -27,13 +33,14 @@ async function saveConfig() {
         const gh = document.getElementById('GITHUB_TOKEN').value.trim();
         const ai = document.getElementById('AI_PORTAL_TOKEN').value.trim();
         const ep = document.getElementById('LLM_ENDPOINT').value.trim();
+        
         const payload = {};
         if (gh) payload.GITHUB_TOKEN = gh;
         if (ai) payload.AI_PORTAL_TOKEN = ai;
         if (ep) payload.LLM_ENDPOINT = ep;
         
         if (Object.keys(payload).length === 0) {
-            updateConfigStatus('ℹ️ Rien à enregistrer (aucune valeur renseignée).', '');
+            showConfigStatus('ℹ️ No changes to save', '');
             return;
         }
         
@@ -42,201 +49,355 @@ async function saveConfig() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
+        
         if (!resp.ok) {
             const err = await resp.text();
             throw new Error(err || ('HTTP ' + resp.status));
         }
+        
         const data = await resp.json();
-        updateConfigStatus('💾 Sauvegardé (' + data.updated + ' clé(s)) → ' + JSON.stringify(data.masked), 'success');
+        showConfigStatus('✅ Configuration saved successfully', 'success');
+        
+        // Clear password fields
         document.getElementById('GITHUB_TOKEN').value = '';
         document.getElementById('AI_PORTAL_TOKEN').value = '';
+        
         await loadConfig();
     } catch (e) {
-        updateConfigStatus('❌ Enregistrement échoué: ' + e.message, 'error');
+        showConfigStatus('❌ Failed to save: ' + e.message, 'error');
     }
 }
 
-function updateConfigStatus(message, type) {
+function showConfigStatus(message, type) {
     const el = document.getElementById('configStatus');
     el.textContent = message;
-    el.className = 'status ' + (type || '');
+    el.className = 'config-status ' + type;
+    el.style.display = 'block';
+    setTimeout(() => { el.style.display = 'none'; }, 5000);
+}
+
+function openConfig() {
+    document.getElementById('configModal').classList.add('active');
+    loadConfig();
+}
+
+function closeConfig() {
+    document.getElementById('configModal').classList.remove('active');
 }
 
 // ----------------------
 // Tools UI
 // ----------------------
-function saveFormValues() {
-    const formData = {};
-    const inputs = document.querySelectorAll('.param-input, .param-select');
-    inputs.forEach(input => {
-        if (input.value) {
-            formData[input.id] = input.value;
-        }
-    });
-    return formData;
-}
-
-function restoreFormValues(formData) {
-    Object.keys(formData).forEach(inputId => {
-        const input = document.getElementById(inputId);
-        if (input) {
-            input.value = formData[inputId];
-        }
-    });
-}
-
-async function loadTools(preserveValues = false) {
-    let formData = {};
-    if (preserveValues) formData = saveFormValues();
+async function loadTools() {
     try {
+        updateStatus('⏳ Loading tools...', '');
         const response = await fetch('/tools');
+        
         if (response.ok) {
             tools = await response.json();
-            renderTools();
-            if (preserveValues && Object.keys(formData).length > 0) {
-                setTimeout(() => restoreFormValues(formData), 100);
-                updateStatus(`✅ Reloaded ${tools.length} tools (form values preserved): ${tools.map(t => t.name).join(', ')}`, 'success');
-            } else {
-                updateStatus(`Loaded ${tools.length} tools: ${tools.map(t => t.name).join(', ')}`, 'success');
-            }
+            renderToolsList();
+            updateStatus(`✅ Loaded ${tools.length} tools`, 'success');
+            currentETag = response.headers.get('ETag');
         } else {
-            updateStatus(`Failed to load tools: ${response.statusText}`, 'error');
+            updateStatus(`❌ Failed to load tools: ${response.statusText}`, 'error');
         }
     } catch (error) {
-        updateStatus(`Error loading tools: ${error.message}`, 'error');
+        updateStatus(`❌ Error loading tools: ${error.message}`, 'error');
     }
 }
 
-async function reloadTools() {
-    updateStatus('🔄 Force reloading tools (preserving form values)...', '');
+function renderToolsList() {
+    const list = document.getElementById('toolsList');
+    list.innerHTML = '';
+    
+    tools.forEach(tool => {
+        const item = document.createElement('div');
+        item.className = 'tool-item';
+        item.onclick = () => selectTool(tool);
+        
+        const icon = getToolIcon(tool.name);
+        item.innerHTML = `
+            <span class="tool-icon">${icon}</span>
+            <span class="tool-name">${tool.displayName || tool.name}</span>
+        `;
+        
+        list.appendChild(item);
+    });
+}
+
+function getToolIcon(toolName) {
+    const icons = {
+        'call_llm': '🤖',
+        'math': '🔢',
+        'date': '📅',
+        'git': '🐙',
+        'imap': '📧',
+        'velib': '🚲',
+        'pdf_download': '📥',
+        'pdf_search': '🔍',
+        'pdf2text': '📄',
+        'sqlite_db': '🗄️',
+        'http_client': '🌐',
+        'discord_webhook': '💬',
+        'script_executor': '🐍',
+        'academic_research_super': '📚',
+        'universal_doc_scraper': '🕷️',
+        'ffmpeg_frames': '🎬',
+        'gitbook': '📖',
+        'reddit_intelligence': '🔮'
+    };
+    return icons[toolName] || '🔧';
+}
+
+function selectTool(tool) {
+    currentTool = tool;
+    
+    // Update active state
+    document.querySelectorAll('.tool-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    event.currentTarget.classList.add('active');
+    
+    // Render tool view
+    renderToolView(tool);
+}
+
+function renderToolView(tool) {
+    const mainView = document.getElementById('mainView');
+    
+    let spec;
     try {
-        const response = await fetch('/tools?reload=1');
-        if (response.ok) {
-            const formData = saveFormValues();
-            tools = await response.json();
-            renderTools();
-            if (Object.keys(formData).length > 0) {
-                setTimeout(() => restoreFormValues(formData), 100);
-                updateStatus(`✅ Force reloaded ${tools.length} tools (✅ form values preserved): ${tools.map(t => t.name).join(', ')}`, 'success');
-            } else {
-                updateStatus(`✅ Force reloaded ${tools.length} tools: ${tools.map(t => t.name).join(', ')}`, 'success');
-            }
+        spec = JSON.parse(tool.json);
+    } catch (e) {
+        mainView.innerHTML = `
+            <div class="tool-view">
+                <div class="tool-header">
+                    <h1 class="tool-title">❌ Error</h1>
+                    <p class="tool-description">Invalid tool specification</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    const params = spec.function.parameters.properties || {};
+    const required = spec.function.parameters.required || [];
+    
+    let html = `
+        <div class="tool-view">
+            <div class="tool-header">
+                <h1 class="tool-title">
+                    ${getToolIcon(tool.name)} ${tool.displayName || tool.name}
+                </h1>
+                <p class="tool-description">${tool.description}</p>
+            </div>
+            
+            <div class="form-section">
+    `;
+    
+    // Generate form fields
+    Object.keys(params).forEach(paramName => {
+        const param = params[paramName];
+        const isRequired = required.includes(paramName);
+        
+        html += `
+            <div class="form-group">
+                <label class="form-label">
+                    ${paramName}${isRequired ? '<span class="required-mark"> *</span>' : ''}
+                </label>
+        `;
+        
+        if (param.enum && param.enum.length > 0) {
+            html += `
+                <select id="param_${paramName}" class="form-select" ${isRequired ? 'required' : ''}>
+                    <option value="">-- Select ${paramName} --</option>
+            `;
+            param.enum.forEach(option => {
+                html += `<option value="${option}">${option}</option>`;
+            });
+            html += `</select>`;
+        } else if (param.type === 'boolean') {
+            html += `
+                <select id="param_${paramName}" class="form-select">
+                    <option value="">-- Select --</option>
+                    <option value="true">true</option>
+                    <option value="false">false</option>
+                </select>
+            `;
         } else {
-            updateStatus(`❌ Failed to reload tools: ${response.statusText}`, 'error');
+            const placeholder = param.type === 'number' ? 'Enter number' : 
+                              param.type === 'integer' ? 'Enter integer' :
+                              'Enter value';
+            html += `
+                <input type="text" 
+                       id="param_${paramName}" 
+                       class="form-input" 
+                       placeholder="${placeholder}"
+                       ${isRequired ? 'required' : ''}>
+            `;
+        }
+        
+        if (param.description) {
+            html += `<div class="form-help">${param.description}</div>`;
+        }
+        
+        if (param.enum && param.enum.length > 0) {
+            html += `<div class="enum-hint">Options: ${param.enum.join(', ')}</div>`;
+        }
+        
+        html += `</div>`;
+    });
+    
+    html += `
+                <button class="execute-btn" onclick="executeTool()">▶️ Execute</button>
+            </div>
+            
+            <div id="resultSection" style="display: none;" class="result-section">
+                <div class="result-header">
+                    <span class="result-title">Result</span>
+                </div>
+                <div id="resultBody" class="result-body empty">
+                    No result yet
+                </div>
+            </div>
+        </div>
+    `;
+    
+    mainView.innerHTML = html;
+}
+
+async function executeTool() {
+    if (!currentTool) return;
+    
+    const resultSection = document.getElementById('resultSection');
+    const resultBody = document.getElementById('resultBody');
+    
+    try {
+        // Show loading
+        resultSection.style.display = 'block';
+        resultBody.textContent = '⏳ Executing...';
+        resultBody.className = 'result-body';
+        
+        // Parse spec
+        const spec = JSON.parse(currentTool.json);
+        const paramDefs = spec.function.parameters.properties || {};
+        const required = spec.function.parameters.required || [];
+        
+        // Collect parameters
+        const params = {};
+        for (const paramName of Object.keys(paramDefs)) {
+            const input = document.getElementById(`param_${paramName}`);
+            if (input && input.value.trim()) {
+                let value = input.value.trim();
+                
+                // Type conversion
+                if (paramDefs[paramName].type === 'number') {
+                    const num = parseFloat(value);
+                    if (isNaN(num)) {
+                        throw new Error(`Parameter "${paramName}" must be a valid number`);
+                    }
+                    params[paramName] = num;
+                } else if (paramDefs[paramName].type === 'integer') {
+                    const num = parseInt(value, 10);
+                    if (isNaN(num)) {
+                        throw new Error(`Parameter "${paramName}" must be a valid integer`);
+                    }
+                    params[paramName] = num;
+                } else if (paramDefs[paramName].type === 'boolean') {
+                    params[paramName] = value === 'true';
+                } else {
+                    params[paramName] = value;
+                }
+            }
+        }
+        
+        // Validate required params
+        for (const reqParam of required) {
+            if (!(reqParam in params)) {
+                throw new Error(`Required parameter "${reqParam}" is missing`);
+            }
+        }
+        
+        // Execute
+        const response = await fetch('/execute', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                tool: currentTool.name,
+                params: params
+            })
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            resultBody.textContent = `✅ Success\n\n${JSON.stringify(result, null, 2)}`;
+            resultBody.className = 'result-body success';
+        } else {
+            const error = await response.json();
+            resultBody.textContent = `❌ Error\n\n${error.detail || JSON.stringify(error, null, 2)}`;
+            resultBody.className = 'result-body error';
         }
     } catch (error) {
-        updateStatus(`❌ Error reloading tools: ${error.message}`, 'error');
+        resultBody.textContent = `❌ Error\n\n${error.message}`;
+        resultBody.className = 'result-body error';
     }
 }
 
 function updateStatus(message, type) {
-    const statusEl = document.getElementById('status');
-    statusEl.textContent = message;
-    statusEl.className = 'status ' + type;
+    const statusBar = document.getElementById('statusBar');
+    statusBar.textContent = message;
+    statusBar.className = 'status-bar ' + type;
 }
 
-function renderTools() {
-    const grid = document.getElementById('toolGrid');
-    grid.innerHTML = '';
-    tools.forEach(tool => {
-        const card = createToolCard(tool);
-        grid.appendChild(card);
-    });
-}
-
-function createToolCard(tool) {
-    const card = document.createElement('div');
-    card.className = 'tool-card';
-    let spec;
-    try { spec = JSON.parse(tool.json); }
-    catch (e) { card.innerHTML = '<div class="tool-title">❌ Error</div><div class="error">Invalid tool spec</div>'; return card; }
-    const params = spec.function.parameters.properties || {};
-    const required = spec.function.parameters.required || [];
-    let html = `
-        <div class="tool-title">🔧 ${tool.displayName} (ID: ${tool.id})</div>
-        <div class="tool-description">${tool.description}</div>
-    `;
-    Object.keys(params).forEach(paramName => {
-        const param = params[paramName];
-        const isRequired = required.includes(paramName);
-        html += `
-            <div class="param-group">
-                <label class="param-label">
-                    ${paramName}${isRequired ? '<span class="required-mark"> *</span>' : ''}
-                </label>
-        `;
-        if (param.enum && param.enum.length > 0) {
-            html += `
-                <select id="${tool.name}_${paramName}" class="param-select" ${isRequired ? 'required' : ''}>
-                    <option value="">-- Select ${paramName} --</option>
-            `;
-            param.enum.forEach(option => { html += `<option value="${option}">${option}</option>`; });
-            html += `</select>`;
-            html += `<div class="enum-options">Available: ${param.enum.join(', ')}</div>`;
-        } else {
-            const placeholder = param.type === 'number' ? 'Enter number' : param.enum ? param.enum[0] : 'Enter value';
-            html += `
-                <input type="text" id="${tool.name}_${paramName}" class="param-input" placeholder="${placeholder}" ${isRequired ? 'required' : ''}>
-            `;
-        }
-        if (param.description) { html += `<div class="param-help">${param.description}</div>`; }
-        html += `</div>`;
-    });
-    html += `
-        <button class="execute-btn" onclick="executeTool('${tool.name}')">▶️ Execute ${tool.displayName}</button>
-        <div id="${tool.name}_result" class="result-area">Ready to execute...</div>
-    `;
-    card.innerHTML = html; return card;
-}
-
-async function executeTool(toolName) {
-    const tool = tools.find(t => t.name === toolName);
-    if (!tool) return;
-    const resultDiv = document.getElementById(toolName + '_result');
-    const card = resultDiv.closest('.tool-card');
-    try {
-        card.classList.add('loading');
-        resultDiv.textContent = '⏳ Executing...';
-        resultDiv.className = 'result-area';
-        const spec = JSON.parse(tool.json);
-        const params = {};
-        const paramDefs = spec.function.parameters.properties || {};
-        for (const paramName of Object.keys(paramDefs)) {
-            const input = document.getElementById(`${toolName}_${paramName}`);
-            if (input && input.value.trim()) {
-                let value = input.value.trim();
-                if (paramDefs[paramName].type === 'number') {
-                    const num = parseFloat(value);
-                    if (isNaN(num)) { throw new Error(`Parameter "${paramName}" must be a valid number`); }
-                    params[paramName] = num;
-                } else { params[paramName] = value; }
+// Search functionality
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('searchInput');
+    searchInput.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase();
+        document.querySelectorAll('.tool-item').forEach(item => {
+            const toolName = item.querySelector('.tool-name').textContent.toLowerCase();
+            if (toolName.includes(query)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
             }
-        }
-        const required = spec.function.parameters.required || [];
-        for (const reqParam of required) { if (!(reqParam in params)) { throw new Error(`Required parameter "${reqParam}" is missing`); } }
-        const response = await fetch('/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tool_reg: toolName, params }) });
-        if (response.ok) { const result = await response.json(); resultDiv.textContent = `✅ Result:\n${JSON.stringify(result.result, null, 2)}`; resultDiv.className = 'result-area success'; }
-        else { const error = await response.json(); resultDiv.textContent = `❌ Error: ${error.detail}`; resultDiv.className = 'result-area error'; }
-    } catch (error) { resultDiv.textContent = `❌ Error: ${error.message}`; resultDiv.className = 'result-area error'; }
-    finally { card.classList.remove('loading'); }
-}
+        });
+    });
+    
+    // Load tools on start
+    loadTools();
+});
 
-setInterval(async function() {
+// Auto-reload tools (check every 5s)
+setInterval(async () => {
     try {
         const response = await fetch('/tools', { method: 'HEAD' });
-        if (response.headers.get('ETag') !== currentETag) {
-            const formData = saveFormValues();
+        const newETag = response.headers.get('ETag');
+        
+        if (newETag && newETag !== currentETag) {
             const loadResponse = await fetch('/tools');
             if (loadResponse.ok) {
                 const newTools = await loadResponse.json();
-                if (newTools.length !== tools.length || JSON.stringify(newTools.map(t => t.name).sort()) !== JSON.stringify(tools.map(t => t.name).sort())) {
-                    tools = newTools; renderTools(); setTimeout(() => restoreFormValues(formData), 100); updateStatus(`🔄 Auto-detected ${tools.length} tools: ${tools.map(t => t.name).join(', ')}`, 'success');
+                
+                if (newTools.length !== tools.length || 
+                    JSON.stringify(newTools.map(t => t.name).sort()) !== 
+                    JSON.stringify(tools.map(t => t.name).sort())) {
+                    tools = newTools;
+                    renderToolsList();
+                    updateStatus(`🔄 Auto-reloaded ${tools.length} tools`, 'success');
                 }
             }
-            currentETag = response.headers.get('ETag');
+            currentETag = newETag;
         }
-    } catch (error) { }
+    } catch (error) {
+        // Silent fail for background refresh
+    }
 }, 5000);
 
-document.addEventListener('DOMContentLoaded', () => { loadTools(false); loadConfig(); });
+// Close modal on outside click
+document.getElementById('configModal').addEventListener('click', (e) => {
+    if (e.target.id === 'configModal') {
+        closeConfig();
+    }
+});
 '''
