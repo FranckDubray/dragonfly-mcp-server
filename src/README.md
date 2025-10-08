@@ -1,4 +1,3 @@
-
 # Dragonfly MCP Server — Dossier `src/`
 
 Ce répertoire contient le code du serveur MCP (FastAPI) et des outils.
@@ -83,26 +82,19 @@ Vous trouverez ci‑dessous:
   - Contient les implémentations des tools. Chaque tool expose:
     - `run(**params) -> Any`
     - `spec() -> dict` (spécification OpenAI tools)
-  - Exemples inclus: `call_llm`, `math`, `date`, `git`, `gitbook`, `sqlite_db`, `pdf_search`, `pdf2text`, `reddit_intelligence`, `script_executor`, `universal_doc_scraper`, `imap`.
+  - Exemples inclus: `call_llm`, `math`, `date`, `git`, `gitbook`, `sqlite_db`, `pdf_search`, `pdf2text`, `reddit_intelligence`, `script_executor`, `universal_doc_scraper`, `imap`, `discord_webhook`.
   - Sous‑packages spécialisés:
     - `_call_llm/` : orchestrateur LLM en deux phases (stream). Fichiers clés:
       - `core.py` : logique principale (depuis 2025‑09, agrégation de l'usage cumulative à travers les phases et appels imbriqués)
       - `payloads.py`, `http_client.py`, `streaming.py`, `tools_exec.py`, `debug_utils.py`
     - `_math/` : sous‑modules pour arithmétique, symbolique, proba, algèbre linéaire, HP, etc.
-<<<<<<< HEAD
     - `_ffmpeg/` : détection de plans (native PyAV), extraction d'images; debug par frame (similarité%), exec_time_sec
     - `_script/` : exécution sandbox (ScriptExecutor)
     - `_imap/` : accès IMAP multi-comptes (Gmail, Outlook, Yahoo, iCloud, Infomaniak, custom): presets, connection, operations, parsers, utils
+    - `_discord_webhook/` : publication Discord avec persistance SQLite et gestion CRUD
 
 - tool_specs/
   - Spécifications JSON canoniques pour certains tools (ex: `call_llm.json`, `script_executor.json`, `ffmpeg_frames.json`, `imap.json`). Le code Python peut utiliser un fallback minimal si le JSON n'est pas disponible.
-=======
-    - `_ffmpeg/` : détection de plans (native PyAV), extraction d’images; debug par frame (similarité%), exec_time_sec
-    - `_script/` : exécution sandbox (ScriptExecutor)
-
-- tool_specs/
-  - Spécifications JSON canoniques pour certains tools (ex: `call_llm.json`, `script_executor.json`, `ffmpeg_frames.json`). Le code Python peut utiliser un fallback minimal si le JSON n’est pas disponible.
->>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
 
 ---
 
@@ -118,7 +110,7 @@ Vous trouverez ci‑dessous:
   - `IMAP_OUTLOOK_EMAIL`, `IMAP_OUTLOOK_PASSWORD`
   - `IMAP_YAHOO_EMAIL`, `IMAP_YAHOO_PASSWORD`
   - `IMAP_ICLOUD_EMAIL`, `IMAP_ICLOUD_PASSWORD`
-  - Custom: `IMAP_EMAIL`, `IMAP_PASSWORD`, `IMAP_SERVER`, `IMAP_PORT`, `IMAP_USE_SSL`
+  - Custom: `IMAP_CUSTOM_EMAIL`, `IMAP_CUSTOM_PASSWORD`, `IMAP_CUSTOM_SERVER`, `IMAP_CUSTOM_PORT`, `IMAP_CUSTOM_USE_SSL`
 - Divers: GITHUB_TOKEN
 
 ---
@@ -158,4 +150,3 @@ Vous trouverez ci‑dessous:
 ---
 
 Pour plus de détails, voir aussi le README racine du projet.
-

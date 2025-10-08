@@ -24,3 +24,5 @@ venv/
 files/imap/
 =======
 >>>>>>> 464278b4ec6642822325a0a46d7a1312564e1550
+*.egg-info/
+*.egg-info
