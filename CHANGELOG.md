@@ -6,8 +6,27 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **flight_tracker** tool: real-time aircraft tracking via OpenSky Network API
+  - Track flights by position (lat/lon) + radius (1-500 km)
+  - Filters: altitude min/max, speed min/max, on_ground/in_flight, countries, callsign pattern
+  - Automatic flight phase detection: cruise, climb, descent, approach, final_approach, landing_imminent
+  - Sort by: distance, altitude, speed, callsign
+  - Calculate distance with Haversine formula (circular search, not rectangular bbox)
+  - Returns: position, speed, heading, vertical rate, country (registration), squawk, last contact
+  - No authentication required (public API)
+  - Architecture: `_flight_tracker/` (api, core, validators, utils, services/opensky)
+
 ### Fixed
 - http_client: timeout maximum 300s → 600s (spec JSON + validator Python)
+
+### Changed
+- CHANGELOG.md: restructured for conciseness (28.7KB → 5.9KB, -79%)
+- LLM_DEV_GUIDE.md: simplified (21.2KB → 5.8KB, -73%)
+  - Removed redundant sections and verbose explanations
+  - 10 focused sections vs 17 before
+  - Direct bullet points, no repetition
+- Tool count: 20 → **21 tools**
 
 ---
 

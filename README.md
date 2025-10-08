@@ -49,7 +49,7 @@ Dragonfly MCP Server expose des « tools » (au format OpenAI tools) via des end
 - **Panneau de contrôle web moderne** (design épuré, sidebar, logo HD)
 - **Configuration générique** : gestion automatique de toutes les variables d'environnement
 - **Hot-reload** : modifiez les variables en live sans restart (via `/control`)
-- **20 tools prêts à l'emploi** couvrant Git, bases de données, PDF, IA, emails, Discord, transport, vidéo, YouTube, calcul, etc.
+- **21 tools prêts à l'emploi** couvrant Git, bases de données, PDF, IA, emails, Discord, transport, vidéo, YouTube, aviation, calcul, etc.
 
 ---
 
@@ -62,7 +62,26 @@ curl -s -X POST http://127.0.0.1:8000/execute \
  -d '{"tool":"date","params":{"operation":"today"}}'
 ```
 
-### Télécharger et transcrire une vidéo YouTube 🆕
+### Tracker les avions en temps réel 🆕 ✈️
+```bash
+# Avions à moins de 50 km de Paris, altitude 1000-5000m
+curl -s -X POST http://127.0.0.1:8000/execute \
+ -H 'Content-Type: application/json' \
+ -d '{
+   "tool":"flight_tracker",
+   "params":{
+     "operation":"track_flights",
+     "latitude":48.8566,
+     "longitude":2.3522,
+     "radius_km":50,
+     "altitude_min":1000,
+     "altitude_max":5000,
+     "in_flight_only":true
+   }
+ }'
+```
+
+### Télécharger et transcrire une vidéo YouTube
 ```bash
 # 1. Télécharger l'audio d'une vidéo YouTube
 curl -s -X POST http://127.0.0.1:8000/execute \
@@ -185,7 +204,7 @@ Par défaut: http://127.0.0.1:8000
 
 ---
 
-## 🧪 Outils inclus (20 tools)
+## 🧪 Outils inclus (21 tools)
 
 ### 🤖 Intelligence & Orchestration
 
@@ -277,7 +296,7 @@ Par défaut: http://127.0.0.1:8000
 
 ### 🎬 Média & FFmpeg
 
-#### **youtube_download** — Téléchargement YouTube 🆕
+#### **youtube_download** — Téléchargement YouTube
 - **Télécharge vidéos/audio** depuis YouTube vers `docs/video/`
 - **Modes** : audio (MP3, parfait transcription), video (MP4), both (séparés)
 - **Qualités** : best, 720p, 480p, 360p
@@ -308,9 +327,25 @@ Par défaut: http://127.0.0.1:8000
 
 ---
 
-### 🚲 Transport & Mobilité
+### ✈️ Aviation & Transport
 
-#### **velib** — Vélib' Métropole Paris
+#### **flight_tracker** — Suivi d'avions en temps réel 🆕 ⭐
+- **Tracking en direct** via OpenSky Network API
+- **Filtres complets** :
+  - Position & rayon (1-500 km)
+  - Altitude min/max
+  - Vitesse min/max
+  - Pays d'immatriculation
+  - Callsign pattern (ex: `AFR*` pour Air France)
+  - Au sol / en vol
+- **Données live** : position, vitesse, cap, altitude, vertical rate
+- **Détection automatique phase de vol** :
+  - cruise, climb, descent, approach, final_approach, landing_imminent
+- **Tri** : par distance, altitude, vitesse, callsign
+- **Pas d'authentification** requise (API publique)
+- **Exemple** : Tous les avions en approche (<2000m) dans un rayon de 500 km
+
+#### **velib** — Vélib' Métropole Paris 🚲
 - **Gestionnaire de cache** des stations Vélib' (~1494 stations)
 - **3 opérations**: refresh_stations, get_availability, check_cache
 - **Cache SQLite** : station_code, name, lat, lon, capacity
@@ -326,7 +361,7 @@ Par défaut: http://127.0.0.1:8000
 - **Tous les verbes HTTP** : GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS
 - **Authentification** : Basic, Bearer, API Key
 - **Body formats** : JSON, Form data, Raw text/XML
-- **Features avancées** : Retry avec backoff, Proxy, Timeout, SSL verification
+- **Features avancées** : Retry avec backoff, Proxy, Timeout (jusqu'à 600s), SSL verification
 - **Response parsing** : auto-detect, JSON, text, raw
 - **Sauvegarde optionnelle** des réponses
 
@@ -423,7 +458,7 @@ Accès : **http://127.0.0.1:8000/control**
 - ✅ Layout 2 colonnes (Sidebar + Zone de travail)
 - ✅ Logo HD Dragonfly professionnel
 - ✅ Un seul tool visible à la fois (fini le scroll d'enfer)
-- ✅ Search bar pour filtrer les 20 tools
+- ✅ Search bar pour filtrer les 21 tools
 - ✅ Fond blanc propre, design épuré
 - ✅ Responsive mobile-ready
 
@@ -450,6 +485,7 @@ Accès : **http://127.0.0.1:8000/control**
 - **Vélib'**: API publique (pas de secrets), chroot SQLite
 - **HTTP Client**: timeout, SSL verification, credentials masqués
 - **Video transcribe**: chroot `docs/video/`, cleanup temp files
+- **Flight tracker**: API publique OpenSky (pas d'authentification), pas de données sensibles
 - **Safe JSON**: NaN/Infinity/grands entiers sanitisés
 - **Secrets masqués totalement** : zéro caractère exposé (OWASP compliant)
 - **.env ignoré par git** : aucun risque de commit de secrets
@@ -465,7 +501,7 @@ src/
   config.py          # .env (load/save), masquage secrets
   ui_html.py         # Panneau de contrôle HTML
   ui_js.py           # Panneau de contrôle JavaScript
-  tools/             # 20 tools (run() + spec())
+  tools/             # 21 tools (run() + spec())
     _call_llm/       # Orchestrateur LLM
     _math/           # Modules calcul
     _ffmpeg/         # FFmpeg utils
@@ -477,7 +513,8 @@ src/
     _script/         # Sandbox ScriptExecutor
     _velib/          # Vélib' cache manager
     _video_transcribe/ # Video transcription Whisper
-    _youtube_download/ # YouTube downloader 🆕
+    _youtube_download/ # YouTube downloader
+    _flight_tracker/ # Flight tracking OpenSky 🆕
     # ... + tools simples (date, pdf, reddit, etc.)
   tool_specs/        # Specs JSON canoniques
 scripts/
