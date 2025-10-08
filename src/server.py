@@ -1,12 +1,20 @@
 #!/usr/bin/env python3
 import os
 import sys
+import logging
 import uvicorn
 from fastapi import FastAPI
 
 # Development mode: add src to path (if running from project root)
 if os.path.isdir('src') and 'src' not in sys.path:
     sys.path.insert(0, 'src')
+
+# Configure logging BEFORE importing app
+logging.basicConfig(
+    level=os.getenv('LOG_LEVEL', 'INFO').upper(),
+    format='%(levelname)s:     %(message)s',
+    handlers=[logging.StreamHandler()]
+)
 
 # Flat layout import only (old packaged layout removed)
 from app_factory import create_app  # src/app_factory.py
