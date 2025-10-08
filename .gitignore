@@ -6,5 +6,15 @@ __pycache__/
 **/__pycache__/
 *.pyc
 src/add_mcp_server.egg-info/
+
+# OS junk
 .DS_Store
+
+# Local data and generated content (not source)
 docs/
+files/
+script_executor/
+
+# Virtual environments
+venv/
+.venv/
