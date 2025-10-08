@@ -30,5 +30,6 @@ if __name__ == "__main__":
         host=MCP_HOST,
         port=MCP_PORT,
         reload=False,
-        log_level=os.getenv('LOG_LEVEL', 'info').lower()
+        log_level=os.getenv('LOG_LEVEL', 'info').lower(),
+        access_log=False  # Disable Uvicorn access logs (we have custom logs)
     )
