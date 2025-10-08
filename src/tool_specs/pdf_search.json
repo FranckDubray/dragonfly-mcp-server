@@ -3,59 +3,49 @@
   "function": {
     "name": "pdf_search",
     "displayName": "PDF Search",
-    "description": "Recherche de texte dans un ou plusieurs fichiers PDF (fichier ou dossier). Supporte regex, sensibilité à la casse, sélection de pages (string ou liste). Retourne le total des correspondances (sur toute la plage) et les 50 premières citations.",
+    "description": "Recherche de texte dans des fichiers PDF avec contexte et positions.",
     "parameters": {
       "type": "object",
       "properties": {
         "operation": {
           "type": "string",
-          "enum": ["search"],
-          "description": "Toujours 'search' pour cette version."
+          "enum": ["search", "search_all"],
+          "description": "Type de recherche : 'search' pour un PDF spécifique, 'search_all' pour tous les PDFs du dossier"
+        },
+        "pattern": {
+          "type": "string",
+          "description": "Motif de recherche (texte ou regex selon regex_mode)"
         },
         "path": {
           "type": "string",
-          "description": "Chemin d'un fichier PDF ou d'un dossier (relatif au projet ou absolu)"
+          "description": "Chemin du fichier PDF (pour operation='search')"
         },
-        "paths": {
-          "type": "array",
-          "items": {"type": "string"},
-          "description": "Liste de fichiers ou dossiers"
-        },
-        "query": {
+        "directory": {
           "type": "string",
-          "description": "Texte à rechercher (ou expression régulière si regex=true)"
+          "description": "Répertoire contenant les PDFs (pour operation='search_all')"
         },
-        "pages": {
-          "type": "string",
-          "description": "Sélection de pages (1-based), ex: '1-3,5,10'"
-        },
-        "pages_list": {
-          "type": "array",
-          "items": {"type": "integer"},
-          "description": "Liste explicite de pages (1-based), ex: [1,3,10]"
+        "regex_mode": {
+          "type": "boolean",
+          "description": "Utiliser le pattern comme regex (default: false)"
         },
         "case_sensitive": {
           "type": "boolean",
-          "default": false,
-          "description": "Respecter la casse lors de la recherche"
+          "description": "Recherche sensible à la casse (default: false)"
         },
-        "regex": {
-          "type": "boolean",
-          "default": false,
-          "description": "Interpréter 'query' comme une expression régulière"
-        },
-        "recursive": {
-          "type": "boolean",
-          "default": true,
-          "description": "Parcourir les dossiers de façon récursive"
-        },
-        "context": {
+        "context_chars": {
           "type": "integer",
-          "default": 80,
-          "description": "Taille du contexte en caractères autour de la correspondance"
+          "description": "Nombre de caractères de contexte autour du match (default: 100)",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "max_results": {
+          "type": "integer",
+          "description": "Nombre maximum de résultats par fichier (default: 50)",
+          "minimum": 1,
+          "maximum": 500
         }
       },
-      "required": ["query"],
+      "required": ["operation", "pattern"],
       "additionalProperties": false
     }
   }
