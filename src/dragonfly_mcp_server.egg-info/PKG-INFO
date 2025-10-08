@@ -32,6 +32,7 @@ Requires-Dist: flake8>=6.0.0; extra == "dev"
 
 
 
+
 <div align="center">
 
 <!-- Local logo for reliability (placed in assets/) -->
@@ -50,14 +51,14 @@ Serveur MCP multi‑outils, rapide et extensible, propulsé par FastAPI. Découv
 
 ---
 
-## ✨ Vue d’ensemble
+## ✨ Vue d'ensemble
 Dragonfly MCP Server expose des « tools » (au format OpenAI tools) via des endpoints HTTP simples:
 - Découverte automatique des outils sous `src/tools/`
-- Exécution d’un tool via `POST /execute`
+- Exécution d'un tool via `POST /execute`
 - Orchestration LLM en 2 phases via `call_llm` (avec usage cumulatif)
 - Panneau de contrôle web pour configurer et tester (`/control`)
 
-> Pour les détails d’API (endpoints, sérialisation JSON, etc.), consultez aussi [src/README.md](./src/README.md).
+> Pour les détails d'API (endpoints, sérialisation JSON, etc.), consultez aussi [src/README.md](./src/README.md).
 
 ---
 
@@ -83,9 +84,9 @@ Dragonfly MCP Server expose des « tools » (au format OpenAI tools) via des end
 ## 🚀 Fonctionnalités
 - Auto‑reload des tools (détection de nouveaux fichiers dans `src/tools/`)
 - JSON « sûr »: grands entiers, NaN/Infinity sanitisés
-- Orchestration LLM streaming en 2 phases (avec cumul d’usage multi‑niveaux)
+- Orchestration LLM streaming en 2 phases (avec cumul d'usage multi‑niveaux)
 - Panneau de contrôle web (`/control`)
-- Outils prêts à l’emploi: Git/GitHub, SQLite, PDF, Date/Heure, Math (HP), GitBook, Reddit, Universal Doc Scraper, Script Executor, FFmpeg frames, Academic Research, etc.
+- Outils prêts à l'emploi: Git/GitHub, SQLite, PDF, Date/Heure, Math (HP), GitBook, Reddit, Universal Doc Scraper, Script Executor, FFmpeg frames, Academic Research, **IMAP email (multi-comptes)**, etc.
 
 ---
 
@@ -98,7 +99,24 @@ curl -s -X POST http://127.0.0.1:8000/execute \
  -d '{"tool":"date","params":{"operation":"today"}}'
 ```
 
-Orchestrer un LLM (réponse texte) :
+Lire les emails non lus (IMAP):
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/execute \
+ -H 'Content-Type: application/json' \
+ -d '{
+   "tool":"imap",
+   "params":{
+     "provider":"gmail",
+     "operation":"search_messages",
+     "folder":"inbox",
+     "query":{"unseen":true},
+     "max_results":20
+   }
+ }'
+```
+
+Orchestrer un LLM (réponse texte) :
 
 ```bash
 curl -s -X POST http://127.0.0.1:8000/execute \
@@ -170,10 +188,100 @@ Détails étendus: [src/README.md](./src/README.md)
 - `reddit_intelligence`
 - `universal_doc_scraper`
 - `script_executor`: exécution de scripts Python sandboxés orchestrant des tools
-- `ffmpeg_frames`: extraction d’images/frames d’une vidéo via FFmpeg (détection native PyAV, debug de similarité, exec_time_sec)
+- `ffmpeg_frames`: extraction d'images/frames d'une vidéo via FFmpeg (détection native PyAV, debug de similarité, exec_time_sec)
 - `academic_research_super`: pipeline avancé de recherche académique (agrégation, scraping, synthèse)
+- `imap`: **accès universel aux emails via IMAP** (Gmail, Outlook, Yahoo, iCloud, Infomaniak, serveurs custom) avec gestion multi-comptes
 
 Specs JSON (OpenAI tools) correspondantes dans `src/tool_specs/`.
+
+---
+
+## 📧 Tool IMAP (multi-comptes)
+
+Le tool IMAP permet de gérer plusieurs comptes email simultanément via IMAP.
+
+### Providers supportés
+- **Gmail** : `provider: "gmail"`
+- **Outlook** : `provider: "outlook"`
+- **Yahoo** : `provider: "yahoo"`
+- **iCloud** : `provider: "icloud"`
+- **Infomaniak** : `provider: "infomaniak"`
+- **Custom** : `provider: "custom"` (serveur personnalisé)
+
+### Configuration multi-comptes
+
+Variables d'environnement par provider (dans `.env`) :
+
+```bash
+# Gmail
+IMAP_GMAIL_EMAIL=votre.email@gmail.com
+IMAP_GMAIL_PASSWORD=votre_mot_de_passe
+
+# Infomaniak
+IMAP_INFOMANIAK_EMAIL=contact@votredomaine.com
+IMAP_INFOMANIAK_PASSWORD=mot_de_passe
+
+# Outlook
+IMAP_OUTLOOK_EMAIL=votre@outlook.com
+IMAP_OUTLOOK_PASSWORD=mot_de_passe
+
+# Custom (serveur personnalisé)
+IMAP_EMAIL=user@example.com
+IMAP_PASSWORD=password
+IMAP_SERVER=mail.example.com
+IMAP_PORT=993
+IMAP_USE_SSL=true
+```
+
+### Opérations disponibles
+- `connect` : tester la connexion
+- `list_folders` : lister les dossiers IMAP
+- `search_messages` : rechercher des emails (par date, expéditeur, sujet, statut lu/non lu, etc.)
+- `get_message` : récupérer un email complet
+- `download_attachments` : télécharger les pièces jointes
+- `mark_read` / `mark_unread` : marquer comme lu/non lu
+- `mark_read_batch` / `mark_unread_batch` : opérations en lot
+- `move_message` / `move_messages_batch` : déplacer vers un autre dossier
+- `mark_spam` : marquer comme spam
+- `delete_message` / `delete_messages_batch` : supprimer (avec expunge optionnel)
+
+### Exemples
+
+**Lister les emails non lus (Gmail) :**
+```bash
+curl -X POST http://127.0.0.1:8000/execute \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "tool":"imap",
+    "params":{
+      "provider":"gmail",
+      "operation":"search_messages",
+      "folder":"inbox",
+      "query":{"unseen":true},
+      "max_results":20
+    }
+  }'
+```
+
+**Marquer des emails comme lus (Infomaniak) :**
+```bash
+curl -X POST http://127.0.0.1:8000/execute \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "tool":"imap",
+    "params":{
+      "provider":"infomaniak",
+      "operation":"mark_read_batch",
+      "folder":"inbox",
+      "message_ids":["123","456","789"]
+    }
+  }'
+```
+
+**Sécurité :**
+- ✅ Aucun credential n'est passé en paramètre du tool
+- ✅ Tout est lu depuis `.env` via le paramètre `provider`
+- ✅ Passwords masqués dans les logs
 
 ---
 
@@ -191,6 +299,7 @@ Variables principales:
 - Exécution: `EXECUTE_TIMEOUT_SEC`, `AUTO_RELOAD_TOOLS`, `RELOAD`
 - LLM: `AI_PORTAL_TOKEN`, `LLM_ENDPOINT`, `LLM_REQUEST_TIMEOUT_SEC`, `LLM_RETURN_DEBUG`, `MCP_URL`
 - JSON/entiers: `BIGINT_AS_STRING`, `BIGINT_STR_THRESHOLD`, `PY_INT_MAX_STR_DIGITS`
+- IMAP: `IMAP_<PROVIDER>_EMAIL`, `IMAP_<PROVIDER>_PASSWORD` (ex: `IMAP_GMAIL_EMAIL`)
 - Divers: `GITHUB_TOKEN`
 
 Configurer via `/control` (recommandé) ou via `.env`.
@@ -200,7 +309,8 @@ Configurer via `/control` (recommandé) ou via `.env`.
 ## 🔒 Sécurité
 - SQLite chroot: DBs sous `<projet>/sqlite3` (noms validés)
 - Git local: opérations limitées à la racine du projet
-- `script_executor`: sandbox stricte (pas d’accès non autorisé)
+- `script_executor`: sandbox stricte (pas d'accès non autorisé)
+- **IMAP**: credentials en `.env` uniquement, jamais en paramètres d'appel
 - Safe JSON: sérialisation robuste (NaN/Infinity, très grands entiers)
 
 ---
@@ -209,13 +319,14 @@ Configurer via `/control` (recommandé) ou via `.env`.
 ```
 src/
   app_factory.py     # FastAPI app, endpoints, auto-reload, Safe JSON
-  server.py          # Entrée (Uvicorn) — crée l’app et lance le serveur
+  server.py          # Entrée (Uvicorn) — crée l'app et lance le serveur
   config.py          # .env (load/save), masquage des secrets
   tools/             # Tous les tools (run() + spec())
     _call_llm/       # Orchestrateur LLM: core, payloads, streaming, http_client...
     _math/           # Arithmétique, symbolique, proba, algèbre linéaire, etc.
     _ffmpeg/         # Utilitaires FFmpeg (frames, conversion)
     _script/         # Sandbox du ScriptExecutor
+    _imap/           # IMAP: presets, connection, operations, parsers, utils
   tool_specs/        # Specs JSON canoniques (OpenAI tools)
   README.md          # Doc API interne (endpoints + composants)
 ```
@@ -223,8 +334,8 @@ src/
 ---
 
 ## 🧭 Migration notes
-- Python 3.11+ requis (scripts et metadata l’imposent).
-- Les scripts de dev chargent maintenant `.env` avant l’install et le lancement.
+- Python 3.11+ requis (scripts et metadata l'imposent).
+- Les scripts de dev chargent maintenant `.env` avant l'install et le lancement.
 - Le dossier top-level `script_executor/` est ignoré par Git: déplacez vos scripts utilisateurs dans un dossier hors repo si besoin.
 - Pour les fonctionnalités math avancées, installez `sympy`; pour haute précision, `mpmath` (optionnel).
 
@@ -242,7 +353,7 @@ Vous modifiez/étendez le dépôt ? Lisez ce guide:
 ## 🗺️ Feuille de route (extraits)
 - [ ] Tests automatisés (tools + orchestrateur)
 - [ ] Exemples interactifs dans `/control`
-- [ ] Intégration d’auth facultative sur les endpoints sensibles
+- [ ] Intégration d'auth facultative sur les endpoints sensibles
 - [ ] Export de métriques (Prometheus)
 
 Contributions bienvenues — issues & PRs !
