@@ -1,3 +1,5 @@
+
+
 # Tools catalog (src/tools)
 
 This folder contains the MCP tools exposed by the server. Each tool MUST provide:
@@ -36,6 +38,107 @@ Available tools (overview)
 - script_executor: sandboxed execution of Python scripts orchestrating tools
 - academic_research_super
 - ffmpeg_frames: extract images/frames with native PyAV shot detection (frame‑by‑frame), debug per‑frame similarity and exec_time_sec
+- **imap**: universal IMAP email access (Gmail, Outlook, Yahoo, iCloud, Infomaniak, custom servers) with multi-account support
+
+## IMAP Tool
+
+The IMAP tool provides unified email access across multiple providers with a secure multi-account architecture.
+
+### Security Model
+- ✅ **No credentials in tool parameters** — all authentication via `.env` variables
+- ✅ **Provider-based configuration** — separate variables per account
+- ✅ **Masked passwords** in logs and debug output
+
+### Supported Providers
+- **gmail**: Google Mail (requires App Password if 2FA enabled)
+- **outlook**: Microsoft Outlook/Office365
+- **yahoo**: Yahoo Mail
+- **icloud**: Apple iCloud Mail
+- **infomaniak**: Swiss hosting provider (mail.infomaniak.com)
+- **custom**: Generic IMAP server (requires IMAP_SERVER, IMAP_PORT, IMAP_USE_SSL)
+
+### Configuration (.env)
+```bash
+# Gmail account
+IMAP_GMAIL_EMAIL=user@gmail.com
+IMAP_GMAIL_PASSWORD=your_app_password
+
+# Infomaniak account
+IMAP_INFOMANIAK_EMAIL=contact@yourdomain.com
+IMAP_INFOMANIAK_PASSWORD=your_password
+
+# Outlook account
+IMAP_OUTLOOK_EMAIL=user@outlook.com
+IMAP_OUTLOOK_PASSWORD=your_password
+
+# Custom server
+IMAP_EMAIL=user@example.com
+IMAP_PASSWORD=password
+IMAP_SERVER=mail.example.com
+IMAP_PORT=993
+IMAP_USE_SSL=true
+```
+
+### Operations
+- **connect**: Test connection and return account info
+- **list_folders**: List all available IMAP folders
+- **search_messages**: Search emails by criteria (date, sender, subject, seen/unseen, flagged, etc.)
+- **get_message**: Retrieve full message with body and attachments metadata
+- **download_attachments**: Download attachments from a message
+- **mark_read** / **mark_unread**: Mark single message
+- **mark_read_batch** / **mark_unread_batch**: Bulk mark operations
+- **move_message** / **move_messages_batch**: Move to another folder
+- **mark_spam**: Move to spam/junk folder
+- **delete_message** / **delete_messages_batch**: Delete messages (with optional expunge)
+
+### Example Usage
+```python
+# List unread emails (Infomaniak)
+{
+  "tool": "imap",
+  "params": {
+    "provider": "infomaniak",
+    "operation": "search_messages",
+    "folder": "inbox",
+    "query": {"unseen": true},
+    "max_results": 20
+  }
+}
+
+# Mark emails as read (Gmail)
+{
+  "tool": "imap",
+  "params": {
+    "provider": "gmail",
+    "operation": "mark_read_batch",
+    "folder": "inbox",
+    "message_ids": ["123", "456", "789"]
+  }
+}
+
+# Move to spam (Outlook)
+{
+  "tool": "imap",
+  "params": {
+    "provider": "outlook",
+    "operation": "mark_spam",
+    "folder": "inbox",
+    "message_id": "42"
+  }
+}
+```
+
+### Architecture
+```
+src/tools/_imap/
+  __init__.py     # Package marker
+  presets.py      # Provider configurations (servers, ports, folders)
+  connection.py   # IMAP connection management
+  operations.py   # Core operations (search, mark, move, delete)
+  parsers.py      # Email parsing (headers, body, attachments)
+  utils.py        # Utilities (date conversion, folder mapping)
+  README.md       # Detailed tool documentation
+```
 
 Spec JSON location and naming
 - Location: src/tool_specs/<tool_name>.json
@@ -57,5 +160,7 @@ Adding a new tool (required steps)
 5) Start the server and GET /tools to see the tool registered.
 
 Notes
-- Tests and examples are recommended but kept outside the repo’s ignored data paths (e.g., not under docs/ unless explicitly whitelisted).
+- Tests and examples are recommended but kept outside the repo's ignored data paths (e.g., not under docs/ unless explicitly whitelisted).
 - Do not commit user data or runtime outputs; use chrooted, ignored folders.
+
+ 

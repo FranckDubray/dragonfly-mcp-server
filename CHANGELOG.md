@@ -2,6 +2,41 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- Tool `imap`: accès universel aux emails via IMAP (Gmail, Outlook, Yahoo, iCloud, Infomaniak, serveurs custom)
+  - **Multi-comptes**: support de plusieurs comptes email simultanés via variables d'env par provider
+    - `IMAP_GMAIL_EMAIL` / `IMAP_GMAIL_PASSWORD`
+    - `IMAP_INFOMANIAK_EMAIL` / `IMAP_INFOMANIAK_PASSWORD`
+    - `IMAP_OUTLOOK_EMAIL` / `IMAP_OUTLOOK_PASSWORD`
+    - `IMAP_YAHOO_EMAIL` / `IMAP_YAHOO_PASSWORD`
+    - `IMAP_ICLOUD_EMAIL` / `IMAP_ICLOUD_PASSWORD`
+    - Custom: `IMAP_CUSTOM_EMAIL`, `IMAP_CUSTOM_PASSWORD`, `IMAP_CUSTOM_SERVER`, `IMAP_CUSTOM_PORT`, `IMAP_CUSTOM_USE_SSL`
+  - **Providers supportés**: Gmail, Outlook/Hotmail, Yahoo, iCloud, **Infomaniak** (nouveau), custom
+  - **Operations**: connect, list_folders, search_messages, get_message, download_attachments, mark_read/unread, move_message, delete_message
+  - **Batch operations**: mark_read_batch, mark_unread_batch, move_messages_batch, delete_messages_batch, mark_spam
+  - Presets intégrés pour providers populaires (config automatique server/port/SSL)
+  - Setup rapide (5 min): App Password + enable IMAP (vs 30+ min pour OAuth/GCP)
+  - Parsing MIME complet (headers, body text/html, attachments)
+  - Recherche IMAP standard (FROM, SUBJECT, SINCE, UNSEEN…)
+  - Normalisation des folders via alias (`inbox`, `sent`, `trash`, `spam`)
+  - **Sécurité renforcée**: SSL par défaut, chroot projet pour attachments, passwords masqués, **aucun credential en paramètre d'appel** (tout via `.env` + `provider`)
+
+### Changed
+- IMAP tool architecture refactored for multi-account support
+  - Variables d'env séparées par provider (ex: `IMAP_GMAIL_EMAIL`, `IMAP_INFOMANIAK_EMAIL`)
+  - Paramètre `provider` obligatoire pour sélectionner le compte à utiliser
+  - Chaque provider a ses propres credentials isolés
+- Documentation complète ajoutée:
+  - `/README.md`: section IMAP multi-comptes avec exemples
+  - `/src/README.md`: variables d'env et exemples d'appels
+  - `/src/tools/README.md`: guide complet du tool IMAP
+  - `/src/tools/_imap/README.md`: documentation détaillée avec setup rapide
+- .gitignore: ajout de `files/imap/` pour ignorer les données sensibles du tool IMAP
+
+---
+
 ## [1.2.0] - 2025-10-08
 
 ### Highlights
@@ -18,7 +53,7 @@ All notable changes to this project will be documented in this file.
 - README mentions native detection and debug fields.
 
 ### Fixed
-- Cases where legacy downsampled CLI missed many hard cuts. Native pass now processes at the video’s native FPS.
+- Cases where legacy downsampled CLI missed many hard cuts. Native pass now processes at the video's native FPS.
 
 ### Migration notes
 - Ensure Python 3.11+ and that scripts/dev.sh reinstalls dependencies to get NumPy + PyAV.
@@ -79,6 +114,5 @@ All notable changes to this project will be documented in this file.
 ### Migration notes
 - Python 3.11+ is now required (enforced by scripts and project metadata).
 - Dev scripts source `.env` before installing dependencies and launching the server.
-- If you kept custom scripts under top‑level `script_executor/`, they’re now ignored by Git; move them outside the repo or under a non‑tracked path.
+- If you kept custom scripts under top‑level `script_executor/`, they're now ignored by Git; move them outside the repo or under a non‑tracked path.
 - For advanced math features, ensure `sympy` is installed (scripts install it automatically). For high‑precision evaluation, `mpmath` is optional but recommended.
-
