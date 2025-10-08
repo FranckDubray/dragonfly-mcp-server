@@ -4,6 +4,114 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.9.0] - 2025-10-08
+
+### 🎉 Highlights
+- **Nouveau tool youtube_download** : téléchargement vidéos/audio YouTube
+- **Workflow complet transcription** : YouTube → Audio → Whisper
+- **Intégration parfaite video_transcribe** : pipeline automatisé
+- **Tool count** : 20 tools disponibles (19→20)
+
+### ✨ Added
+
+#### YouTube Download Tool 🆕
+- **Nouveau tool** : `youtube_download` pour télécharger depuis YouTube
+- **Opérations** :
+  - `download` : Télécharge vidéo/audio (MP3 ou MP4)
+  - `get_info` : Récupère métadonnées sans télécharger
+- **Paramètres flexibles** :
+  - `media_type`: **"audio"** (MP3, parfait transcription), "video" (MP4), "both" (séparés)
+  - `quality`: "best", "720p", "480p", "360p"
+  - `filename`: custom ou auto depuis titre vidéo
+  - `max_duration`: 7200s défaut (2h max)
+  - `timeout`: 300s défaut (5-600s)
+- **Features** :
+  - Validation URL YouTube (tous formats supportés)
+  - Filename sanitization automatique
+  - Unique naming (_1, _2 si fichier existe)
+  - Duration check (évite téléchargements massifs)
+  - Metadata extraction (titre, durée, uploader, vues)
+- **Sécurité** :
+  - Chroot à `docs/video/`
+  - URL validation stricte (YouTube domains uniquement)
+  - Filename sanitization (pas de path traversal)
+  - Duration limits configurables
+  - Timeout enforcement
+- **Architecture** : `_youtube_download/` (api, core, validators, utils, services/downloader)
+- **Spec** : `src/tool_specs/youtube_download.json` (source de vérité canonique)
+- **Dépendance** : `yt-dlp>=2023.10.0` (déjà présent dans pyproject.toml)
+
+#### Workflow Intégré 🔗
+```bash
+# 1. Télécharger audio YouTube (rapide, léger)
+youtube_download(url="...", media_type="audio")
+# → docs/video/Ma_Video.mp3
+
+# 2. Transcrire avec Whisper (parallèle 3x)
+video_transcribe(path="docs/video/Ma_Video.mp3")
+# → Transcription complète exploitable !
+```
+
+#### Documentation complète 🆕
+- **src/tools/_youtube_download/README.md** : documentation détaillée (9KB)
+  - Features et sécurité
+  - Use cases (transcription, archive, analyse)
+  - Architecture et configuration
+  - Exemples complets (audio, vidéo, both)
+  - Performance tips
+  - Error handling
+- **Spec JSON** : youtube_download.json avec validation complète
+
+### 🎯 Use Cases
+
+**1. Conférences tech → Transcription**
+```json
+{"url": "https://youtube.com/watch?v=...", "media_type": "audio"}
+```
+
+**2. Tutoriels → Archive texte searchable**
+```json
+{"url": "...", "media_type": "both", "quality": "720p"}
+```
+
+**3. Podcasts vidéo → Extraction citations**
+```json
+{"url": "...", "media_type": "audio", "filename": "podcast_ep42"}
+```
+
+**4. Check info avant download**
+```json
+{"operation": "get_info", "url": "..."}
+# → durée, titre, vues, etc.
+```
+
+### 🔄 Changed
+- Tool count : 19 → **20 tools**
+- Dépendance `yt-dlp` déjà présente dans pyproject.toml
+
+### 📚 Documentation
+- Ajout section youtube_download dans README principal
+- Mise à jour src/tools/README.md (20 tools)
+- Ajout src/tools/_youtube_download/README.md complet
+
+### 🐛 Fixed
+- Aucun bug fix (nouveau tool uniquement)
+
+### 📦 Migration notes
+- **Nouveau users** : Tool disponible immédiatement après `./scripts/dev.sh`
+- **Existing users** : Restart serveur pour découvrir le tool
+- **Dépendances** : `yt-dlp` déjà inclus, FFmpeg requis (système)
+- **Configuration** : Aucune variable d'env requise (fonctionne out-of-the-box)
+
+### 🎬 Test réussi
+**Vidéo** : "Le Dîner de cons" - Il s'appelle Juste Leblanc (4min16s)
+- ✅ Téléchargement audio : 5.9 MB en quelques secondes
+- ✅ Transcription Whisper : ~20 secondes (parallèle 3x)
+- ✅ 5 segments avec timestamps
+- ✅ Transcription complète exploitable
+
+---
+
 ## [1.8.0] - 2025-10-08
 
 ### 🎉 Highlights
