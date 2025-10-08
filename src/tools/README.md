@@ -25,7 +25,7 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 - Keep modules small and single‑responsibility. Glue in __init__.py should be minimal (no business logic).
 - Security: any file access must be chrooted to the project (no absolute/parent paths). Validate user inputs strictly.
 
-## Available tools (15 complete)
+## Available tools (16 complete)
 
 ### 🤖 Intelligence & Orchestration
 
@@ -90,6 +90,15 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 - Validated DB names
 
 ### 📄 Documents & PDF
+
+#### **pdf_download** 🆕
+- **Download PDFs from URLs** to `docs/pdfs`
+- HTTP/HTTPS with timeout control (5-300s)
+- **PDF validation** (magic bytes `%PDF-`)
+- **Automatic unique filenames** (suffixes `_1`, `_2`, etc.)
+- Optional overwrite mode
+- Filename extraction from URL
+- Architecture: `pdf_download/` (api, core, validators, utils, services/downloader)
 
 #### **pdf_search**
 - Keyword search in PDF files
@@ -173,3 +182,12 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 ## Notes
 - Tests and examples are recommended but kept outside the repo's ignored data paths (e.g., not under docs/ unless explicitly whitelisted).
 - Do not commit user data or runtime outputs; use chrooted, ignored folders.
+
+## 📝 TODO (futures améliorations)
+
+- [ ] Support authentification HTTP (Basic, Bearer)
+- [ ] Streaming pour très gros fichiers
+- [ ] Support proxy
+- [ ] Métadonnées PDF (auteur, titre, date)
+- [ ] Téléchargement batch (liste d'URLs)
+- [ ] Cache (éviter re-télécharger si hash identique)

@@ -45,7 +45,7 @@ Dragonfly MCP Server expose des « tools » (au format OpenAI tools) via des end
 - JSON « sûr »: grands entiers, NaN/Infinity sanitisés
 - Orchestration LLM streaming en 2 phases (avec cumul d'usage multi‑niveaux)
 - Panneau de contrôle web (`/control`)
-- **15 tools prêts à l'emploi** couvrant Git, bases de données, PDF, IA, emails, Discord, calcul, etc.
+- **16 tools prêts à l'emploi** couvrant Git, bases de données, PDF, IA, emails, Discord, calcul, etc.
 
 ---
 
@@ -56,6 +56,20 @@ Dragonfly MCP Server expose des « tools » (au format OpenAI tools) via des end
 curl -s -X POST http://127.0.0.1:8000/execute \
  -H 'Content-Type: application/json' \
  -d '{"tool":"date","params":{"operation":"today"}}'
+```
+
+### Télécharger un PDF depuis arXiv
+```bash
+curl -s -X POST http://127.0.0.1:8000/execute \
+ -H 'Content-Type: application/json' \
+ -d '{
+   "tool":"pdf_download",
+   "params":{
+     "operation":"download",
+     "url":"https://arxiv.org/pdf/2301.00001.pdf",
+     "filename":"research_paper"
+   }
+ }'
 ```
 
 ### Lire les emails non lus (IMAP multi-comptes)
@@ -109,7 +123,7 @@ Panneau de contrôle: http://127.0.0.1:8000/control
 
 ---
 
-## 🧪 Outils inclus (15 tools)
+## 🧪 Outils inclus (16 tools)
 
 ### 🤖 Intelligence & Orchestration
 
@@ -133,7 +147,7 @@ Panneau de contrôle: http://127.0.0.1:8000/control
 
 ### 📧 Communication & Collaboration
 
-#### **imap** — Emails multi-comptes ⭐ NOUVEAU
+#### **imap** — Emails multi-comptes ⭐
 - **6 providers**: Gmail, Outlook, Yahoo, iCloud, Infomaniak, Custom
 - **Multi-comptes simultanés** via variables d'env par provider
 - **13 opérations**: connect, list_folders, search, get, download, mark read/unread (batch), move (batch), spam, delete (batch)
@@ -157,7 +171,7 @@ Panneau de contrôle: http://127.0.0.1:8000/control
 ### 🔧 Développement & Git
 
 #### **git** — Git unifié (GitHub API + local)
-- **GitHub API**: create_repo, add/delete files, branches, commits, diff, merge
+- **GitHub API**: create_repo, add/delete files, branches, commits, diff, merge, create_release
 - **Git local**: status, fetch, pull, rebase, branch_create, checkout, commit, push, log
 - **Sécurité**: opérations chroot au projet
 - Support des conflits avec hints
@@ -180,6 +194,24 @@ Panneau de contrôle: http://127.0.0.1:8000/control
 ---
 
 ### 📄 Documents & PDF
+
+#### **pdf_download** — Téléchargement PDF 🆕
+- **Télécharge des PDFs depuis URLs** vers `docs/pdfs`
+- Validation PDF (magic bytes `%PDF-`)
+- **Métadonnées automatiques** : pages, titre, auteur
+- Noms de fichiers uniques (suffixes `_1`, `_2`, etc.)
+- Timeout configurable (5-300s)
+- Exemple:
+  ```json
+  {
+    "tool": "pdf_download",
+    "params": {
+      "url": "https://arxiv.org/pdf/2301.00001.pdf",
+      "filename": "paper",
+      "timeout": 90
+    }
+  }
+  ```
 
 #### **pdf_search** — Recherche dans PDF
 - Recherche par mots-clés
@@ -273,6 +305,7 @@ AUTO_RELOAD_TOOLS=1
 - **Git local**: opérations limitées à la racine projet
 - **Script executor**: sandbox stricte
 - **IMAP**: credentials en `.env` uniquement, jamais en paramètres
+- **PDF download**: validation magic bytes, chroot `docs/pdfs`
 - **Safe JSON**: NaN/Infinity/grands entiers sanitisés
 
 ---
@@ -284,12 +317,13 @@ src/
   app_factory.py     # FastAPI app, endpoints, auto-reload
   server.py          # Entrée Uvicorn
   config.py          # .env (load/save), masquage secrets
-  tools/             # 15 tools (run() + spec())
+  tools/             # 16 tools (run() + spec())
     _call_llm/       # Orchestrateur LLM
     _math/           # Modules calcul
     _ffmpeg/         # FFmpeg utils
     _git/            # Git local + GitHub
     _imap/           # IMAP multi-comptes
+    _pdf_download/   # PDF download
     _discord_webhook/# Discord integration
     _script/         # Sandbox ScriptExecutor
     # ... + tools simples (date, pdf, reddit, etc.)
