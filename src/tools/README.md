@@ -25,7 +25,7 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 - Keep modules small and single‑responsibility. Glue in __init__.py should be minimal (no business logic).
 - Security: any file access must be chrooted to the project (no absolute/parent paths). Validate user inputs strictly.
 
-## Available tools (16 complete)
+## Available tools (19 complete)
 
 ### 🤖 Intelligence & Orchestration
 
@@ -46,7 +46,7 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 
 ### 📧 Communication & Collaboration
 
-#### **imap** ⭐ NOUVEAU
+#### **imap** ⭐
 - Universal IMAP email access (Gmail, Outlook, Yahoo, iCloud, Infomaniak, custom servers)
 - **Multi-account support**: separate env vars per provider
   - `IMAP_GMAIL_EMAIL` / `IMAP_GMAIL_PASSWORD`
@@ -98,7 +98,7 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 - **Automatic unique filenames** (suffixes `_1`, `_2`, etc.)
 - Optional overwrite mode
 - Filename extraction from URL
-- Architecture: `pdf_download/` (api, core, validators, utils, services/downloader)
+- Architecture: `_pdf_download/` (api, core, validators, utils, services/downloader)
 
 #### **pdf_search**
 - Keyword search in PDF files
@@ -117,6 +117,21 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 - Architecture: `_universal_doc/` (scraper, parsers, cleaners)
 
 ### 🎬 Media & FFmpeg
+
+#### **video_transcribe** 🆕 ⚡
+- **Extract audio from video and transcribe using Whisper API**
+- **Parallel processing**: up to 3 chunks simultaneously (3x faster)
+- **Performance**: 3 minutes video → 20 seconds transcription
+- **Direct extraction**: FFmpeg extracts audio segments on-the-fly (no persistent temp files)
+- **Whisper API**: multipart/form-data upload with Bearer token
+- **Time-based segmentation**: `time_start`/`time_end` for large videos
+- **Configurable chunking**: `chunk_duration` (default 60s)
+- **Returns JSON**: segments with timestamps + full_text + metadata
+- **Operations**:
+  - `transcribe`: Extract audio + Whisper transcription
+  - `get_info`: Video metadata (duration, audio codec)
+- **Security**: chroot to `docs/video/`, automatic cleanup of temp files
+- Architecture: `_video_transcribe/` (api, core, audio_extractor, whisper_client, validators, utils)
 
 #### **ffmpeg_frames**
 - Extract images/frames from video via FFmpeg
@@ -146,6 +161,29 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 - Operations: now, today, diff, add, format, parse, weekday, week_number
 - Timezone aware
 - Multiple formats
+
+### 🚲 Transport & Mobility
+
+#### **velib** 🆕
+- **Vélib' Métropole Paris bike-sharing data**
+- SQLite cache for ~1494 stations (static data)
+- Real-time availability API (bikes mechanical/electric, docks free)
+- 3 operations: `refresh_stations`, `get_availability`, `check_cache`
+- Integration with `sqlite_db` tool for complex searches
+- Open Data API (no authentication required)
+- Architecture: `_velib/` (api, core, db, fetcher, validators, utils)
+
+### 🌐 Networking & API
+
+#### **http_client** 🆕
+- **Universal REST/API client**
+- All HTTP methods: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS
+- Authentication: Basic, Bearer, API Key
+- Body formats: JSON, Form data, Raw text/XML
+- Advanced features: Retry with backoff, Proxy, Timeout, SSL verification
+- Response parsing: auto-detect, JSON, text, raw
+- Optional response saving
+- Architecture: `_http_client/` (api, core, auth, retry, validators, utils)
 
 ### 🌐 Social Media
 
@@ -182,12 +220,3 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 ## Notes
 - Tests and examples are recommended but kept outside the repo's ignored data paths (e.g., not under docs/ unless explicitly whitelisted).
 - Do not commit user data or runtime outputs; use chrooted, ignored folders.
-
-## 📝 TODO (futures améliorations)
-
-- [ ] Support authentification HTTP (Basic, Bearer)
-- [ ] Streaming pour très gros fichiers
-- [ ] Support proxy
-- [ ] Métadonnées PDF (auteur, titre, date)
-- [ ] Téléchargement batch (liste d'URLs)
-- [ ] Cache (éviter re-télécharger si hash identique)
