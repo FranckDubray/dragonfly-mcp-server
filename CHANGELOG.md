@@ -1,6 +1,76 @@
+
+
+
+
+
+
+
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
+
+---
+
+## [1.7.1] - 2025-10-08
+
+### 🎉 Highlights
+- **Logs ultra-propres** : displayName + timing d'exécution sur chaque tool
+- **Fix polling HEAD** : plus d'erreur 405 toutes les 5 secondes
+- **Configuration logging** : logs applicatifs maintenant visibles
+- **Désactivation logs Uvicorn** : évite duplication des logs HTTP
+
+### 🐛 Fixed
+
+#### Endpoint HEAD manquant
+- **Fix**: Ajout du handler `@app.head("/tools")` pour le polling ETag
+- **Problème** : Le panneau de contrôle faisait une requête HEAD toutes les 5s → erreur 405
+- **Solution** : Endpoint HEAD qui calcule l'ETag sans payload (optimisation)
+- **Commit** : 67bc960
+
+#### Configuration du logging
+- **Fix**: Ajout de `logging.basicConfig()` dans `server.py`
+- **Problème** : Les logs custom de `app_factory.py` ne s'affichaient pas
+- **Solution** : Configuration du logger avec StreamHandler avant import de l'app
+- **Commit** : f3d6a6b
+
+#### Duplication des logs HTTP
+- **Chore**: Désactivation des logs d'accès Uvicorn (`access_log=False`)
+- **Problème** : Logs HTTP apparaissaient en double (avant et après exécution)
+- **Solution** : Utilisation exclusive des logs custom plus informatifs
+- **Commit** : 5100be9
+
+### ✨ Added
+
+#### Logs d'exécution enrichis
+- **Feature**: DisplayName + timing dans les logs d'exécution
+- **Format** : `🔧 Executing 'Display Name' (technical_name)` → `✅ 'Display Name' completed in 0.123s`
+- **Précision** : `time.perf_counter()` pour timing haute précision (microseconde)
+- **Cas d'erreur** : Timing également affiché sur erreurs/timeouts pour debug
+- **Commit** : 214d041
+
+### 📊 Exemple de logs (avant/après)
+
+**Avant v1.7.1** :
+```
+INFO:     127.0.0.1:51899 - "POST /execute HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51487 - "HEAD /tools HTTP/1.1" 405 Method Not Allowed  (× toutes les 5s)
+```
+
+**Après v1.7.1** :
+```
+🔧 Executing 'Date/Time' (date)
+✅ 'Date/Time' completed in 0.003s
+```
+
+### 🔄 Changed
+- Logs Uvicorn access désactivés (remplacés par logs custom)
+- Format de logs unifié avec émojis (🔧 start, ✅ success, ❌ error, ⏱️ timeout)
+
+### 📦 Migration notes
+- **No breaking changes** : hotfix release compatible v1.7.0
+- **Restart required** : pour bénéficier des nouveaux logs
+- Tous les outils fonctionnent à l'identique
 
 ---
 
