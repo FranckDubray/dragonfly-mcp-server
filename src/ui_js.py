@@ -2,9 +2,10 @@ CONTROL_JS = '''
 let tools = [];
 let currentTool = null;
 let currentETag = null;
+let allEnvVars = {};
 
 // ----------------------
-// Config (tokens) helpers
+// Config (tokens) helpers - GÉNÉRIQUE
 // ----------------------
 async function loadConfig() {
     try {
@@ -12,32 +13,79 @@ async function loadConfig() {
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const cfg = await resp.json();
         
-        const ghBadge = document.getElementById('ghBadge');
-        const aiBadge = document.getElementById('aiBadge');
-        const epInput = document.getElementById('LLM_ENDPOINT');
+        allEnvVars = cfg.vars || {};
         
-        ghBadge.textContent = cfg.GITHUB_TOKEN.present ? 'present' : 'absent';
-        ghBadge.className = 'badge ' + (cfg.GITHUB_TOKEN.present ? 'present' : 'absent');
+        // Generate dynamic config form
+        const formSection = document.querySelector('#configModal .form-section');
+        formSection.innerHTML = '';
         
-        aiBadge.textContent = cfg.AI_PORTAL_TOKEN.present ? 'present' : 'absent';
-        aiBadge.className = 'badge ' + (cfg.AI_PORTAL_TOKEN.present ? 'present' : 'absent');
+        const sortedKeys = Object.keys(allEnvVars).sort();
         
-        if (epInput) epInput.value = cfg.LLM_ENDPOINT || '';
+        if (sortedKeys.length === 0) {
+            formSection.innerHTML = '<p class="form-help" style="text-align: center;">No environment variables found in .env</p>';
+            return;
+        }
+        
+        sortedKeys.forEach(key => {
+            const varData = allEnvVars[key];
+            const isSecret = varData.is_secret;
+            const present = varData.present;
+            
+            const formGroup = document.createElement('div');
+            formGroup.className = 'form-group';
+            
+            // Label with badge
+            const label = document.createElement('label');
+            label.className = 'form-label';
+            label.innerHTML = `
+                ${key}
+                <span class="badge ${present ? 'present' : 'absent'}">${present ? 'present' : 'absent'}</span>
+            `;
+            
+            // Input (password for secrets, text for others)
+            const input = document.createElement('input');
+            input.id = `env_${key}`;
+            input.type = isSecret ? 'password' : 'text';
+            input.className = 'form-input';
+            input.placeholder = isSecret 
+                ? 'New value (leave empty to keep current)' 
+                : (varData.value || 'Enter value');
+            input.value = ''; // Always empty for security
+            
+            // Help text with current masked value for secrets
+            const help = document.createElement('div');
+            help.className = 'form-help';
+            if (isSecret && present) {
+                help.textContent = `Current: ${varData.masked_value}`;
+            } else if (!isSecret && present) {
+                help.textContent = `Current: ${varData.value}`;
+            } else {
+                help.textContent = 'Not set';
+            }
+            
+            formGroup.appendChild(label);
+            formGroup.appendChild(input);
+            formGroup.appendChild(help);
+            formSection.appendChild(formGroup);
+        });
+        
     } catch (e) {
         console.error('Failed to load config:', e);
+        showConfigStatus('❌ Failed to load config: ' + e.message, 'error');
     }
 }
 
 async function saveConfig() {
     try {
-        const gh = document.getElementById('GITHUB_TOKEN').value.trim();
-        const ai = document.getElementById('AI_PORTAL_TOKEN').value.trim();
-        const ep = document.getElementById('LLM_ENDPOINT').value.trim();
-        
         const payload = {};
-        if (gh) payload.GITHUB_TOKEN = gh;
-        if (ai) payload.AI_PORTAL_TOKEN = ai;
-        if (ep) payload.LLM_ENDPOINT = ep;
+        
+        // Collect all non-empty values
+        Object.keys(allEnvVars).forEach(key => {
+            const input = document.getElementById(`env_${key}`);
+            if (input && input.value.trim()) {
+                payload[key] = input.value.trim();
+            }
+        });
         
         if (Object.keys(payload).length === 0) {
             showConfigStatus('ℹ️ No changes to save', '');
@@ -56,12 +104,17 @@ async function saveConfig() {
         }
         
         const data = await resp.json();
-        showConfigStatus('✅ Configuration saved successfully', 'success');
+        showConfigStatus(`✅ Saved ${data.updated} variable(s) successfully`, 'success');
         
-        // Clear password fields
-        document.getElementById('GITHUB_TOKEN').value = '';
-        document.getElementById('AI_PORTAL_TOKEN').value = '';
+        // Clear all password fields
+        Object.keys(allEnvVars).forEach(key => {
+            const input = document.getElementById(`env_${key}`);
+            if (input && allEnvVars[key].is_secret) {
+                input.value = '';
+            }
+        });
         
+        // Reload to show updated values
         await loadConfig();
     } catch (e) {
         showConfigStatus('❌ Failed to save: ' + e.message, 'error');

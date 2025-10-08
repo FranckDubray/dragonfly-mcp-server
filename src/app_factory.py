@@ -12,7 +12,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
-from config import load_env_file, save_env_vars, mask_secret, ENV_FILE, find_project_root
+from config import (
+    load_env_file, 
+    save_env_vars, 
+    get_all_env_vars,  # NEW: generic env loader
+    ENV_FILE, 
+    find_project_root
+)
 
 # New split modules
 from app_core.safe_json import SafeJSONResponse, sanitize_for_json, strip_surrogates
@@ -40,14 +46,10 @@ class ExecuteRequest(BaseModel):
     def get_tool_name(self) -> str:
         return self.tool_reg or self.tool or ''
 
+# ConfigUpdate is now completely generic (accepts any key/value)
 class ConfigUpdate(BaseModel):
-    GITHUB_TOKEN: Optional[str] = None
-    AI_PORTAL_TOKEN: Optional[str] = None
-    LLM_ENDPOINT: Optional[str] = None
-    # New: allow editing timeouts from /control
-    EXECUTE_TIMEOUT_SEC: Optional[str] = None
-    LLM_REQUEST_TIMEOUT_SEC: Optional[str] = None
-    SCRIPT_TIMEOUT_SEC: Optional[str] = None
+    class Config:
+        extra = 'allow'  # Accept any extra fields dynamically
 
 # ----------------- App factory -----------------
 
@@ -157,29 +159,18 @@ def create_app() -> FastAPI:
                 status_code=500,
             )
 
-    # ----- Config -----
+    # ----- Config (GENERIC) -----
     @app.get("/config")
     async def get_config():
-        gh = os.getenv('GITHUB_TOKEN')
-        ai = os.getenv('AI_PORTAL_TOKEN')
-        llm_ep = os.getenv('LLM_ENDPOINT', '')
-        return SafeJSONResponse(
-            content={
-                "GITHUB_TOKEN": {"present": bool(gh), "masked": mask_secret(gh)},
-                "AI_PORTAL_TOKEN": {"present": bool(ai), "masked": mask_secret(ai)},
-                "LLM_ENDPOINT": llm_ep,
-                # New: expose timeouts
-                "EXECUTE_TIMEOUT_SEC": os.getenv('EXECUTE_TIMEOUT_SEC', ''),
-                "LLM_REQUEST_TIMEOUT_SEC": os.getenv('LLM_REQUEST_TIMEOUT_SEC', ''),
-                "SCRIPT_TIMEOUT_SEC": os.getenv('SCRIPT_TIMEOUT_SEC', ''),
-                "env_file": str(ENV_FILE),
-            }
-        )
+        """Return all env vars from .env with metadata (generic)."""
+        return SafeJSONResponse(content=get_all_env_vars())
 
     @app.post("/config")
-    async def set_config(update: ConfigUpdate):
+    async def set_config(request: Request):
+        """Save any env vars to .env (generic)."""
         try:
-            payload = update.dict()
+            body = await request.body()
+            payload = json.loads(body)
             result = save_env_vars(payload)
             return SafeJSONResponse(content={"success": True, **result})
         except Exception as e:
