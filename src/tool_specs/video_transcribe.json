@@ -1,0 +1,42 @@
+{
+  "type": "function",
+  "function": {
+    "name": "video_transcribe",
+    "displayName": "Video Transcription",
+    "description": "Extract audio from video and transcribe using Whisper API. Supports time-based segmentation for large videos. Returns transcript as JSON with timestamps.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["transcribe", "get_info"],
+          "description": "Operation to perform: transcribe (extract audio + Whisper API) or get_info (video metadata)"
+        },
+        "path": {
+          "type": "string",
+          "description": "Path to video file (relative to project root, must be under docs/video/)"
+        },
+        "time_start": {
+          "type": "integer",
+          "description": "Start time in seconds (default: 0). Use for segmenting large videos.",
+          "minimum": 0,
+          "default": 0
+        },
+        "time_end": {
+          "type": "integer",
+          "description": "End time in seconds (default: video duration). Use for segmenting large videos.",
+          "minimum": 0
+        },
+        "chunk_duration": {
+          "type": "integer",
+          "description": "Internal chunk size in seconds for Whisper API calls (default: 60s)",
+          "minimum": 10,
+          "maximum": 600,
+          "default": 60
+        }
+      },
+      "required": ["operation", "path"],
+      "additionalProperties": false
+    }
+  }
+}
