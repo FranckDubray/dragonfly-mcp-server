@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### 🎯 Next steps
+- SMTP tool for email sending
+- OAuth2 support for IMAP (Gmail, Outlook)
+- PDF metadata search (find PDFs by author/title/date)
+- Batch PDF download (download multiple PDFs from a list)
+- PDF cache (avoid re-downloading identical files)
+
+---
+
+## [1.4.0] - 2025-10-08
+
+### 🎉 Highlights
+- **PDF Download Tool** with automatic metadata extraction
+- Intelligent filename management with unique naming
+- Complete PDF workflow integration (download → extract → search)
+
 ### ✨ Added
 
 #### PDF Download Tool 🆕
@@ -25,10 +41,22 @@ All notable changes to this project will be documented in this file.
 - **Spec**: `src/tool_specs/pdf_download.json` (canonical source of truth)
 
 ### 📚 Documentation
-- Updated main README with pdf_download tool
+- Updated main README with pdf_download tool (16 tools total)
 - Updated src/README.md with pdf_download examples
-- Updated src/tools/README.md with complete tool catalog (16 tools)
+- Updated src/tools/README.md with complete tool catalog
 - Added comprehensive README in `src/tools/_pdf_download/`
+
+### 🔄 Changed
+- Tool count increased from 15 to 16
+- Enhanced PDF workflow capabilities
+
+### 🐛 Fixed
+- No bug fixes in this release (new feature only)
+
+### 📦 Migration notes
+- **New users**: Start using the tool immediately (see documentation)
+- **Existing users**: No breaking changes, extends existing PDF capabilities
+- Requires `pypdf>=4.2.0` (already in dependencies)
 
 ---
 
