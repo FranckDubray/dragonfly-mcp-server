@@ -1,3 +1,6 @@
+
+
+
 <div align="center">
 
 <!-- Local logo for reliability (placed in assets/) -->
@@ -7,8 +10,8 @@
 
 Serveur MCP multi‑outils, rapide et extensible, propulsé par FastAPI. Découverte automatique des tools, exécution sécurisée, orchestrateur LLM avancé, et panneau de contrôle web.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
-![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB)
+[![License: MIT](./LICENSE)](./LICENSE)
+![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB)
 ![FastAPI](https://img.shields.io/badge/FastAPI-%F0%9F%9A%80-009688)
 ![Status](https://img.shields.io/badge/Status-Active-success)
 
@@ -41,6 +44,7 @@ Dragonfly MCP Server expose des « tools » (au format OpenAI tools) via des end
 - [Structure du projet](#-structure-du-projet)
 - [Pour les LLM « développeurs »](#-pour-les-llm-développeurs)
 - [Feuille de route](#-feuille-de-route)
+- [Migration notes](#-migration-notes)
 - [Licence](#-licence)
 
 ---
@@ -50,7 +54,7 @@ Dragonfly MCP Server expose des « tools » (au format OpenAI tools) via des end
 - JSON « sûr »: grands entiers, NaN/Infinity sanitisés
 - Orchestration LLM streaming en 2 phases (avec cumul d’usage multi‑niveaux)
 - Panneau de contrôle web (`/control`)
-- Outils prêts à l’emploi: Git/GitHub, SQLite, PDF, Date/Heure, Math (HP), GitBook, Reddit, Universal Doc Scraper, Script Executor, etc.
+- Outils prêts à l’emploi: Git/GitHub, SQLite, PDF, Date/Heure, Math (HP), GitBook, Reddit, Universal Doc Scraper, Script Executor, FFmpeg frames, Academic Research, etc.
 
 ---
 
@@ -126,7 +130,7 @@ Détails étendus: [src/README.md](./src/README.md)
 
 ## 🧪 Outils inclus
 - `call_llm`: orchestrateur LLM (2 phases, usage cumulatif)
-- `math`: calcul numérique/HP, symbolique, algèbre linéaire
+- `math`: calcul numérique/HP, symbolique, algèbre linéaire (+ extensions), solveurs, séries, nombres premiers, sommes
 - `date`: now/today, diff, add, format, parse, weekday, week_number
 - `git`: GitHub API + Git local (opérations sécurisées)
 - `gitbook`: discovery/lecture/search GitBook
@@ -135,6 +139,8 @@ Détails étendus: [src/README.md](./src/README.md)
 - `reddit_intelligence`
 - `universal_doc_scraper`
 - `script_executor`: exécution de scripts Python sandboxés orchestrant des tools
+- `ffmpeg_frames`: extraction d’images/frames d’une vidéo via FFmpeg
+- `academic_research_super`: pipeline avancé de recherche académique (agrégation, scraping, synthèse)
 
 Specs JSON (OpenAI tools) correspondantes dans `src/tool_specs/`.
 
@@ -162,7 +168,7 @@ Configurer via `/control` (recommandé) ou via `.env`.
 
 ## 🔒 Sécurité
 - SQLite chroot: DBs sous `<projet>/sqlite3` (noms validés)
-- Git local: opérations limités à la racine du projet
+- Git local: opérations limitées à la racine du projet
 - `script_executor`: sandbox stricte (pas d’accès non autorisé)
 - Safe JSON: sérialisation robuste (NaN/Infinity, très grands entiers)
 
@@ -177,10 +183,19 @@ src/
   tools/             # Tous les tools (run() + spec())
     _call_llm/       # Orchestrateur LLM: core, payloads, streaming, http_client...
     _math/           # Arithmétique, symbolique, proba, algèbre linéaire, etc.
+    _ffmpeg/         # Utilitaires FFmpeg (frames, conversion)
     _script/         # Sandbox du ScriptExecutor
   tool_specs/        # Specs JSON canoniques (OpenAI tools)
   README.md          # Doc API interne (endpoints + composants)
 ```
+
+---
+
+## 🧭 Migration notes
+- Python 3.11+ requis (scripts et metadata l’imposent).
+- Les scripts de dev chargent maintenant `.env` avant l’install et le lancement.
+- Le dossier top-level `script_executor/` est ignoré par Git: déplacez vos scripts utilisateurs dans un dossier hors repo si besoin.
+- Pour les fonctionnalités math avancées, installez `sympy`; pour haute précision, `mpmath` (optionnel).
 
 ---
 
