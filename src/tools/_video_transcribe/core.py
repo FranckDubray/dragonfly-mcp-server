@@ -4,6 +4,7 @@ import os
 import math
 from pathlib import Path
 from typing import Dict, Any, List
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from .validators import validate_video_path, validate_time_range, validate_chunk_duration
 from .utils import abs_from_project, probe_video_info, format_time
@@ -38,6 +39,56 @@ def handle_get_info(path: str) -> Dict[str, Any]:
     }
 
 
+def _process_chunk(video_path: Path, start: float, end: float, index: int) -> Dict[str, Any]:
+    """
+    Process a single chunk (extract audio + transcribe).
+    
+    Args:
+        video_path: Path to video
+        start: Start time in seconds
+        end: End time in seconds
+        index: Chunk index (for ordering)
+        
+    Returns:
+        Dict with index, start, end, text, or error
+    """
+    chunk_dur = end - start
+    
+    # Extract audio segment (temp file)
+    extract_result = extract_audio_segment(video_path, start, chunk_dur)
+    
+    if not extract_result.get("success"):
+        return {
+            "index": index,
+            "error": f"Audio extraction failed at {format_time(start)}: {extract_result.get('error')}"
+        }
+    
+    audio_path = Path(extract_result["audio_path"])
+    
+    # Transcribe with Whisper API
+    transcribe_result = transcribe_audio_file(audio_path)
+    
+    # Cleanup temp audio file immediately
+    try:
+        audio_path.unlink()
+    except Exception:
+        pass  # Best effort cleanup
+    
+    if not transcribe_result.get("success"):
+        return {
+            "index": index,
+            "error": f"Transcription failed at {format_time(start)}: {transcribe_result.get('error')}"
+        }
+    
+    # Return segment
+    return {
+        "index": index,
+        "start": start,
+        "end": end,
+        "text": transcribe_result["transcription"]
+    }
+
+
 def handle_transcribe(
     path: str,
     time_start: int = 0,
@@ -45,7 +96,7 @@ def handle_transcribe(
     chunk_duration: int = 60
 ) -> Dict[str, Any]:
     """
-    Transcribe video audio using Whisper API.
+    Transcribe video audio using Whisper API (parallel processing by batch of 3).
     
     Args:
         path: Video path (relative to project, under docs/video/)
@@ -95,53 +146,64 @@ def handle_transcribe(
     if duration_to_process <= 0:
         return {"error": "No duration to process (time_start >= time_end)"}
     
-    # 6. Process chunks
-    segments: List[Dict[str, Any]] = []
+    # 6. Build chunk list
+    chunks = []
     current = time_start
     chunk_index = 0
     
     while current < actual_end:
         chunk_end = min(current + chunk_duration, actual_end)
-        chunk_dur = chunk_end - current
-        
-        # Extract audio segment (temp file)
-        extract_result = extract_audio_segment(video_path, current, chunk_dur)
-        
-        if not extract_result.get("success"):
-            return {
-                "error": f"Audio extraction failed at {format_time(current)}: {extract_result.get('error')}"
-            }
-        
-        audio_path = Path(extract_result["audio_path"])
-        
-        # Transcribe with Whisper API
-        transcribe_result = transcribe_audio_file(audio_path)
-        
-        # Cleanup temp audio file immediately
-        try:
-            audio_path.unlink()
-        except Exception:
-            pass  # Best effort cleanup
-        
-        if not transcribe_result.get("success"):
-            return {
-                "error": f"Transcription failed at {format_time(current)}: {transcribe_result.get('error')}"
-            }
-        
-        # Add segment
-        segments.append({
+        chunks.append({
+            "index": chunk_index,
             "start": current,
-            "end": chunk_end,
-            "text": transcribe_result["transcription"]
+            "end": chunk_end
         })
-        
         current = chunk_end
         chunk_index += 1
     
-    # 7. Assemble full text
+    # 7. Process chunks in parallel (batch of 3)
+    segments = []
+    max_workers = 3  # Process 3 chunks in parallel
+    
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Submit all chunks
+        future_to_chunk = {
+            executor.submit(
+                _process_chunk,
+                video_path,
+                chunk["start"],
+                chunk["end"],
+                chunk["index"]
+            ): chunk for chunk in chunks
+        }
+        
+        # Collect results as they complete
+        results = []
+        for future in as_completed(future_to_chunk):
+            result = future.result()
+            
+            # Check for errors
+            if "error" in result:
+                # Cancel remaining futures
+                for f in future_to_chunk:
+                    f.cancel()
+                return {"error": result["error"]}
+            
+            results.append(result)
+    
+    # 8. Sort by index to preserve order
+    results.sort(key=lambda x: x["index"])
+    
+    # 9. Build segments list
+    segments = [
+        {"start": r["start"], "end": r["end"], "text": r["text"]}
+        for r in results
+    ]
+    
+    # 10. Assemble full text
     full_text = " ".join(seg["text"] for seg in segments)
     
-    # 8. Return result
+    # 11. Return result
     return {
         "success": True,
         "video_path": path,
@@ -154,6 +216,8 @@ def handle_transcribe(
             "total_segments": len(segments),
             "video_duration_total": duration,
             "audio_codec": info["audio_codec"],
-            "chunk_duration": chunk_duration
+            "chunk_duration": chunk_duration,
+            "parallel_processing": True,
+            "max_workers": max_workers
         }
     }
