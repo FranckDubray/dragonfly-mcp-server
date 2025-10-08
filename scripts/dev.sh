@@ -1,4 +1,3 @@
-
 #!/bin/bash
 # MCP Server Development Script
 
@@ -35,6 +34,25 @@ if [ "$MAJOR" -lt "$MIN_MAJOR" ] || { [ "$MAJOR" -eq "$MIN_MAJOR" ] && [ "$MINOR
   exit 1
 fi
 
+echo -e "${YELLOW}🐍 Using Python $PYV_RAW${NC}"
+
+# Create .env from .env.example if not exists
+if [ ! -f ".env" ]; then
+    if [ -f ".env.example" ]; then
+        echo -e "${YELLOW}📝 No .env found, creating from .env.example...${NC}"
+        cp .env.example .env
+        echo -e "${GREEN}✅ Created .env from template${NC}"
+        echo -e "${YELLOW}⚠️  Please edit .env and fill in your tokens/passwords before starting${NC}"
+        echo -e "${YELLOW}   nano .env${NC}"
+        read -p "Press Enter to continue or Ctrl+C to exit and edit .env..."
+    else
+        echo -e "${YELLOW}⚠️  Warning: No .env or .env.example found${NC}"
+        echo -e "${YELLOW}   The server will start with default values${NC}"
+    fi
+else
+    echo -e "${GREEN}✅ Found existing .env${NC}"
+fi
+
 # Load .env if present (export all keys temporarily)
 if [ -f ".env" ]; then
   echo -e "${YELLOW}🔑 Loading .env...${NC}"
@@ -43,8 +61,6 @@ if [ -f ".env" ]; then
   . ./.env
   set +a
 fi
-
-echo -e "${YELLOW}🐍 Using Python $PYV_RAW${NC}"
 
 # Create venv if needed
 if [ ! -d "venv" ]; then
@@ -102,15 +118,13 @@ fi
 export MCP_HOST="${MCP_HOST:-127.0.0.1}"
 export MCP_PORT="${MCP_PORT:-8000}"
 export LOG_LEVEL="${LOG_LEVEL:-INFO}"
-export RELOAD="${RELOAD:-1}"
 export AUTO_RELOAD_TOOLS="${AUTO_RELOAD_TOOLS:-1}"
-export EXECUTE_TIMEOUT_SEC="${EXECUTE_TIMEOUT_SEC:-30}"
+export EXECUTE_TIMEOUT_SEC="${EXECUTE_TIMEOUT_SEC:-300}"
 
 echo -e "${GREEN}🌐 Server Configuration:${NC}"
 echo -e "  Host: ${MCP_HOST}"
 echo -e "  Port: ${MCP_PORT}"
 echo -e "  Log Level: ${LOG_LEVEL}"
-echo -e "  Hot Reload (legacy RELOAD): ${RELOAD}"
 echo -e "  Auto Reload Tools: ${AUTO_RELOAD_TOOLS}"
 echo -e "  Timeout: ${EXECUTE_TIMEOUT_SEC}s"
 
