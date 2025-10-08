@@ -1,4 +1,5 @@
 
+
 """
 Git Tool - ultra thin facade. Heavy logic in src/tools/_git/*
 """
@@ -125,21 +126,50 @@ def run(operation: str, **params) -> Union[Dict[str, Any], str]:
         return local_ops.handle_merge(repo_dir, source, **params)
 
     # Local git passthrough
-    if op in ["status", "branch_create", "checkout", "add_paths", "commit_all", "push"]:
+    if op in ["status", "fetch", "pull", "rebase", "branch_create", "checkout", "add_paths", "commit_all", "push", "log", "remote_info"]:
         local_ops = GitLocalOps()
         repo_dir = sanitize_repo_dir(params.get('repo_dir'))
+        
         if op == "status":
             return local_ops.handle_status(repo_dir)
+        
+        elif op == "fetch":
+            return local_ops.handle_fetch(
+                repo_dir, 
+                params.get('remote', 'origin'),
+                params.get('prune', False)
+            )
+        
+        elif op == "pull":
+            return local_ops.handle_pull(
+                repo_dir,
+                params.get('remote', 'origin'),
+                params.get('branch'),
+                params.get('rebase', False),
+                params.get('ff_only', False)
+            )
+        
+        elif op == "rebase":
+            return local_ops.handle_rebase(
+                repo_dir,
+                params.get('branch'),
+                params.get('continue_rebase', False),
+                params.get('abort', False),
+                params.get('skip', False)
+            )
+        
         elif op == "branch_create":
             branch_name = params.get('branch_name')
             if not branch_name:
                 return {"error": "branch_name required"}
             return local_ops.handle_branch_create(repo_dir, branch_name, params.get('from_branch'))
+        
         elif op == "checkout":
             branch = params.get('branch')
             if not branch:
                 return {"error": "branch required"}
             return local_ops.handle_checkout(repo_dir, branch)
+        
         elif op == "add_paths":
             paths = params.get('paths', [])
             if not paths:
@@ -148,16 +178,29 @@ def run(operation: str, **params) -> Union[Dict[str, Any], str]:
             if not paths:
                 return {"error": "no valid paths inside repo_dir"}
             return local_ops.handle_add_paths(repo_dir, paths)
+        
         elif op == "commit_all":
             message = params.get('message')
             if not message:
                 return {"error": "message required"}
             return local_ops.handle_commit_all(repo_dir, message)
+        
         elif op == "push":
             branch = params.get('branch')
             if not branch:
                 return {"error": "branch required"}
-            return local_ops.handle_push(repo_dir, branch, params.get('remote', "origin"), params.get('set_upstream', True))
+            return local_ops.handle_push(repo_dir, branch, params.get('remote', "origin"), params.get('set_upstream', True), params.get('force', False))
+        
+        elif op == "log":
+            return local_ops.handle_log(
+                repo_dir,
+                params.get('max_count', 10),
+                params.get('one_line', False),
+                params.get('graph', False)
+            )
+        
+        elif op == "remote_info":
+            return local_ops.handle_remote_info(repo_dir)
 
     # High-level orchestrated ops
     if op == "ensure_repo":
@@ -178,7 +221,7 @@ def spec() -> Dict[str, Any]:
         "function": {
             "name": "git",
             "displayName": "Git",
-            "description": "Git unifié: GitHub API + Git local. High-level: ensure_repo, config_user, set_remote, sync_repo (push tout le dépôt).",
+            "description": "Git unifié: GitHub API + Git local. High-level: ensure_repo, config_user, set_remote, sync_repo (push tout le dépôt). Local ops: status, fetch, pull, rebase, branch_create, checkout, add_paths, commit_all, push, merge, log, remote_info.",
             "parameters": {
                 "type": "object",
                 "properties": {"operation": {"type": "string"}},
