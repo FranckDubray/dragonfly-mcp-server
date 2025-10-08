@@ -25,7 +25,7 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 - Keep modules small and single‑responsibility. Glue in __init__.py should be minimal (no business logic).
 - Security: any file access must be chrooted to the project (no absolute/parent paths). Validate user inputs strictly.
 
-## Available tools (19 complete)
+## Available tools (20 complete)
 
 ### 🤖 Intelligence & Orchestration
 
@@ -117,6 +117,23 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 - Architecture: `_universal_doc/` (scraper, parsers, cleaners)
 
 ### 🎬 Media & FFmpeg
+
+#### **youtube_download** 🆕 ⚡
+- **Download videos/audio from YouTube URLs**
+- **Media types**: audio (MP3, perfect for transcription), video (MP4), both (separate files)
+- **Quality options**: best, 720p, 480p, 360p
+- **Operations**:
+  - `download`: Download media to `docs/video/`
+  - `get_info`: Get metadata without downloading
+- **Features**:
+  - URL validation (all YouTube formats supported)
+  - Automatic filename sanitization
+  - Unique naming (_1, _2 if file exists)
+  - Duration check (avoids massive downloads)
+  - Metadata extraction (title, duration, uploader, views)
+- **Workflow**: YouTube → Audio → video_transcribe → Exploitable text
+- **Security**: chroot to `docs/video/`, URL validation, duration limits
+- Architecture: `_youtube_download/` (api, core, validators, utils, services/downloader)
 
 #### **video_transcribe** 🆕 ⚡
 - **Extract audio from video and transcribe using Whisper API**
