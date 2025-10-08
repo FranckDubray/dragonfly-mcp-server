@@ -3,7 +3,7 @@ CONTROL_HTML = '''<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🐉 Dragonfly MCP Control</title>
+    <title>Dragonfly MCP Control</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
@@ -49,19 +49,36 @@ CONTROL_HTML = '''<!DOCTYPE html>
         }
         
         .sidebar-header {
-            padding: 24px 20px 16px;
+            padding: 20px;
             border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .logo-img {
+            width: 48px;
+            height: 48px;
+            object-fit: contain;
+            background: #ffffff;
+            padding: 4px;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+        }
+        
+        .logo-text {
+            flex: 1;
         }
         
         .logo {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: 700;
             color: var(--text-primary);
-            margin-bottom: 4px;
+            margin-bottom: 2px;
         }
         
         .subtitle {
-            font-size: 12px;
+            font-size: 11px;
             color: var(--text-secondary);
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -528,8 +545,11 @@ CONTROL_HTML = '''<!DOCTYPE html>
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <div class="logo">🐉 Dragonfly</div>
-                <div class="subtitle">MCP Control Panel</div>
+                <img src="/logo" alt="Dragonfly" class="logo-img">
+                <div class="logo-text">
+                    <div class="logo">Dragonfly</div>
+                    <div class="subtitle">MCP Control Panel</div>
+                </div>
             </div>
             
             <div class="search-box">

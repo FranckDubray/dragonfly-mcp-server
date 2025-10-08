@@ -5,11 +5,12 @@ import json
 import asyncio
 import logging
 from hashlib import sha1
+from pathlib import Path
 from typing import Dict, Any, Optional
 
 from fastapi import FastAPI, Request, Response, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
 
 from config import (
@@ -187,6 +188,15 @@ def create_app() -> FastAPI:
     async def control_js(request: Request):
         from ui_js import CONTROL_JS
         return Response(content=CONTROL_JS, media_type="application/javascript")
+
+    @app.get("/logo")
+    async def get_logo():
+        """Serve Dragonfly logo for control panel."""
+        project_root = find_project_root()
+        logo_path = project_root / "assets" / "LOGO_DRAGONFLY_HD.jpg"
+        if not logo_path.exists():
+            raise HTTPException(status_code=404, detail="Logo not found")
+        return FileResponse(logo_path, media_type="image/jpeg")
 
     # ----- Startup -----
     @app.on_event("startup")
