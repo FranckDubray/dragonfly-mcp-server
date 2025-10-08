@@ -43,14 +43,16 @@ All notable changes to this project will be documented in this file.
   - Auth credentials masked in logs
   - Chroot saves to `files/http_responses/`
 
+### 🔄 Changed
+- Tool count increased from 17 to 18
+- Enhanced networking & API integration capabilities
+- **Improved UX**: Added user-friendly `displayName` to tool specs (SQLite Database, PDF Search, PDF to Text, Python Sandbox, etc.) for better tool discovery
+
 ### 📚 Documentation
 - Updated main README with http_client tool (18 tools total)
 - Added comprehensive README in `src/tools/_http_client/`
 - Created HTTP_CLIENT_SUMMARY.md with complete specifications
-
-### 🔄 Changed
-- Tool count increased from 17 to 18
-- Enhanced networking & API integration capabilities
+- Enhanced tool specs with displayName for better UX
 
 ### 🐛 Fixed
 - No bug fixes in this release (new feature only)

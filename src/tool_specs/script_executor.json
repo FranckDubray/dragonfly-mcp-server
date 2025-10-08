@@ -2,42 +2,35 @@
   "type": "function",
   "function": {
     "name": "script_executor",
-    "displayName": "Script Executor",
-    "description": "Exécute des scripts Python qui orchestrent des outils MCP dans une sandbox stricte. Inclut le stockage minimal (store / run_named / list / get).",
+    "displayName": "Python Sandbox",
+    "description": "Exécute du code Python dans un sandbox sécurisé avec accès à des tools MCP. Pas d'imports, API limitée, timeout configurable.",
     "parameters": {
       "type": "object",
       "properties": {
-        "operation": {
-          "type": "string",
-          "enum": ["run", "store", "run_named", "list", "get"],
-          "description": "Action à effectuer"
-        },
         "script": {
           "type": "string",
-          "description": "Code Python à exécuter (pour operation=run) ou contenu à stocker (si operation=store)",
-          "maxLength": 20000
+          "description": "Code Python à exécuter (obligatoire)"
         },
         "variables": {
           "type": "object",
-          "description": "Variables optionnelles injectées dans l'espace du script.",
+          "description": "Variables à injecter dans le contexte d'exécution (dict)",
           "additionalProperties": true
         },
         "timeout": {
           "type": "integer",
+          "description": "Timeout en secondes (default: 60, min: 1, max: 300)",
           "minimum": 1,
-          "maximum": 300,
-          "description": "Délai d'exécution du script (secondes)."
+          "maximum": 300
         },
         "allowed_tools": {
           "type": "array",
-          "description": "Liste blanche des outils autorisés (par nom technique retourné par /tools).",
-          "items": { "type": "string" }
-        },
-        "name": { "type": "string", "description": "Nom du script (store / run_named / get)" },
-        "content": { "type": "string", "description": "Contenu du script (alias de script pour store)" },
-        "overwrite": { "type": "boolean", "description": "Écrase le fichier s'il existe (store)" }
+          "description": "Liste des noms d'outils MCP autorisés (whitelist). Si omis, tous les outils sont autorisés.",
+          "items": {
+            "type": "string"
+          }
+        }
       },
-      "required": [],
+      "required": ["script"],
       "additionalProperties": false
     }
   }
