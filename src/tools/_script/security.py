@@ -7,9 +7,8 @@ from typing import Optional
 class RestrictedNodeVisitor(ast.NodeVisitor):
     """AST visitor to check for dangerous operations"""
     
+    # Keep forbidding high-risk constructs
     FORBIDDEN_NODES = {
-        ast.Import: "Import statements are forbidden for security",
-        ast.ImportFrom: "Import statements are forbidden for security", 
         ast.FunctionDef: "Function definitions are forbidden",
         ast.ClassDef: "Class definitions are forbidden",
         ast.AsyncFunctionDef: "Async function definitions are forbidden",
@@ -31,14 +30,30 @@ class RestrictedNodeVisitor(ast.NodeVisitor):
         '__builtins__', '__import__'
     }
     
+    # Allowlist for imports (narrow exception)
+    ALLOWED_IMPORT_MODULES = { 'concurrent', 'concurrent.futures' }
+    
     def __init__(self):
         self.violations = []
     
     def visit(self, node):
+        # Specific handling for import statements: only allow concurrent.futures
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                name = alias.name
+                if name not in self.ALLOWED_IMPORT_MODULES:
+                    self.violations.append(f"Line {node.lineno}: Import '{name}' is forbidden for security")
+                    return
+        if isinstance(node, ast.ImportFrom):
+            module = node.module or ''
+            if module not in self.ALLOWED_IMPORT_MODULES:
+                self.violations.append(f"Line {node.lineno}: Import from '{module}' is forbidden for security")
+                return
+        
         # Check forbidden node types
         for forbidden_type, message in self.FORBIDDEN_NODES.items():
             if isinstance(node, forbidden_type):
-                self.violations.append(f"Line {node.lineno}: {message}")
+                self.violations.append(f"Line {getattr(node, 'lineno', '?')}: {message}")
                 return
         
         # Check function calls

@@ -1,0 +1,19 @@
+{
+  "type": "function",
+  "function": {
+    "name": "ffmpeg_frames",
+    "displayName": "FFmpeg Frames",
+    "description": "Extraction d'images d'une vidéo: détection automatique des plans (similarité) + début/fin + samples intraplans.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": { "type": "string", "enum": ["extract_frames"] },
+        "path": { "type": "string", "description": "Chemin de la vidéo sous docs/video/" },
+        "output_dir": { "type": "string", "description": "Dossier de sortie (optionnel)" },
+        "overwrite": { "type": "boolean", "default": true, "description": "Écraser les fichiers existants" }
+      },
+      "required": ["operation", "path"],
+      "additionalProperties": false
+    }
+  }
+}

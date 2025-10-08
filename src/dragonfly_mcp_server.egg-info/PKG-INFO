@@ -1,3 +1,34 @@
+Metadata-Version: 2.4
+Name: dragonfly-mcp-server
+Version: 1.0.0
+Summary: Dragonfly MCP Server (FastAPI)
+Author-email: MCP Developer <dev@example.com>
+License: MIT
+Project-URL: Homepage, https://github.com/FranckDubray/dragonfly-mcp-server
+Project-URL: Repository, https://github.com/FranckDubray/dragonfly-mcp-server.git
+Project-URL: Issues, https://github.com/FranckDubray/dragonfly-mcp-server/issues
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi>=0.104.0
+Requires-Dist: uvicorn[standard]>=0.24.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: requests>=2.28.0
+Requires-Dist: beautifulsoup4>=4.12.0
+Requires-Dist: pypdf>=4.2.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Requires-Dist: httpx>=0.24.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: isort>=5.12.0; extra == "dev"
+Requires-Dist: flake8>=6.0.0; extra == "dev"
+
 
 
 
@@ -44,7 +75,6 @@ Dragonfly MCP Server expose des « tools » (au format OpenAI tools) via des end
 - [Structure du projet](#-structure-du-projet)
 - [Pour les LLM « développeurs »](#-pour-les-llm-développeurs)
 - [Feuille de route](#-feuille-de-route)
-- [Migration notes](#-migration-notes)
 - [Licence](#-licence)
 
 ---
@@ -130,7 +160,7 @@ Détails étendus: [src/README.md](./src/README.md)
 
 ## 🧪 Outils inclus
 - `call_llm`: orchestrateur LLM (2 phases, usage cumulatif)
-- `math`: calcul numérique/HP, symbolique, algèbre linéaire (+ extensions), solveurs, séries, nombres premiers, sommes
+- `math`: calcul numérique/HP, symbolique, algèbre linéaire
 - `date`: now/today, diff, add, format, parse, weekday, week_number
 - `git`: GitHub API + Git local (opérations sécurisées)
 - `gitbook`: discovery/lecture/search GitBook
@@ -168,7 +198,7 @@ Configurer via `/control` (recommandé) ou via `.env`.
 
 ## 🔒 Sécurité
 - SQLite chroot: DBs sous `<projet>/sqlite3` (noms validés)
-- Git local: opérations limitées à la racine du projet
+- Git local: opérations limités à la racine du projet
 - `script_executor`: sandbox stricte (pas d’accès non autorisé)
 - Safe JSON: sérialisation robuste (NaN/Infinity, très grands entiers)
 
@@ -188,14 +218,6 @@ src/
   tool_specs/        # Specs JSON canoniques (OpenAI tools)
   README.md          # Doc API interne (endpoints + composants)
 ```
-
----
-
-## 🧭 Migration notes
-- Python 3.11+ requis (scripts et metadata l’imposent).
-- Les scripts de dev chargent maintenant `.env` avant l’install et le lancement.
-- Le dossier top-level `script_executor/` est ignoré par Git: déplacez vos scripts utilisateurs dans un dossier hors repo si besoin.
-- Pour les fonctionnalités math avancées, installez `sympy`; pour haute précision, `mpmath` (optionnel).
 
 ---
 
@@ -220,3 +242,7 @@ Contributions bienvenues — issues & PRs !
 
 ## 📄 Licence
 MIT — voir [LICENSE](./LICENSE)
+
+ 
+ 
+ 
