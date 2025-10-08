@@ -1,0 +1,95 @@
+{
+  "type": "function",
+  "function": {
+    "name": "imap",
+    "displayName": "IMAP Email",
+    "description": "Accès universel aux emails via IMAP (Gmail, Outlook, Yahoo, iCloud, Infomaniak, serveurs custom). Configuration via .env: IMAP_<PROVIDER>_EMAIL, IMAP_<PROVIDER>_PASSWORD (ex: IMAP_GMAIL_EMAIL, IMAP_INFOMANIAK_EMAIL).",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "enum": ["gmail", "outlook", "yahoo", "icloud", "infomaniak", "custom"],
+          "description": "Provider email (gmail, outlook, yahoo, icloud, infomaniak, custom). Détermine quelles variables d'env sont utilisées (IMAP_<PROVIDER>_EMAIL/PASSWORD)"
+        },
+        "operation": {
+          "type": "string",
+          "enum": [
+            "connect",
+            "list_folders",
+            "search_messages",
+            "get_message",
+            "download_attachments",
+            "mark_read",
+            "mark_unread",
+            "mark_read_batch",
+            "mark_unread_batch",
+            "move_message",
+            "move_messages_batch",
+            "mark_spam",
+            "delete_message",
+            "delete_messages_batch"
+          ],
+          "description": "Opération à effectuer"
+        },
+        "folder": {
+          "type": "string",
+          "description": "Nom du folder IMAP (ex: INBOX, Sent, [Gmail]/All Mail) ou alias: inbox, sent, trash, spam"
+        },
+        "query": {
+          "type": "object",
+          "properties": {
+            "from": {"type": "string"},
+            "to": {"type": "string"},
+            "subject": {"type": "string"},
+            "since": {"type": "string", "description": "Date format YYYY-MM-DD"},
+            "before": {"type": "string", "description": "Date format YYYY-MM-DD"},
+            "unseen": {"type": "boolean"},
+            "seen": {"type": "boolean"},
+            "flagged": {"type": "boolean"},
+            "text": {"type": "string", "description": "Recherche texte dans body"}
+          },
+          "additionalProperties": false,
+          "description": "Critères de recherche IMAP"
+        },
+        "max_results": {
+          "type": "integer",
+          "description": "Nombre maximum de messages à retourner (défaut: 50)"
+        },
+        "message_id": {
+          "type": "string",
+          "description": "ID unique du message (UID IMAP)"
+        },
+        "message_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Liste d'IDs de messages (UIDs IMAP) pour opérations batch"
+        },
+        "include_body": {
+          "type": "boolean",
+          "description": "Inclure le corps du message (text/html) dans get_message (défaut: true)"
+        },
+        "include_attachments_metadata": {
+          "type": "boolean",
+          "description": "Inclure les métadonnées des pièces jointes (défaut: true)"
+        },
+        "output_dir": {
+          "type": "string",
+          "description": "Répertoire de sortie pour download_attachments (défaut: files/imap/attachments/<message_id>)"
+        },
+        "target_folder": {
+          "type": "string",
+          "description": "Folder de destination pour move_message/move_messages_batch"
+        },
+        "expunge": {
+          "type": "boolean",
+          "description": "Supprimer définitivement après delete_message (défaut: true)"
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}
