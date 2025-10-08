@@ -49,7 +49,7 @@ Dragonfly MCP Server expose des « tools » (au format OpenAI tools) via des end
 - **Panneau de contrôle web moderne** (design épuré, sidebar, logo HD)
 - **Configuration générique** : gestion automatique de toutes les variables d'environnement
 - **Hot-reload** : modifiez les variables en live sans restart (via `/control`)
-- **19 tools prêts à l'emploi** couvrant Git, bases de données, PDF, IA, emails, Discord, transport, vidéo, calcul, etc.
+- **20 tools prêts à l'emploi** couvrant Git, bases de données, PDF, IA, emails, Discord, transport, vidéo, YouTube, calcul, etc.
 
 ---
 
@@ -62,6 +62,31 @@ curl -s -X POST http://127.0.0.1:8000/execute \
  -d '{"tool":"date","params":{"operation":"today"}}'
 ```
 
+### Télécharger et transcrire une vidéo YouTube 🆕
+```bash
+# 1. Télécharger l'audio d'une vidéo YouTube
+curl -s -X POST http://127.0.0.1:8000/execute \
+ -H 'Content-Type: application/json' \
+ -d '{
+   "tool":"youtube_download",
+   "params":{
+     "url":"https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+     "media_type":"audio"
+   }
+ }'
+
+# 2. Transcrire avec Whisper (parallèle 3x, ultra rapide)
+curl -s -X POST http://127.0.0.1:8000/execute \
+ -H 'Content-Type: application/json' \
+ -d '{
+   "tool":"video_transcribe",
+   "params":{
+     "operation":"transcribe",
+     "path":"docs/video/nom_fichier.mp3"
+   }
+ }'
+```
+
 ### Télécharger un PDF depuis arXiv
 ```bash
 curl -s -X POST http://127.0.0.1:8000/execute \
@@ -72,21 +97,6 @@ curl -s -X POST http://127.0.0.1:8000/execute \
      "operation":"download",
      "url":"https://arxiv.org/pdf/2301.00001.pdf",
      "filename":"research_paper"
-   }
- }'
-```
-
-### Transcrire une vidéo avec Whisper
-```bash
-curl -s -X POST http://127.0.0.1:8000/execute \
- -H 'Content-Type: application/json' \
- -d '{
-   "tool":"video_transcribe",
-   "params":{
-     "operation":"transcribe",
-     "path":"docs/video/conference.mp4",
-     "time_start":0,
-     "time_end":180
    }
  }'
 ```
@@ -175,7 +185,7 @@ Par défaut: http://127.0.0.1:8000
 
 ---
 
-## 🧪 Outils inclus (19 tools)
+## 🧪 Outils inclus (20 tools)
 
 ### 🤖 Intelligence & Orchestration
 
@@ -241,7 +251,7 @@ Par défaut: http://127.0.0.1:8000
 
 ### 📄 Documents & PDF
 
-#### **pdf_download** — Téléchargement PDF 🆕
+#### **pdf_download** — Téléchargement PDF
 - **Télécharge des PDFs depuis URLs** vers `docs/pdfs`
 - Validation PDF (magic bytes `%PDF-`)
 - **Métadonnées automatiques** : pages, titre, auteur
@@ -267,7 +277,20 @@ Par défaut: http://127.0.0.1:8000
 
 ### 🎬 Média & FFmpeg
 
-#### **video_transcribe** — Transcription vidéo Whisper 🆕
+#### **youtube_download** — Téléchargement YouTube 🆕
+- **Télécharge vidéos/audio** depuis YouTube vers `docs/video/`
+- **Modes** : audio (MP3, parfait transcription), video (MP4), both (séparés)
+- **Qualités** : best, 720p, 480p, 360p
+- **Features** :
+  - Validation URL YouTube (tous formats supportés)
+  - Filename sanitization automatique
+  - Unique naming (_1, _2 si fichier existe)
+  - Duration check (évite téléchargements massifs)
+  - Metadata extraction (titre, durée, uploader, vues)
+- **Workflow intégré** : YouTube → Audio → video_transcribe → Texte exploitable
+- **Opérations** : download, get_info
+
+#### **video_transcribe** — Transcription vidéo Whisper
 - **Extraction audio** : FFmpeg extraction directe par segment
 - **Transcription Whisper** : API multipart avec Bearer token
 - **Parallélisation** : traitement par batch de 3 chunks simultanés (3x plus rapide)
@@ -287,7 +310,7 @@ Par défaut: http://127.0.0.1:8000
 
 ### 🚲 Transport & Mobilité
 
-#### **velib** — Vélib' Métropole Paris 🆕
+#### **velib** — Vélib' Métropole Paris
 - **Gestionnaire de cache** des stations Vélib' (~1494 stations)
 - **3 opérations**: refresh_stations, get_availability, check_cache
 - **Cache SQLite** : station_code, name, lat, lon, capacity
@@ -299,7 +322,7 @@ Par défaut: http://127.0.0.1:8000
 
 ### 🌐 Networking & API
 
-#### **http_client** — Client HTTP universel 🆕
+#### **http_client** — Client HTTP universel
 - **Tous les verbes HTTP** : GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS
 - **Authentification** : Basic, Bearer, API Key
 - **Body formats** : JSON, Form data, Raw text/XML
@@ -400,7 +423,7 @@ Accès : **http://127.0.0.1:8000/control**
 - ✅ Layout 2 colonnes (Sidebar + Zone de travail)
 - ✅ Logo HD Dragonfly professionnel
 - ✅ Un seul tool visible à la fois (fini le scroll d'enfer)
-- ✅ Search bar pour filtrer les 19 tools
+- ✅ Search bar pour filtrer les 20 tools
 - ✅ Fond blanc propre, design épuré
 - ✅ Responsive mobile-ready
 
@@ -423,6 +446,7 @@ Accès : **http://127.0.0.1:8000/control**
 - **Script executor**: sandbox stricte
 - **IMAP**: credentials en `.env` uniquement, jamais en paramètres
 - **PDF download**: validation magic bytes, chroot `docs/pdfs`
+- **YouTube download**: validation URL YouTube, chroot `docs/video/`, duration limits
 - **Vélib'**: API publique (pas de secrets), chroot SQLite
 - **HTTP Client**: timeout, SSL verification, credentials masqués
 - **Video transcribe**: chroot `docs/video/`, cleanup temp files
@@ -441,7 +465,7 @@ src/
   config.py          # .env (load/save), masquage secrets
   ui_html.py         # Panneau de contrôle HTML
   ui_js.py           # Panneau de contrôle JavaScript
-  tools/             # 19 tools (run() + spec())
+  tools/             # 20 tools (run() + spec())
     _call_llm/       # Orchestrateur LLM
     _math/           # Modules calcul
     _ffmpeg/         # FFmpeg utils
@@ -452,7 +476,8 @@ src/
     _discord_webhook/# Discord integration
     _script/         # Sandbox ScriptExecutor
     _velib/          # Vélib' cache manager
-    _video_transcribe/ # Video transcription Whisper 🆕
+    _video_transcribe/ # Video transcription Whisper
+    _youtube_download/ # YouTube downloader 🆕
     # ... + tools simples (date, pdf, reddit, etc.)
   tool_specs/        # Specs JSON canoniques
 scripts/
