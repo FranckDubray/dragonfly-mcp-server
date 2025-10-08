@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2025-10-08
+
+### Highlights
+- FFmpeg frames: native frame-by-frame detection (PyAV) with moving average + hysteresis + NMS + native refinement. Much higher recall on compressed cuts (YouTube-like), plus per-frame similarity debug.
+
+### Added
+- ffmpeg_frames: per-frame debug (t, diff, similarity_pct) and avg_similarity_pct.
+- ffmpeg_frames: returns exec_time_sec in the API response and in debug.json.
+- Native video decode dependencies auto-install in scripts/dev.sh (NumPy + PyAV).
+- Refactor for maintainability: split FFmpeg tool into `detect.py` (API), `native.py` (PyAV), and `utils.py` (helpers).
+
+### Changed
+- ffmpeg_frames sensitivity (defaults): scale=96x96, ma_window=1, threshold_floor=0.05, NMS=0.2s, refine_window=0.5s, min_scene_frames=3.
+- README mentions native detection and debug fields.
+
+### Fixed
+- Cases where legacy downsampled CLI missed many hard cuts. Native pass now processes at the video’s native FPS.
+
+### Migration notes
+- Ensure Python 3.11+ and that scripts/dev.sh reinstalls dependencies to get NumPy + PyAV.
+- If results are still too conservative, consider lowering threshold_floor to 0.04 or min_scene_frames to 2.
+
+---
+
 ## [1.1.0] - 2025-10-08
 
 ### Highlights
