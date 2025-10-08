@@ -82,7 +82,7 @@ Vous trouverez ci‑dessous:
   - Contient les implémentations des tools. Chaque tool expose:
     - `run(**params) -> Any`
     - `spec() -> dict` (spécification OpenAI tools)
-  - Exemples inclus: `call_llm`, `math`, `date`, `git`, `gitbook`, `sqlite_db`, `pdf_search`, `pdf2text`, `reddit_intelligence`, `script_executor`, `universal_doc_scraper`, `imap`, `discord_webhook`.
+  - Exemples inclus: `call_llm`, `math`, `date`, `git`, `gitbook`, `sqlite_db`, `pdf_search`, `pdf2text`, `reddit_intelligence`, `script_executor`, `universal_doc_scraper`, `imap`, `discord_webhook`, `pdf_download`.
   - Sous‑packages spécialisés:
     - `_call_llm/` : orchestrateur LLM en deux phases (stream). Fichiers clés:
       - `core.py` : logique principale (depuis 2025‑09, agrégation de l'usage cumulative à travers les phases et appels imbriqués)
@@ -92,9 +92,10 @@ Vous trouverez ci‑dessous:
     - `_script/` : exécution sandbox (ScriptExecutor)
     - `_imap/` : accès IMAP multi-comptes (Gmail, Outlook, Yahoo, iCloud, Infomaniak, custom): presets, connection, operations, parsers, utils
     - `_discord_webhook/` : publication Discord avec persistance SQLite et gestion CRUD
+    - `_pdf_download/` : téléchargement PDF depuis URLs avec validation, métadonnées, noms uniques
 
 - tool_specs/
-  - Spécifications JSON canoniques pour certains tools (ex: `call_llm.json`, `script_executor.json`, `ffmpeg_frames.json`, `imap.json`). Le code Python peut utiliser un fallback minimal si le JSON n'est pas disponible.
+  - Spécifications JSON canoniques pour certains tools (ex: `call_llm.json`, `script_executor.json`, `ffmpeg_frames.json`, `imap.json`, `pdf_download.json`). Le code Python peut utiliser un fallback minimal si le JSON n'est pas disponible.
 
 ---
 
@@ -124,6 +125,11 @@ Vous trouverez ci‑dessous:
   - curl -X POST "http://127.0.0.1:8000/execute" \
     -H "Content-Type: application/json" \
     -d '{"tool":"date","params":{"operation":"today"}}'
+
+- Télécharger un PDF depuis arXiv
+  - curl -X POST "http://127.0.0.1:8000/execute" \
+    -H "Content-Type: application/json" \
+    -d '{"tool":"pdf_download","params":{"operation":"download","url":"https://arxiv.org/pdf/2301.00001.pdf","filename":"paper"}}'
 
 - Lire les emails non lus (IMAP Infomaniak)
   - curl -X POST "http://127.0.0.1:8000/execute" \
