@@ -42,15 +42,21 @@ def is_secret_key(key: str) -> bool:
 
 
 def mask_secret(secret: Optional[str]) -> str:
-    """Mask secret value for display."""
+    """
+    Mask secret value for display (TOTAL masking, no characters revealed).
+    Returns bullets proportional to length for UX feedback.
+    """
     if not secret:
         return ''
     try:
-        if len(secret) <= 8:
-            return '***' + secret[-2:]
-        return '*' * (len(secret) - 4) + secret[-4:]
+        length = len(secret)
+        if length == 0:
+            return ''
+        # Use bullets (•) proportional to length (max 16 for readability)
+        num_bullets = min(length, 16)
+        return '•' * num_bullets
     except Exception:
-        return '***'
+        return '••••••••'  # Fallback: 8 bullets
 
 
 def load_env_file() -> None:
@@ -76,7 +82,7 @@ def load_env_file() -> None:
 
 def _read_env_dict() -> Dict[str, str]:
     """Read .env file as dict."""
-    data: Dict[str, str] = {}
+    Dict[str, str] = {}
     if ENV_FILE.exists():
         try:
             for line in ENV_FILE.read_text(encoding='utf-8').splitlines():
@@ -125,10 +131,10 @@ def get_all_env_vars() -> Dict[str, Any]:
         {
             "vars": {
                 "KEY_NAME": {
-                    "value": "actual_value" or "masked_value",
+                    "value": "actual_value" or "",
                     "is_secret": bool,
                     "present": bool,
-                    "masked_value": "***xxx" (only for secrets)
+                    "masked_value": "••••••••" (total masking)
                 }
             },
             "env_file": str (path)

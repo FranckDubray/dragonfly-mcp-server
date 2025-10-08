@@ -1,237 +1,196 @@
 # 🔑 Variables d'environnement — Dragonfly MCP Server
 
-Guide complet des variables d'environnement supportées par le serveur.
+Documentation succincte des variables d'environnement.
 
 ---
 
 ## 🚀 Quick Start
 
-1. **Copier le template** :
-   ```bash
-   cp .env.example .env
-   ```
+```bash
+# 1. Copier le template
+cp .env.example .env
 
-2. **Remplir les valeurs** (tokens, passwords, etc.)
+# 2. Remplir les valeurs (tokens, passwords)
+nano .env
 
-3. **Démarrer le serveur** :
-   ```bash
-   ./scripts/dev.sh
-   ```
+# 3. Démarrer
+./scripts/dev.sh
 
-4. **Modifier en live** via le panneau de contrôle :  
-   http://127.0.0.1:8000/control → 🔑 Configuration
+# 4. Modifier en live via le panneau
+# http://127.0.0.1:8000/control → 🔑 Configuration
+```
 
 ---
 
-## 🔥 Hot-Reload (sans redémarrage)
+## 🔥 Hot-Reload
 
-### ✅ Variables hot-reload (effet immédiat)
+### ✅ Modifiables en live (effet immédiat, sans restart)
 
-Ces variables sont lues dynamiquement à chaque utilisation :
-- **LLM** : `AI_PORTAL_TOKEN`, `LLM_ENDPOINT`, `LLM_REQUEST_TIMEOUT_SEC`
+- **LLM** : `AI_PORTAL_TOKEN`, `LLM_ENDPOINT`, `LLM_REQUEST_TIMEOUT_SEC`, `LLM_RETURN_DEBUG`, `LLM_STREAM_TRACE`, `LLM_STREAM_DUMP`, `MCP_URL`
 - **Git** : `GITHUB_TOKEN`
-- **IMAP** : tous les `IMAP_*_EMAIL`, `IMAP_*_PASSWORD`
+- **IMAP** : tous les `IMAP_*_EMAIL`, `IMAP_*_PASSWORD`, `IMAP_CUSTOM_*`
 - **Vélib'** : `VELIB_STATION_INFO_URL`, `VELIB_STATION_STATUS_URL`
+- **JSON** : `BIGINT_AS_STRING`, `BIGINT_STR_THRESHOLD`, `PY_INT_MAX_STR_DIGITS`
 - **Academic** : `ACADEMIC_RS_MAX_ITEMS`, `ACADEMIC_RS_MAX_ABSTRACT_CHARS`, `ACADEMIC_RS_MAX_BYTES`
 - **Script** : `SCRIPT_TIMEOUT_SEC`
-- **JSON** : `BIGINT_AS_STRING`, `BIGINT_STR_THRESHOLD`
 
-**Comment ?** Modifie via `/control` → Save → effet immédiat dans les prochains appels aux tools.
+**Usage** : Modifier via `/control` → Save → effet immédiat au prochain appel tool.
 
-### ⚠️ Variables nécessitant un restart
+### ⚠️ Nécessitent un restart
 
-Ces variables sont lues au démarrage de l'app et restent figées :
-- **Serveur** : `MCP_HOST`, `MCP_PORT`
-- **Runtime** : `LOG_LEVEL`, `EXECUTE_TIMEOUT_SEC`
-- **Reload** : `AUTO_RELOAD_TOOLS`, `RELOAD`
+- `MCP_HOST`, `MCP_PORT` : bind address du serveur FastAPI
+- `LOG_LEVEL` : configuration du logger
+- `EXECUTE_TIMEOUT_SEC` : timeout global des tools
+- `AUTO_RELOAD_TOOLS` : détection automatique des nouveaux tools
 
-**Pourquoi ?** Elles configurent le serveur FastAPI lui-même (bind port, logger, etc.).  
-**Solution** : Restart le serveur (`./scripts/dev.sh`) pour appliquer.
+**Pourquoi ?** Lues au démarrage du serveur et figées.
+
+### 🔄 Reload manuel
+
+- **URL parameter** : `GET /tools?reload=1` → force le reload des tools
+- Utile pour tester un nouveau tool sans restart
 
 ---
 
-## 📚 Catégories de variables
+## 📚 Variables par catégorie
 
-### 🌐 Serveur (Network & Runtime)
+### 🌐 Serveur
 
-| Variable | Type | Défaut | Description | Hot-reload |
-|----------|------|--------|-------------|------------|
-| `MCP_HOST` | string | `127.0.0.1` | Adresse d'écoute du serveur | ❌ Restart |
-| `MCP_PORT` | integer | `8000` | Port d'écoute du serveur | ❌ Restart |
-| `LOG_LEVEL` | string | `INFO` | Niveau de log (DEBUG, INFO, WARNING, ERROR) | ❌ Restart |
-| `EXECUTE_TIMEOUT_SEC` | integer | `300` | Timeout d'exécution des tools (secondes) | ❌ Restart |
-| `AUTO_RELOAD_TOOLS` | boolean | `1` | Détection automatique des nouveaux tools | ❌ Restart |
-| `RELOAD` | boolean | `0` | Hot-reload legacy (déprécié) | ❌ Restart |
+| Variable | Type | Défaut | Description |
+|----------|------|--------|-------------|
+| `MCP_HOST` | string | `127.0.0.1` | Adresse d'écoute du serveur |
+| `MCP_PORT` | integer | `8000` | Port d'écoute |
+| `LOG_LEVEL` | string | `INFO` | Niveau de log (DEBUG, INFO, WARNING, ERROR) |
+| `EXECUTE_TIMEOUT_SEC` | integer | `300` | Timeout d'exécution des tools (secondes) |
+| `AUTO_RELOAD_TOOLS` | boolean | `1` | Détection auto des nouveaux tools |
 
 ### 🤖 LLM Orchestration
 
-| Variable | Type | Défaut | Description | Hot-reload |
-|----------|------|--------|-------------|------------|
-| `AI_PORTAL_TOKEN` | secret | — | Token d'authentification AI Portal | ✅ Immédiat |
-| `LLM_ENDPOINT` | string | — | URL endpoint LLM custom | ✅ Immédiat |
-| `LLM_REQUEST_TIMEOUT_SEC` | integer | `300` | Timeout requêtes LLM | ✅ Immédiat |
-| `LLM_RETURN_DEBUG` | boolean | `0` | Inclure debug dans les réponses | ✅ Immédiat |
-| `LLM_STREAM_TRACE` | boolean | `0` | Tracer les événements SSE | ✅ Immédiat |
-| `LLM_STREAM_DUMP` | boolean | `0` | Dumper les streams complets | ✅ Immédiat |
-| `MCP_URL` | string | `http://127.0.0.1:8000` | URL du serveur MCP (pour call_llm) | ✅ Immédiat |
+| Variable | Type | Défaut | Description |
+|----------|------|--------|-------------|
+| `AI_PORTAL_TOKEN` | secret | — | Token d'authentification AI Portal |
+| `LLM_ENDPOINT` | string | — | URL endpoint LLM custom |
+| `LLM_REQUEST_TIMEOUT_SEC` | integer | `300` | Timeout requêtes LLM |
+| `LLM_RETURN_DEBUG` | boolean | `0` | Inclure debug dans réponses |
+| `LLM_STREAM_TRACE` | boolean | `0` | Tracer événements SSE |
+| `LLM_STREAM_DUMP` | boolean | `0` | Dumper streams complets |
+| `MCP_URL` | string | `http://127.0.0.1:8000` | URL serveur MCP (appels internes) |
 
 ### 🐙 Git & GitHub
 
-| Variable | Type | Défaut | Description | Hot-reload |
-|----------|------|--------|-------------|------------|
-| `GITHUB_TOKEN` | secret | — | Personal Access Token GitHub (scope: repo, workflow) | ✅ Immédiat |
+| Variable | Type | Défaut | Description |
+|----------|------|--------|-------------|
+| `GITHUB_TOKEN` | secret | — | Personal Access Token (scope: repo, workflow) |
 
-### 📧 IMAP Email (Multi-comptes)
+### 📧 IMAP Email
 
-| Variable | Type | Défaut | Description | Hot-reload |
-|----------|------|--------|-------------|------------|
-| `IMAP_GMAIL_EMAIL` | string | — | Adresse Gmail | ✅ Immédiat |
-| `IMAP_GMAIL_PASSWORD` | secret | — | App Password Gmail | ✅ Immédiat |
-| `IMAP_OUTLOOK_EMAIL` | string | — | Adresse Outlook | ✅ Immédiat |
-| `IMAP_OUTLOOK_PASSWORD` | secret | — | Mot de passe Outlook | ✅ Immédiat |
-| `IMAP_YAHOO_EMAIL` | string | — | Adresse Yahoo | ✅ Immédiat |
-| `IMAP_YAHOO_PASSWORD` | secret | — | App Password Yahoo | ✅ Immédiat |
-| `IMAP_ICLOUD_EMAIL` | string | — | Adresse iCloud | ✅ Immédiat |
-| `IMAP_ICLOUD_PASSWORD` | secret | — | App Password iCloud | ✅ Immédiat |
-| `IMAP_INFOMANIAK_EMAIL` | string | — | Adresse Infomaniak | ✅ Immédiat |
-| `IMAP_INFOMANIAK_PASSWORD` | secret | — | Mot de passe Infomaniak | ✅ Immédiat |
-| `IMAP_CUSTOM_EMAIL` | string | — | Adresse serveur custom | ✅ Immédiat |
-| `IMAP_CUSTOM_PASSWORD` | secret | — | Mot de passe custom | ✅ Immédiat |
-| `IMAP_CUSTOM_SERVER` | string | — | Serveur IMAP custom (ex: imap.example.com) | ✅ Immédiat |
-| `IMAP_CUSTOM_PORT` | integer | `993` | Port IMAP custom | ✅ Immédiat |
-| `IMAP_CUSTOM_USE_SSL` | boolean | `1` | Utiliser SSL pour custom | ✅ Immédiat |
+| Variable | Type | Défaut | Description |
+|----------|------|--------|-------------|
+| `IMAP_GMAIL_EMAIL` | string | — | Adresse Gmail |
+| `IMAP_GMAIL_PASSWORD` | secret | — | App Password Gmail |
+| `IMAP_OUTLOOK_EMAIL` | string | — | Adresse Outlook |
+| `IMAP_OUTLOOK_PASSWORD` | secret | — | Mot de passe Outlook |
+| `IMAP_YAHOO_EMAIL` | string | — | Adresse Yahoo |
+| `IMAP_YAHOO_PASSWORD` | secret | — | App Password Yahoo |
+| `IMAP_ICLOUD_EMAIL` | string | — | Adresse iCloud |
+| `IMAP_ICLOUD_PASSWORD` | secret | — | App Password iCloud |
+| `IMAP_INFOMANIAK_EMAIL` | string | — | Adresse Infomaniak |
+| `IMAP_INFOMANIAK_PASSWORD` | secret | — | Mot de passe Infomaniak |
+| `IMAP_CUSTOM_EMAIL` | string | — | Adresse serveur custom |
+| `IMAP_CUSTOM_PASSWORD` | secret | — | Mot de passe custom |
+| `IMAP_CUSTOM_SERVER` | string | — | Serveur IMAP (ex: imap.example.com) |
+| `IMAP_CUSTOM_PORT` | integer | `993` | Port IMAP |
+| `IMAP_CUSTOM_USE_SSL` | boolean | `1` | Utiliser SSL |
 
-### 🚲 Vélib' (Transport Paris)
+### 🚲 Vélib' (Transport)
 
-| Variable | Type | Défaut | Description | Hot-reload |
-|----------|------|--------|-------------|------------|
-| `VELIB_STATION_INFO_URL` | string | (Open Data) | URL API stations info | ✅ Immédiat |
-| `VELIB_STATION_STATUS_URL` | string | (Open Data) | URL API stations status | ✅ Immédiat |
+| Variable | Type | Défaut | Description |
+|----------|------|--------|-------------|
+| `VELIB_STATION_INFO_URL` | string | (Open Data) | URL API stations info |
+| `VELIB_STATION_STATUS_URL` | string | (Open Data) | URL API stations status |
 
-### 🔢 Safe JSON (Sérialisation)
+### 🔢 Safe JSON
 
-| Variable | Type | Défaut | Description | Hot-reload |
-|----------|------|--------|-------------|------------|
-| `BIGINT_AS_STRING` | boolean | `1` | Convertir grands entiers en strings | ✅ Immédiat |
-| `BIGINT_STR_THRESHOLD` | integer | `50` | Seuil (nombre de chiffres) | ✅ Immédiat |
-| `PY_INT_MAX_STR_DIGITS` | integer | `10000` | Limite Python int→str | ✅ Immédiat |
+| Variable | Type | Défaut | Description |
+|----------|------|--------|-------------|
+| `BIGINT_AS_STRING` | boolean | `1` | Convertir grands entiers en strings |
+| `BIGINT_STR_THRESHOLD` | integer | `50` | Seuil (nombre de chiffres) |
+| `PY_INT_MAX_STR_DIGITS` | integer | `10000` | Limite Python int→str |
 
 ### 📚 Academic Research
 
-| Variable | Type | Défaut | Description | Hot-reload |
-|----------|------|--------|-------------|------------|
-| `ACADEMIC_RS_MAX_ITEMS` | integer | `50` | Nombre max d'articles retournés | ✅ Immédiat |
-| `ACADEMIC_RS_MAX_ABSTRACT_CHARS` | integer | `2000` | Longueur max des abstracts | ✅ Immédiat |
-| `ACADEMIC_RS_MAX_BYTES` | integer | `200000` | Taille max du payload JSON | ✅ Immédiat |
+| Variable | Type | Défaut | Description |
+|----------|------|--------|-------------|
+| `ACADEMIC_RS_MAX_ITEMS` | integer | `50` | Nombre max d'articles retournés |
+| `ACADEMIC_RS_MAX_ABSTRACT_CHARS` | integer | `2000` | Longueur max des abstracts |
+| `ACADEMIC_RS_MAX_BYTES` | integer | `200000` | Taille max du payload JSON |
 
 ### 🐍 Script Executor
 
-| Variable | Type | Défaut | Description | Hot-reload |
-|----------|------|--------|-------------|------------|
-| `SCRIPT_TIMEOUT_SEC` | integer | `60` | Timeout d'exécution des scripts | ✅ Immédiat |
+| Variable | Type | Défaut | Description |
+|----------|------|--------|-------------|
+| `SCRIPT_TIMEOUT_SEC` | integer | `60` | Timeout d'exécution des scripts |
 
 ---
 
 ## 🔒 Sécurité
 
-### Variables sensibles (secrets)
+### Détection automatique des secrets
 
-Les variables contenant ces patterns sont automatiquement détectées comme secrets :
-- `TOKEN`
-- `PASSWORD`
-- `KEY`
-- `SECRET`
-- `API`
-- `PASS`
-- `PWD`
+Variables contenant ces patterns sont masquées automatiquement :
+- `TOKEN`, `PASSWORD`, `KEY`, `SECRET`, `API`, `PASS`, `PWD`
 
-**Dans le panneau /control** :
-- Input type="password" (masqué)
-- Valeur actuelle masquée : `****xxxx`
-- Jamais exposées en clair dans les logs
+Dans `/control` :
+- Type="password" (masqué)
+- Valeur masquée : `****xxxx`
+- Jamais en clair dans les logs
 
 ### Protection Git
 
 Le `.env` est **ignoré par Git** (`.gitignore`) :
-- ✅ Ton `.env` local n'est jamais commit
-- ✅ Le `.env.example` est versionné (sans secrets)
-- ✅ Collaborateurs copient `.env.example` → `.env` et remplissent leurs valeurs
+- ✅ `.env` local jamais commit
+- ✅ `.env.example` versionné (sans secrets)
+- ✅ Collaborateurs copient et remplissent localement
 
 ---
 
-## 📝 Ajouter une nouvelle variable
+## 📝 Ajouter une variable
 
-1. **Ajouter dans `.env.example`** (avec commentaire)
-2. **Documenter ici** (tableau + hot-reload status)
-3. **La lire dans ton code** :
+1. **Ajouter dans `.env.example`** avec commentaire
+2. **Documenter ici** (tableau + hot-reload)
+3. **Lire dans le code** :
    ```python
-   import os
-   MY_VAR = os.getenv('MY_NEW_VAR', 'default_value')
+   # ❌ Figé au démarrage
+   MY_VAR = os.getenv('MY_VAR', 'default')
+   
+   # ✅ Hot-reload
+   def my_function():
+       my_var = os.getenv('MY_VAR', 'default')  # Lit à chaque appel
+       return my_var
    ```
-4. **Si hot-reload souhaité** : lire via `os.getenv()` à chaque utilisation (pas au top-level)
-
-### Exemple : variable hot-reload
-
-```python
-# ❌ FIGÉ au démarrage
-MY_VAR = os.getenv('MY_VAR', 'default')
-
-def my_function():
-    return MY_VAR  # Ancienne valeur, même après modif via /control
-```
-
-```python
-# ✅ HOT-RELOAD
-def my_function():
-    my_var = os.getenv('MY_VAR', 'default')  # Lit à chaque appel
-    return my_var  # Nouvelle valeur si modifiée via /control
-```
-
----
-
-## 🎯 Workflow typique
-
-1. **Setup initial** :
-   ```bash
-   cp .env.example .env
-   nano .env  # Remplir GITHUB_TOKEN, AI_PORTAL_TOKEN, etc.
-   ./scripts/dev.sh
-   ```
-
-2. **Modifier en live** :
-   - Ouvrir http://127.0.0.1:8000/control
-   - Cliquer 🔑 Configuration
-   - Modifier une variable (ex: `LLM_REQUEST_TIMEOUT_SEC`)
-   - Save → effet immédiat dans les prochains appels
-
-3. **Ajouter un compte IMAP** :
-   - Ajouter dans `.env` : `IMAP_GMAIL_EMAIL=...`, `IMAP_GMAIL_PASSWORD=...`
-   - Ou via `/control` → remplir les champs → Save
-   - Utiliser immédiatement sans restart !
 
 ---
 
 ## 🆘 Troubleshooting
 
 ### Variable non prise en compte ?
+- Vérifier présence dans `.env`
+- Consulter tableau hot-reload ci-dessus
+- Si restart nécessaire : `./scripts/dev.sh`
 
-- **Vérifier** : elle existe dans le `.env` ?
-- **Hot-reload ?** Consulter le tableau ci-dessus
-- **Si restart nécessaire** : `./scripts/dev.sh`
-
-### .env synchronisé sur git par erreur ?
-
+### `.env` synchronisé sur git par erreur ?
 ```bash
 git rm --cached .env
 git commit -m "chore: remove .env from git"
+# Vérifier que .env est dans .gitignore
 ```
 
-Puis vérifier que `.env` est dans `.gitignore`.
-
-### Panneau /control vide ?
-
-Le serveur n'a pas de `.env` → créer depuis `.env.example`.
+### Panneau `/control` vide ?
+```bash
+cp .env.example .env
+nano .env  # Remplir les valeurs
+```
 
 ---
 
-**Contributions bienvenues !** — Ajoute tes variables et documente-les ici 🚀
+**Contributions bienvenues !** — Documente tes nouvelles variables ici 🚀
