@@ -4,6 +4,86 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.7.0] - 2025-10-08
+
+### 🎉 Highlights
+- **Refonte complète du panneau de contrôle** : design moderne sidebar + zone unique
+- **Configuration générique et automatique** : toutes les variables du .env gérées dynamiquement
+- **Hot-reload des variables** : 90% des variables modifiables sans restart
+- **Masquage total des secrets** : zéro caractère exposé (sécurité OWASP)
+- **Logo HD professionnel** : remplacement emoji par image de marque
+
+### ✨ Added
+
+#### Panneau de contrôle moderne 🆕
+- **Layout 2 colonnes** : Sidebar (280px) + Zone de travail
+- **Un seul tool visible** à la fois (fini le scroll dans tous les panneaux)
+- **Search bar** : filtrage instantané des 18 tools
+- **Logo HD Dragonfly** : image professionnelle (assets/LOGO_DRAGONFLY_HD.jpg)
+- **Design épuré** : fond blanc, espacements aérés, animations smooth
+- **Responsive** : mobile-ready avec sidebar collapsible
+- **Zone de résultat** : max-height 400px avec scroll si nécessaire
+
+#### Configuration générique et automatique 🆕
+- **Lecture automatique** de toutes les variables du .env
+- **Génération dynamique** des champs (nombre illimité de variables)
+- **Détection automatique des secrets** (TOKEN, PASSWORD, KEY, SECRET, API)
+- **Badges colorés** : vert (present) / rouge (absent)
+- **Hot-reload** : 90% des variables sans restart du serveur
+- **Interface modale** : accessible via bouton en bas de sidebar
+
+#### Documentation complète 🆕
+- **.env.example** : template complet avec 32+ variables documentées
+- **ENV_VARIABLES.md** : guide utilisateur détaillé
+  - Tableaux par catégorie (Serveur, LLM, Git, IMAP, Vélib', JSON, Academic, Script)
+  - Section Hot-Reload (liste ✅/⚠️)
+  - Quick Start et Troubleshooting
+- **dev.sh** : copie automatique `.env.example` → `.env` si absent
+
+### 🔄 Changed
+
+#### UX améliorée
+- **État actif clair** : border bleu + fond blanc sur tool sélectionné
+- **Formulaire aéré** : labels, hints, required marks, enum hints
+- **Bouton Execute** : gros, visible, avec effet hover/click
+- **Résultats** : success (vert) / error (rouge) avec couleurs claires
+- **Empty state** : message élégant au démarrage
+- **Status bar** : feedback immédiat en haut (Loading, Success, Error)
+
+#### Configuration
+- **32 variables documentées** (Serveur 5, LLM 7, Git 1, IMAP 15, Vélib' 2, JSON 3, Academic 3, Script 1)
+- **Documentation succincte** : commentaires courts, focus sur l'essentiel
+- **RELOAD supprimé** : variable legacy remplacée par AUTO_RELOAD_TOOLS + ?reload=1
+
+### 🔒 Security
+
+#### Masquage total des secrets
+- **Ancienne méthode** : `****BkcD` (derniers caractères visibles) ❌
+- **Nouvelle méthode** : `••••••••••••••••` (masquage total) ✅
+- **Bullets proportionnels** : indication de longueur (max 16 pour lisibilité)
+- **OWASP compliant** : zéro information sur le contenu réel
+- **Protection shoulder surfing** : impossible de voir quoi que ce soit
+
+### 📚 Documentation
+- README mis à jour : section Panneau de contrôle (v1.7.0)
+- ENV_VARIABLES.md : guide complet des 32 variables
+- .env.example : template prêt à l'emploi
+- dev.sh : copie auto .env.example → .env
+
+### 🐛 Fixed
+- Secrets partiellement visibles dans le panneau de configuration
+- Layout scroll désastreux avec tous les tools affichés
+- Variables d'environnement hardcodées dans le panneau
+- Confusion entre RELOAD (legacy) et AUTO_RELOAD_TOOLS
+
+### 📦 Migration notes
+- **Nouveau users** : `./scripts/dev.sh` crée automatiquement le `.env`
+- **Existing users** : no breaking changes, nouveau panneau compatible
+- **Hot-reload** : modifier via `/control` → Save → effet immédiat
+- Variables nécessitant restart : `MCP_HOST`, `MCP_PORT`, `LOG_LEVEL`, `EXECUTE_TIMEOUT_SEC`, `AUTO_RELOAD_TOOLS`
+
+---
+
 ## [1.6.0] - 2025-10-08
 
 ### 🎉 Highlights
