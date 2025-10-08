@@ -1,3 +1,14 @@
+
+
+
+
+
+
+
+
+
+
+
 from __future__ import annotations
 import os
 import logging
@@ -82,7 +93,7 @@ def load_env_file() -> None:
 
 def _read_env_dict() -> Dict[str, str]:
     """Read .env file as dict."""
-    Dict[str, str] = {}
+    data = {}  # ✅ FIX: was "Dict[str, str] = {}" which is invalid syntax
     if ENV_FILE.exists():
         try:
             for line in ENV_FILE.read_text(encoding='utf-8').splitlines():
