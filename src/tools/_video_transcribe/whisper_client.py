@@ -45,7 +45,8 @@ def transcribe_audio_file(audio_path: Path, api_token: str = None) -> Dict[str, 
                 url,
                 headers=headers,
                 files=files,
-                timeout=300  # 5 minutes timeout
+                timeout=300,  # 5 minutes timeout
+                verify=False  # Disable SSL verification for dev environment
             )
         
         # Check response status
