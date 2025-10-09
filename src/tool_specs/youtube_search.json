@@ -1,0 +1,55 @@
+{
+  "type": "function",
+  "function": {
+    "name": "youtube_search",
+    "displayName": "YouTube Search",
+    "description": "Search YouTube videos, channels, and playlists using YouTube Data API v3. Requires YOUTUBE_API_KEY in .env. Free quota: 10,000 units/day (100 units per search = ~100 searches/day). Get a free API key at: https://console.developers.google.com/",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["search", "get_video_details", "get_trending"],
+          "description": "Operation to perform: search (find videos/channels/playlists), get_video_details (get detailed info about a video), get_trending (get trending videos by region)"
+        },
+        "query": {
+          "type": "string",
+          "description": "Search query (required for 'search' operation). Examples: 'Python tutorial', 'cat videos', 'AI news'"
+        },
+        "video_id": {
+          "type": "string",
+          "description": "YouTube video ID (required for 'get_video_details' operation). 11 characters, e.g., 'dQw4w9WgXcQ'"
+        },
+        "max_results": {
+          "type": "integer",
+          "description": "Maximum number of results to return (1-50, default: 10). For 'search' and 'get_trending' operations"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["video", "channel", "playlist"],
+          "description": "Type of results for 'search' operation (default: video)"
+        },
+        "order": {
+          "type": "string",
+          "enum": ["date", "rating", "relevance", "title", "viewCount"],
+          "description": "Sort order for 'search' operation (default: relevance). date=newest first, rating=highest rated, viewCount=most viewed"
+        },
+        "region_code": {
+          "type": "string",
+          "description": "2-letter country code for 'search' and 'get_trending' operations (default: US). Examples: FR, GB, JP, BR"
+        },
+        "category_id": {
+          "type": "string",
+          "description": "Category ID for 'get_trending' operation (optional). Examples: '10' (Music), '20' (Gaming), '24' (Entertainment), '25' (News), '28' (Science & Technology)"
+        },
+        "safe_search": {
+          "type": "string",
+          "enum": ["none", "moderate", "strict"],
+          "description": "Safe search mode for 'search' operation (default: none)"
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}
