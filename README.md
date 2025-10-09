@@ -49,7 +49,7 @@ Dragonfly MCP Server expose des « tools » (au format OpenAI tools) via des end
 - **Panneau de contrôle web moderne** (design épuré, sidebar, logo HD)
 - **Configuration générique** : gestion automatique de toutes les variables d'environnement
 - **Hot-reload** : modifiez les variables en live sans restart (via `/control`)
-- **22 tools prêts à l'emploi** couvrant Git, bases de données, PDF, IA, emails, Discord, transport, vidéo, YouTube, aviation, météo aviation, calcul, etc.
+- **23 tools prêts à l'emploi** couvrant Git, bases de données, PDF, IA, emails, Discord, transport, vidéo, YouTube, aviation, météo aviation, calcul, etc.
 
 ---
 
@@ -62,7 +62,75 @@ curl -s -X POST http://127.0.0.1:8000/execute \
  -d '{"tool":"date","params":{"operation":"today"}}'
 ```
 
-### Tracker les avions en temps réel 🆕 ✈️
+### Rechercher et télécharger une vidéo YouTube 🆕 📺
+```bash
+# 1. Rechercher des vidéos Python
+curl -s -X POST http://127.0.0.1:8000/execute \
+ -H 'Content-Type: application/json' \
+ -d '{
+   "tool":"youtube_search",
+   "params":{
+     "operation":"search",
+     "query":"Python tutorial",
+     "max_results":5,
+     "order":"viewCount"
+   }
+ }'
+
+# 2. Télécharger l'audio de la meilleure vidéo
+curl -s -X POST http://127.0.0.1:8000/execute \
+ -H 'Content-Type: application/json' \
+ -d '{
+   "tool":"youtube_download",
+   "params":{
+     "url":"https://www.youtube.com/watch?v=VIDEO_ID",
+     "media_type":"audio"
+   }
+ }'
+
+# 3. Transcrire avec Whisper
+curl -s -X POST http://127.0.0.1:8000/execute \
+ -H 'Content-Type: application/json' \
+ -d '{
+   "tool":"video_transcribe",
+   "params":{
+     "operation":"transcribe",
+     "path":"docs/video/python_tutorial.mp3"
+   }
+ }'
+```
+
+### Obtenir détails d'une vidéo YouTube 🆕
+```bash
+# Infos complètes: vues, likes, durée, tags
+curl -s -X POST http://127.0.0.1:8000/execute \
+ -H 'Content-Type: application/json' \
+ -d '{
+   "tool":"youtube_search",
+   "params":{
+     "operation":"get_video_details",
+     "video_id":"dQw4w9WgXcQ"
+   }
+ }'
+```
+
+### Vidéos trending par région 🆕 🔥
+```bash
+# Top 10 trending videos en France
+curl -s -X POST http://127.0.0.1:8000/execute \
+ -H 'Content-Type: application/json' \
+ -d '{
+   "tool":"youtube_search",
+   "params":{
+     "operation":"get_trending",
+     "region_code":"FR",
+     "max_results":10,
+     "category_id":"10"
+   }
+ }'
+```
+
+### Tracker les avions en temps réel ✈️
 ```bash
 # Avions à moins de 50 km de Paris, altitude 1000-5000m
 curl -s -X POST http://127.0.0.1:8000/execute \
@@ -81,7 +149,7 @@ curl -s -X POST http://127.0.0.1:8000/execute \
  }'
 ```
 
-### Obtenir vents en altitude (météo aviation) 🆕 🌤️
+### Obtenir vents en altitude (météo aviation) 🌤️
 ```bash
 # Vents à FL360 (11000m) près de Paris
 curl -s -X POST http://127.0.0.1:8000/execute \
@@ -97,7 +165,7 @@ curl -s -X POST http://127.0.0.1:8000/execute \
  }'
 ```
 
-### Calculer True Airspeed (TAS) d'un avion 🆕
+### Calculer True Airspeed (TAS) d'un avion
 ```bash
 # Pourquoi cet avion vole à 978 km/h ?
 curl -s -X POST http://127.0.0.1:8000/execute \
@@ -111,31 +179,6 @@ curl -s -X POST http://127.0.0.1:8000/execute \
      "ground_speed_kmh":978,
      "heading":127,
      "altitude_m":11278
-   }
- }'
-```
-
-### Télécharger et transcrire une vidéo YouTube
-```bash
-# 1. Télécharger l'audio d'une vidéo YouTube
-curl -s -X POST http://127.0.0.1:8000/execute \
- -H 'Content-Type: application/json' \
- -d '{
-   "tool":"youtube_download",
-   "params":{
-     "url":"https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-     "media_type":"audio"
-   }
- }'
-
-# 2. Transcrire avec Whisper (parallèle 3x, ultra rapide)
-curl -s -X POST http://127.0.0.1:8000/execute \
- -H 'Content-Type: application/json' \
- -d '{
-   "tool":"video_transcribe",
-   "params":{
-     "operation":"transcribe",
-     "path":"docs/video/nom_fichier.mp3"
    }
  }'
 ```
@@ -238,7 +281,7 @@ Par défaut: http://127.0.0.1:8000
 
 ---
 
-## 🧪 Outils inclus (22 tools)
+## 🧪 Outils inclus (23 tools)
 
 ### 🤖 Intelligence & Orchestration
 
@@ -328,7 +371,17 @@ Par défaut: http://127.0.0.1:8000
 
 ---
 
-### 🎬 Média & FFmpeg
+### 🎬 Média & YouTube
+
+#### **youtube_search** — Recherche YouTube 🆕 ⭐
+- **3 opérations** via YouTube Data API v3 (officiel)
+  - `search` : Chercher vidéos/channels/playlists avec filtres avancés
+  - `get_video_details` : Infos complètes (vues, likes, durée, tags, description)
+  - `get_trending` : Vidéos trending par région et catégorie
+- **API Key gratuite** : 10,000 unités/jour (100 recherches/jour)
+- **Filtres avancés** : order (relevance, viewCount, date), region, safe search
+- **Workflow complet** : search → download → transcribe
+- **Cas d'usage** : recherche de contenu, analyse de tendances, metadata extraction
 
 #### **youtube_download** — Téléchargement YouTube
 - **Télécharge vidéos/audio** depuis YouTube vers `docs/video/`
@@ -363,7 +416,7 @@ Par défaut: http://127.0.0.1:8000
 
 ### ✈️ Aviation & Transport
 
-#### **flight_tracker** — Suivi d'avions en temps réel 🆕 ⭐
+#### **flight_tracker** — Suivi d'avions en temps réel ⭐
 - **Tracking en direct** via OpenSky Network API
 - **Filtres complets** :
   - Position & rayon (1-500 km)
@@ -379,7 +432,7 @@ Par défaut: http://127.0.0.1:8000
 - **Pas d'authentification** requise (API publique)
 - **Exemple** : Tous les avions en approche (<2000m) dans un rayon de 500 km
 
-#### **aviation_weather** — Météo aviation en altitude 🆕 ⭐
+#### **aviation_weather** — Météo aviation en altitude ⭐
 - **Vents en altitude** via Open-Meteo API (gratuit, sans clé)
 - **2 opérations** :
   - `get_winds_aloft` : vent + température à une altitude/coordonnée
@@ -467,7 +520,7 @@ Le script crée automatiquement `.env` depuis `.env.example`.
 nano .env
 ```
 
-Variables principales (32 variables disponibles) :
+Variables principales (33 variables disponibles) :
 
 ```bash
 # Réseau
@@ -478,6 +531,9 @@ MCP_PORT=8000
 AI_PORTAL_TOKEN=your_token
 LLM_ENDPOINT=https://ai.dragonflygroup.fr
 
+# YouTube
+YOUTUBE_API_KEY=your_youtube_api_key
+
 # IMAP (multi-comptes)
 IMAP_GMAIL_EMAIL=user@gmail.com
 IMAP_GMAIL_PASSWORD=app_password
@@ -487,7 +543,7 @@ IMAP_INFOMANIAK_PASSWORD=password
 # Git
 GITHUB_TOKEN=ghp_xxxxx
 
-# Voir .env.example pour la liste complète (32 variables)
+# Voir .env.example pour la liste complète (33 variables)
 ```
 
 **Documentation complète** : [ENV_VARIABLES.md](./ENV_VARIABLES.md)
@@ -504,9 +560,10 @@ Accès : **http://127.0.0.1:8000/control**
 - ✅ Layout 2 colonnes (Sidebar + Zone de travail)
 - ✅ Logo HD Dragonfly professionnel
 - ✅ Un seul tool visible à la fois (fini le scroll d'enfer)
-- ✅ Search bar pour filtrer les 22 tools
+- ✅ Search bar pour filtrer les 23 tools
 - ✅ Fond blanc propre, design épuré
 - ✅ Responsive mobile-ready
+- ✅ Tri alphabétique automatique
 
 **Features** :
 - 🔧 **Tools** : formulaire complet pour chaque tool avec paramètres
@@ -528,6 +585,7 @@ Accès : **http://127.0.0.1:8000/control**
 - **IMAP**: credentials en `.env` uniquement, jamais en paramètres
 - **PDF download**: validation magic bytes, chroot `docs/pdfs`
 - **YouTube download**: validation URL YouTube, chroot `docs/video/`, duration limits
+- **YouTube search**: API key en `.env`, quota limits, error handling
 - **Vélib'**: API publique (pas de secrets), chroot SQLite
 - **HTTP Client**: timeout, SSL verification, credentials masqués
 - **Video transcribe**: chroot `docs/video/`, cleanup temp files
@@ -548,7 +606,7 @@ src/
   config.py          # .env (load/save), masquage secrets
   ui_html.py         # Panneau de contrôle HTML
   ui_js.py           # Panneau de contrôle JavaScript
-  tools/             # 22 tools (run() + spec())
+  tools/             # 23 tools (run() + spec())
     _call_llm/       # Orchestrateur LLM
     _math/           # Modules calcul
     _ffmpeg/         # FFmpeg utils
@@ -561,14 +619,15 @@ src/
     _velib/          # Vélib' cache manager
     _video_transcribe/ # Video transcription Whisper
     _youtube_download/ # YouTube downloader
-    _flight_tracker/ # Flight tracking OpenSky 🆕
-    _aviation_weather/ # Aviation weather Open-Meteo 🆕
+    _youtube_search/ # YouTube search API v3 🆕
+    _flight_tracker/ # Flight tracking OpenSky
+    _aviation_weather/ # Aviation weather Open-Meteo
     # ... + tools simples (date, pdf, reddit, etc.)
   tool_specs/        # Specs JSON canoniques
 scripts/
   dev.sh             # Script de démarrage (Linux/macOS)
   dev.ps1            # Script de démarrage (Windows)
-.env.example         # Template de configuration (32 variables)
+.env.example         # Template de configuration (33 variables)
 ENV_VARIABLES.md     # Documentation des variables
 ```
 

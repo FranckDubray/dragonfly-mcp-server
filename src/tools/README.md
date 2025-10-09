@@ -25,7 +25,7 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 - Keep modules small and single‑responsibility. Glue in __init__.py should be minimal (no business logic).
 - Security: any file access must be chrooted to the project (no absolute/parent paths). Validate user inputs strictly.
 
-## Available tools (20 complete)
+## Available tools (23 complete)
 
 ### 🤖 Intelligence & Orchestration
 
@@ -67,7 +67,7 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 
 #### **git**
 - Unified Git: GitHub API + local Git operations
-- **GitHub API**: create_repo, add/delete files, branches, commits, diff, merge
+- **GitHub API**: create_repo, add/delete files, branches, commits, diff, merge, create_release
 - **Git local**: status, fetch, pull, rebase, branch_create, checkout, add_paths, commit_all, push, log, remote_info
 - **High-level ops**: ensure_repo, config_user, set_remote, sync_repo
 - Security: chroot operations to project root
@@ -116,7 +116,19 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 - Automatic cleanup
 - Architecture: `_universal_doc/` (scraper, parsers, cleaners)
 
-### 🎬 Media & FFmpeg
+### 🎬 Media & YouTube
+
+#### **youtube_search** 🆕 ⭐
+- **Search YouTube content via YouTube Data API v3** (official)
+- **3 operations**:
+  - `search`: Find videos/channels/playlists by keyword with filters (order, type, region, safe search)
+  - `get_video_details`: Get detailed info (title, description, views, likes, comments, duration, tags, thumbnails)
+  - `get_trending`: Get trending videos by region and category
+- **Free API key**: 10,000 units/day (100 units per search = ~100 searches/day)
+- **Advanced filters**: order (relevance, viewCount, date, rating, title), search type (video, channel, playlist), region code, safe search
+- **Complete workflow**: youtube_search → youtube_download → video_transcribe
+- **Use cases**: Find content before downloading, research trending topics, get metadata without downloading
+- Architecture: `_youtube_search/` (api, core, validators, services/youtube_api)
 
 #### **youtube_download** 🆕 ⚡
 - **Download videos/audio from YouTube URLs**
@@ -159,6 +171,38 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 - Export: images + timestamps + debug.json
 - Architecture: `_ffmpeg/` (detect, native, utils)
 
+### ✈️ Aviation & Transport
+
+#### **flight_tracker** ⭐
+- **Real-time aircraft tracking** via OpenSky Network API
+- **Track flights** by position (lat/lon) + radius (1-500 km)
+- **Filters**: altitude min/max, speed min/max, on_ground/in_flight, countries, callsign pattern
+- **Automatic flight phase detection**: cruise, climb, descent, approach, final_approach, landing_imminent
+- **Sort by**: distance, altitude, speed, callsign
+- **Returns**: position, speed, heading, vertical rate, country (registration), squawk, last contact
+- **No authentication** required (public API)
+- Architecture: `_flight_tracker/` (api, core, validators, utils, services/opensky)
+
+#### **aviation_weather** ⭐
+- **Upper air weather data** via Open-Meteo API (free, no API key)
+- **2 operations**:
+  - `get_winds_aloft`: Wind speed, direction, and temperature at specific altitude/coordinates
+  - `calculate_tas`: Calculate True Airspeed from ground speed and wind
+- **All flight levels**: 1000-20000m (FL30-FL650)
+- **Automatic conversions**: km/h ↔ knots, meters ↔ feet, °C ↔ °F
+- **Wind components**: headwind/tailwind, crosswind
+- **Use cases**: Explain aircraft speed records, flight planning, performance analysis
+- Architecture: `_aviation_weather/` (api, core, validators, utils, services/openmeteo)
+
+#### **velib** 🆕
+- **Vélib' Métropole Paris bike-sharing data**
+- SQLite cache for ~1494 stations (static data)
+- Real-time availability API (bikes mechanical/electric, docks free)
+- 3 operations: `refresh_stations`, `get_availability`, `check_cache`
+- Integration with `sqlite_db` tool for complex searches
+- Open Data API (no authentication required)
+- Architecture: `_velib/` (api, core, db, fetcher, validators, utils)
+
 ### 🔢 Calcul & Math
 
 #### **math**
@@ -179,17 +223,6 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 - Timezone aware
 - Multiple formats
 
-### 🚲 Transport & Mobility
-
-#### **velib** 🆕
-- **Vélib' Métropole Paris bike-sharing data**
-- SQLite cache for ~1494 stations (static data)
-- Real-time availability API (bikes mechanical/electric, docks free)
-- 3 operations: `refresh_stations`, `get_availability`, `check_cache`
-- Integration with `sqlite_db` tool for complex searches
-- Open Data API (no authentication required)
-- Architecture: `_velib/` (api, core, db, fetcher, validators, utils)
-
 ### 🌐 Networking & API
 
 #### **http_client** 🆕
@@ -197,7 +230,7 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 - All HTTP methods: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS
 - Authentication: Basic, Bearer, API Key
 - Body formats: JSON, Form data, Raw text/XML
-- Advanced features: Retry with backoff, Proxy, Timeout, SSL verification
+- Advanced features: Retry with backoff, Proxy, Timeout (up to 600s), SSL verification
 - Response parsing: auto-detect, JSON, text, raw
 - Optional response saving
 - Architecture: `_http_client/` (api, core, auth, retry, validators, utils)
