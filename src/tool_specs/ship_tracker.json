@@ -1,0 +1,75 @@
+{
+  "type": "function",
+  "function": {
+    "name": "ship_tracker",
+    "displayName": "Ship Tracker",
+    "description": "Track ships and vessels in real-time using AIS (Automatic Identification System) data. Free, no API key required. Get vessel positions, speed, heading, destination, ship type, and more. Search by location, get specific ship details by MMSI, or check port traffic.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["track_ships", "get_ship_details", "get_port_traffic"],
+          "description": "Operation to perform: track_ships (find ships in area), get_ship_details (get specific ship by MMSI), get_port_traffic (ships near a port)"
+        },
+        "latitude": {
+          "type": "number",
+          "description": "Center latitude for search (-90 to 90). Required for track_ships and get_port_traffic (if port_name not provided)"
+        },
+        "longitude": {
+          "type": "number",
+          "description": "Center longitude for search (-180 to 180). Required for track_ships and get_port_traffic (if port_name not provided)"
+        },
+        "radius_km": {
+          "type": "number",
+          "description": "Search radius in kilometers (1-500 for track_ships, 1-100 for get_port_traffic, default: 50 for track_ships, 10 for ports)"
+        },
+        "mmsi": {
+          "type": "integer",
+          "description": "Maritime Mobile Service Identity - 9-digit ship identification number (required for get_ship_details)"
+        },
+        "port_name": {
+          "type": "string",
+          "description": "Major port name for get_port_traffic (e.g., 'Rotterdam', 'Singapore', 'Shanghai', 'Hamburg', 'Marseille'). Case-insensitive."
+        },
+        "ship_type": {
+          "type": "string",
+          "enum": ["fishing", "towing", "dredging", "diving", "military", "sailing", "pleasure", "highspeed", "pilot", "sar", "tug", "port", "pollution", "law", "medical", "passenger", "cargo", "tanker", "other"],
+          "description": "Filter by ship type (optional). For track_ships operation."
+        },
+        "min_length": {
+          "type": "number",
+          "description": "Minimum ship length in meters (optional). For track_ships operation."
+        },
+        "max_length": {
+          "type": "number",
+          "description": "Maximum ship length in meters (optional). For track_ships operation."
+        },
+        "min_speed_knots": {
+          "type": "number",
+          "description": "Minimum speed in knots (optional). For track_ships operation."
+        },
+        "max_speed_knots": {
+          "type": "number",
+          "description": "Maximum speed in knots (optional). For track_ships operation."
+        },
+        "navigation_status": {
+          "type": "string",
+          "enum": ["underway", "anchored", "moored", "aground", "fishing", "sailing"],
+          "description": "Filter by navigation status (optional). For track_ships operation."
+        },
+        "max_results": {
+          "type": "integer",
+          "description": "Maximum number of ships to return (1-200, default: 50)"
+        },
+        "sort_by": {
+          "type": "string",
+          "enum": ["distance", "speed", "length"],
+          "description": "Sort results by (default: distance). For track_ships operation."
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}
