@@ -4,6 +4,50 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.9.4] - 2025-10-09
+
+### Added
+- **ship_tracker** tool: Real-time vessel tracking via AIS data (AISStream.io WebSocket)
+  - **track_ships**: Find ships in geographic area with filters (type, size, speed, status)
+  - **get_ship_details**: Get detailed ship info by MMSI number
+  - **get_port_traffic**: Monitor traffic near major ports
+  - Real-time WebSocket connection to AISStream.io (free API)
+  - Configurable timeout (3-60s) to control data collection duration
+  - Advanced filtering: ship type, length, speed, navigation status
+  - Major ports database (Rotterdam, Singapore, Le Havre, Hamburg, etc.)
+  - Distance calculation with Haversine formula
+  - Automatic deduplication by MMSI
+  - Complete ship data: position, speed, heading, destination, ETA, dimensions
+  - Support for all AIS ship types and navigation statuses
+  - Architecture: `_ship_tracker/` (api, core, validators, utils, services/aisstream)
+
+### Changed
+- Tool count: 23 → **24 tools**
+- `.env.example`: Added `AISSTREAM_API_KEY` with setup instructions
+
+### Fixed
+- `_ship_tracker/services/__init__.py`: Created missing package marker file
+- WebSocket bounding box format: corrected to `[lat, lon]` instead of `[lon, lat]`
+
+### Use Cases
+- Monitor port traffic in real-time (Rotterdam, Singapore, Le Havre, etc.)
+- Track cargo ships in specific areas
+- Find vessels by speed, type, or navigation status
+- Get live ship positions with sub-minute accuracy
+- Maritime traffic analysis and monitoring
+
+### Performance
+- Typical response time: timeout + 2 seconds (WebSocket overhead)
+- Ships emit AIS every 2-10 seconds (moving) or 3 minutes (anchored)
+- Recommended timeouts: 10s (quick), 15-30s (standard), 60s (comprehensive)
+
+### Coverage
+- Coastal coverage: ~200 km from shore (AIS receivers)
+- Best coverage: Major shipping lanes, ports, coastal areas
+- No mid-ocean coverage (requires satellite AIS)
+
+---
+
 ## [1.9.3] - 2025-10-09
 
 ### Added
