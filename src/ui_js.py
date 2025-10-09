@@ -163,7 +163,14 @@ function renderToolsList() {
     const list = document.getElementById('toolsList');
     list.innerHTML = '';
     
-    tools.forEach(tool => {
+    // TRI ALPHABÉTIQUE par displayName ou name
+    const sortedTools = [...tools].sort((a, b) => {
+        const nameA = (a.displayName || a.name || '').toLowerCase();
+        const nameB = (b.displayName || b.name || '').toLowerCase();
+        return nameA.localeCompare(nameB);
+    });
+    
+    sortedTools.forEach(tool => {
         const item = document.createElement('div');
         item.className = 'tool-item';
         item.onclick = () => selectTool(tool);
@@ -197,7 +204,11 @@ function getToolIcon(toolName) {
         'universal_doc_scraper': '🕷️',
         'ffmpeg_frames': '🎬',
         'gitbook': '📖',
-        'reddit_intelligence': '🔮'
+        'reddit_intelligence': '🔮',
+        'youtube_download': '📺',
+        'video_transcribe': '🎥',
+        'flight_tracker': '✈️',
+        'aviation_weather': '🌤️'
     };
     return icons[toolName] || '🔧';
 }
