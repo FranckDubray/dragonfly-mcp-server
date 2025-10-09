@@ -49,7 +49,7 @@ Dragonfly MCP Server expose des « tools » (au format OpenAI tools) via des end
 - **Panneau de contrôle web moderne** (design épuré, sidebar, logo HD)
 - **Configuration générique** : gestion automatique de toutes les variables d'environnement
 - **Hot-reload** : modifiez les variables en live sans restart (via `/control`)
-- **23 tools prêts à l'emploi** couvrant Git, bases de données, PDF, IA, emails, Discord, transport, vidéo, YouTube, aviation, météo aviation, calcul, etc.
+- **24 tools prêts à l'emploi** couvrant Git, bases de données, PDF, IA, emails, Discord, transport maritime, vidéo, YouTube, aviation, météo aviation, calcul, etc.
 
 ---
 
@@ -62,7 +62,37 @@ curl -s -X POST http://127.0.0.1:8000/execute \
  -d '{"tool":"date","params":{"operation":"today"}}'
 ```
 
-### Rechercher et télécharger une vidéo YouTube 🆕 📺
+### Tracker les navires en temps réel 🚢🆕
+```bash
+# Navires près de Rotterdam (port majeur)
+curl -s -X POST http://127.0.0.1:8000/execute \
+ -H 'Content-Type: application/json' \
+ -d '{
+   "tool":"ship_tracker",
+   "params":{
+     "operation":"track_ships",
+     "latitude":51.9225,
+     "longitude":4.4792,
+     "radius_km":50,
+     "timeout":15
+   }
+ }'
+
+# Trafic au port du Havre
+curl -s -X POST http://127.0.0.1:8000/execute \
+ -H 'Content-Type: application/json' \
+ -d '{
+   "tool":"ship_tracker",
+   "params":{
+     "operation":"get_port_traffic",
+     "port_name":"lehavre",
+     "radius_km":30,
+     "timeout":20
+   }
+ }'
+```
+
+### Rechercher et télécharger une vidéo YouTube 📺
 ```bash
 # 1. Rechercher des vidéos Python
 curl -s -X POST http://127.0.0.1:8000/execute \
@@ -96,36 +126,6 @@ curl -s -X POST http://127.0.0.1:8000/execute \
    "params":{
      "operation":"transcribe",
      "path":"docs/video/python_tutorial.mp3"
-   }
- }'
-```
-
-### Obtenir détails d'une vidéo YouTube 🆕
-```bash
-# Infos complètes: vues, likes, durée, tags
-curl -s -X POST http://127.0.0.1:8000/execute \
- -H 'Content-Type: application/json' \
- -d '{
-   "tool":"youtube_search",
-   "params":{
-     "operation":"get_video_details",
-     "video_id":"dQw4w9WgXcQ"
-   }
- }'
-```
-
-### Vidéos trending par région 🆕 🔥
-```bash
-# Top 10 trending videos en France
-curl -s -X POST http://127.0.0.1:8000/execute \
- -H 'Content-Type: application/json' \
- -d '{
-   "tool":"youtube_search",
-   "params":{
-     "operation":"get_trending",
-     "region_code":"FR",
-     "max_results":10,
-     "category_id":"10"
    }
  }'
 ```
@@ -165,89 +165,6 @@ curl -s -X POST http://127.0.0.1:8000/execute \
  }'
 ```
 
-### Calculer True Airspeed (TAS) d'un avion
-```bash
-# Pourquoi cet avion vole à 978 km/h ?
-curl -s -X POST http://127.0.0.1:8000/execute \
- -H 'Content-Type: application/json' \
- -d '{
-   "tool":"aviation_weather",
-   "params":{
-     "operation":"calculate_tas",
-     "latitude":48.59,
-     "longitude":6.27,
-     "ground_speed_kmh":978,
-     "heading":127,
-     "altitude_m":11278
-   }
- }'
-```
-
-### Télécharger un PDF depuis arXiv
-```bash
-curl -s -X POST http://127.0.0.1:8000/execute \
- -H 'Content-Type: application/json' \
- -d '{
-   "tool":"pdf_download",
-   "params":{
-     "operation":"download",
-     "url":"https://arxiv.org/pdf/2301.00001.pdf",
-     "filename":"research_paper"
-   }
- }'
-```
-
-### Lire les emails non lus (IMAP multi-comptes)
-```bash
-curl -s -X POST http://127.0.0.1:8000/execute \
- -H 'Content-Type: application/json' \
- -d '{
-   "tool":"imap",
-   "params":{
-     "provider":"gmail",
-     "operation":"search_messages",
-     "folder":"inbox",
-     "query":{"unseen":true},
-     "max_results":20
-   }
- }'
-```
-
-### Trouver une station Vélib' disponible
-```bash
-# 1. Rechercher stations près de Bastille
-curl -s -X POST http://127.0.0.1:8000/execute \
- -H 'Content-Type: application/json' \
- -d '{
-   "tool":"sqlite_db",
-   "params":{
-     "db_name":"velib",
-     "query":"SELECT station_code, name, capacity FROM stations WHERE name LIKE '\''%Bastille%'\'' ORDER BY capacity DESC LIMIT 3"
-   }
- }'
-
-# 2. Obtenir disponibilité temps réel
-curl -s -X POST http://127.0.0.1:8000/execute \
- -H 'Content-Type: application/json' \
- -d '{
-   "tool":"velib",
-   "params":{
-     "operation":"get_availability",
-     "station_code":"12001"
-   }
- }'
-```
-
-### Orchestrer un LLM
-```bash
-curl -s -X POST http://127.0.0.1:8000/execute \
- -H 'Content-Type: application/json' \
- -d '{
-   "tool":"call_llm",
-   "params":{"message":"Dis bonjour en français.","model":"gpt-4o"}
- }'
-```
-
 ---
 
 ## 🛠 Installation
@@ -281,7 +198,7 @@ Par défaut: http://127.0.0.1:8000
 
 ---
 
-## 🧪 Outils inclus (23 tools)
+## 🧪 Outils inclus (24 tools)
 
 ### 🤖 Intelligence & Orchestration
 
@@ -373,7 +290,7 @@ Par défaut: http://127.0.0.1:8000
 
 ### 🎬 Média & YouTube
 
-#### **youtube_search** — Recherche YouTube 🆕 ⭐
+#### **youtube_search** — Recherche YouTube ⭐
 - **3 opérations** via YouTube Data API v3 (officiel)
   - `search` : Chercher vidéos/channels/playlists avec filtres avancés
   - `get_video_details` : Infos complètes (vues, likes, durée, tags, description)
@@ -415,6 +332,22 @@ Par défaut: http://127.0.0.1:8000
 ---
 
 ### ✈️ Aviation & Transport
+
+#### **ship_tracker** — Suivi de navires en temps réel 🆕⭐
+- **Tracking en direct** via AISStream.io WebSocket API
+- **Filtres complets** :
+  - Position & rayon (1-500 km)
+  - Type de navire (cargo, tanker, passenger, fishing, etc.)
+  - Taille (longueur min/max)
+  - Vitesse (min/max en nœuds)
+  - Statut de navigation (underway, anchored, moored, etc.)
+- **Données en temps réel** : position, vitesse, cap, destination, ETA, dimensions
+- **Timeout configurable** : 3-60 secondes (contrôle durée de collecte)
+- **Ports majeurs** : Rotterdam, Singapore, Le Havre, Hamburg, Marseille, etc.
+- **Déduplication automatique** par MMSI
+- **Tri** : par distance, vitesse, longueur
+- **API gratuite** AISStream.io (couverture côtière ~200 km)
+- **Exemple** : Tous les cargos en approche du port du Havre
 
 #### **flight_tracker** — Suivi d'avions en temps réel ⭐
 - **Tracking en direct** via OpenSky Network API
@@ -520,7 +453,7 @@ Le script crée automatiquement `.env` depuis `.env.example`.
 nano .env
 ```
 
-Variables principales (33 variables disponibles) :
+Variables principales (34 variables disponibles) :
 
 ```bash
 # Réseau
@@ -534,6 +467,9 @@ LLM_ENDPOINT=https://ai.dragonflygroup.fr
 # YouTube
 YOUTUBE_API_KEY=your_youtube_api_key
 
+# Ship Tracking (AIS)
+AISSTREAM_API_KEY=your_aisstream_api_key
+
 # IMAP (multi-comptes)
 IMAP_GMAIL_EMAIL=user@gmail.com
 IMAP_GMAIL_PASSWORD=app_password
@@ -543,7 +479,7 @@ IMAP_INFOMANIAK_PASSWORD=password
 # Git
 GITHUB_TOKEN=ghp_xxxxx
 
-# Voir .env.example pour la liste complète (33 variables)
+# Voir .env.example pour la liste complète (34 variables)
 ```
 
 **Toutes les variables sont documentées dans `.env.example`** avec commentaires détaillés et exemples.
@@ -560,7 +496,7 @@ Accès : **http://127.0.0.1:8000/control**
 - ✅ Layout 2 colonnes (Sidebar + Zone de travail)
 - ✅ Logo HD Dragonfly professionnel
 - ✅ Un seul tool visible à la fois (fini le scroll d'enfer)
-- ✅ Search bar pour filtrer les 23 tools
+- ✅ Search bar pour filtrer les 24 tools
 - ✅ Fond blanc propre, design épuré
 - ✅ Responsive mobile-ready
 - ✅ Tri alphabétique automatique
@@ -586,6 +522,7 @@ Accès : **http://127.0.0.1:8000/control**
 - **PDF download**: validation magic bytes, chroot `docs/pdfs`
 - **YouTube download**: validation URL YouTube, chroot `docs/video/`, duration limits
 - **YouTube search**: API key en `.env`, quota limits, error handling
+- **Ship tracker**: API key en `.env`, WebSocket sécurisé (WSS), pas de stockage persistant
 - **Vélib'**: API publique (pas de secrets), chroot SQLite
 - **HTTP Client**: timeout, SSL verification, credentials masqués
 - **Video transcribe**: chroot `docs/video/`, cleanup temp files
@@ -606,7 +543,7 @@ src/
   config.py          # .env (load/save), masquage secrets
   ui_html.py         # Panneau de contrôle HTML
   ui_js.py           # Panneau de contrôle JavaScript
-  tools/             # 23 tools (run() + spec())
+  tools/             # 24 tools (run() + spec())
     _call_llm/       # Orchestrateur LLM
     _math/           # Modules calcul
     _ffmpeg/         # FFmpeg utils
@@ -619,15 +556,16 @@ src/
     _velib/          # Vélib' cache manager
     _video_transcribe/ # Video transcription Whisper
     _youtube_download/ # YouTube downloader
-    _youtube_search/ # YouTube search API v3 🆕
+    _youtube_search/ # YouTube search API v3
     _flight_tracker/ # Flight tracking OpenSky
     _aviation_weather/ # Aviation weather Open-Meteo
+    _ship_tracker/   # Ship tracking AISStream.io 🆕
     # ... + tools simples (date, pdf, reddit, etc.)
   tool_specs/        # Specs JSON canoniques
 scripts/
   dev.sh             # Script de démarrage (Linux/macOS)
   dev.ps1            # Script de démarrage (Windows)
-.env.example         # Template de configuration (33 variables documentées)
+.env.example         # Template de configuration (34 variables documentées)
 ```
 
 ---

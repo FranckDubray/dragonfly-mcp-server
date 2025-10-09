@@ -3,7 +3,7 @@
   "function": {
     "name": "ship_tracker",
     "displayName": "Ship Tracker",
-    "description": "Track ships and vessels in real-time using AIS (Automatic Identification System) data. Free, no API key required. Get vessel positions, speed, heading, destination, ship type, and more. Search by location, get specific ship details by MMSI, or check port traffic.",
+    "description": "Track ships and vessels in real-time using AIS (Automatic Identification System) data via AISStream.io WebSocket. Get vessel positions, speed, heading, destination, ship type, and more. Search by location, get specific ship details by MMSI, or check port traffic. Requires AISSTREAM_API_KEY in .env (free API key at https://aisstream.io).",
     "parameters": {
       "type": "object",
       "properties": {
@@ -23,6 +23,10 @@
         "radius_km": {
           "type": "number",
           "description": "Search radius in kilometers (1-500 for track_ships, 1-100 for get_port_traffic, default: 50 for track_ships, 10 for ports)"
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "WebSocket collection timeout in seconds (3-60, default: 10). How long to listen for AIS messages before returning results. Longer timeout = more ships but slower response."
         },
         "mmsi": {
           "type": "integer",

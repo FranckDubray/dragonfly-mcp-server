@@ -40,6 +40,13 @@ def validate_track_ships_params(params: Dict[str, Any]) -> Dict[str, Any]:
     if not 1 <= radius_km <= 500:
         raise ValueError("Parameter 'radius_km' must be between 1 and 500")
     
+    # Validate timeout
+    timeout = params.get("timeout", 10)
+    if not isinstance(timeout, (int, float)):
+        raise ValueError("Parameter 'timeout' must be a number")
+    if not 3 <= timeout <= 60:
+        raise ValueError("Parameter 'timeout' must be between 3 and 60 seconds")
+    
     # Validate ship_type
     ship_type = params.get("ship_type")
     if ship_type is not None:
@@ -92,6 +99,7 @@ def validate_track_ships_params(params: Dict[str, Any]) -> Dict[str, Any]:
         "latitude": float(latitude),
         "longitude": float(longitude),
         "radius_km": float(radius_km),
+        "timeout": int(timeout),
         "ship_type": ship_type,
         "min_length": float(min_length) if min_length is not None else None,
         "max_length": float(max_length) if max_length is not None else None,
@@ -127,8 +135,16 @@ def validate_ship_details_params(params: Dict[str, Any]) -> Dict[str, Any]:
     if not mmsi_str.isdigit() or len(mmsi_str) != 9:
         raise ValueError("Parameter 'mmsi' must be a 9-digit number")
     
+    # Validate timeout
+    timeout = params.get("timeout", 10)
+    if not isinstance(timeout, (int, float)):
+        raise ValueError("Parameter 'timeout' must be a number")
+    if not 3 <= timeout <= 60:
+        raise ValueError("Parameter 'timeout' must be between 3 and 60 seconds")
+    
     return {
-        "mmsi": int(mmsi)
+        "mmsi": int(mmsi),
+        "timeout": int(timeout)
     }
 
 
@@ -149,10 +165,18 @@ def validate_port_traffic_params(params: Dict[str, Any]) -> Dict[str, Any]:
     latitude = params.get("latitude")
     longitude = params.get("longitude")
     
+    # Validate timeout
+    timeout = params.get("timeout", 10)
+    if not isinstance(timeout, (int, float)):
+        raise ValueError("Parameter 'timeout' must be a number")
+    if not 3 <= timeout <= 60:
+        raise ValueError("Parameter 'timeout' must be between 3 and 60 seconds")
+    
     if port_name:
         return {
             "port_name": port_name.strip(),
             "radius_km": params.get("radius_km", 10),
+            "timeout": int(timeout),
             "max_results": params.get("max_results", 50)
         }
     elif latitude is not None and longitude is not None:
@@ -169,6 +193,7 @@ def validate_port_traffic_params(params: Dict[str, Any]) -> Dict[str, Any]:
             "latitude": float(latitude),
             "longitude": float(longitude),
             "radius_km": float(radius_km),
+            "timeout": int(timeout),
             "max_results": params.get("max_results", 50)
         }
     else:

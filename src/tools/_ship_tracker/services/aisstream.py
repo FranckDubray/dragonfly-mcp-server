@@ -1,121 +1,247 @@
-"""AISStream API client for ship tracking.
+"""AISStream.io WebSocket client for real-time ship tracking.
 
-Free, public AIS data from aisstream.io
-Documentation: https://aisstream.io/documentation
+Official API: https://aisstream.io/documentation
+WebSocket endpoint: wss://stream.aisstream.io/v0/stream
 """
 
-import requests
+import os
+import json
+import time
+import math
+import threading
+import websocket
 from typing import Dict, Any, List, Optional
-from ..utils import haversine_distance, knots_to_kmh
+from ..utils import haversine_distance
 
 
 class AISStreamClient:
-    """Client for AISStream API."""
+    """Client for AISStream.io WebSocket API."""
     
-    # Using public AIS data aggregators as fallback
-    # Note: aisstream.io primarily uses WebSocket, but we can use REST endpoints
-    BASE_URL = "https://api.vesselfinder.com/pro/ais"
+    WS_URL = "wss://stream.aisstream.io/v0/stream"
     
     def __init__(self):
-        """Initialize AIS client.
-        
-        Note: This uses public AIS data. No API key required for basic usage.
-        """
-        pass
+        """Initialize AIS client with API key from environment."""
+        self.api_key = os.getenv("AISSTREAM_API_KEY", "").strip()
+        if not self.api_key:
+            raise ValueError(
+                "AISSTREAM_API_KEY not found in environment variables. "
+                "Get a free API key at: https://aisstream.io"
+            )
     
     def get_ships_in_area(
         self,
         latitude: float,
         longitude: float,
         radius_km: float,
-        max_results: int = 50
+        max_results: int = 50,
+        timeout: int = 10
     ) -> List[Dict[str, Any]]:
-        """Get ships in a geographic area.
+        """Get ships in a geographic area via WebSocket.
         
         Args:
             latitude: Center latitude
             longitude: Center longitude
             radius_km: Radius in kilometers
             max_results: Maximum number of ships to return
+            timeout: WebSocket collection timeout in seconds (default: 10)
             
         Returns:
             List of ships with AIS data
-            
-        Note:
-            This is a simplified implementation using mock data for demonstration.
-            In production, integrate with aisstream.io WebSocket API or
-            a proper AIS data provider.
         """
-        # For now, return mock data structure
-        # In production, this would call actual AIS API
-        ships = []
+        # Calculate bounding box from center + radius
+        # Rough approximation: 1 degree latitude ≈ 111 km
+        lat_delta = radius_km / 111.0
+        # Longitude varies with latitude
+        lon_delta = radius_km / (111.0 * abs(math.cos(math.radians(latitude))))
         
-        # Mock implementation - replace with actual API calls
-        # Example ship data structure based on AIS standard
-        mock_ship = {
-            "mmsi": 123456789,
-            "name": "EXAMPLE SHIP",
-            "ship_type": 70,  # Cargo
-            "latitude": latitude + 0.01,
-            "longitude": longitude + 0.01,
-            "speed": 12.5,  # knots
-            "heading": 45,  # degrees
-            "course": 45,  # degrees
-            "navigation_status": 0,  # Underway using engine
-            "destination": "PORT OF EXAMPLE",
-            "eta": "12-25 14:00",
-            "length": 200,  # meters
-            "width": 32,  # meters
-            "draught": 8.5,  # meters
-            "timestamp": "2025-01-09T12:00:00Z"
-        }
+        # AISStream.io format: [[lat1, lon1], [lat2, lon2]]
+        # NOT [lon, lat] - it's [lat, lon] !
+        bbox = [
+            [latitude - lat_delta, longitude - lon_delta],  # SW corner
+            [latitude + lat_delta, longitude + lon_delta]   # NE corner
+        ]
         
-        # Calculate distance
-        distance = haversine_distance(
-            latitude, longitude,
-            mock_ship["latitude"], mock_ship["longitude"]
+        # Collect ships from WebSocket
+        ships_by_mmsi = {}  # Deduplicate by MMSI
+        
+        def on_message(ws, message):
+            """Handle incoming AIS message."""
+            try:
+                data = json.loads(message)
+                
+                # AISStream sends different message types
+                if data.get("MessageType") == "PositionReport":
+                    metadata = data.get("MetaData", {})
+                    mmsi = metadata.get("MMSI")
+                    
+                    if not mmsi:
+                        return
+                    
+                    # Extract position report data
+                    msg = data.get("Message", {}).get("PositionReport", {})
+                    
+                    ship_lat = msg.get("Latitude")
+                    ship_lon = msg.get("Longitude")
+                    
+                    if ship_lat is None or ship_lon is None:
+                        return
+                    
+                    # Calculate distance from center
+                    distance = haversine_distance(latitude, longitude, ship_lat, ship_lon)
+                    
+                    if distance > radius_km:
+                        return
+                    
+                    # Build ship data
+                    ship = {
+                        "mmsi": mmsi,
+                        "name": metadata.get("ShipName", "Unknown").strip(),
+                        "ship_type": msg.get("ShipType", 0),
+                        "latitude": ship_lat,
+                        "longitude": ship_lon,
+                        "speed": msg.get("Sog", 0),  # Speed over ground in knots
+                        "heading": msg.get("TrueHeading"),
+                        "course": msg.get("Cog"),  # Course over ground
+                        "navigation_status": msg.get("NavigationalStatus", 15),
+                        "destination": metadata.get("Destination", "Unknown").strip(),
+                        "eta": metadata.get("ETA"),
+                        "length": metadata.get("Dimension", {}).get("A", 0) + metadata.get("Dimension", {}).get("B", 0),
+                        "width": metadata.get("Dimension", {}).get("C", 0) + metadata.get("Dimension", {}).get("D", 0),
+                        "draught": msg.get("Draught"),
+                        "callsign": metadata.get("CallSign", "").strip(),
+                        "imo": metadata.get("IMO"),
+                        "timestamp": metadata.get("time_utc"),
+                        "distance_km": round(distance, 2)
+                    }
+                    
+                    # Deduplicate by MMSI (keep latest)
+                    ships_by_mmsi[mmsi] = ship
+                    
+            except Exception as e:
+                # Silent fail on parse errors (don't break the stream)
+                pass
+        
+        def on_error(ws, error):
+            """Handle WebSocket errors."""
+            pass  # Silent errors
+        
+        def on_close(ws, close_status_code, close_msg):
+            """Handle WebSocket close."""
+            pass
+        
+        def on_open(ws):
+            """Send subscription message on connection open."""
+            subscribe_message = {
+                "APIKey": self.api_key,
+                "BoundingBoxes": [bbox],
+                "FilterMessageTypes": ["PositionReport"]  # Only position updates
+            }
+            ws.send(json.dumps(subscribe_message))
+        
+        # Create WebSocket connection
+        ws = websocket.WebSocketApp(
+            self.WS_URL,
+            on_open=on_open,
+            on_message=on_message,
+            on_error=on_error,
+            on_close=on_close
         )
         
-        if distance <= radius_km:
-            mock_ship["distance_km"] = round(distance, 2)
-            ships.append(mock_ship)
+        # Run WebSocket in a thread with timeout
+        wst = threading.Thread(target=ws.run_forever)
+        wst.daemon = True
+        wst.start()
+        
+        # Wait for timeout
+        time.sleep(timeout)
+        
+        # Close connection
+        ws.close()
+        wst.join(timeout=1)
+        
+        # Convert dict to list and sort by distance
+        ships = list(ships_by_mmsi.values())
+        ships.sort(key=lambda s: s["distance_km"])
         
         return ships[:max_results]
     
-    def get_ship_by_mmsi(self, mmsi: int) -> Optional[Dict[str, Any]]:
+    def get_ship_by_mmsi(self, mmsi: int, timeout: int = 10) -> Optional[Dict[str, Any]]:
         """Get ship details by MMSI number.
         
         Args:
             mmsi: Maritime Mobile Service Identity number
+            timeout: WebSocket collection timeout in seconds
             
         Returns:
             Ship details or None if not found
         """
-        # Mock implementation
-        return {
-            "mmsi": mmsi,
-            "name": "EXAMPLE VESSEL",
-            "ship_type": 70,
-            "latitude": 48.8566,
-            "longitude": 2.3522,
-            "speed": 10.0,
-            "heading": 90,
-            "course": 90,
-            "navigation_status": 0,
-            "destination": "EXAMPLE PORT",
-            "eta": "01-10 08:00",
-            "imo": 1234567,
-            "callsign": "EXAM1",
-            "length": 180,
-            "width": 28,
-            "draught": 7.5,
-            "country": "France",
-            "timestamp": "2025-01-09T12:00:00Z",
-            "last_position_update": "2025-01-09T11:55:00Z"
-        }
+        # For MMSI lookup, we need to listen globally (no bbox filter)
+        # This is expensive, so we use a short timeout
+        
+        ship_found = None
+        
+        def on_message(ws, message):
+            nonlocal ship_found
+            try:
+                data = json.loads(message)
+                
+                if data.get("MessageType") == "PositionReport":
+                    metadata = data.get("MetaData", {})
+                    
+                    if metadata.get("MMSI") == mmsi:
+                        msg = data.get("Message", {}).get("PositionReport", {})
+                        
+                        ship_found = {
+                            "mmsi": mmsi,
+                            "name": metadata.get("ShipName", "Unknown").strip(),
+                            "ship_type": msg.get("ShipType", 0),
+                            "latitude": msg.get("Latitude"),
+                            "longitude": msg.get("Longitude"),
+                            "speed": msg.get("Sog", 0),
+                            "heading": msg.get("TrueHeading"),
+                            "course": msg.get("Cog"),
+                            "navigation_status": msg.get("NavigationalStatus", 15),
+                            "destination": metadata.get("Destination", "Unknown").strip(),
+                            "eta": metadata.get("ETA"),
+                            "length": metadata.get("Dimension", {}).get("A", 0) + metadata.get("Dimension", {}).get("B", 0),
+                            "width": metadata.get("Dimension", {}).get("C", 0) + metadata.get("Dimension", {}).get("D", 0),
+                            "draught": msg.get("Draught"),
+                            "callsign": metadata.get("CallSign", "").strip(),
+                            "imo": metadata.get("IMO"),
+                            "timestamp": metadata.get("time_utc"),
+                            "last_position_update": metadata.get("time_utc")
+                        }
+                        
+                        # Close immediately when found
+                        ws.close()
+            except Exception:
+                pass
+        
+        def on_open(ws):
+            subscribe_message = {
+                "APIKey": self.api_key,
+                "FilterMessageTypes": ["PositionReport"]
+            }
+            ws.send(json.dumps(subscribe_message))
+        
+        ws = websocket.WebSocketApp(
+            self.WS_URL,
+            on_open=on_open,
+            on_message=on_message
+        )
+        
+        wst = threading.Thread(target=ws.run_forever)
+        wst.daemon = True
+        wst.start()
+        
+        # Wait for timeout or until found
+        wst.join(timeout=timeout)
+        ws.close()
+        
+        return ship_found
 
 
-# Helper function to get major ports coordinates (can be expanded)
+# Helper function: major ports coordinates
 MAJOR_PORTS = {
     "rotterdam": {"lat": 51.9225, "lon": 4.4792, "country": "Netherlands"},
     "singapore": {"lat": 1.2897, "lon": 103.8501, "country": "Singapore"},
