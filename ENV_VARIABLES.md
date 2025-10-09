@@ -28,6 +28,7 @@ nano .env
 
 - **LLM** : `AI_PORTAL_TOKEN`, `LLM_ENDPOINT`, `LLM_REQUEST_TIMEOUT_SEC`, `LLM_RETURN_DEBUG`, `LLM_STREAM_TRACE`, `LLM_STREAM_DUMP`, `MCP_URL`
 - **Git** : `GITHUB_TOKEN`
+- **YouTube** : `YOUTUBE_API_KEY`
 - **IMAP** : tous les `IMAP_*_EMAIL`, `IMAP_*_PASSWORD`, `IMAP_CUSTOM_*`
 - **Vélib'** : `VELIB_STATION_INFO_URL`, `VELIB_STATION_STATUS_URL`
 - **JSON** : `BIGINT_AS_STRING`, `BIGINT_STR_THRESHOLD`, `PY_INT_MAX_STR_DIGITS`
@@ -81,6 +82,25 @@ nano .env
 | Variable | Type | Défaut | Description |
 |----------|------|--------|-------------|
 | `GITHUB_TOKEN` | secret | — | Personal Access Token (scope: repo, workflow) |
+
+### 📺 YouTube
+
+| Variable | Type | Défaut | Description |
+|----------|------|--------|-------------|
+| `YOUTUBE_API_KEY` | secret | — | YouTube Data API v3 Key (gratuit, 10k unités/jour) |
+
+**Comment obtenir** :
+1. Aller sur [Google Cloud Console](https://console.developers.google.com/)
+2. Créer un projet (ou sélectionner existant)
+3. Activer **YouTube Data API v3**
+4. Créer des identifiants → Clé API
+5. (Optionnel) Restreindre la clé à YouTube Data API v3
+
+**Quota** :
+- Gratuit : 10,000 unités/jour
+- Recherche : 100 unités (~100 recherches/jour)
+- Détails vidéo : 1 unité (~10,000 requêtes/jour)
+- Reset : minuit Pacific Time
 
 ### 📧 IMAP Email
 
@@ -142,7 +162,7 @@ Variables contenant ces patterns sont masquées automatiquement :
 
 Dans `/control` :
 - Type="password" (masqué)
-- Valeur masquée : `****xxxx`
+- Valeur masquée : `••••••••` (OWASP compliant)
 - Jamais en clair dans les logs
 
 ### Protection Git
@@ -189,6 +209,14 @@ git commit -m "chore: remove .env from git"
 ```bash
 cp .env.example .env
 nano .env  # Remplir les valeurs
+```
+
+### YouTube API key invalide ?
+- Vérifier que YouTube Data API v3 est **activée** dans Google Cloud Console
+- Vérifier que la clé n'a pas de restrictions trop strictes
+- Tester avec `curl` :
+```bash
+curl "https://www.googleapis.com/youtube/v3/search?part=snippet&q=test&key=YOUR_KEY"
 ```
 
 ---
