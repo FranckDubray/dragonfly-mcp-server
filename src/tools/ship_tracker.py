@@ -1,7 +1,7 @@
 """Ship Tracker - Track ships and vessels in real-time using AIS data.
 
-Free AIS (Automatic Identification System) data from aisstream.io
-No API key required for basic usage.
+AIS (Automatic Identification System) data from aisstream.io
+Requires free API key from https://aisstream.io
 
 Example usage:
     # Track ships near a location
