@@ -22,6 +22,7 @@ All notable changes to this project will be documented in this file.
 - Tool count: 22 → **23 tools**
 - `.env.example`: Added `YOUTUBE_API_KEY` with setup instructions
 - Error handling: Improved YouTube API error messages (quota exceeded, invalid API key, etc.)
+- Documentation: Simplified, removed redundant ENV_VARIABLES.md (all documentation now in .env.example)
 
 ### Use Cases
 - Search for specific videos or channels before downloading
@@ -148,7 +149,7 @@ video_transcribe → returns transcript text
 - Configuration générique: lecture/modification automatique de toutes variables `.env`
 - Hot-reload: 90% des variables sans restart
 - Masquage total des secrets: `••••••••` (OWASP compliant)
-- Documentation: `.env.example`, `ENV_VARIABLES.md`
+- Documentation: `.env.example` with comprehensive comments
 
 ### Changed
 - UX: un seul tool visible, search bar, badges colorés (present/absent)

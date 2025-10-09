@@ -546,7 +546,7 @@ GITHUB_TOKEN=ghp_xxxxx
 # Voir .env.example pour la liste complète (33 variables)
 ```
 
-**Documentation complète** : [ENV_VARIABLES.md](./ENV_VARIABLES.md)
+**Toutes les variables sont documentées dans `.env.example`** avec commentaires détaillés et exemples.
 
 ---
 
@@ -627,8 +627,7 @@ src/
 scripts/
   dev.sh             # Script de démarrage (Linux/macOS)
   dev.ps1            # Script de démarrage (Windows)
-.env.example         # Template de configuration (33 variables)
-ENV_VARIABLES.md     # Documentation des variables
+.env.example         # Template de configuration (33 variables documentées)
 ```
 
 ---
