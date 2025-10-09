@@ -49,7 +49,7 @@ Dragonfly MCP Server expose des « tools » (au format OpenAI tools) via des end
 - **Panneau de contrôle web moderne** (design épuré, sidebar, logo HD)
 - **Configuration générique** : gestion automatique de toutes les variables d'environnement
 - **Hot-reload** : modifiez les variables en live sans restart (via `/control`)
-- **21 tools prêts à l'emploi** couvrant Git, bases de données, PDF, IA, emails, Discord, transport, vidéo, YouTube, aviation, calcul, etc.
+- **22 tools prêts à l'emploi** couvrant Git, bases de données, PDF, IA, emails, Discord, transport, vidéo, YouTube, aviation, météo aviation, calcul, etc.
 
 ---
 
@@ -77,6 +77,40 @@ curl -s -X POST http://127.0.0.1:8000/execute \
      "altitude_min":1000,
      "altitude_max":5000,
      "in_flight_only":true
+   }
+ }'
+```
+
+### Obtenir vents en altitude (météo aviation) 🆕 🌤️
+```bash
+# Vents à FL360 (11000m) près de Paris
+curl -s -X POST http://127.0.0.1:8000/execute \
+ -H 'Content-Type: application/json' \
+ -d '{
+   "tool":"aviation_weather",
+   "params":{
+     "operation":"get_winds_aloft",
+     "latitude":48.86,
+     "longitude":2.35,
+     "altitude_m":11000
+   }
+ }'
+```
+
+### Calculer True Airspeed (TAS) d'un avion 🆕
+```bash
+# Pourquoi cet avion vole à 978 km/h ?
+curl -s -X POST http://127.0.0.1:8000/execute \
+ -H 'Content-Type: application/json' \
+ -d '{
+   "tool":"aviation_weather",
+   "params":{
+     "operation":"calculate_tas",
+     "latitude":48.59,
+     "longitude":6.27,
+     "ground_speed_kmh":978,
+     "heading":127,
+     "altitude_m":11278
    }
  }'
 ```
@@ -204,7 +238,7 @@ Par défaut: http://127.0.0.1:8000
 
 ---
 
-## 🧪 Outils inclus (21 tools)
+## 🧪 Outils inclus (22 tools)
 
 ### 🤖 Intelligence & Orchestration
 
@@ -345,6 +379,18 @@ Par défaut: http://127.0.0.1:8000
 - **Pas d'authentification** requise (API publique)
 - **Exemple** : Tous les avions en approche (<2000m) dans un rayon de 500 km
 
+#### **aviation_weather** — Météo aviation en altitude 🆕 ⭐
+- **Vents en altitude** via Open-Meteo API (gratuit, sans clé)
+- **2 opérations** :
+  - `get_winds_aloft` : vent + température à une altitude/coordonnée
+  - `calculate_tas` : calcul True Airspeed depuis ground speed + vent
+- **Tous niveaux de vol** : 1000-20000m (FL30-FL650)
+- **Niveaux de pression** : 1000, 925, 850, 700, 600, 500, 400, 300, 250, 225, 200, 150, 100, 70, 50, 30, 20, 10 hPa
+- **Conversions automatiques** : km/h ↔ knots, m ↔ ft, °C ↔ °F
+- **Composantes vent** : headwind/tailwind, crosswind
+- **Cas d'usage** : expliquer records de vitesse, planification de vol, analyse performance
+- **Intégration** : enrichit les données de `flight_tracker`
+
 #### **velib** — Vélib' Métropole Paris 🚲
 - **Gestionnaire de cache** des stations Vélib' (~1494 stations)
 - **3 opérations**: refresh_stations, get_availability, check_cache
@@ -458,7 +504,7 @@ Accès : **http://127.0.0.1:8000/control**
 - ✅ Layout 2 colonnes (Sidebar + Zone de travail)
 - ✅ Logo HD Dragonfly professionnel
 - ✅ Un seul tool visible à la fois (fini le scroll d'enfer)
-- ✅ Search bar pour filtrer les 21 tools
+- ✅ Search bar pour filtrer les 22 tools
 - ✅ Fond blanc propre, design épuré
 - ✅ Responsive mobile-ready
 
@@ -486,6 +532,7 @@ Accès : **http://127.0.0.1:8000/control**
 - **HTTP Client**: timeout, SSL verification, credentials masqués
 - **Video transcribe**: chroot `docs/video/`, cleanup temp files
 - **Flight tracker**: API publique OpenSky (pas d'authentification), pas de données sensibles
+- **Aviation weather**: API publique Open-Meteo (pas d'authentification), pas de secrets
 - **Safe JSON**: NaN/Infinity/grands entiers sanitisés
 - **Secrets masqués totalement** : zéro caractère exposé (OWASP compliant)
 - **.env ignoré par git** : aucun risque de commit de secrets
@@ -501,7 +548,7 @@ src/
   config.py          # .env (load/save), masquage secrets
   ui_html.py         # Panneau de contrôle HTML
   ui_js.py           # Panneau de contrôle JavaScript
-  tools/             # 21 tools (run() + spec())
+  tools/             # 22 tools (run() + spec())
     _call_llm/       # Orchestrateur LLM
     _math/           # Modules calcul
     _ffmpeg/         # FFmpeg utils
@@ -515,6 +562,7 @@ src/
     _video_transcribe/ # Video transcription Whisper
     _youtube_download/ # YouTube downloader
     _flight_tracker/ # Flight tracking OpenSky 🆕
+    _aviation_weather/ # Aviation weather Open-Meteo 🆕
     # ... + tools simples (date, pdf, reddit, etc.)
   tool_specs/        # Specs JSON canoniques
 scripts/
