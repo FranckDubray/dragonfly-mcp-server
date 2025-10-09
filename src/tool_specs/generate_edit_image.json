@@ -1,0 +1,47 @@
+{
+  "type": "function",
+  "function": {
+    "name": "generate_edit_image",
+    "displayName": "Gemini Image Studio",
+    "description": "Génère ou édite des images avec le modèle gemini-2.5-flash-image-preview. Entrées possibles: data URL, URLs http(s), base64 brut. Sortie: URLs http(s) d'images. Le backend produit toujours un PNG carré 1024×1024 (ratio 1:1).",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["generate", "edit"],
+          "description": "Type d'opération: génération (generate) ou édition (edit)."
+        },
+        "prompt": {
+          "type": "string",
+          "description": "Consigne utilisateur (texte)."
+        },
+        "images": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "maxItems": 3,
+          "description": "Images source pour edit. Accepte: data URL (data:image/...;base64,...), URLs http(s), ou base64 brut. Ignoré pour generate."
+        },
+        "image_urls": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "maxItems": 3,
+          "description": "Alias pour 'images' si vous fournissez des liens http(s) ou des data URLs/base64. Si 'images' est vide, 'image_urls' sera utilisé."
+        },
+        "n": {
+          "type": "integer",
+          "default": 4,
+          "description": "Nombre de variations demandées (défaut 4 partout)."
+        },
+        "debug": {
+          "type": "boolean",
+          "description": "Active un bloc debug détaillé (payloads, SSE). Les aperçus masquent/obfusquent toute base64."
+        }
+      },
+      "required": ["operation", "prompt"],
+      "additionalProperties": false
+    }
+  }
+}
