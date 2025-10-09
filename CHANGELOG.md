@@ -4,6 +4,46 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.9.3] - 2025-10-09
+
+### Added
+- **youtube_search** tool: Search YouTube videos, channels, and playlists via YouTube Data API v3
+  - **search**: Find videos/channels/playlists by keyword with advanced filters (order, type, region, safe search)
+  - **get_video_details**: Get complete video information (title, description, views, likes, comments, duration, tags, thumbnails)
+  - **get_trending**: Get trending videos by region and category
+  - Official YouTube Data API v3 integration (free, 10,000 units/day)
+  - Search = 100 units (~100 searches/day), video details = 1 unit (~10,000 requests/day)
+  - Complete workflow: youtube_search → youtube_download → video_transcribe
+  - Architecture: `_youtube_search/` (api, core, validators, services/youtube_api)
+  - Comprehensive README with examples and quota management tips
+  - Enhanced error messages with detailed API error reporting
+
+### Changed
+- Tool count: 22 → **23 tools**
+- `.env.example`: Added `YOUTUBE_API_KEY` with setup instructions
+- Error handling: Improved YouTube API error messages (quota exceeded, invalid API key, etc.)
+
+### Use Cases
+- Search for specific videos or channels before downloading
+- Research trending topics by region and category
+- Get video metadata without downloading (duration, views, likes)
+- Build video recommendation systems
+- Analyze YouTube content at scale
+
+### Workflow Integration
+```bash
+# 1. Search for videos
+youtube_search → returns URLs and metadata
+
+# 2. Download audio
+youtube_download → saves to docs/video/
+
+# 3. Transcribe
+video_transcribe → returns transcript text
+```
+
+---
+
 ## [1.9.2] - 2025-10-09
 
 ### Added
