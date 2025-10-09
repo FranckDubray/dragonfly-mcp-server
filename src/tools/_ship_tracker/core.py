@@ -24,6 +24,7 @@ def handle_track_ships(**params) -> Dict[str, Any]:
             - latitude (float, required): Center latitude (-90 to 90)
             - longitude (float, required): Center longitude (-180 to 180)
             - radius_km (float, optional): Search radius in km (1-500, default: 50)
+            - timeout (int, optional): WebSocket timeout in seconds (3-60, default: 10)
             - ship_type (str, optional): Filter by ship type
             - min_length (float, optional): Minimum ship length in meters
             - max_length (float, optional): Maximum ship length in meters
@@ -45,7 +46,8 @@ def handle_track_ships(**params) -> Dict[str, Any]:
             latitude=validated["latitude"],
             longitude=validated["longitude"],
             radius_km=validated["radius_km"],
-            max_results=validated["max_results"]
+            max_results=validated["max_results"],
+            timeout=validated["timeout"]
         )
         
         # Apply filters
@@ -126,6 +128,7 @@ def handle_track_ships(**params) -> Dict[str, Any]:
                 "formatted": format_coordinates(validated["latitude"], validated["longitude"])
             },
             "radius_km": validated["radius_km"],
+            "timeout_seconds": validated["timeout"],
             "ships_found": len(filtered_ships),
             "ships": filtered_ships[:validated["max_results"]],
             "filters_applied": {
@@ -150,6 +153,7 @@ def handle_get_ship_details(**params) -> Dict[str, Any]:
     Args:
         **params: Ship details parameters
             - mmsi (int, required): Maritime Mobile Service Identity (9 digits)
+            - timeout (int, optional): WebSocket timeout in seconds (3-60, default: 10)
     
     Returns:
         Detailed information about the ship
@@ -158,7 +162,7 @@ def handle_get_ship_details(**params) -> Dict[str, Any]:
         validated = validate_ship_details_params(params)
         client = AISStreamClient()
         
-        ship = client.get_ship_by_mmsi(validated["mmsi"])
+        ship = client.get_ship_by_mmsi(validated["mmsi"], timeout=validated["timeout"])
         
         if not ship:
             return {
@@ -213,6 +217,7 @@ def handle_get_port_traffic(**params) -> Dict[str, Any]:
             - latitude (float, optional): Port latitude (if port_name not provided)
             - longitude (float, optional): Port longitude (if port_name not provided)
             - radius_km (float, optional): Search radius in km (1-100, default: 10)
+            - timeout (int, optional): WebSocket timeout in seconds (3-60, default: 10)
             - max_results (int, optional): Maximum results (default: 50)
     
     Returns:
@@ -245,6 +250,7 @@ def handle_get_port_traffic(**params) -> Dict[str, Any]:
             "latitude": validated["latitude"],
             "longitude": validated["longitude"],
             "radius_km": validated.get("radius_km", 10),
+            "timeout": validated.get("timeout", 10),
             "max_results": validated.get("max_results", 50)
         }
         
