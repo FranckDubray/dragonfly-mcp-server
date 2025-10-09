@@ -1,0 +1,49 @@
+{
+  "type": "function",
+  "function": {
+    "name": "aviation_weather",
+    "displayName": "Aviation Weather",
+    "description": "Get upper air weather data (winds, temperature) at specific altitude and coordinates using Open-Meteo API. Useful for flight planning and explaining aircraft performance.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["get_winds_aloft", "calculate_tas"],
+          "description": "Operation to perform: 'get_winds_aloft' retrieves wind/temp at altitude, 'calculate_tas' computes True Airspeed from ground speed and wind"
+        },
+        "latitude": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90,
+          "description": "Latitude in decimal degrees (-90 to 90)"
+        },
+        "longitude": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180,
+          "description": "Longitude in decimal degrees (-180 to 180)"
+        },
+        "altitude_m": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 20000,
+          "description": "Altitude in meters (1000-20000m). Automatically converted to nearest pressure level. Default: 11000m (FL360)"
+        },
+        "ground_speed_kmh": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Ground speed in km/h (required for calculate_tas operation)"
+        },
+        "heading": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 360,
+          "description": "Aircraft heading in degrees (0-360, required for calculate_tas operation)"
+        }
+      },
+      "required": ["operation", "latitude", "longitude"],
+      "additionalProperties": false
+    }
+  }
+}

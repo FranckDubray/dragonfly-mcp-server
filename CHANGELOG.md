@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.9.2] - 2025-10-09
+
+### Added
+- **aviation_weather** tool: upper air weather data via Open-Meteo API (free, no API key)
+  - **get_winds_aloft**: Wind speed, direction, and temperature at specific altitude/coordinates
+  - **calculate_tas**: Calculate True Airspeed from ground speed and wind
+  - Supports all flight levels (1000-20000m / FL30-FL650)
+  - Automatic pressure level conversion (1000, 925, 850, 700, 600, 500, 400, 300, 250, 225, 200, 150, 100, 70, 50, 30, 20, 10 hPa)
+  - Unit conversions: km/h ↔ knots, meters ↔ feet, °C ↔ °F
+  - Wind components: headwind/tailwind, crosswind
+  - Real-time weather data (hourly forecasts)
+  - No authentication required (Open-Meteo public API)
+  - Architecture: `_aviation_weather/` (api, core, validators, utils, services/openmeteo)
+
+### Changed
+- Tool count: 21 → **22 tools**
+
+### Use Cases
+- Explain aircraft speed records (why ground speed differs from true airspeed)
+- Flight planning (check winds at cruise altitude)
+- Performance analysis (calculate TAS with wind correction)
+- Integration with flight_tracker (enrich flight data with weather)
+
+---
+
 ## [1.9.1] - 2025-10-08
 
 ### Added
@@ -128,7 +153,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 - **pdf_download** tool: téléchargement PDF depuis URLs
   - Validation: magic bytes `%PDF-`
-  - Metapages, titre, auteur (pypdf)
+  - Métadonnées: pages, titre, auteur (pypdf)
   - Unique naming: suffixes `_1`, `_2`, etc.
   - Timeout: 5-300s (défaut 60s)
   - Chroot: `docs/pdfs`
