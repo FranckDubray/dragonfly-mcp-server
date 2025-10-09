@@ -76,17 +76,24 @@ class YouTubeAPIClient:
             }
             
         except requests.exceptions.HTTPError as e:
-            error_msg = f"YouTube API error: {e.response.status_code}"
-            if e.response.status_code == 403:
-                try:
-                    error_data = e.response.json()
+            # Try to get detailed error message from response
+            try:
+                error_data = e.response.json()
+                error_details = error_data.get('error', {})
+                error_msg = error_details.get('message', 'Unknown error')
+                error_code = error_details.get('code', e.response.status_code)
+                
+                if error_code == 403:
                     if "quotaExceeded" in str(error_data):
                         error_msg = "YouTube API quota exceeded. Daily limit: 10,000 units. Resets at midnight Pacific Time."
                     else:
-                        error_msg = f"YouTube API error 403: {error_data.get('error', {}).get('message', 'Forbidden')}"
-                except:
-                    error_msg = "YouTube API error 403: Check your API key"
-            raise RuntimeError(error_msg)
+                        error_msg = f"YouTube API error 403: {error_msg}. Check your API key and ensure YouTube Data API v3 is enabled."
+                elif error_code == 400:
+                    error_msg = f"YouTube API error 400: {error_msg}. Check your API key is valid and YouTube Data API v3 is enabled in Google Cloud Console."
+                
+                raise RuntimeError(f"{error_msg} (HTTP {error_code})")
+            except (ValueError, KeyError):
+                raise RuntimeError(f"YouTube API error: {e.response.status_code} - {e.response.text[:200]}")
         except requests.exceptions.RequestException as e:
             raise RuntimeError(f"Network error: {str(e)}")
     
@@ -142,7 +149,14 @@ class YouTubeAPIClient:
             }
             
         except requests.exceptions.HTTPError as e:
-            raise RuntimeError(f"YouTube API error: {e.response.status_code}")
+            try:
+                error_data = e.response.json()
+                error_details = error_data.get('error', {})
+                error_msg = error_details.get('message', 'Unknown error')
+                error_code = error_details.get('code', e.response.status_code)
+                raise RuntimeError(f"YouTube API error {error_code}: {error_msg}")
+            except (ValueError, KeyError):
+                raise RuntimeError(f"YouTube API error: {e.response.status_code}")
         except requests.exceptions.RequestException as e:
             raise RuntimeError(f"Network error: {str(e)}")
     
@@ -208,7 +222,14 @@ class YouTubeAPIClient:
             }
             
         except requests.exceptions.HTTPError as e:
-            raise RuntimeError(f"YouTube API error: {e.response.status_code}")
+            try:
+                error_data = e.response.json()
+                error_details = error_data.get('error', {})
+                error_msg = error_details.get('message', 'Unknown error')
+                error_code = error_details.get('code', e.response.status_code)
+                raise RuntimeError(f"YouTube API error {error_code}: {error_msg}")
+            except (ValueError, KeyError):
+                raise RuntimeError(f"YouTube API error: {e.response.status_code}")
         except requests.exceptions.RequestException as e:
             raise RuntimeError(f"Network error: {str(e)}")
     
