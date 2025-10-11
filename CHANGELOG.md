@@ -6,20 +6,37 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+---
+
+## [1.16.0] - 2025-01-11
+
 ### Added
 - **astronomy** tool: Complete astronomy calculations using Skyfield (100% local, no API key)
   - **8 operations**: planet_position, moon_phase, sun_moon_times, celestial_events, planet_info, visible_planets, iss_position (placeholder), star_position (placeholder)
   - Planet positions (RA/Dec, Alt/Az) relative to observer coordinates
   - Moon phases with illumination percentage
   - Sunrise/sunset and moonrise/moonset times
-  - Celestial events calendar (moon phases, future: eclipses)
-  - Physical characteristics of solar system bodies (mass, diameter, distance, temperature, etc.)
-  - Tonight's visible planets with directions
-  - High precision NASA JPL ephemeris (de421.bsp covering 1900-2050)
+  - Celestial events calendar (moon phases)
+  - Physical characteristics of solar system bodies (mass, diameter, distance, temperature, moons)
+  - Tonight's visible planets with cardinal directions (N, NE, E, etc.)
+  - High precision NASA JPL ephemeris (de421.bsp covering 1900-2050, ~17MB)
   - **100% local calculations** (no API calls, no rate limits, no authentication)
+  - Ephemeris data automatically downloaded to `docs/astronomy/` on first use
   - Category: entertainment
   - Tags: space, astronomy, science, educational, planets, stars
+  - Architecture: `_astronomy/` (api, core, validators, utils, constants, services/skyfield_client)
   - Dependencies: skyfield>=1.48
+
+### Changed
+- Updated `.gitignore`: Added `*.bsp` and `*.npy` to ignore Skyfield ephemeris data files
+
+### Removed
+- Cleaned up obsolete files: `update_categories.py` (deprecated)
+
+### Fixed
+- Astronomy tool JSON serialization: Force Python native types from numpy/Skyfield objects
+- Skyfield loader: Use `Loader(directory)` instead of `load(directory)` for custom ephemeris path
+- `sun_moon_times`: Pass topos directly to `sunrise_sunset` (expects topos, not earth+topos)
 
 ---
 
