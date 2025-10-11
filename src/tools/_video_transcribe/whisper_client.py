@@ -4,6 +4,7 @@ import os
 import requests
 from pathlib import Path
 from typing import Dict, Any
+from urllib.parse import urlparse
 
 
 def transcribe_audio_file(audio_path: Path, api_token: str = None) -> Dict[str, Any]:
@@ -25,11 +26,11 @@ def transcribe_audio_file(audio_path: Path, api_token: str = None) -> Dict[str, 
             "error": "AI_PORTAL_TOKEN not set (required for Whisper API)"
         }
     
-    # API endpoint
+    # API endpoint - extract base URL only (protocol + domain)
     endpoint = os.getenv('LLM_ENDPOINT', 'https://ai.dragonflygroup.fr')
-    if not endpoint.endswith('/'):
-        endpoint += '/'
-    url = f"{endpoint}api/v1/audio/transcriptions"
+    parsed = urlparse(endpoint)
+    base_url = f"{parsed.scheme}://{parsed.netloc}"
+    url = f"{base_url}/api/v1/audio/transcriptions"
     
     # Headers
     headers = {
@@ -40,11 +41,13 @@ def transcribe_audio_file(audio_path: Path, api_token: str = None) -> Dict[str, 
         # Open file and send multipart request
         with open(audio_path, 'rb') as f:
             files = {'audioFile': (audio_path.name, f, 'audio/mpeg')}
+            data = {'model': 'whisper-large-v3'}  # Specify Whisper model
             
             response = requests.post(
                 url,
                 headers=headers,
                 files=files,
+                data=data,
                 timeout=300,  # 5 minutes timeout
                 verify=False  # Disable SSL verification for dev environment
             )

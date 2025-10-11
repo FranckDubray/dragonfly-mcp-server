@@ -14,11 +14,15 @@
         },
         "query": {
           "type": "string",
-          "description": "Search query (required for 'search' operation). Examples: 'Python tutorial', 'cat videos', 'AI news'"
+          "description": "Search query (required for 'search' operation). Examples: 'Python tutorial', 'cat videos', 'AI news'. Can be combined with channel_id to search within a specific channel."
         },
         "video_id": {
           "type": "string",
           "description": "YouTube video ID (required for 'get_video_details' operation). 11 characters, e.g., 'dQw4w9WgXcQ'"
+        },
+        "channel_id": {
+          "type": "string",
+          "description": "YouTube channel ID to filter search results to a specific channel (optional for 'search' operation). Example: 'UCuAXFkgsw1L7xaCfnd5JJOw'. Use this when user asks for 'videos from [channel name]' or 'latest videos from [channel]'. IMPORTANT: You can find the channel_id by first searching for the channel name with type='channel', then use the returned channel_id in a second search with type='video'."
         },
         "max_results": {
           "type": "integer",
@@ -27,16 +31,24 @@
         "type": {
           "type": "string",
           "enum": ["video", "channel", "playlist"],
-          "description": "Type of results for 'search' operation (default: video)"
+          "description": "Type of results for 'search' operation (default: video). Use 'channel' to find channels, 'video' to find videos, 'playlist' to find playlists."
         },
         "order": {
           "type": "string",
           "enum": ["date", "rating", "relevance", "title", "viewCount"],
-          "description": "Sort order for 'search' operation (default: relevance). date=newest first, rating=highest rated, viewCount=most viewed"
+          "description": "Sort order for 'search' operation (default: relevance). CRITICAL FOR LLM: **Use 'date' to get latest/recent/newest videos** (most common use case). 'date'=newest first (chronological), 'viewCount'=most viewed, 'rating'=highest rated, 'relevance'=YouTube's algorithm (NOT chronological), 'title'=alphabetical. When user asks for 'latest', 'recent', 'newest', 'last X videos' → ALWAYS use order='date'."
+        },
+        "published_after": {
+          "type": "string",
+          "description": "Filter videos published after this date (optional for 'search' operation). ISO 8601 format: 'YYYY-MM-DDTHH:MM:SSZ' (e.g., '2024-01-01T00:00:00Z'). Use this to get videos from a specific time period. Example: to get videos from last week, calculate the date 7 days ago."
+        },
+        "published_before": {
+          "type": "string",
+          "description": "Filter videos published before this date (optional for 'search' operation). ISO 8601 format: 'YYYY-MM-DDTHH:MM:SSZ' (e.g., '2024-12-31T23:59:59Z'). Use with published_after to define a date range."
         },
         "region_code": {
           "type": "string",
-          "description": "2-letter country code for 'search' and 'get_trending' operations (default: US). Examples: FR, GB, JP, BR"
+          "description": "2-letter country code for 'search' and 'get_trending' operations (default: US). Examples: FR, GB, JP, BR. Affects search results and trending videos."
         },
         "category_id": {
           "type": "string",
@@ -45,7 +57,7 @@
         "safe_search": {
           "type": "string",
           "enum": ["none", "moderate", "strict"],
-          "description": "Safe search mode for 'search' operation (default: none)"
+          "description": "Safe search mode for 'search' operation (default: none). 'moderate' filters most restricted content, 'strict' filters all restricted content."
         }
       },
       "required": ["operation"],

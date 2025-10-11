@@ -1,0 +1,84 @@
+{
+  "type": "function",
+  "function": {
+    "name": "email_send",
+    "displayName": "Email Send (SMTP)",
+    "description": "Send emails via SMTP (Gmail or Infomaniak). Uses same credentials as IMAP tool (IMAP_GMAIL_EMAIL/PASSWORD or IMAP_INFOMANIAK_EMAIL/PASSWORD). Supports text/HTML content, attachments, CC/BCC. SMTP servers hardcoded: Gmail (smtp.gmail.com:587), Infomaniak (mail.infomaniak.com:587). Free tier: Gmail 500 emails/day, Infomaniak unlimited.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "enum": ["gmail", "infomaniak"],
+          "description": "Email provider to use (default: gmail). Credentials are read from environment: IMAP_<PROVIDER>_EMAIL and IMAP_<PROVIDER>_PASSWORD (same as IMAP tool)."
+        },
+        "operation": {
+          "type": "string",
+          "enum": ["send", "test_connection"],
+          "description": "Operation to perform: send (send email) or test_connection (verify SMTP credentials and connectivity)"
+        },
+        "to": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Recipient email addresses (required for 'send' operation). Examples: ['user@example.com'], ['user1@example.com', 'user2@example.com']",
+          "minItems": 1,
+          "maxItems": 100
+        },
+        "subject": {
+          "type": "string",
+          "description": "Email subject line (required for 'send' operation). Example: 'Meeting recap', 'Weekly report'"
+        },
+        "body": {
+          "type": "string",
+          "description": "Email body content (required for 'send' operation). Can be plain text or HTML (set body_type='html' for HTML content)."
+        },
+        "body_type": {
+          "type": "string",
+          "enum": ["text", "html"],
+          "description": "Body content type (default: text). Use 'html' for HTML formatted emails with styling, links, images."
+        },
+        "cc": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "CC (Carbon Copy) recipients (optional for 'send' operation). Visible to all recipients.",
+          "maxItems": 50
+        },
+        "bcc": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "BCC (Blind Carbon Copy) recipients (optional for 'send' operation). Hidden from other recipients.",
+          "maxItems": 50
+        },
+        "reply_to": {
+          "type": "string",
+          "description": "Reply-To email address (optional for 'send' operation). If not provided, uses sender email."
+        },
+        "attachments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "File paths for attachments (optional for 'send' operation). Relative to project root. Examples: ['docs/report.pdf', 'data/chart.png']. Max 10 attachments, 25MB total.",
+          "maxItems": 10
+        },
+        "from_name": {
+          "type": "string",
+          "description": "Sender display name (optional for 'send' operation). Example: 'John Doe', 'Support Team'. If not provided, uses email address."
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["low", "normal", "high"],
+          "description": "Email priority (default: normal). Sets X-Priority header (high=1, normal=3, low=5)."
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}
