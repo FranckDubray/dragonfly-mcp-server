@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dragonfly-mcp-server"
-version = "1.9.3"
+version = "1.10.0"
 description = "Dragonfly MCP Server (FastAPI)"
 authors = [
     {name = "MCP Developer", email = "dev@example.com"}
@@ -29,6 +29,7 @@ dependencies = [
     "pypdf>=4.2.0",
     "yt-dlp>=2023.10.0",
     "websocket-client>=1.6.0",
+    "docx2pdf>=0.1.8",
 ]
 
 [project.optional-dependencies]

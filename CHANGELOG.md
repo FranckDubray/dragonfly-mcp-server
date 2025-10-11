@@ -4,6 +4,39 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.11.0] - 2025-01-11
+
+### Added
+- **office_to_pdf** tool: Convert Office documents to PDF using native Office suite
+  - **Formats supported**: Word (.docx, .doc), PowerPoint (.pptx, .ppt)
+  - **Engine**: docx2pdf library leveraging native Office apps
+    - macOS: Microsoft Word/PowerPoint via AppleScript
+    - Windows: Microsoft Word/PowerPoint via COM automation
+  - **2 operations**: convert (Office → PDF), get_info (file metadata)
+  - **Features**:
+    - Input chroot: `docs/office/`
+    - Output chroot: `docs/pdfs/`
+    - Auto-generated output names
+    - Unique naming with suffixes (_1, _2, etc.)
+    - Overwrite option
+  - **Dependencies**: docx2pdf>=0.1.8 (added to pyproject.toml)
+  - **Test verified**: Successfully converted COMPÉTENCES.docx (90KB) → COMPÉTENCES.pdf (60KB)
+  - Architecture: `_office_to_pdf/` (api, core, validators, utils, services/office_converter)
+
+### Changed
+- Tool count: 25 → **26 tools**
+- pyproject.toml: Added `docx2pdf>=0.1.8` to dependencies
+- README.md: Updated tool count and added office_to_pdf
+- src/tools/README.md: Added complete office_to_pdf documentation
+
+### Use Cases
+- **office_to_pdf**: Convert reports, presentations, CVs to PDF for distribution
+- Batch document conversion (Word/PowerPoint → PDF)
+- Automated document workflows (e.g., generate report in Word, convert to PDF)
+- Integration with other tools (e.g., pdf_download, pdf2text, email_send)
+
+---
+
 ## [1.10.0] - 2025-01-11
 
 ### Added
