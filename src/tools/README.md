@@ -25,7 +25,7 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 - Keep modules small and single‑responsibility. Glue in __init__.py should be minimal (no business logic).
 - Security: any file access must be chrooted to the project (no absolute/parent paths). Validate user inputs strictly.
 
-## Available tools (27 complete)
+## Available tools (28 complete)
 
 ### 🤖 Intelligence & Orchestration
 
@@ -101,6 +101,34 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 - Architecture: `_gitbook/` (discovery, search, extraction, parsers, utils)
 
 ### 🗄️ Databases & Storage
+
+#### **excel_to_sqlite** 🆕⭐
+- **Import Excel (.xlsx) data into SQLite databases**
+- **5 operations**:
+  - `import_excel`: Import complete Excel sheet into SQLite table
+  - `preview`: Preview data with type detection (no insertion)
+  - `get_sheets`: List all sheets in Excel file
+  - `validate_mapping`: Validate column mapping before import
+  - `get_info`: Get file metadata and sheet information
+- **Features**:
+  - **Automatic schema detection**: Infers INTEGER, REAL, TEXT, BLOB types
+  - **Column name sanitization**: Converts to SQL-safe names
+  - **Batch processing**: 100-10000 rows per batch (default 1000)
+  - **Manual column mapping**: Override auto-detected column names
+  - **Type forcing**: Force specific columns to INTEGER/REAL/TEXT/BLOB
+  - **Skip rows**: Skip N rows at beginning (e.g., skip headers)
+  - **Custom header row**: Use different row as column names (default 0)
+  - **Table behaviors**: replace (overwrite), append (add rows), fail (error if exists)
+- **Chroot**: Excel files from project root, SQLite DBs in `<project>/sqlite3/`
+- **Dependencies**: pandas (data manipulation), openpyxl (Excel engine)
+- **Preview mode**: Test import with type detection, see first N rows (max 100)
+- **Validation**: Check column compatibility before actual import
+- **Use cases**:
+  - Import spreadsheet data into SQLite for querying with sqlite_db
+  - ETL workflows: Excel → SQLite → analysis/transformation
+  - Data migration from Excel to structured databases
+  - Bulk data import with automatic schema inference
+- Architecture: `_excel_to_sqlite/` (api, core, validators, excel_reader)
 
 #### **sqlite_db**
 - SQLite in `<project>/sqlite3` chroot
