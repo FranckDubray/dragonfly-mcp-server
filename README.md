@@ -4,7 +4,7 @@
 
 # 🐉 Dragonfly MCP Server
 
-Serveur MCP multi‑outils, rapide et extensible, propulsé par FastAPI. **34 tools** prêts à l'emploi, orchestrateur LLM avancé, panneau de contrôle web moderne.
+Serveur MCP multi‑outils, rapide et extensible, propulsé par FastAPI. **37 tools** prêts à l'emploi, orchestrateur LLM avancé, panneau de contrôle web moderne.
 
 [![License: MIT](./LICENSE)](./LICENSE)
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB)
@@ -29,7 +29,7 @@ Par défaut: http://127.0.0.1:8000
 
 ---
 
-## 🧰 Outils inclus (34)
+## 🧰 Outils inclus (37)
 
 Les outils sont groupés par 10 catégories canoniques (invariantes). L'UI affiche "Social & Entertainment" pour la clé `entertainment`.
 
@@ -47,12 +47,12 @@ Les outils sont groupés par 10 catégories canoniques (invariantes). L'UI affic
 - email_send — Envoi SMTP (Gmail/Infomaniak)
 - imap — Réception emails multi-comptes
 - discord_webhook — Publication Discord
-- **telegram_bot** 🆕 — Bot Telegram complet (messages, médias, polls)
+- telegram_bot — Bot Telegram complet (messages, médias, polls)
 
 ### 🗄️ Data & Storage
 - sqlite_db — SQLite avec chroot
 - excel_to_sqlite — Import Excel (.xlsx) → SQLite
-- **coingecko** 🆕 — Données crypto (prix, market, trending)
+- coingecko — Données crypto (prix, market, trending)
 
 ### 📄 Documents
 - office_to_pdf — Conversion Office → PDF
@@ -81,12 +81,14 @@ Les outils sont groupés par 10 catégories canoniques (invariantes). L'UI affic
 - math — Calcul avancé (numérique/symbolique/stats)
 - date — Utilitaires date/heure
 - device_location — Localisation device (IP geolocation)
-- **open_meteo** 🆕 — Météo complète (100% gratuit, open source)
-- **google_maps** 🆕 — Geocoding, directions, places, distance matrix
+- open_meteo — Météo complète (100% gratuit, open source)
+- google_maps — Geocoding, directions, places, distance matrix
 
 ### 🎮 Social & Entertainment
 - chess_com — Chess.com API
 - reddit_intelligence — Reddit scraping/analysis
+- astronomy — Calculs astronomiques (planètes, lune, éphémérides)
+- trivia_api — Questions trivia multi-catégories (quiz, jeux)
 
 > Détails complets : [src/tools/README.md](./src/tools/README.md)
 
