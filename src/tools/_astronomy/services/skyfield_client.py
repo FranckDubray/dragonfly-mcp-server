@@ -12,13 +12,32 @@ import os
 _ephemeris = None
 _timescale = None
 _stars = None
+_loader = None
+
+
+def get_loader():
+    """Get or create Skyfield loader with custom directory"""
+    global _loader
+    if _loader is None:
+        # Use docs/astronomy for ephemeris data (not src/)
+        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
+        ephemeris_dir = os.path.join(project_root, 'docs', 'astronomy')
+        
+        # Create directory if it doesn't exist
+        os.makedirs(ephemeris_dir, exist_ok=True)
+        
+        # Create loader with custom directory
+        _loader = load(ephemeris_dir)
+    
+    return _loader
 
 
 def get_timescale():
     """Get or create timescale (cached)"""
     global _timescale
     if _timescale is None:
-        _timescale = load.timescale()
+        loader = get_loader()
+        _timescale = loader.timescale()
     return _timescale
 
 
@@ -26,11 +45,13 @@ def get_ephemeris():
     """Get or create ephemeris (cached)
     Uses de421.bsp (JPL Development Ephemeris 421)
     Covers years 1900-2050
+    Downloaded to docs/astronomy/ on first use
     """
     global _ephemeris
     if _ephemeris is None:
-        # Load from cache or download
-        _ephemeris = load('de421.bsp')
+        loader = get_loader()
+        # Load from cache or download to docs/astronomy/
+        _ephemeris = loader('de421.bsp')
     return _ephemeris
 
 
@@ -38,7 +59,8 @@ def get_stars():
     """Get star catalog (cached)"""
     global _stars
     if _stars is None:
-        _stars = load('hip_main.dat')
+        loader = get_loader()
+        _stars = loader('hip_main.dat')
     return _stars
 
 
