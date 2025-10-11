@@ -1,5 +1,4 @@
 
-
 """
 Git Tool - ultra thin facade. Heavy logic in src/tools/_git/*
 """
@@ -8,9 +7,23 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 import json
 
-from ._git.local_ops import GitLocalOps
-from ._git.chroot import sanitize_repo_dir, sanitize_paths_within_repo
-from ._git.gh_ops import (
+_SPEC_DIR = Path(__file__).resolve().parent.parent / "tool_specs"
+
+
+def _load_spec_override(name: str) -> Dict[str, Any] | None:
+    try:
+        p = _SPEC_DIR / f"{name}.json"
+        if p.is_file():
+            with open(p, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return None
+
+# imports kept below to avoid import-cost when only spec() is called
+from ._git.local_ops import GitLocalOps  # noqa: E402
+from ._git.chroot import sanitize_repo_dir, sanitize_paths_within_repo  # noqa: E402
+from ._git.gh_ops import (  # noqa: E402
     create_repo as gh_create_repo,
     get_user as gh_get_user,
     list_repos as gh_list_repos,
@@ -25,25 +38,12 @@ from ._git.gh_ops import (
     merge as gh_merge,
     create_release as gh_create_release,
 )
-from ._git.high_level import (
+from ._git.high_level import (  # noqa: E402
     op_ensure_repo,
     op_config_user,
     op_set_remote,
     op_sync_repo,
 )
-
-_SPEC_DIR = Path(__file__).resolve().parent.parent / "tool_specs"
-
-
-def _load_spec_override(name: str) -> Dict[str, Any] | None:
-    try:
-        p = _SPEC_DIR / f"{name}.json"
-        if p.is_file():
-            with open(p, "r", encoding="utf-8") as f:
-                return json.load(f)
-    except Exception:
-        pass
-    return None
 
 
 def run(operation: str, **params) -> Union[Dict[str, Any], str]:
@@ -232,12 +232,17 @@ def run(operation: str, **params) -> Union[Dict[str, Any], str]:
 
 
 def spec() -> Dict[str, Any]:
-    base = {
+    # Load the canonical JSON spec always (source of truth)
+    override = _load_spec_override("git")
+    if override and isinstance(override, dict):
+        return override
+    # Fallback minimal if JSON missing
+    return {
         "type": "function",
         "function": {
             "name": "git",
             "displayName": "Git",
-            "description": "Git unifié: GitHub API + Git local. High-level: ensure_repo, config_user, set_remote, sync_repo. Local: status, fetch, pull, rebase, checkout, commit, push, log. GitHub: create_repo, add/delete files, branches, commits, diff, merge, create_release.",
+            "description": "Git unifié: GitHub API + Git local.",
             "parameters": {
                 "type": "object",
                 "properties": {"operation": {"type": "string"}},
@@ -246,11 +251,3 @@ def spec() -> Dict[str, Any]:
             }
         }
     }
-    override = _load_spec_override("git")
-    if override and isinstance(override, dict):
-        fn = base.get("function", {})
-        ofn = override.get("function", {})
-        if ofn.get("displayName"): fn["displayName"] = ofn["displayName"]
-        if ofn.get("description"): fn["description"] = ofn["description"]
-        if ofn.get("parameters"): fn["parameters"] = ofn["parameters"]
-    return base

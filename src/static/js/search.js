@@ -52,18 +52,21 @@ function initSearch() {
   });
 }
 
-// Inject tag filtering into render flow by wrapping groupToolsByCategory
-const _orig_group = groupToolsByCategory;
-function groupToolsByCategory(toolsList) {
-  let filtered = toolsList;
-  if (activeTag) {
-    filtered = toolsList.filter(t => {
-      try {
-        const spec = JSON.parse(t.json);
-        const tags = spec?.function?.tags || [];
-        return Array.isArray(tags) && tags.includes(activeTag);
-      } catch { return false; }
-    });
-  }
-  return _orig_group(filtered);
-}
+// Inject tag filtering into render flow by wrapping the global function safely
+(function wrapGroupByCategoryForTags() {
+  const __orig_group = window.groupToolsByCategory; // capture the original defined in categories.js
+  if (typeof __orig_group !== 'function') return; // safety
+  window.groupToolsByCategory = function(toolsList) {
+    let filtered = toolsList;
+    if (activeTag) {
+      filtered = toolsList.filter(t => {
+        try {
+          const spec = JSON.parse(t.json);
+          const tags = spec?.function?.tags || [];
+          return Array.isArray(tags) && tags.includes(activeTag);
+        } catch { return false; }
+      });
+    }
+    return __orig_group(filtered);
+  };
+})();
