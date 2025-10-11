@@ -3,7 +3,8 @@
   "function": {
     "name": "reddit_intelligence",
     "displayName": "Reddit",
-    "category": "communication",
+    "category": "entertainment",
+    "tags": ["social", "knowledge", "scraping", "external_sources"],
     "description": "Advanced Reddit analysis tool. Search subreddits, analyze sentiment, find experts, track trends, get post comments. Discover insights from Reddit discussions and community activity.",
     "parameters": {
       "type": "object",
