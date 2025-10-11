@@ -3,6 +3,7 @@
   "function": {
     "name": "call_llm",
     "displayName": "LLM Orchestrator",
+    "category": "intelligence",
     "description": "Appelle un modèle LLM en mode streaming. Peut orchestrer des tool_calls (MCP) sur un premier appel, exécuter les outils, puis faire un second appel pour produire la réponse finale en texte.",
     "parameters": {
       "type": "object",

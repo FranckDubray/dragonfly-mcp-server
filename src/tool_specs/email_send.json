@@ -3,7 +3,8 @@
   "function": {
     "name": "email_send",
     "displayName": "Email Send (SMTP)",
-    "description": "Send emails via SMTP (Gmail or Infomaniak). Uses same credentials as IMAP tool (IMAP_GMAIL_EMAIL/PASSWORD or IMAP_INFOMANIAK_EMAIL/PASSWORD). Supports text/HTML content, attachments, CC/BCC. SMTP servers hardcoded: Gmail (smtp.gmail.com:587), Infomaniak (mail.infomaniak.com:587). Free tier: Gmail 500 emails/day, Infomaniak unlimited.",
+    "category": "communication",
+    "description": "Envoyer des emails via SMTP (Gmail ou Infomaniak). Supporte texte/HTML, pièces jointes, CC/BCC, priorité.",
     "parameters": {
       "type": "object",
       "properties": {

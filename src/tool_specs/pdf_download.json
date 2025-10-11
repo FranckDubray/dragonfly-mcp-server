@@ -3,6 +3,7 @@
   "function": {
     "name": "pdf_download",
     "displayName": "PDF Download",
+    "category": "documents",
     "description": "Télécharge un fichier PDF depuis une URL et le sauvegarde dans docs/pdfs. Gère automatiquement les conflits de noms avec suffixes numériques.",
     "parameters": {
       "type": "object",

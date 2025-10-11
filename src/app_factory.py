@@ -1,11 +1,3 @@
-
-
-
-
-
-
-
-
 from __future__ import annotations
 import os
 import sys
@@ -20,12 +12,13 @@ from typing import Dict, Any, Optional
 from fastapi import FastAPI, Request, Response, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from config import (
     load_env_file, 
     save_env_vars, 
-    get_all_env_vars,  # NEW: generic env loader
+    get_all_env_vars,
     ENV_FILE, 
     find_project_root
 )
@@ -72,6 +65,15 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
         allow_credentials=True,
     )
+
+    # ----- Mount static files -----
+    project_root = find_project_root()
+    static_dir = project_root / "src" / "static"
+    if static_dir.exists():
+        app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+        logger.info(f"📁 Mounted /static from {static_dir}")
+    else:
+        logger.warning(f"⚠️ Static directory not found: {static_dir}")
 
     # ----- Validation error handler -----
     from fastapi.exceptions import RequestValidationError
@@ -231,11 +233,6 @@ def create_app() -> FastAPI:
     async def control_dashboard():
         from ui_html import CONTROL_HTML
         return HTMLResponse(content=CONTROL_HTML)
-
-    @app.get("/control.js")
-    async def control_js(request: Request):
-        from ui_js import CONTROL_JS
-        return Response(content=CONTROL_JS, media_type="application/javascript")
 
     @app.get("/logo")
     async def get_logo():

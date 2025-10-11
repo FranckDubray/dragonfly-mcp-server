@@ -3,93 +3,186 @@
   "function": {
     "name": "git",
     "displayName": "Git",
-    "description": "Git unifié: GitHub API + Git local. Opérations haut-niveau fiables: ensure_repo, config_user, set_remote, sync_repo (pousse tout le dépôt en un seul commit/push si nécessaire).",
+    "category": "development",
+    "description": "Git et GitHub unifiés. Opérations locales (commit, push, pull, rebase) et GitHub API (repos, branches, releases).",
     "parameters": {
       "type": "object",
       "properties": {
         "operation": {
           "type": "string",
-          "enum": [
-            "ensure_repo",
-            "config_user",
-            "set_remote",
-            "sync_repo",
-            "status",
-            "fetch",
-            "pull",
-            "rebase",
-            "branch_create",
-            "checkout",
-            "add_paths",
-            "commit_all",
-            "push",
-            "log",
-            "remote_info",
-            "create_repo",
-            "get_user",
-            "list_repos",
-            "add_file",
-            "add_multiple_files",
-            "delete_file",
-            "delete_multiple_files",
-            "get_repo_contents",
-            "create_branch",
-            "get_commits",
-            "diff",
-            "merge",
-            "create_release"
-          ]
+          "enum": ["ensure_repo", "config_user", "set_remote", "sync_repo", "status", "fetch", "pull", "rebase", "branch_create", "checkout", "add_paths", "commit_all", "push", "log", "remote_info", "create_repo", "get_user", "list_repos", "add_file", "add_multiple_files", "delete_file", "delete_multiple_files", "get_repo_contents", "create_branch", "get_commits", "diff", "merge", "create_release"],
+          "description": "Opération Git/GitHub à effectuer"
         },
-        "repo_dir": { "type": "string", "description": "Chemin relatif sous la racine projet" },
-        "branch": { "type": "string", "default": "main" },
-        "message": { "type": "string", "description": "Message de commit pour sync_repo/commit_all" },
-        "user_name": { "type": "string" },
-        "user_email": { "type": "string" },
-        "owner": { "type": "string", "description": "GitHub repository owner" },
-        "repo": { "type": "string", "description": "GitHub repository name" },
-        "overwrite": { "type": "boolean", "default": true },
-        "overwrite_remote": { "type": "boolean", "default": true },
-        "visibility": { "type": "string", "enum": ["private", "public"], "default": "private" },
-        "username": { "type": "string" },
-        "file_path": { "type": "string" },
-        "repo_path": { "type": "string" },
+        "repo_dir": {
+          "type": "string",
+          "description": "Chemin relatif sous la racine projet"
+        },
+        "message": {
+          "type": "string",
+          "description": "Message de commit pour sync_repo/commit_all"
+        },
+        "branch": {
+          "type": "string",
+          "default": "main"
+        },
+        "remote": {
+          "type": "string",
+          "default": "origin",
+          "description": "Git remote name"
+        },
+        "user_name": {
+          "type": "string"
+        },
+        "user_email": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string",
+          "description": "GitHub repository owner (required for GitHub API operations: create_repo, add_file, delete_file, create_branch, get_commits, diff, merge, create_release)"
+        },
+        "repo": {
+          "type": "string",
+          "description": "GitHub repository name (required for GitHub API operations: add_file, delete_file, get_repo_contents, create_branch, get_commits, diff, merge, create_release)"
+        },
+        "visibility": {
+          "type": "string",
+          "enum": ["private", "public"],
+          "default": "private"
+        },
+        "from_branch": {
+          "type": "string"
+        },
+        "commit_message": {
+          "type": "string"
+        },
+        "commit_title": {
+          "type": "string"
+        },
+        "file_path": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "repo_path": {
+          "type": "string"
+        },
         "files": {
           "type": "array",
           "items": {
             "type": "object",
             "properties": {
-              "local_path": { "type": "string" },
-              "repo_path": { "type": "string" }
+              "local_path": {"type": "string"},
+              "repo_path": {"type": "string"}
             },
             "required": ["local_path", "repo_path"],
             "additionalProperties": false
           }
         },
-        "base": { "type": "string" },
-        "head": { "type": "string" },
-        "commit_title": { "type": "string" },
-        "commit_message": { "type": "string" },
-        "from_branch": { "type": "string" },
-        "count": { "type": "integer", "minimum": 1, "default": 5 },
-        "path": { "type": "string" },
-        "remote": { "type": "string", "default": "origin", "description": "Git remote name" },
-        "prune": { "type": "boolean", "default": false, "description": "Prune deleted remote branches (fetch)" },
-        "rebase": { "type": "boolean", "default": false, "description": "Use rebase instead of merge (pull)" },
-        "ff_only": { "type": "boolean", "default": false, "description": "Fast-forward only (pull)" },
-        "continue_rebase": { "type": "boolean", "default": false, "description": "Continue rebase after conflict resolution" },
-        "abort": { "type": "boolean", "default": false, "description": "Abort rebase" },
-        "skip": { "type": "boolean", "default": false, "description": "Skip current commit in rebase" },
-        "max_count": { "type": "integer", "default": 10, "description": "Max commits to show (log)" },
-        "one_line": { "type": "boolean", "default": false, "description": "One-line format (log)" },
-        "graph": { "type": "boolean", "default": false, "description": "Show graph (log)" },
-        "set_upstream": { "type": "boolean", "default": true, "description": "Set upstream branch (push)" },
-        "force": { "type": "boolean", "default": false, "description": "Force push with lease" },
-        "tag_name": { "type": "string", "description": "Git tag for release (e.g., v1.3.0)" },
-        "name": { "type": "string", "description": "Release title (defaults to tag_name)" },
-        "body": { "type": "string", "description": "Release description (Markdown supported)" },
-        "target_commitish": { "type": "string", "default": "main", "description": "Branch/commit to tag" },
-        "draft": { "type": "boolean", "default": false, "description": "Create as draft release" },
-        "prerelease": { "type": "boolean", "default": false, "description": "Mark as pre-release" }
+        "overwrite": {
+          "type": "boolean",
+          "default": true
+        },
+        "overwrite_remote": {
+          "type": "boolean",
+          "default": true
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 5
+        },
+        "max_count": {
+          "type": "integer",
+          "default": 10,
+          "description": "Max commits to show (log)"
+        },
+        "one_line": {
+          "type": "boolean",
+          "default": false,
+          "description": "One-line format (log)"
+        },
+        "graph": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show graph (log)"
+        },
+        "prune": {
+          "type": "boolean",
+          "default": false,
+          "description": "Prune deleted remote branches (fetch)"
+        },
+        "rebase": {
+          "type": "boolean",
+          "default": false,
+          "description": "Use rebase instead of merge (pull)"
+        },
+        "ff_only": {
+          "type": "boolean",
+          "default": false,
+          "description": "Fast-forward only (pull)"
+        },
+        "continue_rebase": {
+          "type": "boolean",
+          "default": false,
+          "description": "Continue rebase after conflict resolution"
+        },
+        "abort": {
+          "type": "boolean",
+          "default": false,
+          "description": "Abort rebase"
+        },
+        "skip": {
+          "type": "boolean",
+          "default": false,
+          "description": "Skip current commit in rebase"
+        },
+        "force": {
+          "type": "boolean",
+          "default": false,
+          "description": "Force push with lease"
+        },
+        "set_upstream": {
+          "type": "boolean",
+          "default": true,
+          "description": "Set upstream branch (push)"
+        },
+        "base": {
+          "type": "string"
+        },
+        "head": {
+          "type": "string"
+        },
+        "tag_name": {
+          "type": "string",
+          "description": "Git tag for release (e.g., v1.3.0) (required for create_release)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Release title (defaults to tag_name)"
+        },
+        "body": {
+          "type": "string",
+          "description": "Release description (Markdown supported)"
+        },
+        "draft": {
+          "type": "boolean",
+          "default": false,
+          "description": "Create as draft release"
+        },
+        "prerelease": {
+          "type": "boolean",
+          "default": false,
+          "description": "Mark as pre-release"
+        },
+        "target_commitish": {
+          "type": "string",
+          "default": "main",
+          "description": "Branch/commit to tag"
+        },
+        "username": {
+          "type": "string"
+        }
       },
       "required": ["operation"],
       "additionalProperties": false

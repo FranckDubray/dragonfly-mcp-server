@@ -3,6 +3,7 @@
   "function": {
     "name": "universal_doc_scraper",
     "displayName": "Doc Scraper",
+    "category": "documents",
     "description": "Universal documentation scraper supporting GitBook, Notion, Confluence, ReadTheDocs, Docusaurus, and other doc platforms. Discover, extract, and search across multiple documentation sites.",
     "parameters": {
       "type": "object",

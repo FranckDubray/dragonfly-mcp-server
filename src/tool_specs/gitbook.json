@@ -3,7 +3,8 @@
   "function": {
     "name": "gitbook",
     "displayName": "GitBook",
-    "description": "Enhanced GitBook tool with smart discovery and global search. Automatically find all pages in a GitBook site and search across entire documentation without knowing specific URLs.",
+    "category": "development",
+    "description": "Recherche et exploration de documentation GitBook. Découverte automatique de pages, recherche globale sans connaître les URLs.",
     "parameters": {
       "type": "object",
       "properties": {
