@@ -1,0 +1,79 @@
+{
+  "type": "function",
+  "function": {
+    "name": "excel_to_sqlite",
+    "displayName": "Excel to SQLite",
+    "description": "Import Excel (.xlsx) data into SQLite database with automatic schema detection, type mapping, and batch processing",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["import_excel", "preview", "get_sheets", "validate_mapping", "get_info"],
+          "description": "Operation to perform"
+        },
+        "excel_path": {
+          "type": "string",
+          "description": "Path to Excel file (relative to project root, .xlsx only)"
+        },
+        "db_name": {
+          "type": "string",
+          "description": "SQLite database name (without .db extension, created in <project>/sqlite3/)"
+        },
+        "sheet_name": {
+          "oneOf": [
+            {"type": "string"},
+            {"type": "integer"}
+          ],
+          "description": "Sheet name (string) or index (0-based integer)"
+        },
+        "table_name": {
+          "type": "string",
+          "description": "Target SQLite table name"
+        },
+        "column_mapping": {
+          "type": "object",
+          "description": "Manual column mapping: {\"Excel Column\": \"sqlite_column\"}",
+          "additionalProperties": {"type": "string"}
+        },
+        "if_exists": {
+          "type": "string",
+          "enum": ["replace", "append", "fail"],
+          "description": "Behavior if table exists (default: replace)"
+        },
+        "batch_size": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 10000,
+          "description": "Number of rows per batch insert (default: 1000)"
+        },
+        "skip_rows": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of rows to skip at the beginning (default: 0)"
+        },
+        "header_row": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Row index for column headers (default: 0)"
+        },
+        "type_mapping": {
+          "type": "object",
+          "description": "Force column types: {\"column_name\": \"INTEGER|REAL|TEXT\"}",
+          "additionalProperties": {
+            "type": "string",
+            "enum": ["INTEGER", "REAL", "TEXT", "BLOB"]
+          }
+        },
+        "max_rows": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Max rows to preview (for preview operation, default: 10)"
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}
