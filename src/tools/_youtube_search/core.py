@@ -20,6 +20,9 @@ def handle_search(**params) -> Dict[str, Any]:
             - order (str): Sort order - date, rating, relevance, title, viewCount (default: relevance)
             - region_code (str): Region code (default: US)
             - safe_search (str): Safe search mode - none, moderate, strict (default: none)
+            - channel_id (str): Filter to specific channel (optional)
+            - published_after (str): Filter videos after date (optional, ISO 8601)
+            - published_before (str): Filter videos before date (optional, ISO 8601)
     
     Returns:
         Search results
@@ -34,7 +37,10 @@ def handle_search(**params) -> Dict[str, Any]:
             search_type=validated["type"],
             order=validated["order"],
             region_code=validated["region_code"],
-            safe_search=validated["safe_search"]
+            safe_search=validated["safe_search"],
+            channel_id=validated["channel_id"],
+            published_after=validated["published_after"],
+            published_before=validated["published_before"]
         )
         
     except ValueError as e:

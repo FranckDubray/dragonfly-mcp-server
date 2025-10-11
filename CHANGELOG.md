@@ -4,6 +4,45 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.10.0] - 2025-01-11
+
+### Added
+- **email_send** tool: Send emails via SMTP (Gmail or Infomaniak)
+  - **2 operations**: send (send email), test_connection (verify SMTP credentials)
+  - **Reuses IMAP credentials**: Same env vars as `imap` tool (`IMAP_<PROVIDER>_EMAIL`, `IMAP_<PROVIDER>_PASSWORD`)
+  - **SMTP servers hardcoded**: Gmail (smtp.gmail.com:587), Infomaniak (mail.infomaniak.com:587)
+  - **Features**: text/HTML body, CC/BCC, attachments (10 max, 25MB), reply-to, from_name, priority
+  - **Multi-provider**: Switch between Gmail/Infomaniak with `provider` parameter
+  - Architecture: `_email_send/` (api, core, validators, services/smtp_client)
+  - No additional dependencies (smtplib is built-in Python)
+
+### Enhanced
+- **youtube_search** tool: Major improvements for chronological searches
+  - **Added `channel_id` parameter**: Filter search to specific YouTube channel
+  - **Added `published_after` parameter**: Filter videos after date (ISO 8601)
+  - **Added `published_before` parameter**: Filter videos before date (ISO 8601)
+  - **Enhanced JSON spec**: Explicit LLM guidance for using `order="date"` for latest videos
+  - **Workflow documented**: 2-step process to get latest videos from channel (search channel → search videos with channel_id)
+  - Fixes issue where LLM returned random videos instead of latest/recent ones
+
+- **video_transcribe** tool: Added execution timing metrics
+  - **New `timing` section** in response: processing_time_seconds, processing_time_formatted, started_at, completed_at, average_time_per_second
+  - **Performance tracking**: Calculate ratio processing_time / video_duration
+  - **Timestamps**: Human-readable start/end times (YYYY-MM-DD HH:MM:SS)
+  - **Formatted duration**: HH:MM:SS.mmm format
+  - Enables monitoring, optimization, and progress feedback
+
+### Changed
+- Tool count: 24 → **25 tools**
+- `.env` variables reused: IMAP credentials now used by both `imap` (receive) and `email_send` (send)
+
+### Use Cases
+- **email_send**: Automated reports, alert notifications, order confirmations, newsletters
+- **youtube_search**: Find latest videos from channel, search within date range, get chronologically sorted results
+- **video_transcribe**: Monitor transcription performance, estimate processing time, audit logs
+
+---
+
 ## [1.9.4] - 2025-10-09
 
 ### Added
@@ -17,7 +56,7 @@ All notable changes to this project will be documented in this file.
   - Major ports database (Rotterdam, Singapore, Le Havre, Hamburg, etc.)
   - Distance calculation with Haversine formula
   - Automatic deduplication by MMSI
-  - Complete ship data: position, speed, heading, destination, ETA, dimensions
+  - Complete ship position, speed, heading, destination, ETA, dimensions
   - Support for all AIS ship types and navigation statuses
   - Architecture: `_ship_tracker/` (api, core, validators, utils, services/aisstream)
 

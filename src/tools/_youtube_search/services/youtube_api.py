@@ -26,7 +26,11 @@ class YouTubeAPIClient:
         search_type: str = "video",
         order: str = "relevance",
         region_code: str = "US",
-        safe_search: str = "none"
+        safe_search: str = "none",
+        channel_id: Optional[str] = None,
+        published_after: Optional[str] = None,
+        published_before: Optional[str] = None,
+        include_statistics: bool = True
     ) -> Dict[str, Any]:
         """Search YouTube content.
         
@@ -37,6 +41,10 @@ class YouTubeAPIClient:
             order: Sort order (date, rating, relevance, title, viewCount)
             region_code: Region code (e.g., US, FR)
             safe_search: Safe search mode (none, moderate, strict)
+            channel_id: Filter to specific channel (optional)
+            published_after: Filter videos after date (optional, ISO 8601)
+            published_before: Filter videos before date (optional, ISO 8601)
+            include_statistics: Fetch view count, likes, duration (costs +1 API unit per result)
             
         Returns:
             Search results with items
@@ -56,6 +64,14 @@ class YouTubeAPIClient:
             "key": self.api_key
         }
         
+        # Add optional filters
+        if channel_id:
+            params["channelId"] = channel_id
+        if published_after:
+            params["publishedAfter"] = published_after
+        if published_before:
+            params["publishedBefore"] = published_before
+        
         try:
             response = requests.get(url, params=params, timeout=30)
             response.raise_for_status()
@@ -66,6 +82,16 @@ class YouTubeAPIClient:
             for item in data.get("items", []):
                 parsed_item = self._parse_search_item(item)
                 items.append(parsed_item)
+            
+            # Enrich with statistics if requested and type is video
+            if include_statistics and search_type == "video" and items:
+                video_ids = [item["id"] for item in items if item.get("type") == "video"]
+                if video_ids:
+                    statistics = self._get_videos_statistics(video_ids)
+                    # Merge statistics into items
+                    for item in items:
+                        if item["id"] in statistics:
+                            item.update(statistics[item["id"]])
             
             return {
                 "success": True,
@@ -96,6 +122,52 @@ class YouTubeAPIClient:
                 raise RuntimeError(f"YouTube API error: {e.response.status_code} - {e.response.text[:200]}")
         except requests.exceptions.RequestException as e:
             raise RuntimeError(f"Network error: {str(e)}")
+    
+    def _get_videos_statistics(self, video_ids: List[str]) -> Dict[str, Dict[str, Any]]:
+        """Get statistics for multiple videos in one batch call.
+        
+        Args:
+            video_ids: List of video IDs (max 50)
+            
+        Returns:
+            Dict mapping video_id to statistics
+        """
+        if not video_ids:
+            return {}
+        
+        # YouTube API allows max 50 IDs per request
+        video_ids = video_ids[:50]
+        
+        url = f"{self.BASE_URL}/videos"
+        params = {
+            "part": "contentDetails,statistics",
+            "id": ",".join(video_ids),
+            "key": self.api_key
+        }
+        
+        try:
+            response = requests.get(url, params=params, timeout=30)
+            response.raise_for_status()
+            data = response.json()
+            
+            result = {}
+            for item in data.get("items", []):
+                video_id = item.get("id", "")
+                statistics = item.get("statistics", {})
+                content_details = item.get("contentDetails", {})
+                
+                result[video_id] = {
+                    "view_count": int(statistics.get("viewCount", 0)),
+                    "like_count": int(statistics.get("likeCount", 0)),
+                    "comment_count": int(statistics.get("commentCount", 0)),
+                    "duration": content_details.get("duration", "")
+                }
+            
+            return result
+            
+        except Exception:
+            # If statistics fetch fails, return empty dict (don't fail the whole search)
+            return {}
     
     def get_video_details(self, video_id: str) -> Dict[str, Any]:
         """Get detailed information about a video.

@@ -3,33 +3,33 @@
   "function": {
     "name": "video_transcribe",
     "displayName": "Video Transcription",
-    "description": "Extract audio from video and transcribe using Whisper API. Supports time-based segmentation for large videos. Returns transcript as JSON with timestamps.",
+    "description": "Extract audio from video and transcribe using Whisper API. Supports time-based segmentation for large videos. Parallel processing (3 chunks at a time). Returns transcript as JSON with timestamps and execution timing.",
     "parameters": {
       "type": "object",
       "properties": {
         "operation": {
           "type": "string",
           "enum": ["transcribe", "get_info"],
-          "description": "Operation to perform: transcribe (extract audio + Whisper API) or get_info (video metadata)"
+          "description": "Operation to perform: transcribe (extract audio + Whisper API, returns full_text + timing) or get_info (video metadata only)"
         },
         "path": {
           "type": "string",
-          "description": "Path to video file (relative to project root, must be under docs/video/)"
+          "description": "Path to video file (relative to project root, must be under docs/video/). Examples: 'docs/video/demo.mp4', 'docs/video/tutorials/intro.mov'"
         },
         "time_start": {
           "type": "integer",
-          "description": "Start time in seconds (default: 0). Use for segmenting large videos.",
+          "description": "Start time in seconds (default: 0). Use for segmenting large videos. Example: 300 = start at 5 minutes",
           "minimum": 0,
           "default": 0
         },
         "time_end": {
           "type": "integer",
-          "description": "End time in seconds (default: video duration). Use for segmenting large videos.",
+          "description": "End time in seconds (default: video duration). Use for segmenting large videos. Example: 600 = stop at 10 minutes. Combine with time_start to transcribe a specific portion.",
           "minimum": 0
         },
         "chunk_duration": {
           "type": "integer",
-          "description": "Internal chunk size in seconds for Whisper API calls (default: 60s)",
+          "description": "Internal chunk size in seconds for Whisper API calls (default: 60s, min: 10s, max: 600s). Smaller chunks = more API calls but better parallelization. Larger chunks = fewer API calls but slower.",
           "minimum": 10,
           "maximum": 600,
           "default": 60
