@@ -1,3 +1,8 @@
+
+
+
+
+
 // =====================================================
 // tools.js - Tools loading, rendering and execution
 // =====================================================
@@ -74,10 +79,10 @@ function buildCategorySection(key, meta, items, q, hasAnyFilter) {
     const header = document.createElement('div');
     header.className = 'category-header';
     header.innerHTML = `
+        <span class="category-chevron">▾</span>
         <span class="category-emoji">${meta.emoji || '🧰'}</span>
         <span>${meta.label || key}</span>
         <span class="category-count">${filtered.length}</span>
-        <span class="category-chevron">▾</span>
     `;
     header.addEventListener('click', () => {
         section.classList.toggle('collapsed');
@@ -107,7 +112,6 @@ function buildCategorySection(key, meta, items, q, hasAnyFilter) {
         item.innerHTML = `
             <span class="tool-icon">${icon}</span>
             <span class="tool-name">${tool.displayName || tool.name}</span>
-            <span class="tool-badge" title="${tool.name}">${tool.name}</span>
             <button class="fav-btn" title="Pin/Unpin">${isFav ? '★' : '☆'}</button>
         `;
 
@@ -397,3 +401,9 @@ function updateStatus(message, type) {
     statusBar.textContent = message;
     statusBar.className = 'status-bar ' + type;
 }
+
+ 
+ 
+ 
+ 
+ 
