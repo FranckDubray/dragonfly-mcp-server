@@ -3,7 +3,7 @@ Skyfield client for astronomy calculations
 Handles ephemeris loading and caching
 """
 
-from skyfield.api import load, wgs84, Star
+from skyfield.api import Loader, wgs84, Star
 from skyfield.almanac import moon_phase, sunrise_sunset, dark_twilight_day
 from skyfield.toposlib import GeographicPosition
 import os
@@ -27,7 +27,7 @@ def get_loader():
         os.makedirs(ephemeris_dir, exist_ok=True)
         
         # Create loader with custom directory
-        _loader = load(ephemeris_dir)
+        _loader = Loader(ephemeris_dir)
     
     return _loader
 
