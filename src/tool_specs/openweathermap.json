@@ -1,0 +1,73 @@
+{
+  "type": "function",
+  "function": {
+    "name": "openweathermap",
+    "displayName": "OpenWeatherMap",
+    "category": "utilities",
+    "tags": ["weather", "forecast", "air_quality", "geocoding"],
+    "description": "Complete weather data access via OpenWeatherMap API. Current weather, forecasts (5-day, hourly), air quality, alerts, and geocoding. Free tier: 60 calls/min.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": [
+            "current_weather",
+            "forecast_5day",
+            "forecast_hourly",
+            "air_pollution",
+            "geocoding",
+            "reverse_geocoding",
+            "weather_alerts",
+            "onecall"
+          ],
+          "description": "Operation to perform"
+        },
+        "city": {
+          "type": "string",
+          "description": "City name (e.g., 'Paris', 'London,UK', 'New York,US'). For current_weather, forecast_5day, geocoding"
+        },
+        "lat": {
+          "type": "number",
+          "description": "Latitude (-90 to 90). For operations using coordinates",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "lon": {
+          "type": "number",
+          "description": "Longitude (-180 to 180). For operations using coordinates",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "units": {
+          "type": "string",
+          "enum": ["metric", "imperial", "standard"],
+          "description": "Temperature units: metric (°C), imperial (°F), standard (K). Default: metric",
+          "default": "metric"
+        },
+        "lang": {
+          "type": "string",
+          "description": "Language code (e.g., 'en', 'fr', 'de', 'es'). Default: en",
+          "default": "en"
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Max results for geocoding operations. Default: 5, max: 10",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 5
+        },
+        "exclude": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["current", "minutely", "hourly", "daily", "alerts"]
+          },
+          "description": "Parts to exclude from onecall response. Default: none"
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}
