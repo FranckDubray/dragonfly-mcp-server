@@ -3,7 +3,8 @@
   "function": {
     "name": "ship_tracker",
     "displayName": "Ship Tracker",
-    "description": "Track ships and vessels in real-time using AIS (Automatic Identification System) data via AISStream.io WebSocket. Get vessel positions, speed, heading, destination, ship type, and more. Search by location, get specific ship details by MMSI, or check port traffic. Requires AISSTREAM_API_KEY in .env (free API key at https://aisstream.io).",
+    "category": "transportation",
+    "description": "Suivi navires temps réel via AIS. Position, vitesse, cap, destination, type navire. Recherche par zone, MMSI ou port.",
     "parameters": {
       "type": "object",
       "properties": {
@@ -26,7 +27,10 @@
         },
         "timeout": {
           "type": "integer",
-          "description": "WebSocket collection timeout in seconds (3-60, default: 10). How long to listen for AIS messages before returning results. Longer timeout = more ships but slower response."
+          "description": "WebSocket collection timeout in seconds (3-60, default: 10). How long to listen for AIS messages before returning results. Longer timeout = more ships but slower response.",
+          "minimum": 3,
+          "maximum": 60,
+          "default": 10
         },
         "mmsi": {
           "type": "integer",
@@ -64,7 +68,10 @@
         },
         "max_results": {
           "type": "integer",
-          "description": "Maximum number of ships to return (1-200, default: 50)"
+          "description": "Maximum number of ships to return (1-200, default: 50)",
+          "minimum": 1,
+          "maximum": 200,
+          "default": 50
         },
         "sort_by": {
           "type": "string",

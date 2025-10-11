@@ -3,7 +3,8 @@
   "function": {
     "name": "imap",
     "displayName": "IMAP Email",
-    "description": "Accès universel aux emails via IMAP (Gmail, Outlook, Yahoo, iCloud, Infomaniak, serveurs custom). Configuration via .env: IMAP_<PROVIDER>_EMAIL, IMAP_<PROVIDER>_PASSWORD (ex: IMAP_GMAIL_EMAIL, IMAP_INFOMANIAK_EMAIL).",
+    "category": "communication",
+    "description": "Accès emails via IMAP (Gmail, Outlook, Yahoo, iCloud, Infomaniak, serveurs custom). Recherche, lecture, téléchargement pièces jointes, marquage, déplacement, suppression.",
     "parameters": {
       "type": "object",
       "properties": {
@@ -34,7 +35,7 @@
         },
         "folder": {
           "type": "string",
-          "description": "Nom du folder IMAP (ex: INBOX, Sent, [Gmail]/All Mail) ou alias: inbox, sent, trash, spam"
+          "description": "Nom du folder IMAP (ex: INBOX, Sent, [Gmail]/All Mail) ou alias: inbox, sent, trash, spam (insensible à la casse, mappé automatiquement selon provider)"
         },
         "query": {
           "type": "object",

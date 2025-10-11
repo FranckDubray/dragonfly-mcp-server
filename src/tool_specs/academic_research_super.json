@@ -3,6 +3,7 @@
   "function": {
     "name": "academic_research_super",
     "displayName": "Research",
+    "category": "intelligence",
     "description": "Recherche académique multi-sources (PubMed, arXiv, HAL, CrossRef).",
     "parameters": {
       "type": "object",

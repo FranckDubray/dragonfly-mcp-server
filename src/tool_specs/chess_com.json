@@ -3,6 +3,7 @@
   "function": {
     "name": "chess_com",
     "displayName": "Chess.com",
+    "category": "entertainment",
     "description": "Access Chess.com public data API - player profiles, games, stats, clubs, tournaments, matches, countries, leaderboards, puzzles, streamers. Read-only access to public data. No authentication required.",
     "parameters": {
       "type": "object",
@@ -101,7 +102,7 @@
         },
         "limit": {
           "type": "integer",
-          "description": "Maximum number of results to return (default: 50, max: 500). For get_leaderboards: limit per category (default: 10, max: 50).",
+          "description": "Maximum number of results to return (default: 50, max: 500). IMPORTANT: For get_leaderboards, this 'limit' applies PER category (default: 10, max: 50).",
           "minimum": 1,
           "maximum": 500,
           "default": 50

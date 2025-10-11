@@ -3,6 +3,7 @@
   "function": {
     "name": "ollama_local",
     "displayName": "Ollama Local + Web Search",
+    "category": "intelligence",
     "description": "Interface avec Ollama local (localhost:11434) + recherche web cloud. Gestion modèles, génération, chat, embeddings, recherche web.",
     "parameters": {
       "type": "object",

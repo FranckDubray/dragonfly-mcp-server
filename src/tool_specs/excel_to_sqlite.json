@@ -3,6 +3,7 @@
   "function": {
     "name": "excel_to_sqlite",
     "displayName": "Excel to SQLite",
+    "category": "data",
     "description": "Import Excel (.xlsx) data into SQLite database with automatic schema detection, type mapping, and batch processing",
     "parameters": {
       "type": "object",

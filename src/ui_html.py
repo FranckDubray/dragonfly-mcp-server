@@ -84,6 +84,30 @@ CONTROL_HTML = '''<!DOCTYPE html>
             letter-spacing: 0.5px;
         }
         
+        /* Configuration button */
+        .sidebar-config {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .config-btn {
+            width: 100%;
+            padding: 10px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        .config-btn:hover {
+            background: var(--primary-hover);
+        }
+        
+        /* Search box */
         .search-box {
             padding: 12px 16px;
             border-bottom: 1px solid var(--border);
@@ -104,10 +128,72 @@ CONTROL_HTML = '''<!DOCTYPE html>
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
         
+        /* Tools list */
         .tools-list {
             flex: 1;
             overflow-y: auto;
             padding: 8px 0;
+        }
+        
+        /* Category section */
+        .category-section {
+            margin-bottom: 8px;
+        }
+        
+        .category-header {
+            padding: 10px 20px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-sidebar);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .category-header:hover {
+            background: var(--bg-hover);
+        }
+        
+        .category-chevron {
+            font-size: 10px;
+            color: var(--text-secondary);
+            transition: transform 0.2s;
+        }
+        
+        .category-emoji {
+            font-size: 14px;
+        }
+        
+        .category-count {
+            margin-left: auto;
+            font-size: 11px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            background: var(--bg-hover);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        
+        /* Tools container inside category */
+        .category-tools {
+            max-height: 1000px;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+            opacity: 1;
+        }
+        
+        /* Collapsed state */
+        .category-section.collapsed .category-tools {
+            max-height: 0;
+            opacity: 0;
         }
         
         .tool-item {
@@ -147,28 +233,6 @@ CONTROL_HTML = '''<!DOCTYPE html>
             border-radius: 4px;
             background: var(--border);
             color: var(--text-secondary);
-        }
-        
-        .sidebar-footer {
-            padding: 12px 16px;
-            border-top: 1px solid var(--border);
-        }
-        
-        .config-btn {
-            width: 100%;
-            padding: 10px;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-        
-        .config-btn:hover {
-            background: var(--primary-hover);
         }
         
         /* Zone principale */
@@ -552,16 +616,16 @@ CONTROL_HTML = '''<!DOCTYPE html>
                 </div>
             </div>
             
+            <div class="sidebar-config">
+                <button class="config-btn" onclick="openConfig()">🔑 Configuration</button>
+            </div>
+            
             <div class="search-box">
                 <input type="text" id="searchInput" class="search-input" placeholder="🔍 Search tools...">
             </div>
             
             <div class="tools-list" id="toolsList">
-                <!-- Tools seront injectés ici -->
-            </div>
-            
-            <div class="sidebar-footer">
-                <button class="config-btn" onclick="openConfig()">🔑 Configuration</button>
+                <!-- Tools seront injectés ici par catégorie -->
             </div>
         </aside>
         
@@ -584,7 +648,7 @@ CONTROL_HTML = '''<!DOCTYPE html>
         </main>
     </div>
     
-    <!-- Modal Config (GÉNÉRIQUE - champs générés dynamiquement) -->
+    <!-- Modal Config -->
     <div id="configModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -594,7 +658,6 @@ CONTROL_HTML = '''<!DOCTYPE html>
             
             <div id="configStatus" class="config-status" style="display: none;"></div>
             
-            <!-- Form section remplie dynamiquement par JS -->
             <div class="form-section">
                 <p class="form-help" style="text-align: center; color: var(--text-secondary);">
                     Loading configuration...
@@ -605,6 +668,11 @@ CONTROL_HTML = '''<!DOCTYPE html>
         </div>
     </div>
     
-    <script src="/control.js"></script>
+    <!-- Load JavaScript modules in order -->
+    <script src="/static/js/categories.js"></script>
+    <script src="/static/js/config.js"></script>
+    <script src="/static/js/tools.js"></script>
+    <script src="/static/js/search.js"></script>
+    <script src="/static/js/main.js"></script>
 </body>
 </html>'''

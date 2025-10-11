@@ -3,6 +3,7 @@
   "function": {
     "name": "flight_tracker",
     "displayName": "Flight Tracker",
+    "category": "transportation",
     "description": "Track aircraft in real-time using OpenSky Network API. Filter by position, radius, altitude, speed, country. Get live position, speed, heading, phase of flight.",
     "parameters": {
       "type": "object",

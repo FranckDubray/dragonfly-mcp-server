@@ -3,6 +3,7 @@
   "function": {
     "name": "ffmpeg_frames",
     "displayName": "FFmpeg Frames",
+    "category": "media",
     "description": "Extraction d'images d'une vidéo: détection automatique des plans (similarité) + début/fin + samples intraplans.",
     "parameters": {
       "type": "object",

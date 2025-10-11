@@ -3,6 +3,7 @@
   "function": {
     "name": "pdf_search",
     "displayName": "PDF Search",
+    "category": "documents",
     "description": "Recherche de texte dans des fichiers PDF avec contexte et positions.",
     "parameters": {
       "type": "object",

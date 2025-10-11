@@ -104,32 +104,12 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 ### 🗄️ Databases & Storage
 
 #### **excel_to_sqlite** 🆕⭐
-- **Import Excel (.xlsx) data into SQLite databases**
-- **5 operations**:
-  - `import_excel`: Import complete Excel sheet into SQLite table
-  - `preview`: Preview data with type detection (no insertion)
-  - `get_sheets`: List all sheets in Excel file
-  - `validate_mapping`: Validate column mapping before import
-  - `get_info`: Get file metadata and sheet information
-- **Features**:
-  - **Automatic schema detection**: Infers INTEGER, REAL, TEXT, BLOB types
-  - **Column name sanitization**: Converts to SQL-safe names
-  - **Batch processing**: 100-10000 rows per batch (default 1000)
-  - **Manual column mapping**: Override auto-detected column names
-  - **Type forcing**: Force specific columns to INTEGER/REAL/TEXT/BLOB
-  - **Skip rows**: Skip N rows at beginning (e.g., skip headers)
-  - **Custom header row**: Use different row as column names (default 0)
-  - **Table behaviors**: replace (overwrite), append (add rows), fail (error if exists)
-- **Chroot**: Excel files from project root, SQLite DBs in `<project>/sqlite3/`
-- **Dependencies**: pandas (data manipulation), openpyxl (Excel engine)
-- **Preview mode**: Test import with type detection, see first N rows (max 100)
-- **Validation**: Check column compatibility before actual import
-- **Use cases**:
-  - Import spreadsheet data into SQLite for querying with sqlite_db
-  - ETL workflows: Excel → SQLite → analysis/transformation
-  - Data migration from Excel to structured databases
-  - Bulk data import with automatic schema inference
-- Architecture: `_excel_to_sqlite/` (api, core, validators, excel_reader)
+- Import Excel (.xlsx) data into SQLite databases
+- 5 operations: import_excel, preview, get_sheets, validate_mapping, get_info
+- Features: schema detection, sanitization, batch insert, type forcing
+- Chroot: project/sqlite3/
+- Dependencies: pandas, openpyxl
+- Architecture: `_excel_to_sqlite/`
 
 #### **sqlite_db**
 - SQLite in `<project>/sqlite3` chroot
@@ -140,32 +120,16 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 ### 📄 Documents & PDF
 
 #### **office_to_pdf** 🆕⭐
-- **Convert Office documents to PDF** using native Office suite installed on laptop
-- **Formats supported**: Word (.docx, .doc), PowerPoint (.pptx, .ppt)
-- **Engine**: docx2pdf library leveraging native Office apps
-  - macOS: Microsoft Word/PowerPoint via AppleScript
-  - Windows: Microsoft Word/PowerPoint via COM automation
-- **Operations**:
-  - `convert`: Convert Office file to PDF
-  - `get_info`: Get file metadata without converting
-- **Features**:
-  - Input chroot: `docs/office/`
-  - Output chroot: `docs/pdfs/`
-  - Auto-generated output names
-  - Unique naming (_1, _2 if file exists)
-  - Overwrite option
-- **Dependencies**: docx2pdf (included in pyproject.toml)
-- **Test verified**: Successfully converted Word → PDF (90KB → 60KB)
-- Architecture: `_office_to_pdf/` (api, core, validators, utils, services/office_converter)
+- Convert Office documents to PDF using native Office suite
+- Formats: .docx/.doc, .pptx/.ppt
+- Engine: docx2pdf (macOS/Windows)
+- Input: docs/office/ → Output: docs/pdfs/
+- Architecture: `_office_to_pdf/`
 
 #### **pdf_download** 🆕
-- **Download PDFs from URLs** to `docs/pdfs`
-- HTTP/HTTPS with timeout control (5-300s)
-- **PDF validation** (magic bytes `%PDF-`)
-- **Automatic unique filenames** (suffixes `_1`, `_2`, etc.)
-- Optional overwrite mode
-- Filename extraction from URL
-- Architecture: `_pdf_download/` (api, core, validators, utils, services/downloader)
+- Download PDFs from URLs to `docs/pdfs`
+- Timeout, validation, unique filenames
+- Architecture: `_pdf_download/`
 
 #### **pdf_search**
 - Keyword search in PDF files
@@ -181,220 +145,72 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 - Intelligent content extraction from web pages
 - Multi-format support
 - Automatic cleanup
-- Architecture: `_universal_doc/` (scraper, parsers, cleaners)
+- Architecture: `_universal_doc/`
 
 ### 🎬 Media & YouTube
 
 #### **youtube_search** 🆕 ⭐
-- **Search YouTube content via YouTube Data API v3** (official)
-- **3 operations**:
-  - `search`: Find videos/channels/playlists by keyword with filters (order, type, region, safe search)
-  - `get_video_details`: Get detailed info (title, description, views, likes, comments, duration, tags, thumbnails)
-  - `get_trending`: Get trending videos by region and category
-- **Advanced filters**:
-  - `channel_id`: Filter to specific channel (get latest videos from channel)
-  - `order`: date (chronological), viewCount, relevance, rating, title
-  - `published_after` / `published_before`: Filter by date range (ISO 8601)
-- **Free API key**: 10,000 units/day (100 units per search = ~100 searches/day)
-- **Complete workflow**: youtube_search → youtube_download → video_transcribe
-- **Use cases**: Find content before downloading, research trending topics, get metadata without downloading, find latest videos from specific channel
-- Architecture: `_youtube_search/` (api, core, validators, services/youtube_api)
+- Search YouTube via Data API v3
+- 3 ops: search, get_video_details, get_trending
+- Advanced filters: channel_id, order='date', published_after/before
+- Architecture: `_youtube_search/`
 
 #### **youtube_download** 🆕 ⚡
-- **Download videos/audio from YouTube URLs**
-- **Media types**: audio (MP3, perfect for transcription), video (MP4), both (separate files)
-- **Quality options**: best, 720p, 480p, 360p
-- **Operations**:
-  - `download`: Download media to `docs/video/`
-  - `get_info`: Get metadata without downloading
-- **Features**:
-  - URL validation (all YouTube formats supported)
-  - Automatic filename sanitization
-  - Unique naming (_1, _2 if file exists)
-  - Duration check (avoids massive downloads)
-  - Metadata extraction (title, duration, uploader, views)
-- **Workflow**: YouTube → Audio → video_transcribe → Exploitable text
-- **Security**: chroot to `docs/video/`, URL validation, duration limits
-- Architecture: `_youtube_download/` (api, core, validators, utils, services/downloader)
+- Download videos/audio from YouTube URLs
+- Modes: audio (MP3), video (MP4), both
+- Chroot: docs/video/
+- Architecture: `_youtube_download/`
 
 #### **video_transcribe** 🆕 ⚡
-- **Extract audio from video and transcribe using Whisper API**
-- **Parallel processing**: up to 3 chunks simultaneously (3x faster)
-- **Performance**: 3 minutes video → 20 seconds transcription
-- **Direct extraction**: FFmpeg extracts audio segments on-the-fly (no persistent temp files)
-- **Whisper API**: multipart/form-data upload with Bearer token
-- **Time-based segmentation**: `time_start`/`time_end` for large videos
-- **Configurable chunking**: `chunk_duration` (default 60s)
-- **Returns JSON**: segments with timestamps + full_text + metadata + **timing**
-- **Timing metrics**: processing_time_seconds, processing_time_formatted, started_at, completed_at, average_time_per_second
-- **Operations**:
-  - `transcribe`: Extract audio + Whisper transcription (returns timing)
-  - `get_info`: Video metadata (duration, audio codec)
-- **Security**: chroot to `docs/video/`, automatic cleanup of temp files
-- Architecture: `_video_transcribe/` (api, core, audio_extractor, whisper_client, validators, utils)
+- FFmpeg audio extraction + Whisper API transcription
+- Parallel chunking, timing metrics
+- Architecture: `_video_transcribe/`
 
 #### **ffmpeg_frames**
-- Extract images/frames from video via FFmpeg
-- **Native PyAV shot detection** (frame-by-frame)
-- Moving average + hysteresis + NMS + refinement
-- Per-frame debug: time, diff, similarity%
-- High precision on compressed videos (YouTube-like)
-- Export: images + timestamps + debug.json
-- Architecture: `_ffmpeg/` (detect, native, utils)
+- Extract frames + shot detection
+- Per-frame debug, export images + timestamps
 
 ### ✈️ Aviation & Transport
 
 #### **ship_tracker** ⭐
-- **Real-time vessel tracking** via AISStream.io WebSocket API
-- **3 operations**:
-  - `track_ships`: Find ships in geographic area with filters
-  - `get_ship_details`: Get detailed ship info by MMSI
-  - `get_port_traffic`: Monitor traffic near major ports
-- **Filters**: ship type, size, speed, navigation status
-- **Ports**: Rotterdam, Singapore, Le Havre, Hamburg, Marseille, etc.
-- **Timeout**: 3-60s (controls data collection duration)
-- **No authentication** required (free API with API key)
-- Architecture: `_ship_tracker/` (api, core, validators, utils, services/aisstream)
+- Real-time vessel tracking via AIS WebSocket
+- 3 ops: track_ships, get_ship_details, get_port_traffic
+- Advanced filters, ports DB, dedup by MMSI
 
 #### **flight_tracker** ⭐
-- **Real-time aircraft tracking** via OpenSky Network API
-- **Track flights** by position (lat/lon) + radius (1-500 km)
-- **Filters**: altitude min/max, speed min/max, on_ground/in_flight, countries, callsign pattern
-- **Automatic flight phase detection**: cruise, climb, descent, approach, final_approach, landing_imminent
-- **Sort by**: distance, altitude, speed, callsign
-- **Returns**: position, speed, heading, vertical rate, country (registration), squawk, last contact
-- **No authentication** required (public API)
-- Architecture: `_flight_tracker/` (api, core, validators, utils, services/opensky)
+- Real-time aircraft tracking via OpenSky
+- Circular search by position+radius, flight phases
 
 #### **aviation_weather** ⭐
-- **Upper air weather data** via Open-Meteo API (free, no API key)
-- **2 operations**:
-  - `get_winds_aloft`: Wind speed, direction, and temperature at specific altitude/coordinates
-  - `calculate_tas`: Calculate True Airspeed from ground speed and wind
-- **All flight levels**: 1000-20000m (FL30-FL650)
-- **Automatic conversions**: km/h ↔ knots, meters ↔ feet, °C ↔ °F
-- **Wind components**: headwind/tailwind, crosswind
-- **Use cases**: Explain aircraft speed records, flight planning, performance analysis
-- Architecture: `_aviation_weather/` (api, core, validators, utils, services/openmeteo)
+- Upper air weather via Open-Meteo
+- get_winds_aloft, calculate_tas
 
 #### **velib** 🆕
-- **Vélib' Métropole Paris bike-sharing data**
-- SQLite cache for ~1494 stations (static data)
-- Real-time availability API (bikes mechanical/electric, docks free)
-- 3 operations: `refresh_stations`, `get_availability`, `check_cache`
-- Integration with `sqlite_db` tool for complex searches
-- Open Data API (no authentication required)
-- Architecture: `_velib/` (api, core, db, fetcher, validators, utils)
+- Paris bike-sharing data
+- SQLite cache + real-time availability
 
 ### 🔢 Calcul & Math
 
 #### **math**
-- **Numerical**: arithmetic, trig, log, exp, sqrt
-- **High-precision**: mpmath for large precision
-- **Symbolic**: derivatives, integrals, simplification (sympy)
-- **Linear algebra**: matrices, vectors, eigenvalues, SVD, LU, QR
-- **Probabilities**: stats, distributions (normal, Poisson, binomial, etc.)
-- **Polynomials**: roots, factorization
-- **Solvers**: equations, systems, optimization
-- **Number theory**: nth_prime, factorization, Euler phi
-- **Series**: finite/infinite sums, products
-- Architecture: `_math/` (dispatcher, basic, symbolic, proba, linalg, hp, etc.)
+- Numerical, symbolic, linear algebra, statistics, optimization, number theory, series
+- Architecture: `_math/`
 
 #### **date**
-- Date/time helpers
-- Operations: now, today, diff, add, format, parse, weekday, week_number
-- Timezone aware
-- Multiple formats
+- Date/time helpers: now, today, diff, add, format, parse, weekday, week_number
 
 ### 🌐 Networking & API
 
 #### **http_client** 🆕
-- **Universal REST/API client**
-- All HTTP methods: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS
-- Authentication: Basic, Bearer, API Key
-- Body formats: JSON, Form data, Raw text/XML
-- Advanced features: Retry with backoff, Proxy, Timeout (up to 600s), SSL verification
-- Response parsing: auto-detect, JSON, text, raw
-- Optional response saving
-- Architecture: `_http_client/` (api, core, auth, retry, validators, utils)
+- Universal REST/API client: methods, auth, retry, proxy, timeout, SSL
 
-### 🌐 Social Media
-
-#### **reddit_intelligence**
-- Reddit scraping and analysis
-- Post/comment extraction
-- Sentiment analysis
-- Trending topics
-- Architecture: `_reddit/` (scraper, analyzer, parsers, utils)
-
-### ♟️ Chess
+### ♟️ Chess / Social
 
 #### **chess_com** ⭐🆕
-- **Complete Chess.com public API access** (no authentication required)
-- **24 operations** covering all public endpoints:
+- Complete Chess.com public API access (no auth)
+- 24 operations across players, clubs, tournaments, matches, leaderboards, puzzles, streamers
 
-**Players (9 ops)**:
-- `get_player_profile`: Public profile (title, rating, country, etc.)
-- `get_player_stats`: Statistics by game type (blitz, bullet, rapid, daily)
-- `get_player_games_current`: Ongoing games
-- `get_player_games_archives_list`: Available monthly archives
-- `get_player_games_archives`: Games from specific month
-- `get_player_clubs`: Clubs player is member of
-- `get_player_matches`: Team matches player participated in
-- `get_player_tournaments`: Current tournaments
-- `get_titled_players`: List by title (GM, IM, FM, etc.)
-
-**Clubs (3 ops)**:
-- `get_club_details`: Club information
-- `get_club_members`: Members list
-- `get_club_matches`: Team matches
-
-**Tournaments (3 ops)**:
-- `get_tournament_details`: Tournament info
-- `get_tournament_round`: Specific round details
-- `get_tournament_round_group`: Specific group in round
-
-**Countries (3 ops)**:
-- `get_country_details`: Country information
-- `get_country_players`: Players from country
-- `get_country_clubs`: Clubs from country
-
-**Matches (2 ops)**:
-- `get_match_details`: Team match details
-- `get_match_board`: Specific board from match
-
-**Leaderboards (1 op)**:
-- `get_leaderboards`: Global rankings by category
-
-**Puzzles (2 ops)**:
-- `get_daily_puzzle`: Daily puzzle
-- `get_random_puzzle`: Random puzzle
-
-**Streamers (1 op)**:
-- `get_streamers`: Live streamers list
-
-**Features**:
-- Rate limiting: 100ms delay between requests (configurable)
-- User-Agent: Required by Chess.com API (included)
-- Error handling: Detailed HTTP error messages
-- No authentication: All endpoints are public
-- Data formats: JSON-LD, PGN, FEN
-
-**Use cases**:
-- Player analysis and statistics
-- Game archives and analysis
-- Club management and monitoring
-- Tournament tracking
-- Leaderboard research
-- Training with puzzles
-- Live streaming discovery
-
-**Configuration** (optional):
-```bash
-CHESS_COM_RATE_LIMIT_DELAY=0.1  # Delay between requests (seconds)
-```
-
-Architecture: `_chess_com/` (api, core, validators, utils, services/chess_client)
+#### **reddit_intelligence**
+- Reddit scraping and analysis: search, comments, sentiment, trending, experts
 
 ---
 

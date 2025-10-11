@@ -3,6 +3,7 @@
   "function": {
     "name": "script_executor",
     "displayName": "Python Sandbox",
+    "category": "development",
     "description": "Exécute du code Python dans un sandbox sécurisé avec accès à des tools MCP. Pas d'imports, API limitée, timeout configurable.",
     "parameters": {
       "type": "object",
