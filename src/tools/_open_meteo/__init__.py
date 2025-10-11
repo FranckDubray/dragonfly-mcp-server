@@ -1,0 +1,3 @@
+"""
+Open-Meteo tool implementation
+"""

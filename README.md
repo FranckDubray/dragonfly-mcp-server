@@ -81,7 +81,7 @@ Les outils sont groupés par 10 catégories canoniques (invariantes). L'UI affic
 - math — Calcul avancé (numérique/symbolique/stats)
 - date — Utilitaires date/heure
 - device_location — Localisation device (IP geolocation)
-- **openweathermap** 🆕 — Météo complète (actuelle, prévisions, qualité air)
+- **open_meteo** 🆕 — Météo complète (100% gratuit, open source)
 - **google_maps** 🆕 — Geocoding, directions, places, distance matrix
 
 ### 🎮 Social & Entertainment
@@ -113,9 +113,6 @@ IMAP_INFOMANIAK_PASSWORD=password
 GOOGLE_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  # Fallback générique
 YOUTUBE_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  # Spécifique (prioritaire)
 GOOGLE_MAPS_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  # Spécifique (prioritaire)
-
-# Weather
-OPENWEATHERMAP_API_KEY=your_key
 
 # Communication
 TELEGRAM_BOT_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
