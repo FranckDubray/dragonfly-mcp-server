@@ -4,7 +4,7 @@
 
 # 🐉 Dragonfly MCP Server
 
-Serveur MCP multi‑outils, rapide et extensible, propulsé par FastAPI. 25 tools prêts à l'emploi, orchestrateur LLM avancé, panneau de contrôle web moderne.
+Serveur MCP multi‑outils, rapide et extensible, propulsé par FastAPI. 26 tools prêts à l'emploi, orchestrateur LLM avancé, panneau de contrôle web moderne.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB)
@@ -29,7 +29,7 @@ Par défaut: http://127.0.0.1:8000
 
 ---
 
-## 🧪 Outils inclus (25)
+## 🧪 Outils inclus (26)
 
 ### 🤖 Intelligence & Orchestration
 - **call_llm** — Orchestrateur LLM 2 phases avec streaming
@@ -49,6 +49,7 @@ Par défaut: http://127.0.0.1:8000
 - **sqlite_db** — SQLite avec chroot
 
 ### 📄 Documents
+- **office_to_pdf** 🆕 — Conversion Word/PowerPoint → PDF (Office natif)
 - **pdf_download** — Téléchargement PDF depuis URLs
 - **pdf_search** — Recherche dans PDFs
 - **pdf2text** — Extraction texte PDF
@@ -115,7 +116,7 @@ Toutes les variables : `.env.example`
 
 http://127.0.0.1:8000/control
 
-- ✅ Test des 25 tools
+- ✅ Test des 26 tools
 - ✅ Configuration live (hot-reload)
 - ✅ Search bar
 - ✅ Secrets masqués
