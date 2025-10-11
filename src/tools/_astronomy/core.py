@@ -83,8 +83,6 @@ def sun_moon_times_operation(params):
     eph = get_ephemeris()
     
     observer_loc = create_observer(latitude, longitude, elevation)
-    earth = eph['earth']
-    observer = earth + observer_loc
     
     # Create time range (24 hours)
     t0 = ts.utc(date.year, date.month, date.day, 0, 0, 0)
@@ -92,9 +90,9 @@ def sun_moon_times_operation(params):
     
     # Calculate sun rise/set
     from skyfield import almanac
-    sun = eph['sun']
     
-    f = almanac.sunrise_sunset(eph, observer)
+    # sunrise_sunset expects topos, not earth+topos
+    f = almanac.sunrise_sunset(eph, observer_loc)
     times, events = almanac.find_discrete(t0, t1, f)
     
     sun_rise = None
@@ -106,6 +104,8 @@ def sun_moon_times_operation(params):
             sun_set = format_time(t)
     
     # Calculate moon rise/set
+    earth = eph['earth']
+    observer = earth + observer_loc
     moon = eph['moon']
     
     # Find when moon is above horizon
