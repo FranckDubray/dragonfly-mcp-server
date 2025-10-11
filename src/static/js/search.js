@@ -1,48 +1,69 @@
 // =====================================================
-// search.js - Search and filter functionality
+// search.js - Search and filter functionality (with tags)
 // =====================================================
 
-// Initialize search functionality
+const TAGS = [
+  { key: 'external_sources', label: 'External knowledge' },
+  { key: 'knowledge', label: 'Knowledge' },
+  { key: 'social', label: 'Social' },
+  { key: 'scraping', label: 'Scraping' },
+  { key: 'docs', label: 'Docs' },
+  { key: 'search', label: 'Search' },
+  { key: 'api', label: 'API' },
+  { key: 'video', label: 'Video' },
+  { key: 'pdf', label: 'PDF' },
+];
+
+let activeTag = null;
+
 function initSearch() {
-    const searchInput = document.getElementById('searchInput');
-    
-    searchInput.addEventListener('input', (e) => {
-        const query = e.target.value.toLowerCase();
-        filterTools(query);
-    });
+  const searchInput = document.getElementById('searchInput');
+  searchInput.addEventListener('input', (e) => {
+    renderToolsList(e.target.value);
+  });
+
+  // Build tag bar
+  const tagBar = document.getElementById('tagBar');
+  tagBar.innerHTML = '';
+
+  // All tag
+  const allChip = document.createElement('div');
+  allChip.className = 'tag-chip active';
+  allChip.textContent = 'All';
+  allChip.onclick = () => {
+    activeTag = null;
+    document.querySelectorAll('.tag-chip').forEach(c => c.classList.remove('active'));
+    allChip.classList.add('active');
+    renderToolsList(document.getElementById('searchInput').value);
+  };
+  tagBar.appendChild(allChip);
+
+  TAGS.forEach(t => {
+    const chip = document.createElement('div');
+    chip.className = 'tag-chip';
+    chip.textContent = t.label;
+    chip.onclick = () => {
+      activeTag = t.key;
+      document.querySelectorAll('.tag-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      renderToolsList(document.getElementById('searchInput').value);
+    };
+    tagBar.appendChild(chip);
+  });
 }
 
-// Filter tools by search query
-function filterTools(query) {
-    // Get all category sections
-    const categorySections = document.querySelectorAll('.category-section');
-    
-    categorySections.forEach(section => {
-        const tools = section.querySelectorAll('.tool-item');
-        let visibleCount = 0;
-        
-        tools.forEach(item => {
-            const toolName = item.querySelector('.tool-name').textContent.toLowerCase();
-            
-            if (toolName.includes(query)) {
-                item.style.display = 'flex';
-                visibleCount++;
-            } else {
-                item.style.display = 'none';
-            }
-        });
-        
-        // Hide category if no visible tools
-        if (visibleCount === 0) {
-            section.style.display = 'none';
-        } else {
-            section.style.display = 'block';
-            
-            // Update count in category header
-            const countBadge = section.querySelector('.category-count');
-            if (countBadge) {
-                countBadge.textContent = visibleCount;
-            }
-        }
+// Inject tag filtering into render flow by wrapping groupToolsByCategory
+const _orig_group = groupToolsByCategory;
+function groupToolsByCategory(toolsList) {
+  let filtered = toolsList;
+  if (activeTag) {
+    filtered = toolsList.filter(t => {
+      try {
+        const spec = JSON.parse(t.json);
+        const tags = spec?.function?.tags || [];
+        return Array.isArray(tags) && tags.includes(activeTag);
+      } catch { return false; }
     });
+  }
+  return _orig_group(filtered);
 }

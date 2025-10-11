@@ -30,10 +30,12 @@ Guide technique pour développeurs LLM. Architecture, invariants, et checklist.
 - Arrays ont **toujours** `items`
 - Utiliser `additionalProperties: false` pour cadrage strict
 - **`category` obligatoire** : choisir parmi les 10 catégories canoniques ci‑dessous (clé exacte)
+- Optionnel: `tags` (ex: `external_sources`, `knowledge`, `social`, `scraping`, `docs`, `search`) pour un filtre UI fin (ne pas créer de nouvelles catégories)
 
 **Tools :**
 - Python ≥ 3.11
 - Fournir `run(**params) -> Any` et `spec() -> dict`
+- `spec()` doit charger le JSON canonique (src/tool_specs/<tool_name>.json). Ne pas dupliquer le schéma en Python.
 - Pas de side-effects à l'import
 
 **Sécurité :**
@@ -73,7 +75,7 @@ La valeur `function.category` de chaque tool DOIT être exactement l'une de ces 
 
 Notes:
 - Le champ `category` n'est pas exposé dans l'API `/tools` (uniquement utilisé par l'UI pour grouper). L’UI affiche "Social & Entertainment" pour la clé `entertainment`.
-- Ne créez pas de nouvelles clés de catégorie. Utilisez des tags (non canoniques) si un affinage est nécessaire côté UI.
+- Ne créez pas de nouvelles clés de catégorie. Utilisez des `tags` pour marquer les outils "bases de connaissance externes" (ex: `external_sources`).
 
 ---
 
@@ -98,17 +100,13 @@ src/tool_specs/
 ### Bootstrap minimal
 
 ```python
-from ._<tool_name>.api import route_operation
-from ._<tool_name> import spec as _spec
-
-def run(operation: str = None, **params):
-    op = (operation or params.get("operation") or "default").strip().lower()
-    if op == "some_op" and not params.get("required_param"):
-        return {"error": "Parameter 'required_param' is required"}
-    return route_operation(op, **params)
+import json, os
 
 def spec():
-    return _spec()
+    here = os.path.dirname(__file__)
+    spec_path = os.path.abspath(os.path.join(here, '..', 'tool_specs', '<tool_name>.json'))
+    with open(spec_path, 'r', encoding='utf-8') as f:
+        return json.load(f)
 ```
 
 ### Spec JSON (exemple)
@@ -120,6 +118,7 @@ def spec():
     "name": "<tool_name>",
     "displayName": "<Display Name>",
     "category": "intelligence",
+    "tags": ["external_sources"],
     "description": "Brief description",
     "parameters": {
       "type": "object",
@@ -135,14 +134,13 @@ def spec():
 }
 ```
 
-⚠️ OBLIGATOIRE : `category` ∈ {intelligence, development, communication, data, documents, media, transportation, networking, utilities, entertainment}.
-
 ---
 
 ## Checklist avant push
 
 - [ ] `parameters` = object, arrays ont `items`
 - [ ] `category` définie (une des 10 clés valides)
+- [ ] `tags` si utile (ex: `external_sources`, `knowledge`)
 - [ ] `limit` parameter pour opérations retournant listes
 - [ ] Truncation warnings si données tronquées
 - [ ] Error handling : try-catch global dans api.py
@@ -152,45 +150,3 @@ def spec():
 - [ ] Pas d'artefacts (`__pycache__/`, `*.pyc`, `sqlite3/`, `.dgy_backup/`)
 - [ ] Logs clairs, pas verbeux
 - [ ] Chroot respecté (fichiers, DB)
-
----
-
-## Tests rapides
-
-```bash
-# Date
-{"tool": "date", "params": {"operation": "today"}}
-
-# LLM avec tools
-{"tool": "call_llm", "params": {"message": "calc 23*19", "model": "gpt-4o", "tool_names": ["math"]}}
-
-# Script executor
-{"tool": "script_executor", "params": {"script": "print('hello'); result = 2+2"}}
-
-# Chess.com avec limit
-{"tool": "chess_com", "params": {"operation": "get_titled_players", "title": "GM", "limit": 10}}
-```
-
----
-
-## Safe JSON
-
-`sanitize_for_json()` + `SafeJSONResponse` (dans `app_factory.py`) :
-- Convertit très grands entiers en strings si `BIGINT_AS_STRING=1`
-- `NaN`/`Infinity`/`-Infinity` → strings
-- Ne pas contourner cette hygiène
-
----
-
-## Output Size Best Practices
-
-(identique à la version précédente — rappeler limit/pagination/aggregation)
-
----
-
-## Ressources
-
-- Tools simples : `date.py`, `sqlite_db.py`
-- Tools modulaires : `imap.py` + `_imap/`, `git.py` + `_git/`, `chess_com.py` + `_chess_com/`
-
-**Commits petits et explicites. Mettre à jour ce guide si changement d'invariants.**
