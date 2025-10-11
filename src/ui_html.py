@@ -108,21 +108,120 @@ CONTROL_HTML = '''<!DOCTYPE html>
         .tools-list { flex: 1; overflow-y: auto; padding: 8px 0; }
         
         /* Category section */
-        .category-section { margin-bottom: 8px; }
-        .category-header { padding: 10px 20px; font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px; background: var(--bg-sidebar); position: sticky; top: 0; z-index: 10; cursor: pointer; transition: background 0.2s; }
-        .category-header:hover { background: var(--bg-hover); }
-        .category-chevron { font-size: 10px; color: var(--text-secondary); transition: transform 0.2s; }
-        .category-emoji { font-size: 14px; }
-        .category-count { margin-left: auto; font-size: 11px; color: var(--text-secondary); font-weight: 600; background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; }
-        .category-tools { max-height: 1000px; overflow: hidden; transition: max-height 0.3s ease-out, opacity 0.3s ease-out; opacity: 1; }
-        .category-section.collapsed .category-tools { max-height: 0; opacity: 0; }
+        .category-section { 
+            margin-bottom: 12px; 
+            border-bottom: 2px solid var(--border);
+        }
         
-        .tool-item { padding: 12px 20px; cursor: pointer; border-left: 3px solid transparent; transition: all 0.2s; display: flex; align-items: center; gap: 10px; }
-        .tool-item:hover { background: var(--bg-hover); }
-        .tool-item.active { background: var(--bg-main); border-left-color: var(--primary); font-weight: 600; }
-        .tool-icon { font-size: 18px; width: 24px; text-align: center; }
-        .tool-name { flex: 1; font-size: 14px; }
-        .tool-badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--border); color: var(--text-secondary); }
+        .category-header { 
+            padding: 12px 20px; 
+            font-size: 13px; 
+            font-weight: 800; 
+            color: var(--text-primary); 
+            text-transform: uppercase; 
+            letter-spacing: 1px; 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+            background: linear-gradient(to right, #e2e8f0, #f8fafc);
+            position: sticky; 
+            top: 0; 
+            z-index: 10; 
+            cursor: pointer; 
+            transition: all 0.2s;
+            border-left: 4px solid var(--primary);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        
+        .category-header:hover { 
+            background: linear-gradient(to right, #cbd5e1, #f1f5f9);
+        }
+        
+        .category-chevron { 
+            font-size: 12px; 
+            color: var(--primary); 
+            transition: transform 0.2s;
+            font-weight: bold;
+        }
+        
+        .category-section.collapsed .category-chevron {
+            transform: rotate(-90deg);
+        }
+        
+        .category-emoji { 
+            font-size: 16px; 
+        }
+        
+        .category-count { 
+            margin-left: auto; 
+            font-size: 11px; 
+            color: white; 
+            font-weight: 700; 
+            background: var(--primary); 
+            padding: 3px 8px; 
+            border-radius: 12px;
+            box-shadow: 0 1px 2px rgba(37, 99, 235, 0.3);
+        }
+        
+        .category-tools { 
+            max-height: 1000px; 
+            overflow: hidden; 
+            transition: max-height 0.3s ease-out, opacity 0.3s ease-out; 
+            opacity: 1;
+            background: #ffffff;
+            padding: 4px 0;
+        }
+        
+        .category-section.collapsed .category-tools { 
+            max-height: 0; 
+            opacity: 0; 
+            padding: 0;
+        }
+        
+        .tool-item { 
+            padding: 10px 20px 10px 28px; 
+            cursor: pointer; 
+            border-left: 3px solid transparent; 
+            transition: all 0.2s; 
+            display: flex; 
+            align-items: center; 
+            gap: 10px;
+            margin: 2px 0;
+        }
+        
+        .tool-item:hover { 
+            background: var(--bg-hover); 
+            border-left-color: var(--primary);
+            padding-left: 32px;
+        }
+        
+        .tool-item.active { 
+            background: #eff6ff; 
+            border-left-color: var(--primary); 
+            font-weight: 600;
+            border-left-width: 4px;
+        }
+        
+        .tool-icon { 
+            font-size: 18px; 
+            width: 24px; 
+            text-align: center; 
+        }
+        
+        .tool-name { 
+            flex: 1; 
+            font-size: 13px;
+            color: var(--text-primary);
+        }
+        
+        .tool-badge { 
+            font-size: 9px; 
+            padding: 2px 6px; 
+            border-radius: 4px; 
+            background: #f1f5f9; 
+            color: var(--text-secondary);
+            font-family: 'Courier New', monospace;
+        }
         
         /* Zone principale */
         .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
