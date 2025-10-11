@@ -3,7 +3,7 @@
   "function": {
     "name": "velib",
     "displayName": "Vélib' Métropole",
-    "category": "infrastructure",
+    "category": "transportation",
     "description": "Gestionnaire de cache Vélib' Métropole (Paris). Rafraîchit les données statiques des stations (stockées en SQLite), récupère la disponibilité temps réel d'une station. IMPORTANT: Pour rechercher des stations (par nom, localisation, capacité, etc.), utilisez le tool sqlite_db avec db_name='velib'. La table 'stations' contient: station_code, station_id, name, lat, lon, capacity, station_opening_hours.",
     "parameters": {
       "type": "object",

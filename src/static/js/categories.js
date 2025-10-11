@@ -1,47 +1,50 @@
 // =====================================================
-// categories.js - Category definitions and grouping
+// categories.js - Canonical categories and grouping
 // =====================================================
 
-// Category metadata (order, emoji, label)
+// Canonical category metadata (order, emoji, label)
 const CATEGORIES = [
-    { key: 'intelligence', emoji: '🤖', label: 'Intelligence & AI' },
-    { key: 'development', emoji: '🔧', label: 'Development & Automation' },
-    { key: 'communication', emoji: '💬', label: 'Communication & Social' },
-    { key: 'data', emoji: '📊', label: 'Data & Documents' },
-    { key: 'media', emoji: '🎬', label: 'Media & Content' },
-    { key: 'infrastructure', emoji: '🌐', label: 'Infrastructure & Real-Time' }
+  { key: 'intelligence',   emoji: '📊', label: 'Intelligence & Orchestration' },
+  { key: 'development',    emoji: '🔧', label: 'Development' },
+  { key: 'communication',  emoji: '📧', label: 'Communication' },
+  { key: 'data',           emoji: '🗄️', label: 'Data & Storage' },
+  { key: 'documents',      emoji: '📄', label: 'Documents' },
+  { key: 'media',          emoji: '🎬', label: 'Media' },
+  { key: 'transportation', emoji: '✈️', label: 'Transportation' },
+  { key: 'networking',     emoji: '🌐', label: 'Networking' },
+  { key: 'utilities',      emoji: '🔢', label: 'Utilities' },
+  { key: 'entertainment',  emoji: '🎮', label: 'Social & Entertainment' },
 ];
 
-// Group tools by category
+// Build fast lookup set of valid keys
+const VALID_CATEGORY_KEYS = new Set(CATEGORIES.map(c => c.key));
+
+// Group tools by canonical category
 function groupToolsByCategory(tools) {
-    const grouped = {};
-    
-    // Initialize all categories
-    CATEGORIES.forEach(cat => {
-        grouped[cat.key] = [];
-    });
-    
-    // Assign tools to categories
-    tools.forEach(tool => {
-        try {
-            const spec = JSON.parse(tool.json);
-            const category = spec.function.category || 'infrastructure'; // fallback
-            
-            if (grouped[category]) {
-                grouped[category].push(tool);
-            } else {
-                console.warn(`Unknown category "${category}" for tool ${tool.name}`);
-                grouped['infrastructure'].push(tool);
-            }
-        } catch (e) {
-            console.error(`Failed to parse spec for tool ${tool.name}:`, e);
-        }
-    });
-    
-    return grouped;
+  const grouped = {};
+  // Initialize all categories empty
+  CATEGORIES.forEach(cat => { grouped[cat.key] = []; });
+
+  tools.forEach(tool => {
+    try {
+      const spec = JSON.parse(tool.json);
+      let category = (spec?.function?.category || '').trim();
+      if (!VALID_CATEGORY_KEYS.has(category)) {
+        // Fallback: bucket unknown into 'utilities' (never 'infrastructure')
+        category = 'utilities';
+      }
+      grouped[category].push(tool);
+    } catch (e) {
+      // If spec parse fails, bucket into utilities as a safe default
+      grouped['utilities'].push(tool);
+    }
+  });
+
+  // Return grouped object (each array can be sorted by caller)
+  return grouped;
 }
 
 // Get category metadata by key
 function getCategoryMeta(key) {
-    return CATEGORIES.find(c => c.key === key) || { key, emoji: '🔧', label: key };
+  return CATEGORIES.find(c => c.key === key) || { key, emoji: '🧰', label: key };
 }
