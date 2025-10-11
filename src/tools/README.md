@@ -1,3 +1,4 @@
+
 # Tools catalog (src/tools)
 
 This folder contains the MCP tools exposed by the server. Each tool MUST provide:
@@ -25,7 +26,7 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 - Keep modules small and single‑responsibility. Glue in __init__.py should be minimal (no business logic).
 - Security: any file access must be chrooted to the project (no absolute/parent paths). Validate user inputs strictly.
 
-## Available tools (28 complete)
+## Available tools (29 complete)
 
 ### 🤖 Intelligence & Orchestration
 
@@ -325,6 +326,75 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 - Sentiment analysis
 - Trending topics
 - Architecture: `_reddit/` (scraper, analyzer, parsers, utils)
+
+### ♟️ Chess
+
+#### **chess_com** ⭐🆕
+- **Complete Chess.com public API access** (no authentication required)
+- **24 operations** covering all public endpoints:
+
+**Players (9 ops)**:
+- `get_player_profile`: Public profile (title, rating, country, etc.)
+- `get_player_stats`: Statistics by game type (blitz, bullet, rapid, daily)
+- `get_player_games_current`: Ongoing games
+- `get_player_games_archives_list`: Available monthly archives
+- `get_player_games_archives`: Games from specific month
+- `get_player_clubs`: Clubs player is member of
+- `get_player_matches`: Team matches player participated in
+- `get_player_tournaments`: Current tournaments
+- `get_titled_players`: List by title (GM, IM, FM, etc.)
+
+**Clubs (3 ops)**:
+- `get_club_details`: Club information
+- `get_club_members`: Members list
+- `get_club_matches`: Team matches
+
+**Tournaments (3 ops)**:
+- `get_tournament_details`: Tournament info
+- `get_tournament_round`: Specific round details
+- `get_tournament_round_group`: Specific group in round
+
+**Countries (3 ops)**:
+- `get_country_details`: Country information
+- `get_country_players`: Players from country
+- `get_country_clubs`: Clubs from country
+
+**Matches (2 ops)**:
+- `get_match_details`: Team match details
+- `get_match_board`: Specific board from match
+
+**Leaderboards (1 op)**:
+- `get_leaderboards`: Global rankings by category
+
+**Puzzles (2 ops)**:
+- `get_daily_puzzle`: Daily puzzle
+- `get_random_puzzle`: Random puzzle
+
+**Streamers (1 op)**:
+- `get_streamers`: Live streamers list
+
+**Features**:
+- Rate limiting: 100ms delay between requests (configurable)
+- User-Agent: Required by Chess.com API (included)
+- Error handling: Detailed HTTP error messages
+- No authentication: All endpoints are public
+- Data formats: JSON-LD, PGN, FEN
+
+**Use cases**:
+- Player analysis and statistics
+- Game archives and analysis
+- Club management and monitoring
+- Tournament tracking
+- Leaderboard research
+- Training with puzzles
+- Live streaming discovery
+
+**Configuration** (optional):
+```bash
+CHESS_COM_RATE_LIMIT_DELAY=0.1  # Delay between requests (seconds)
+```
+
+Architecture: `_chess_com/` (api, core, validators, utils, services/chess_client)
 
 ---
 

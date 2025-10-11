@@ -4,7 +4,7 @@
 
 # 🐉 Dragonfly MCP Server
 
-Serveur MCP multi‑outils, rapide et extensible, propulsé par FastAPI. 28 tools prêts à l'emploi, orchestrateur LLM avancé, panneau de contrôle web moderne.
+Serveur MCP multi‑outils, rapide et extensible, propulsé par FastAPI. 29 tools prêts à l'emploi, orchestrateur LLM avancé, panneau de contrôle web moderne.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB)
@@ -29,7 +29,7 @@ Par défaut: http://127.0.0.1:8000
 
 ---
 
-## 🧪 Outils inclus (28)
+## 🧪 Outils inclus (29)
 
 ### 🤖 Intelligence & Orchestration
 - **call_llm** — Orchestrateur LLM 2 phases avec streaming
@@ -81,6 +81,9 @@ Par défaut: http://127.0.0.1:8000
 ### 🤖 IA Locale
 - **ollama_local** 🆕 — Interface Ollama local + recherche web
 
+### ♟️ Chess
+- **chess_com** ⭐🆕 — Chess.com API complète (joueurs, parties, clubs, tournois, classements, puzzles)
+
 > Détails complets : [src/tools/README.md](./src/tools/README.md)
 
 ---
@@ -110,6 +113,9 @@ AISSTREAM_API_KEY=your_key
 
 # Git
 GITHUB_TOKEN=ghp_xxxxx
+
+# Chess.com (optionnel)
+CHESS_COM_RATE_LIMIT_DELAY=0.1  # Délai entre requêtes (secondes)
 ```
 
 Toutes les variables : `.env.example`
@@ -120,7 +126,7 @@ Toutes les variables : `.env.example`
 
 http://127.0.0.1:8000/control
 
-- ✅ Test des 28 tools
+- ✅ Test des 29 tools
 - ✅ Configuration live (hot-reload)
 - ✅ Search bar
 - ✅ Secrets masqués

@@ -1,0 +1,113 @@
+{
+  "type": "function",
+  "function": {
+    "name": "chess_com",
+    "displayName": "Chess.com",
+    "description": "Access Chess.com public data API - player profiles, games, stats, clubs, tournaments, matches, countries, leaderboards, puzzles, streamers. Read-only access to public data. No authentication required.",
+    "parameters": {
+      "type": "object",
+      "required": ["operation"],
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": [
+            "get_player_profile",
+            "get_player_stats",
+            "get_player_games_current",
+            "get_player_games_archives_list",
+            "get_player_games_archives",
+            "get_player_clubs",
+            "get_player_matches",
+            "get_player_tournaments",
+            "get_titled_players",
+            "get_club_details",
+            "get_club_members",
+            "get_club_matches",
+            "get_tournament_details",
+            "get_tournament_round",
+            "get_tournament_round_group",
+            "get_country_details",
+            "get_country_players",
+            "get_country_clubs",
+            "get_match_details",
+            "get_match_board",
+            "get_leaderboards",
+            "get_daily_puzzle",
+            "get_random_puzzle",
+            "get_streamers"
+          ],
+          "description": "Operation to perform:\n- get_player_profile: Get player public profile\n- get_player_stats: Get player statistics by game type\n- get_player_games_current: Get player's ongoing games\n- get_player_games_archives_list: Get list of available monthly archives URLs\n- get_player_games_archives: Get player's games for specific month\n- get_player_clubs: Get clubs player is member of\n- get_player_matches: Get team matches player participated in\n- get_player_tournaments: Get tournaments player is currently in\n- get_titled_players: Get list of titled players (GM, IM, etc.)\n- get_club_details: Get club information\n- get_club_members: Get club members list\n- get_club_matches: Get club team matches\n- get_tournament_details: Get tournament details\n- get_tournament_round: Get specific round of tournament\n- get_tournament_round_group: Get specific group in tournament round\n- get_country_details: Get country information\n- get_country_players: Get players from country\n- get_country_clubs: Get clubs from country\n- get_match_details: Get team match details\n- get_match_board: Get specific board from team match\n- get_leaderboards: Get global leaderboards by category\n- get_daily_puzzle: Get daily puzzle\n- get_random_puzzle: Get random puzzle\n- get_streamers: Get list of live streamers"
+        },
+        "username": {
+          "type": "string",
+          "description": "Chess.com username (lowercase, alphanumeric + _ - .). Required for player operations."
+        },
+        "year": {
+          "type": "integer",
+          "description": "Year for game archives (2007-current). Required for get_player_games_archives.",
+          "minimum": 2007,
+          "maximum": 2030
+        },
+        "month": {
+          "type": "integer",
+          "description": "Month for game archives (1-12). Required for get_player_games_archives.",
+          "minimum": 1,
+          "maximum": 12
+        },
+        "title": {
+          "type": "string",
+          "enum": ["GM", "WGM", "IM", "WIM", "FM", "WFM", "NM", "WNM", "CM", "WCM"],
+          "description": "FIDE title for get_titled_players. GM=Grandmaster, WGM=Women's GM, IM=International Master, etc."
+        },
+        "club_id": {
+          "type": "string",
+          "description": "Chess.com club URL ID (from club URL). Required for club operations."
+        },
+        "tournament_id": {
+          "type": "string",
+          "description": "Chess.com tournament URL ID. Required for tournament operations."
+        },
+        "round": {
+          "type": "integer",
+          "description": "Tournament round number. Required for get_tournament_round and get_tournament_round_group.",
+          "minimum": 1
+        },
+        "group": {
+          "type": "integer",
+          "description": "Tournament round group number. Required for get_tournament_round_group.",
+          "minimum": 1
+        },
+        "country_iso": {
+          "type": "string",
+          "description": "ISO 3166-1 alpha-2 country code (e.g., 'US', 'FR', 'IN'). Required for country operations.",
+          "pattern": "^[A-Z]{2}$"
+        },
+        "match_id": {
+          "type": "string",
+          "description": "Team match ID. Required for match operations."
+        },
+        "board": {
+          "type": "integer",
+          "description": "Board number in team match. Required for get_match_board.",
+          "minimum": 1
+        },
+        "categories": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["daily", "daily960", "live_rapid", "live_blitz", "live_bullet", "live_bughouse", "live_blitz960", "live_threecheck", "live_crazyhouse", "live_kingofthehill"]
+          },
+          "description": "Leaderboard categories to return (for get_leaderboards). If not specified, returns all categories. Examples: ['live_blitz', 'live_bullet'], ['live_rapid']"
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Maximum number of results to return (default: 50, max: 500). For get_leaderboards: limit per category (default: 10, max: 50).",
+          "minimum": 1,
+          "maximum": 500,
+          "default": 50
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
