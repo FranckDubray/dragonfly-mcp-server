@@ -5,7 +5,7 @@
     "displayName": "Device Location",
     "category": "utilities",
     "tags": ["location", "gps", "network", "geo"],
-    "description": "Get GPS coordinates and location information for the current device. Tries system GPS/WiFi first (most accurate), falls back to IP geolocation. Returns latitude, longitude, accuracy, city, region, country, timezone, ISP, and more.",
+    "description": "Get GPS coordinates and location information for the current device based on network/IP geolocation. Returns latitude, longitude, city, region, country, timezone, ISP, and more.",
     "parameters": {
       "type": "object",
       "properties": {
@@ -17,7 +17,7 @@
         "provider": {
           "type": "string",
           "enum": ["ipapi", "ip-api"],
-          "description": "IP geolocation provider for fallback (default: ipapi). Only used if system location unavailable.",
+          "description": "Geolocation provider to use (default: ipapi). ipapi.co or ip-api.com",
           "default": "ipapi"
         }
       },
