@@ -4,6 +4,10 @@
 
 // Initialize application on DOM load
 document.addEventListener('DOMContentLoaded', () => {
+    // Hide tag bar completely (feature removed)
+    const tagsBox = document.querySelector('.tags-box');
+    if (tagsBox) tagsBox.style.display = 'none';
+
     // Load tools on start
     loadTools();
     
