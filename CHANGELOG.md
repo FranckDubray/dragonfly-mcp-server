@@ -24,10 +24,28 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Removed
-- Control panel (/control): removed non-working tag filters (chips). Tags are no longer displayed or used in the UI.
+- Control panel (/control): removed non-working tag filters (chips) and tag bar entirely
+  - Tags are no longer displayed, used, or loaded in the UI
+  - HTML markup for tags box removed from ui_html.py
+  - JavaScript tag filtering logic removed from search.js
+- Tool list sidebar: removed technical name badge for cleaner appearance
+  - Technical name still visible in detailed tool view header
 
 ### Changed
-- Simplified control panel search to text-only and hid the tag bar. No backend changes.
+- Control panel search simplified to text-only filtering
+  - Clean text search across tool names and categories
+  - No tag chips, no complex filtering UI
+- UI/UX improvements for category and tool distinction
+  - Category headers: bolder typography, gradient backgrounds, left border accent, shadow
+  - Tool items: white background, subtle indent, smooth hover animations
+  - Clear visual hierarchy: categories stand out, tools clearly nested
+- Complete design overhaul to match portal branding
+  - Primary color: green (#10b981) matching portal badges
+  - Header: gradient green background with Dragonfly emoji (🐉)
+  - Clean white/light gray color scheme (#fafafa, #ffffff)
+  - Soft shadows and subtle borders throughout
+  - Modern card-based layout with professional spacing
+  - Typography and transitions aligned with portal aesthetic
 
 ---
 
@@ -70,7 +88,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - README.md and src/tools/README.md updated to reflect the exact 10 canonical categories
-- LLM_DEV_GUIDE.md clarified: categories are mandatory, must be chosen from the 10 canonical keys; UI label for `entertainment` is “Social & Entertainment”
+- LLM_DEV_GUIDE.md clarified: categories are mandatory, must be chosen from the 10 canonical keys; UI label for `entertainment` is "Social & Entertainment"
 
 ---
 
