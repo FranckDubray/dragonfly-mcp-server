@@ -25,7 +25,7 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 - Keep modules small and single‑responsibility. Glue in __init__.py should be minimal (no business logic).
 - Security: any file access must be chrooted to the project (no absolute/parent paths). Validate user inputs strictly.
 
-## Available tools (23 complete)
+## Available tools (25 complete)
 
 ### 🤖 Intelligence & Orchestration
 
@@ -45,6 +45,15 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 - Runtime context management
 
 ### 📧 Communication & Collaboration
+
+#### **email_send** ⭐🆕
+- Send emails via SMTP (Gmail or Infomaniak)
+- **Reuses IMAP credentials**: `IMAP_<PROVIDER>_EMAIL`, `IMAP_<PROVIDER>_PASSWORD`
+- **SMTP servers hardcoded**: Gmail (smtp.gmail.com:587), Infomaniak (mail.infomaniak.com:587)
+- **2 operations**: send (send email), test_connection (test SMTP credentials)
+- **Features**: text/HTML body, CC/BCC, attachments (10 max, 25MB), reply-to, from_name, priority
+- **No extra dependencies**: smtplib is built-in Python
+- Architecture: `_email_send/` (api, core, validators, services/smtp_client)
 
 #### **imap** ⭐
 - Universal IMAP email access (Gmail, Outlook, Yahoo, iCloud, Infomaniak, custom servers)
@@ -124,10 +133,13 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
   - `search`: Find videos/channels/playlists by keyword with filters (order, type, region, safe search)
   - `get_video_details`: Get detailed info (title, description, views, likes, comments, duration, tags, thumbnails)
   - `get_trending`: Get trending videos by region and category
+- **Advanced filters**:
+  - `channel_id`: Filter to specific channel (get latest videos from channel)
+  - `order`: date (chronological), viewCount, relevance, rating, title
+  - `published_after` / `published_before`: Filter by date range (ISO 8601)
 - **Free API key**: 10,000 units/day (100 units per search = ~100 searches/day)
-- **Advanced filters**: order (relevance, viewCount, date, rating, title), search type (video, channel, playlist), region code, safe search
 - **Complete workflow**: youtube_search → youtube_download → video_transcribe
-- **Use cases**: Find content before downloading, research trending topics, get metadata without downloading
+- **Use cases**: Find content before downloading, research trending topics, get metadata without downloading, find latest videos from specific channel
 - Architecture: `_youtube_search/` (api, core, validators, services/youtube_api)
 
 #### **youtube_download** 🆕 ⚡
@@ -155,9 +167,10 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 - **Whisper API**: multipart/form-data upload with Bearer token
 - **Time-based segmentation**: `time_start`/`time_end` for large videos
 - **Configurable chunking**: `chunk_duration` (default 60s)
-- **Returns JSON**: segments with timestamps + full_text + metadata
+- **Returns JSON**: segments with timestamps + full_text + metadata + **timing**
+- **Timing metrics**: processing_time_seconds, processing_time_formatted, started_at, completed_at, average_time_per_second
 - **Operations**:
-  - `transcribe`: Extract audio + Whisper transcription
+  - `transcribe`: Extract audio + Whisper transcription (returns timing)
   - `get_info`: Video metadata (duration, audio codec)
 - **Security**: chroot to `docs/video/`, automatic cleanup of temp files
 - Architecture: `_video_transcribe/` (api, core, audio_extractor, whisper_client, validators, utils)
@@ -172,6 +185,18 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 - Architecture: `_ffmpeg/` (detect, native, utils)
 
 ### ✈️ Aviation & Transport
+
+#### **ship_tracker** ⭐
+- **Real-time vessel tracking** via AISStream.io WebSocket API
+- **3 operations**:
+  - `track_ships`: Find ships in geographic area with filters
+  - `get_ship_details`: Get detailed ship info by MMSI
+  - `get_port_traffic`: Monitor traffic near major ports
+- **Filters**: ship type, size, speed, navigation status
+- **Ports**: Rotterdam, Singapore, Le Havre, Hamburg, Marseille, etc.
+- **Timeout**: 3-60s (controls data collection duration)
+- **No authentication** required (free API with API key)
+- Architecture: `_ship_tracker/` (api, core, validators, utils, services/aisstream)
 
 #### **flight_tracker** ⭐
 - **Real-time aircraft tracking** via OpenSky Network API

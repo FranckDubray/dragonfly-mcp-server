@@ -2,6 +2,7 @@
 from __future__ import annotations
 import os
 import math
+import time
 from pathlib import Path
 from typing import Dict, Any, List
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -115,8 +116,12 @@ def handle_transcribe(
         chunk_duration: Internal chunk size in seconds (default: 60)
         
     Returns:
-        Dict with success, segments, full_text, metadata
+        Dict with success, full_text, metadata (segments excluded to reduce payload)
     """
+    # Start timing
+    start_time = time.time()
+    start_timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(start_time))
+    
     # 1. Validate path
     path_validation = validate_video_path(path)
     if not path_validation["valid"]:
@@ -222,14 +227,18 @@ def handle_transcribe(
     # 10. Assemble full text (only non-empty segments)
     full_text = " ".join(seg["text"] for seg in segments)
     
-    # 11. Return result
+    # 11. Calculate execution time
+    end_time = time.time()
+    end_timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(end_time))
+    processing_time = end_time - start_time
+    
+    # 12. Return result (WITHOUT segments to reduce payload size)
     return {
         "success": True,
         "video_path": path,
         "time_start": time_start,
         "time_end": actual_end,
         "duration_processed": duration_to_process,
-        "segments": segments,
         "full_text": full_text,
         "metadata": {
             "total_segments": len(segments),
@@ -239,5 +248,12 @@ def handle_transcribe(
             "chunk_duration": chunk_duration,
             "parallel_processing": True,
             "max_workers": max_workers
+        },
+        "timing": {
+            "processing_time_seconds": round(processing_time, 2),
+            "processing_time_formatted": format_time(processing_time),
+            "started_at": start_timestamp,
+            "completed_at": end_timestamp,
+            "average_time_per_second": round(processing_time / duration_to_process, 2) if duration_to_process > 0 else 0
         }
     }

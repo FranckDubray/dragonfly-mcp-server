@@ -33,13 +33,30 @@ def validate_search_params(params: Dict[str, Any]) -> Dict[str, Any]:
     if order not in valid_orders:
         raise ValueError(f"Parameter 'order' must be one of: {', '.join(valid_orders)}")
     
+    # Validate channel_id if provided
+    channel_id = params.get("channel_id", "").strip()
+    if channel_id and len(channel_id) < 10:
+        raise ValueError("Parameter 'channel_id' must be a valid YouTube channel ID (at least 10 characters)")
+    
+    # Validate published_after/published_before if provided (basic check)
+    published_after = params.get("published_after", "").strip()
+    if published_after and "T" not in published_after:
+        raise ValueError("Parameter 'published_after' must be in ISO 8601 format: 'YYYY-MM-DDTHH:MM:SSZ'")
+    
+    published_before = params.get("published_before", "").strip()
+    if published_before and "T" not in published_before:
+        raise ValueError("Parameter 'published_before' must be in ISO 8601 format: 'YYYY-MM-DDTHH:MM:SSZ'")
+    
     return {
         "query": query,
         "max_results": max_results,
         "type": search_type,
         "order": order,
         "region_code": params.get("region_code", "US"),
-        "safe_search": params.get("safe_search", "none")
+        "safe_search": params.get("safe_search", "none"),
+        "channel_id": channel_id if channel_id else None,
+        "published_after": published_after if published_after else None,
+        "published_before": published_before if published_before else None
     }
 
 
