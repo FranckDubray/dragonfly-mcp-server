@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.14.2] - 2025-10-11
+
+### Added
+- UI (/control) tag filters for external knowledge tools (chips): `external_sources`, `knowledge`, `social`, `scraping`, `docs`, `search`, `api`, `video`, `pdf`.
+- Tags in tool specs for external knowledge cluster:
+  - academic_research_super: [knowledge, research, external_sources]
+  - reddit_intelligence: [social, knowledge, scraping, external_sources]
+  - gitbook: [knowledge, docs, search]
+
+### Fixed
+- sqlite_db category explicitly set to `data`.
+- discord_webhook category consistently set to `communication` in JSON and Python spec_def.
+
+### Changed
+- LLM_DEV_GUIDE.md clarifies use of `tags` to mark external knowledge base tools while keeping the 10 canonical categories unchanged.
+- README updated: control panel UX notes and canonical categories fully reflected.
+
+---
+
 ## [1.14.1] - 2025-10-11
 
 ### Fixed
