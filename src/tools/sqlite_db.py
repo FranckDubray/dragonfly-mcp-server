@@ -1,4 +1,3 @@
-
 """
 SQLite3 Tool - Manage lightweight databases under a dedicated project folder.
 
@@ -40,15 +39,11 @@ _SPEC_DIR = Path(__file__).resolve().parent.parent / "tool_specs"
 _DB_NAME_RE = re.compile(r"^[A-Za-z0-9_-]+(\.db)?$")
 
 
-def _load_spec_override(name: str) -> Dict[str, Any] | None:
-    try:
-        p = _SPEC_DIR / f"{name}.json"
-        if p.is_file():
-            with open(p, "r", encoding="utf-8") as f:
-                return json.load(f)
-    except Exception:
-        pass
-    return None
+def _load_spec_json(name: str) -> Dict[str, Any]:
+    """Load and return the canonical JSON spec (source of truth)."""
+    p = _SPEC_DIR / f"{name}.json"
+    with open(p, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
 def _normalize_name(name: str) -> str:
@@ -254,39 +249,5 @@ def run(operation: str, **params) -> Dict[str, Any]:
 
 
 def spec() -> Dict[str, Any]:
-    base = {
-        "type": "function",
-        "function": {
-            "name": "sqlite3",
-            "displayName": "SQLite",
-            "description": "Gestion d'une base SQLite locale dans <projet>/sqlite3. Créer, lister, supprimer des DB et exécuter des requêtes SQL.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "operation": {
-                        "type": "string",
-                        "enum": [
-                            "ensure_dir", "list_dbs", "create_db", "delete_db",
-                            "get_tables", "describe", "execute", "exec", "query", "executescript"
-                        ],
-                        "description": "Type d'opération"
-                    }
-                },
-                "required": ["operation"],
-                "additionalProperties": False
-            }
-        }
-    }
-    
-    override = _load_spec_override("sqlite_db")
-    if override and isinstance(override, dict):
-        fn = base.get("function", {})
-        ofn = override.get("function", {})
-        if ofn.get("displayName"):
-            fn["displayName"] = ofn["displayName"]
-        if ofn.get("description"):
-            fn["description"] = ofn["description"]
-        if ofn.get("parameters"):
-            fn["parameters"] = ofn["parameters"]
-    return base
- 
+    # Load the canonical JSON spec (source of truth)
+    return _load_spec_json("sqlite_db")

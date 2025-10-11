@@ -32,15 +32,10 @@ MAX_RESULTS = 50  # Hard cap of returned detailed results
 _SPEC_DIR = Path(__file__).resolve().parent.parent / "tool_specs"
 
 
-def _load_spec_override(name: str) -> Dict[str, Any] | None:
-    try:
-        p = _SPEC_DIR / f"{name}.json"
-        if p.is_file():
-            with open(p, "r", encoding="utf-8") as f:
-                return json.load(f)
-    except Exception:
-        pass
-    return None
+def _load_spec_json(name: str) -> Dict[str, Any]:
+    p = _SPEC_DIR / f"{name}.json"
+    with open(p, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
 def _resolve_target(t: str) -> Path:
@@ -62,7 +57,6 @@ def _list_pdf_files(targets: Iterable[str], recursive: bool = True) -> List[Path
             else:
                 files.extend([q for q in p.glob("*.pdf") if q.is_file()])
         else:
-            # ignore non-existing entries silently
             continue
     # De-duplicate while preserving order
     seen = set()
@@ -143,7 +137,6 @@ def _find_all(text: str, query: str, *, regex: bool, case_sensitive: bool) -> Li
         try:
             pattern = re.compile(query, flags)
         except re.error:
-            # invalid regex -> no matches
             return matches
         for m in pattern.finditer(text):
             matches.append((m.start(), m.end(), m.group(0)))
@@ -159,7 +152,7 @@ def _find_all(text: str, query: str, *, regex: bool, case_sensitive: bool) -> Li
                 break
             end = pos + len(needle)
             matches.append((pos, end, text[pos:end]))
-            start = pos + 1  # allow overlaps
+            start = pos + 1
     return matches
 
 
@@ -189,7 +182,7 @@ def run(
     """
 
     if operation != "search":
-        return {"error": f"Unknown operation: {operation}. Use 'search'."}
+        return {"error": "Unknown operation: search"}
 
     if query is None or (isinstance(query, str) and query.strip() == ""):
         return {"error": "query is required"}
@@ -203,7 +196,6 @@ def run(
     if not target_list:
         return {"error": "path or paths is required"}
 
-    # dependency check
     if PdfReader is None:
         return {"error": "pypdf is not installed. Please add 'pypdf' to your dependencies and install."}
 
@@ -218,7 +210,6 @@ def run(
     total_matches = 0
     total_pages_scanned = 0
 
-    # Full scan for counting; only keep first MAX_RESULTS details
     for f in files:
         file_matches = 0
         pages_scanned_here = 0
@@ -243,7 +234,6 @@ def run(
             total_matches += mcount
             file_matches += mcount
 
-            # Keep only the first MAX_RESULTS detailed matches overall
             if len(results) < MAX_RESULTS and mcount:
                 for (s, e, mtxt) in matches:
                     if len(results) >= MAX_RESULTS:
@@ -251,7 +241,7 @@ def run(
                     snippet = _make_snippet(text, s, e, context)
                     results.append({
                         "file": str(f),
-                        "page": idx + 1,  # 1-based
+                        "page": idx + 1,
                         "start": s,
                         "end": e,
                         "match": mtxt,
@@ -290,32 +280,4 @@ def run(
 
 
 def spec() -> Dict[str, Any]:
-    base = {
-        "type": "function",
-        "function": {
-            "name": "pdf_search",
-            "displayName": "PDF Search",
-            "description": "Recherche de texte dans un ou plusieurs fichiers PDF (fichier ou dossier). Supporte regex, sensibilité à la casse, sélection de pages (string ou liste). Retourne le total des correspondances (sur toute la plage) et les 50 premières citations.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "operation": {"type": "string", "enum": ["search"]},
-                    "query": {"type": "string"}
-                },
-                "required": ["query"],
-                "additionalProperties": False
-            }
-        }
-    }
-    
-    override = _load_spec_override("pdf_search")
-    if override and isinstance(override, dict):
-        fn = base.get("function", {})
-        ofn = override.get("function", {})
-        if ofn.get("displayName"):
-            fn["displayName"] = ofn["displayName"]
-        if ofn.get("description"):
-            fn["description"] = ofn["description"]
-        if ofn.get("parameters"):
-            fn["parameters"] = ofn["parameters"]
-    return base
+    return _load_spec_json("pdf_search")
