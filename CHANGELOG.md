@@ -23,6 +23,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+---
+
+## [1.14.3] - 2025-10-11
+
 ### Added
 - **device_location** tool: Get GPS coordinates and location info for current device
   - IP-based geolocation (free, no API key required)
