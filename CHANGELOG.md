@@ -4,6 +4,37 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.13.0] - 2025-01-11
+
+### Added
+- **excel_to_sqlite** tool: Import Excel (.xlsx) data into SQLite databases
+  - **5 operations**: import_excel, preview, get_sheets, validate_mapping, get_info
+  - **Features**:
+    - Automatic schema detection and type mapping (INTEGER, REAL, TEXT, BLOB)
+    - Column name sanitization (SQL-safe)
+    - Batch processing (100-10000 rows per batch, default 1000)
+    - Manual column mapping support
+    - Type forcing for specific columns
+    - Skip rows and custom header row selection
+    - Three behaviors for existing tables: replace, append, fail
+  - **Chroot**: Excel files from project root, SQLite databases in `<project>/sqlite3/`
+  - **Dependencies**: pandas, openpyxl (Excel engine)
+  - **Preview mode**: Test import with type detection before actual insertion (max 100 rows)
+  - **Validation**: validate_mapping operation checks column compatibility before import
+  - Architecture: `_excel_to_sqlite/` (api, core, validators, excel_reader)
+
+### Changed
+- Tool count: 27 → **28 tools**
+
+### Use Cases
+- Import spreadsheet data into SQLite for querying with sqlite_db
+- ETL workflows: Excel → SQLite → analysis/transformation
+- Data migration from Excel to structured databases
+- Bulk data import with automatic schema inference
+- Validation workflows before actual data import
+
+---
+
 ## [1.12.0] - 2025-01-11
 
 ### Added

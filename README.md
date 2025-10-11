@@ -4,7 +4,7 @@
 
 # 🐉 Dragonfly MCP Server
 
-Serveur MCP multi‑outils, rapide et extensible, propulsé par FastAPI. 26 tools prêts à l'emploi, orchestrateur LLM avancé, panneau de contrôle web moderne.
+Serveur MCP multi‑outils, rapide et extensible, propulsé par FastAPI. 28 tools prêts à l'emploi, orchestrateur LLM avancé, panneau de contrôle web moderne.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB)
@@ -29,7 +29,7 @@ Par défaut: http://127.0.0.1:8000
 
 ---
 
-## 🧪 Outils inclus (26)
+## 🧪 Outils inclus (28)
 
 ### 🤖 Intelligence & Orchestration
 - **call_llm** — Orchestrateur LLM 2 phases avec streaming
@@ -46,6 +46,7 @@ Par défaut: http://127.0.0.1:8000
 - **gitbook** — GitBook discovery/search
 
 ### 🗄️ Bases de données
+- **excel_to_sqlite** 🆕 — Import Excel (.xlsx) → SQLite
 - **sqlite_db** — SQLite avec chroot
 
 ### 📄 Documents
@@ -76,6 +77,9 @@ Par défaut: http://127.0.0.1:8000
 
 ### 🌐 Social
 - **reddit_intelligence** — Reddit scraping/analysis
+
+### 🤖 IA Locale
+- **ollama_local** 🆕 — Interface Ollama local + recherche web
 
 > Détails complets : [src/tools/README.md](./src/tools/README.md)
 
@@ -116,7 +120,7 @@ Toutes les variables : `.env.example`
 
 http://127.0.0.1:8000/control
 
-- ✅ Test des 26 tools
+- ✅ Test des 28 tools
 - ✅ Configuration live (hot-reload)
 - ✅ Search bar
 - ✅ Secrets masqués
