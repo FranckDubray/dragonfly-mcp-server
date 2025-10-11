@@ -2,6 +2,14 @@
 Device Location Tool - Bootstrap module.
 Get GPS coordinates and location information for the current device.
 """
+import sys
+from pathlib import Path
+
+# Ensure tools directory is in path for imports
+tools_dir = Path(__file__).parent
+if str(tools_dir) not in sys.path:
+    sys.path.insert(0, str(tools_dir))
+
 from _device_location import spec as get_spec
 from _device_location.api import route_operation
 
