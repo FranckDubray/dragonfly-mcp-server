@@ -28,26 +28,27 @@ def format_price_data(data, vs_currency):
 
 
 def format_coin_info(data, vs_currency):
-    """Format comprehensive coin information"""
+    """Format comprehensive coin information - TRUNCATED for LLM"""
     market_data = data.get('market_data', {})
+    
+    # Get description and truncate to 300 chars max
+    description = data.get('description', {}).get('en', '')
+    if len(description) > 300:
+        description = description[:297] + '...'
     
     return {
         'id': data.get('id'),
         'symbol': data.get('symbol'),
         'name': data.get('name'),
-        'description': data.get('description', {}).get('en', '')[:500],  # Truncate description
-        'categories': data.get('categories', []),
+        'description': description,
+        'categories': data.get('categories', [])[:5],  # Limit to 5 categories
         'links': {
-            'homepage': data.get('links', {}).get('homepage', []),
-            'blockchain_site': data.get('links', {}).get('blockchain_site', [])[:3],
-            'repos_url': {
-                'github': data.get('links', {}).get('repos_url', {}).get('github', [])
-            }
+            'homepage': data.get('links', {}).get('homepage', [])[:1],  # Only first homepage
+            'blockchain_site': [s for s in data.get('links', {}).get('blockchain_site', []) if s][:2]  # Only 2 non-empty
         },
         'image': {
             'thumb': data.get('image', {}).get('thumb'),
-            'small': data.get('image', {}).get('small'),
-            'large': data.get('image', {}).get('large')
+            'small': data.get('image', {}).get('small')
         },
         'market_cap_rank': data.get('market_cap_rank'),
         'market_data': {
@@ -56,7 +57,6 @@ def format_coin_info(data, vs_currency):
             'total_volume': market_data.get('total_volume', {}).get(vs_currency),
             'high_24h': market_data.get('high_24h', {}).get(vs_currency),
             'low_24h': market_data.get('low_24h', {}).get(vs_currency),
-            'price_change_24h': market_data.get('price_change_24h'),
             'price_change_percentage_24h': market_data.get('price_change_percentage_24h'),
             'price_change_percentage_7d': market_data.get('price_change_percentage_7d'),
             'price_change_percentage_30d': market_data.get('price_change_percentage_30d'),
@@ -65,20 +65,12 @@ def format_coin_info(data, vs_currency):
             'max_supply': market_data.get('max_supply'),
             'ath': market_data.get('ath', {}).get(vs_currency),
             'ath_change_percentage': market_data.get('ath_change_percentage', {}).get(vs_currency),
-            'ath_date': market_data.get('ath_date', {}).get(vs_currency),
             'atl': market_data.get('atl', {}).get(vs_currency),
-            'atl_change_percentage': market_data.get('atl_change_percentage', {}).get(vs_currency),
-            'atl_date': market_data.get('atl_date', {}).get(vs_currency)
+            'atl_change_percentage': market_data.get('atl_change_percentage', {}).get(vs_currency)
         },
         'community_data': {
             'twitter_followers': data.get('community_data', {}).get('twitter_followers'),
             'reddit_subscribers': data.get('community_data', {}).get('reddit_subscribers')
-        },
-        'developer_data': {
-            'forks': data.get('developer_data', {}).get('forks'),
-            'stars': data.get('developer_data', {}).get('stars'),
-            'subscribers': data.get('developer_data', {}).get('subscribers'),
-            'total_issues': data.get('developer_data', {}).get('total_issues')
         },
         'last_updated': data.get('last_updated')
     }
