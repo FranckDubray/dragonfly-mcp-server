@@ -6,6 +6,21 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **astronomy** tool: Complete astronomy calculations using Skyfield (100% local, no API key)
+  - **8 operations**: planet_position, moon_phase, sun_moon_times, celestial_events, planet_info, visible_planets, iss_position (placeholder), star_position (placeholder)
+  - Planet positions (RA/Dec, Alt/Az) relative to observer coordinates
+  - Moon phases with illumination percentage
+  - Sunrise/sunset and moonrise/moonset times
+  - Celestial events calendar (moon phases, future: eclipses)
+  - Physical characteristics of solar system bodies (mass, diameter, distance, temperature, etc.)
+  - Tonight's visible planets with directions
+  - High precision NASA JPL ephemeris (de421.bsp covering 1900-2050)
+  - **100% local calculations** (no API calls, no rate limits, no authentication)
+  - Category: entertainment
+  - Tags: space, astronomy, science, educational, planets, stars
+  - Dependencies: skyfield>=1.48
+
 ---
 
 ## [1.15.1] - 2025-01-11
