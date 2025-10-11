@@ -44,7 +44,7 @@ def get_coin_info(params):
         'tickers': 'false',
         'market_data': 'true',
         'community_data': 'true',
-        'developer_data': 'true'
+        'developer_data': 'false'  # Explicitly exclude developer data
     }
     
     data = make_request(f'coins/{coin_id}', query_params)
@@ -76,8 +76,7 @@ def search_coins(params):
                 'name': coin.get('name'),
                 'symbol': coin.get('symbol'),
                 'market_cap_rank': coin.get('market_cap_rank'),
-                'thumb': coin.get('thumb'),
-                'large': coin.get('large')
+                'thumb': coin.get('thumb')
             }
             for coin in coins
         ],
@@ -88,7 +87,7 @@ def search_coins(params):
 
 
 def get_market_chart(params):
-    """Get historical market data (price, market cap, volume) - TRUNCATED"""
+    """Get historical market data - HEAVILY TRUNCATED for LLM (max 20 points)"""
     coin_id = params['coin_id']
     vs_currency = params['vs_currency']
     days = params['days']
@@ -101,22 +100,31 @@ def get_market_chart(params):
     data = make_request(f'coins/{coin_id}/market_chart', query_params)
     
     prices = data.get('prices', [])
-    market_caps = data.get('market_caps', [])
-    volumes = data.get('total_volumes', [])
-    
-    # CRITICAL: Limit data points to avoid overwhelming LLM
-    max_points = 100  # Maximum 100 data points
     total_points = len(prices)
     
-    # Sample data if too many points
+    # CRITICAL: Max 20 points to keep output < 5KB
+    max_points = 20
+    
+    # Calculate statistics from full dataset
+    if prices:
+        price_values = [p[1] for p in prices]
+        min_price = min(price_values)
+        max_price = max(price_values)
+        avg_price = sum(price_values) / len(price_values)
+        start_price = price_values[0]
+        end_price = price_values[-1]
+        change_percent = ((end_price - start_price) / start_price * 100) if start_price else 0
+    else:
+        min_price = max_price = avg_price = start_price = end_price = change_percent = 0
+    
+    # Sample data points
     if total_points > max_points:
         step = total_points // max_points
-        prices = prices[::step][:max_points]
-        market_caps = market_caps[::step][:max_points]
-        volumes = volumes[::step][:max_points]
+        prices_sample = prices[::step][:max_points]
         truncated = True
-        warning = f"Data sampled: showing {len(prices)} of {total_points} points (every {step}th point)"
+        warning = f"HEAVILY SAMPLED: showing {len(prices_sample)} of {total_points} points. Use statistics for analysis."
     else:
+        prices_sample = prices
         truncated = False
         warning = None
     
@@ -127,12 +135,21 @@ def get_market_chart(params):
         'vs_currency': vs_currency,
         'days': days,
         'total_data_points': total_points,
-        'returned_data_points': len(prices),
+        'returned_data_points': len(prices_sample),
         'truncated': truncated,
         'warning': warning,
-        'prices': [{'timestamp': p[0], 'price': p[1]} for p in prices],
-        'market_caps': [{'timestamp': m[0], 'market_cap': m[1]} for m in market_caps],
-        'volumes': [{'timestamp': v[0], 'volume': v[1]} for v in volumes]
+        # Statistics (preferred for LLM analysis)
+        'statistics': {
+            'start_price': start_price,
+            'end_price': end_price,
+            'min_price': min_price,
+            'max_price': max_price,
+            'avg_price': avg_price,
+            'change_percent': round(change_percent, 2),
+            'period_days': days
+        },
+        # Sampled data points (use statistics instead)
+        'sample_prices': [{'timestamp': p[0], 'price': p[1]} for p in prices_sample]
     }
 
 
@@ -167,13 +184,12 @@ def get_global_data(params):
     
     global_data = data.get('data', {})
     
-    # Limit market cap data to top 10 currencies
+    # Limit to major currencies only
     total_market_cap = global_data.get('total_market_cap', {})
     total_volume = global_data.get('total_volume', {})
     market_cap_percentage = global_data.get('market_cap_percentage', {})
     
-    # Keep only major currencies
-    major_currencies = ['usd', 'eur', 'gbp', 'jpy', 'btc', 'eth']
+    major_currencies = ['usd', 'eur', 'btc']
     
     return {
         'success': True,
@@ -183,7 +199,7 @@ def get_global_data(params):
             'markets': global_data.get('markets'),
             'total_market_cap': {k: v for k, v in total_market_cap.items() if k in major_currencies},
             'total_volume': {k: v for k, v in total_volume.items() if k in major_currencies},
-            'market_cap_percentage': market_cap_percentage,
+            'market_cap_percentage': dict(list(market_cap_percentage.items())[:5]),  # Top 5 only
             'market_cap_change_percentage_24h_usd': global_data.get('market_cap_change_percentage_24h_usd'),
             'updated_at': global_data.get('updated_at')
         }
@@ -237,10 +253,8 @@ def get_exchanges(params):
                 'name': ex.get('name'),
                 'year_established': ex.get('year_established'),
                 'country': ex.get('country'),
-                'url': ex.get('url'),
                 'trust_score': ex.get('trust_score'),
-                'trade_volume_24h_btc': ex.get('trade_volume_24h_btc'),
-                'trade_volume_24h_btc_normalized': ex.get('trade_volume_24h_btc_normalized')
+                'trade_volume_24h_btc': ex.get('trade_volume_24h_btc')
             }
             for ex in data
         ],
@@ -263,7 +277,7 @@ def get_coin_history(params):
     market_data = data.get('market_data', {})
     
     # Limit to major currencies only
-    major_currencies = ['usd', 'eur', 'gbp', 'jpy', 'btc']
+    major_currencies = ['usd', 'eur', 'btc']
     
     current_price = market_data.get('current_price', {})
     market_cap = market_data.get('market_cap', {})
