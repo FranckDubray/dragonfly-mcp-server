@@ -4,6 +4,39 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.12.0] - 2025-01-11
+
+### Added
+- **ollama_local** tool: Interface complète avec Ollama local + recherche web cloud
+  - **15 opérations** : list_models, get_version, get_running_models, show_model, pull_model, push_model, create_model, copy_model, delete_model, generate, chat, embeddings, web_search, chat_with_web
+  - **Architecture hybride** :
+    - **Local** (localhost:11434) : gestion modèles, chat contextuel, génération, embeddings (pas de token requis)
+    - **Cloud** (ollama.com) : recherche web enrichie via token OLLAMA_WEB_SEARCH_TOKEN
+    - **Hybride** : chat_with_web (recherche web → contexte local)
+  - **Fonctionnalités avancées** :
+    - Streaming supporté pour generate et chat
+    - Métriques enrichies : durées formatées, tailles GB, contexte tokens
+    - Validation stricte avec messages d'erreur explicites
+    - Client séparé pour local vs web search
+  - **Performance** : Formatage intelligent des tailles (16.2 GB), durées (8.9 s), contexte (65,536 tokens)
+  - Architecture modulaire : `_ollama_local/` (api, core, validators, utils, services/local_client, services/web_search_client)
+  - **Variable d'environnement** : Une seule variable `OLLAMA_WEB_SEARCH_TOKEN` (optionnelle)
+  - **Test complet** : 15 opérations testées et validées avec Ollama 0.12.5
+
+### Changed
+- Tool count: 26 → **27 tools**
+- .env.example: Ajouté OLLAMA_WEB_SEARCH_TOKEN avec instructions
+- src/tools/README.md: Documentation complète d'ollama_local avec exemples d'usage
+
+### Use Cases
+- **Développement local** : Chat avec modèles privés sans limite de tokens/quotas
+- **Recherche enrichie** : Combiner recherche web temps réel + modèles locaux
+- **Gestion de modèles** : Télécharger, copier, créer des modèles custom
+- **Embeddings** : Génération de vecteurs pour recherche sémantique
+- **Performance** : Streaming temps réel, métriques détaillées, optimisation mémoire
+
+---
+
 ## [1.11.0] - 2025-01-11
 
 ### Added
