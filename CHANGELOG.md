@@ -1,6 +1,33 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
+
+---
+
+## [Unreleased]
+
+### Removed
+- Control panel (/control): removed non-working tag filters (chips). Tags are no longer displayed or used in the UI.
+
+### Changed
+- Simplified control panel search to text-only and hid the tag bar. No backend changes.
 
 ---
 
@@ -54,3 +81,20 @@ All notable changes to this project will be documented in this file.
   - **24 operations** covering all public endpoints
   - ...
 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
