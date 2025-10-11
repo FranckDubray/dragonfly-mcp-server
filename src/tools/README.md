@@ -25,7 +25,7 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 - Keep modules small and single‑responsibility. Glue in __init__.py should be minimal (no business logic).
 - Security: any file access must be chrooted to the project (no absolute/parent paths). Validate user inputs strictly.
 
-## Available tools (26 complete)
+## Available tools (27 complete)
 
 ### 🤖 Intelligence & Orchestration
 
@@ -33,6 +33,16 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 - 2‑step LLM Orchestrator with tool‑calls then final text answer
 - Streaming support with usage cumulation across phases
 - Configuration: AI_PORTAL_TOKEN, LLM_ENDPOINT
+
+#### **ollama_local** ⭐🆕
+- Interface complète avec Ollama local (localhost:11434) + recherche web cloud
+- **15 opérations**: list_models, get_version, get_running_models, show_model, pull_model, push_model, create_model, copy_model, delete_model, generate, chat, embeddings, web_search, chat_with_web
+- **Local**: Gestion modèles, chat contextuel, génération, embeddings (pas de token requis)
+- **Cloud**: Recherche web enrichie via ollama.com/api/web_search (token: OLLAMA_WEB_SEARCH_TOKEN)
+- **Hybride**: chat_with_web (recherche web → contexte local)
+- **Streaming**: Support pour generate et chat
+- **Métriques**: Durées formatées, tailles GB, métadonnées enrichies
+- Architecture: `_ollama_local/` (api, core, validators, utils, services/local_client, services/web_search_client)
 
 #### **academic_research_super**
 - Complete research pipeline: aggregation, scraping, synthesis

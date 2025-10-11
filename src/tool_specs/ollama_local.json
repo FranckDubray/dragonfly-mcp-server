@@ -1,0 +1,101 @@
+{
+  "type": "function",
+  "function": {
+    "name": "ollama_local",
+    "displayName": "Ollama Local + Web Search",
+    "description": "Interface avec Ollama local (localhost:11434) + recherche web cloud. Gestion modèles, génération, chat, embeddings, recherche web.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": [
+            "list_models", "get_version", "get_running_models", "show_model",
+            "pull_model", "push_model", "create_model", "copy_model", "delete_model",
+            "generate", "chat", "embeddings", "web_search", "chat_with_web"
+          ],
+          "description": "Opération à effectuer"
+        },
+        "model": {
+          "type": "string", 
+          "description": "Nom du modèle (requis pour generate, chat, embeddings, show_model, pull_model, etc.)"
+        },
+        "prompt": {
+          "type": "string",
+          "description": "Prompt de génération (requis pour generate)"
+        },
+        "messages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": {"type": "string", "enum": ["system", "user", "assistant"]},
+              "content": {"type": "string"}
+            },
+            "required": ["role", "content"]
+          },
+          "description": "Messages pour chat (requis pour chat, chat_with_web)"
+        },
+        "text": {
+          "type": "string", 
+          "description": "Texte pour embeddings (requis pour embeddings)"
+        },
+        "query": {
+          "type": "string",
+          "description": "Requête de recherche web (requis pour web_search, chat_with_web)"
+        },
+        "stream": {
+          "type": "boolean",
+          "description": "Streaming pour generate/chat (défaut: false)",
+          "default": false
+        },
+        "temperature": {
+          "type": "number",
+          "description": "Créativité 0.0-2.0 (défaut: 0.7)",
+          "minimum": 0.0,
+          "maximum": 2.0,
+          "default": 0.7
+        },
+        "max_tokens": {
+          "type": "integer", 
+          "description": "Limite tokens (défaut: 4000)",
+          "minimum": 1,
+          "maximum": 50000,
+          "default": 4000
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Timeout secondes (défaut: 120)",
+          "minimum": 10,
+          "maximum": 600,
+          "default": 120
+        },
+        "web_search_max_results": {
+          "type": "integer",
+          "description": "Max résultats web search (défaut: 5)",
+          "minimum": 1, 
+          "maximum": 20,
+          "default": 5
+        },
+        "source_model": {
+          "type": "string",
+          "description": "Modèle source pour copy_model"
+        },
+        "destination_model": {
+          "type": "string", 
+          "description": "Modèle destination pour copy_model"
+        },
+        "modelfile": {
+          "type": "string",
+          "description": "Contenu Modelfile pour create_model"
+        },
+        "options": {
+          "type": "object",
+          "description": "Options avancées modèle (top_k, top_p, etc.)"
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}
