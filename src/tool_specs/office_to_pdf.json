@@ -3,6 +3,7 @@
   "function": {
     "name": "office_to_pdf",
     "displayName": "Office to PDF Converter",
+    "category": "documents",
     "description": "Convert Microsoft Office documents (Word, PowerPoint) to PDF using the Office suite installed on the laptop. Supports .docx, .doc, .pptx, .ppt. Uses docx2pdf library which leverages native Office apps (Word/PowerPoint via AppleScript on macOS or COM on Windows). Input from docs/office/, output to docs/pdfs/.",
     "parameters": {
       "type": "object",

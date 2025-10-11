@@ -3,6 +3,7 @@
   "function": {
     "name": "date",
     "displayName": "Date/Time",
+    "category": "utilities",
     "description": "Calculs de dates: jour de la semaine, différence entre 2 dates, maintenant/aujourd'hui, ajout de durées, formatage et parsing.",
     "parameters": {
       "type": "object",

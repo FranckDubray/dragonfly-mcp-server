@@ -3,6 +3,7 @@
   "function": {
     "name": "sqlite_db",
     "displayName": "SQLite Database",
+    "category": "data",
     "description": "Gestion d'une base SQLite locale dans <projet>/sqlite3. Créer, lister, supprimer des DB et exécuter des requêtes SQL.",
     "parameters": {
       "type": "object",

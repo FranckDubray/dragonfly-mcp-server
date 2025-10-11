@@ -3,7 +3,8 @@
   "function": {
     "name": "youtube_search",
     "displayName": "YouTube Search",
-    "description": "Search YouTube videos, channels, and playlists using YouTube Data API v3. Requires YOUTUBE_API_KEY in .env. Free quota: 10,000 units/day (100 units per search = ~100 searches/day). Get a free API key at: https://console.developers.google.com/",
+    "category": "media",
+    "description": "Rechercher vidéos, chaînes et playlists YouTube. Filtres : date, popularité, région, safe search.",
     "parameters": {
       "type": "object",
       "properties": {

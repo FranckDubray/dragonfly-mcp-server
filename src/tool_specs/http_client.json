@@ -3,6 +3,7 @@
   "function": {
     "name": "http_client",
     "displayName": "HTTP Client",
+    "category": "networking",
     "description": "Client HTTP/REST générique pour interagir avec n'importe quelle API. Supporte GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS avec authentification (Basic, Bearer, API Key), retry automatique, timeout, proxy, et parsing intelligent des réponses.",
     "parameters": {
       "type": "object",
@@ -68,15 +69,18 @@
           "type": "integer",
           "description": "Timeout en secondes (default: 30, min: 1, max: 600)",
           "minimum": 1,
-          "maximum": 600
+          "maximum": 600,
+          "default": 30
         },
         "follow_redirects": {
           "type": "boolean",
-          "description": "Suivre les redirections automatiquement (default: true)"
+          "description": "Suivre les redirections automatiquement (default: true)",
+          "default": true
         },
         "verify_ssl": {
           "type": "boolean",
-          "description": "Vérifier les certificats SSL (default: true)"
+          "description": "Vérifier les certificats SSL (default: true)",
+          "default": true
         },
         "proxy": {
           "type": "string",
@@ -86,22 +90,26 @@
           "type": "integer",
           "description": "Nombre de tentatives en cas d'échec (default: 0, max: 5)",
           "minimum": 0,
-          "maximum": 5
+          "maximum": 5,
+          "default": 0
         },
         "retry_delay": {
           "type": "number",
           "description": "Délai entre les tentatives en secondes (default: 1.0, exponential backoff)",
           "minimum": 0.1,
-          "maximum": 10.0
+          "maximum": 10.0,
+          "default": 1.0
         },
         "response_format": {
           "type": "string",
           "enum": ["auto", "json", "text", "raw"],
-          "description": "Format de la réponse (auto: détection automatique, json: parse JSON, text: string, raw: bytes)"
+          "description": "Format de la réponse (auto: détection automatique, json: parse JSON, text: string, raw: bytes)",
+          "default": "auto"
         },
         "save_response": {
           "type": "boolean",
-          "description": "Sauvegarder la réponse dans files/http_responses/ (default: false)"
+          "description": "Sauvegarder la réponse dans files/http_responses/ (default: false)",
+          "default": false
         }
       },
       "required": ["method", "url"],

@@ -3,6 +3,7 @@
   "function": {
     "name": "pdf2text",
     "displayName": "PDF to Text",
+    "category": "documents",
     "description": "Extraction de texte depuis un PDF pour des pages données. Entrée: path (string), pages (string optionnelle) — Sortie: texte concaténé et par page.",
     "parameters": {
       "type": "object",

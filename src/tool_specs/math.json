@@ -3,6 +3,7 @@
   "function": {
     "name": "math",
     "displayName": "Math",
+    "category": "utilities",
     "description": "Maths: arithmétique (précision arbitr.), expressions (SymPy), symbolique, complexes, probas (suppl.), algèbre linéaire (+ext), solveurs, calcul diff., stats, sommes.",
     "parameters": {
       "type": "object",

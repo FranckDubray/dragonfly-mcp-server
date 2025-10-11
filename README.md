@@ -6,7 +6,7 @@
 
 Serveur MCP multi‑outils, rapide et extensible, propulsé par FastAPI. 29 tools prêts à l'emploi, orchestrateur LLM avancé, panneau de contrôle web moderne.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+[![License: MIT](./LICENSE)](./LICENSE)
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB)
 ![FastAPI](https://img.shields.io/badge/FastAPI-%F0%9F%9A%80-009688)
 
@@ -29,60 +29,59 @@ Par défaut: http://127.0.0.1:8000
 
 ---
 
-## 🧪 Outils inclus (29)
+## 🧰 Outils inclus (29)
 
-### 🤖 Intelligence & Orchestration
-- **call_llm** — Orchestrateur LLM 2 phases avec streaming
-- **academic_research_super** — Recherche académique multi-sources
-- **script_executor** — Sandbox Python sécurisé
+Les outils sont groupés par 10 catégories canoniques (invariantes). L'UI affiche "Social & Entertainment" pour la clé `entertainment`.
 
-### 📧 Communication
-- **email_send** 🆕 — Envoi SMTP (Gmail/Infomaniak)
-- **imap** — Réception emails multi-comptes
-- **discord_webhook** — Publication Discord
+### 📊 Intelligence & Orchestration
+- call_llm — Orchestrateur LLM 2 phases avec streaming
+- academic_research_super — Recherche académique multi-sources
+- ollama_local — Interface Ollama local + recherche web
 
 ### 🔧 Développement
-- **git** — GitHub API + Git local
-- **gitbook** — GitBook discovery/search
+- git — GitHub API + Git local
+- gitbook — GitBook discovery/search
+- script_executor — Sandbox Python sécurisé
 
-### 🗄️ Bases de données
-- **excel_to_sqlite** 🆕 — Import Excel (.xlsx) → SQLite
-- **sqlite_db** — SQLite avec chroot
+### 📧 Communication
+- email_send — Envoi SMTP (Gmail/Infomaniak)
+- imap — Réception emails multi-comptes
+- discord_webhook — Publication Discord
+
+### 🗄️ Data & Storage
+- sqlite_db — SQLite avec chroot
+- excel_to_sqlite — Import Excel (.xlsx) → SQLite
 
 ### 📄 Documents
-- **office_to_pdf** 🆕 — Conversion Word/PowerPoint → PDF (Office natif)
-- **pdf_download** — Téléchargement PDF depuis URLs
-- **pdf_search** — Recherche dans PDFs
-- **pdf2text** — Extraction texte PDF
-- **universal_doc_scraper** — Scraping web
+- office_to_pdf — Conversion Office → PDF
+- pdf_download — Téléchargement PDF
+- pdf_search — Recherche PDF
+- pdf2text — PDF → texte
+- universal_doc_scraper — Scraping documentation
 
-### 🎬 Média
-- **youtube_search** 🆕 — Recherche YouTube API v3
-- **youtube_download** — Téléchargement YouTube
-- **video_transcribe** 🆕 — Transcription Whisper avec timing
-- **ffmpeg_frames** — Extraction frames vidéo
+### 🎬 Media
+- youtube_search — Recherche YouTube API v3
+- youtube_download — Téléchargement YouTube
+- video_transcribe — Transcription Whisper
+- ffmpeg_frames — Extraction de frames vidéo
+- generate_edit_image — Génération/édition d’images (Gemini)
 
-### ✈️ Transport
-- **ship_tracker** — Suivi navires temps réel (AIS)
-- **flight_tracker** — Suivi avions temps réel
-- **aviation_weather** — Météo aviation altitude
-- **velib** — Vélib' Paris temps réel
+### ✈️ Transportation
+- ship_tracker — Navires temps réel (AIS)
+- flight_tracker — Avions temps réel
+- aviation_weather — Météo en altitude
+- velib — Vélos Paris temps réel
 
 ### 🌐 Networking
-- **http_client** — Client HTTP/REST universel
+- http_client — Client HTTP/REST universel
 
-### 🔢 Calcul
-- **math** — Calcul avancé (numérique, symbolique, stats)
-- **date** — Manipulation dates
+### 🔢 Utilities
+- math — Calcul avancé (numérique/symbolique/stats)
+- date — Utilitaires date/heure
 
-### 🌐 Social
-- **reddit_intelligence** — Reddit scraping/analysis
-
-### 🤖 IA Locale
-- **ollama_local** 🆕 — Interface Ollama local + recherche web
-
-### ♟️ Chess
-- **chess_com** ⭐🆕 — Chess.com API complète (joueurs, parties, clubs, tournois, classements, puzzles)
+### 🎮 Social & Entertainment
+- chess_com — Chess.com API
+- reddit_intelligence — Reddit scraping/analysis
 
 > Détails complets : [src/tools/README.md](./src/tools/README.md)
 
@@ -91,7 +90,7 @@ Par défaut: http://127.0.0.1:8000
 ## ⚙️ Configuration
 
 ### Via le panneau web (recommandé)
-http://127.0.0.1:8000/control → **🔑 Configuration**
+http://127.0.0.1:8000/control → 🔐 Configuration
 
 ### Variables principales
 ```bash
@@ -115,30 +114,32 @@ AISSTREAM_API_KEY=your_key
 GITHUB_TOKEN=ghp_xxxxx
 
 # Chess.com (optionnel)
-CHESS_COM_RATE_LIMIT_DELAY=0.1  # Délai entre requêtes (secondes)
+CHESS_COM_RATE_LIMIT_DELAY=0.1
 ```
 
 Toutes les variables : `.env.example`
 
 ---
 
-## 🎨 Panneau de contrôle
+## 🎨 Panneau de contrôle (UX pro)
 
 http://127.0.0.1:8000/control
 
-- ✅ Test des 29 tools
-- ✅ Configuration live (hot-reload)
-- ✅ Search bar
-- ✅ Secrets masqués
+- ✅ Groupement clair par catégories avec compte et emoji
+- ✅ Badges: nom technique du tool, catégorie visible dans l’en-tête
+- ✅ Favoris (★/☆) avec persistance locale
+- ✅ Raccourcis clavier: `/` (focus recherche), `Ctrl/Cmd+Enter` (exécuter)
+- ✅ Reprise du dernier outil sélectionné
+- ✅ Configuration live (hot‑reload) avec secrets masqués
 
 ---
 
 ## 📚 Documentation
 
-- **Guide développeurs LLM** : [LLM_DEV_GUIDE.md](./LLM_DEV_GUIDE.md)
-- **Catalog tools** : [src/tools/README.md](./src/tools/README.md)
-- **Changelog** : [CHANGELOG.md](./CHANGELOG.md)
-- **API détails** : [src/README.md](./src/README.md)
+- Guide développeurs LLM : [LLM_DEV_GUIDE.md](./LLM_DEV_GUIDE.md)
+- Catalog tools : [src/tools/README.md](./src/tools/README.md)
+- Changelog : [CHANGELOG.md](./CHANGELOG.md)
+- API détails : [src/README.md](./src/README.md)
 
 ---
 
