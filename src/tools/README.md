@@ -25,7 +25,7 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 - Keep modules small and single‑responsibility. Glue in __init__.py should be minimal (no business logic).
 - Security: any file access must be chrooted to the project (no absolute/parent paths). Validate user inputs strictly.
 
-## Available tools (25 complete)
+## Available tools (26 complete)
 
 ### 🤖 Intelligence & Orchestration
 
@@ -99,6 +99,25 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 - Validated DB names
 
 ### 📄 Documents & PDF
+
+#### **office_to_pdf** 🆕⭐
+- **Convert Office documents to PDF** using native Office suite installed on laptop
+- **Formats supported**: Word (.docx, .doc), PowerPoint (.pptx, .ppt)
+- **Engine**: docx2pdf library leveraging native Office apps
+  - macOS: Microsoft Word/PowerPoint via AppleScript
+  - Windows: Microsoft Word/PowerPoint via COM automation
+- **Operations**:
+  - `convert`: Convert Office file to PDF
+  - `get_info`: Get file metadata without converting
+- **Features**:
+  - Input chroot: `docs/office/`
+  - Output chroot: `docs/pdfs/`
+  - Auto-generated output names
+  - Unique naming (_1, _2 if file exists)
+  - Overwrite option
+- **Dependencies**: docx2pdf (included in pyproject.toml)
+- **Test verified**: Successfully converted Word → PDF (90KB → 60KB)
+- Architecture: `_office_to_pdf/` (api, core, validators, utils, services/office_converter)
 
 #### **pdf_download** 🆕
 - **Download PDFs from URLs** to `docs/pdfs`
