@@ -4,6 +4,7 @@
     "name": "gitbook",
     "displayName": "GitBook",
     "category": "development",
+    "tags": ["knowledge", "docs", "search"],
     "description": "Recherche et exploration de documentation GitBook. Découverte automatique de pages, recherche globale sans connaître les URLs.",
     "parameters": {
       "type": "object",
