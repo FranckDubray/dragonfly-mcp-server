@@ -90,8 +90,8 @@ function renderToolsList() {
         
         section.appendChild(toolsContainer);
         
-        // Start expanded by default
-        // section.classList.add('collapsed'); // keep expanded for clarity
+        // Start collapsed by default
+        section.classList.add('collapsed');
         
         list.appendChild(section);
     });

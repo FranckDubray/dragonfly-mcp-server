@@ -125,7 +125,7 @@ Toutes les variables : `.env.example`
 
 http://127.0.0.1:8000/control
 
-- ✅ Groupement clair par catégories avec compte et emoji
+- ✅ Groupement clair par catégories avec compte et emoji (catégories fermées par défaut)
 - ✅ Badges: nom technique du tool, catégorie visible dans l’en-tête
 - ✅ Favoris (★/☆) avec persistance locale
 - ✅ Raccourcis clavier: `/` (focus recherche), `Ctrl/Cmd+Enter` (exécuter)
