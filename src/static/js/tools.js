@@ -48,17 +48,15 @@ function renderToolsList() {
         const header = document.createElement('div');
         header.className = 'category-header';
         header.innerHTML = `
-            <span class="category-chevron">▶</span>
             <span class="category-emoji">${categoryMeta.emoji}</span>
             <span>${categoryMeta.label}</span>
             <span class="category-count">${categoryTools.length}</span>
+            <span class="category-chevron">▾</span>
         `;
         
         // Toggle collapse on click
         header.addEventListener('click', () => {
             section.classList.toggle('collapsed');
-            const chevron = header.querySelector('.category-chevron');
-            chevron.textContent = section.classList.contains('collapsed') ? '▶' : '▼';
         });
         
         section.appendChild(header);
@@ -84,6 +82,7 @@ function renderToolsList() {
             item.innerHTML = `
                 <span class="tool-icon">${icon}</span>
                 <span class="tool-name">${tool.displayName || tool.name}</span>
+                <span class="tool-badge" title="${tool.name}">${tool.name}</span>
             `;
             
             toolsContainer.appendChild(item);
@@ -91,8 +90,8 @@ function renderToolsList() {
         
         section.appendChild(toolsContainer);
         
-        // Start collapsed by default
-        section.classList.add('collapsed');
+        // Start expanded by default
+        // section.classList.add('collapsed'); // keep expanded for clarity
         
         list.appendChild(section);
     });
@@ -104,7 +103,7 @@ function getToolIcon(toolName) {
         'call_llm': '🤖',
         'ollama_local': '🦙',
         'academic_research_super': '📚',
-        'git': '🐙',
+        'git': '🧬',
         'gitbook': '📖',
         'email_send': '📨',
         'imap': '📧',
@@ -115,12 +114,12 @@ function getToolIcon(toolName) {
         'pdf_download': '📥',
         'pdf_search': '🔍',
         'pdf2text': '📄',
-        'office_to_pdf': '📑',
+        'office_to_pdf': '📝',
         'universal_doc_scraper': '🕷️',
         'youtube_search': '🔎',
         'youtube_download': '📺',
         'video_transcribe': '🎥',
-        'ffmpeg_frames': '🎬',
+        'ffmpeg_frames': '🎞️',
         'flight_tracker': '✈️',
         'aviation_weather': '🌤️',
         'ship_tracker': '🚢',
@@ -129,9 +128,10 @@ function getToolIcon(toolName) {
         'math': '🔢',
         'date': '📅',
         'chess_com': '♟️',
-        'reddit_intelligence': '🔮'
+        'reddit_intelligence': '🎯',
+        'generate_edit_image': '🖼️'
     };
-    return icons[toolName] || '🔧';
+    return icons[toolName] || '🛠️';
 }
 
 // Select a tool
@@ -169,12 +169,15 @@ function renderToolView(tool) {
     
     const params = spec.function.parameters.properties || {};
     const required = spec.function.parameters.required || [];
+    const category = spec.function.category || '';
     
     let html = `
         <div class="tool-view">
             <div class="tool-header">
                 <h1 class="tool-title">
                     ${getToolIcon(tool.name)} ${tool.displayName || tool.name}
+                    <span class="tool-badge" style="margin-left:8px;">${(CATEGORY_META[category]?.emoji || '🧰')} ${(CATEGORY_META[category]?.label || category)}</span>
+                    <span class="tool-badge" title="Technical name" style="margin-left:6px; background:#eef2ff; color:#3730a3;">${tool.name}</span>
                 </h1>
                 <p class="tool-description">${tool.description}</p>
             </div>
