@@ -17,7 +17,8 @@ Examples:
      "ground_speed_kmh": 978, "heading": 127, "altitude_m": 11278}
 """
 from ._aviation_weather.api import route_operation
-from ._aviation_weather import spec as _spec
+import json, os
+
 
 def run(operation=None, latitude=None, longitude=None, altitude_m=None,
         ground_speed_kmh=None, heading=None, **params):
@@ -55,5 +56,8 @@ def run(operation=None, latitude=None, longitude=None, altitude_m=None,
     )
 
 def spec():
-    """Return tool specification."""
-    return _spec()
+    """Return tool specification (canonical JSON)."""
+    here = os.path.dirname(__file__)
+    path = os.path.abspath(os.path.join(here, '..', 'tool_specs', 'aviation_weather.json'))
+    with open(path, 'r', encoding='utf-8') as f:
+        return json.load(f)

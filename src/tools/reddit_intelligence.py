@@ -119,35 +119,21 @@ def run(operation: str, **params) -> Dict[str, Any]:
 def spec() -> Dict[str, Any]:
     """Return the MCP function specification for Reddit Intelligence"""
     
-    base = {
+    override = _load_spec_override("reddit_intelligence")
+    if override and isinstance(override, dict):
+        return override
+
+    # Fallback minimal, should not be used if JSON exists
+    return {
         "type": "function",
         "function": {
             "name": "reddit_intelligence",
             "displayName": "Reddit",
-            "description": "Advanced Reddit analysis tool. Search subreddits, analyze sentiment, find experts, track trends, get post comments. Discover insights from Reddit discussions and community activity.",
             "parameters": {
                 "type": "object",
-                "properties": {
-                    "operation": {
-                        "type": "string",
-                        "enum": ["search_subreddit", "get_comments", "analyze_sentiment", "find_trending", "find_experts", "multi_search"],
-                        "description": "Operation: search_subreddit (search posts in subreddit), get_comments (get post comments), analyze_sentiment (sentiment analysis of posts), find_trending (trending topics), find_experts (find expert users), multi_search (search across multiple subreddits)"
-                    }
-                },
+                "properties": {"operation": {"type": "string"}},
                 "required": ["operation"],
                 "additionalProperties": False
             }
         }
     }
-    
-    override = _load_spec_override("reddit_intelligence")
-    if override and isinstance(override, dict):
-        fn = base.get("function", {})
-        ofn = override.get("function", {})
-        if ofn.get("displayName"):
-            fn["displayName"] = ofn["displayName"]
-        if ofn.get("description"):
-            fn["description"] = ofn["description"]
-        if ofn.get("parameters"):
-            fn["parameters"] = ofn["parameters"]
-    return base

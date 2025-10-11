@@ -31,25 +31,9 @@ def run(operation: str = "run", **params) -> Dict[str, Any]:
 
 
 def spec() -> Dict[str, Any]:
-    # The authoritative spec is in tool_specs/call_llm.json; keep a minimal inline fallback
-    return {
-        "type": "function",
-        "function": {
-            "name": "call_llm",
-            "displayName": "LLM Orchestrator",
-            "description": "Appelle un modèle LLM en streaming et orchestre des tools MCP si fournis.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "message": {"type": "string"},
-                    "promptSystem": {"type": "string"},
-                    "model": {"type": "string"},
-                    "max_tokens": {"type": "integer"},
-                    "tool_names": {"type": "array", "items": {"type": "string"}},
-                    "debug": {"type": "boolean"}
-                },
-                "required": ["message", "model"],
-                "additionalProperties": False
-            }
-        }
-    }
+    # Load canonical JSON spec (source of truth)
+    import json, os
+    here = os.path.dirname(__file__)
+    spec_path = os.path.abspath(os.path.join(here, '..', 'tool_specs', 'call_llm.json'))
+    with open(spec_path, 'r', encoding='utf-8') as f:
+        return json.load(f)

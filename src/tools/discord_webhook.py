@@ -1,16 +1,15 @@
 """
 Thin facade for the 'discord_webhook' tool.
-- spec() delegates to _discord_webhook.spec_def.tool_spec
+- spec() loads canonical JSON spec (source of truth)
 - run(**params) delegates to _discord_webhook.ops_handlers.run_operation
 """
 from __future__ import annotations
 from typing import Any, Dict
+import os, json
 
 try:
-    from ._discord_webhook.spec_def import tool_spec  # type: ignore
     from ._discord_webhook.ops_handlers import run_operation  # type: ignore
 except Exception:
-    from src.tools._discord_webhook.spec_def import tool_spec  # type: ignore
     from src.tools._discord_webhook.ops_handlers import run_operation  # type: ignore
 
 
@@ -19,4 +18,7 @@ def run(**params) -> Any:
 
 
 def spec() -> Dict[str, Any]:
-    return tool_spec()
+    here = os.path.dirname(__file__)
+    spec_path = os.path.abspath(os.path.join(here, '..', 'tool_specs', 'discord_webhook.json'))
+    with open(spec_path, 'r', encoding='utf-8') as f:
+        return json.load(f)
