@@ -1,0 +1,28 @@
+{
+  "type": "function",
+  "function": {
+    "name": "device_location",
+    "displayName": "Device Location",
+    "category": "utilities",
+    "tags": ["location", "gps", "network", "geo"],
+    "description": "Get GPS coordinates and location information for the current device based on network/IP geolocation. Returns latitude, longitude, city, region, country, timezone, ISP, and more.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["get_location"],
+          "description": "Operation to perform: get_location (returns GPS coordinates and detailed location info)"
+        },
+        "provider": {
+          "type": "string",
+          "enum": ["ipapi", "ip-api"],
+          "description": "Geolocation provider to use (default: ipapi). ipapi.co or ip-api.com",
+          "default": "ipapi"
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}
