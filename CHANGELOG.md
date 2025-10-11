@@ -12,11 +12,13 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - **coingecko** tool: Output size optimization to respect LLM_DEV_GUIDE rules
-  - `get_market_chart`: Limit to max 100 data points (sample if >100), add truncation warning
+  - `get_market_chart`: Limit to max 20 data points (sample if >20), add statistics summary
+  - Added statistics: start/end/min/max/avg price + change_percent for efficient analysis
+  - LLM should use statistics instead of raw data points
   - `get_coin_info`: Remove developer_data, limit categories to 5, truncate description to 300 chars
   - `list_coins`: Add warning message when truncated
   - All operations now return `total_count` vs `returned_count` when applicable
-  - Prevents overwhelming LLMs with massive datasets (1000+ items)
+  - Target: Keep outputs under 5KB to prevent overwhelming LLMs
 
 ---
 
