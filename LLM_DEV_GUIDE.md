@@ -1,7 +1,6 @@
-
 # LLM DEV GUIDE — Dragonfly MCP Server
 
-Guide technique pour développeurs LLM. Architecture, invariants, et checklist.
+Guide technique pour développeurs LLM. Architecture, invariants, checklist, et politique d’archivage du changelog.
 
 ---
 
@@ -41,7 +40,7 @@ Guide technique pour développeurs LLM. Architecture, invariants, et checklist.
 **Sécurité :**
 - Chroot SQLite : `<projet>/sqlite3`
 - Git local : limité à racine projet
-- Script executor : sandbox stricte (pas d'imports)
+- Script executor : sandbox stricte (pas d'import dynamiques)
 - Pas d'accès disque hors chroot
 
 **Performance :**
@@ -76,6 +75,36 @@ La valeur `function.category` de chaque tool DOIT être exactement l'une de ces 
 Notes:
 - Le champ `category` n'est pas exposé dans l'API `/tools` (uniquement utilisé par l'UI pour grouper). L’UI affiche "Social & Entertainment" pour la clé `entertainment`.
 - Ne créez pas de nouvelles clés de catégorie. Utilisez des `tags` pour marquer les outils "bases de connaissance externes" (ex: `external_sources`).
+
+---
+
+## Politique d’archivage du CHANGELOG (rotation)
+
+Objectif: garder un CHANGELOG lisible à la racine tout en préservant l’historique complet.
+
+Règles:
+- Racine: `CHANGELOG.md` ne contient que les ≤ 10 dernières releases (les plus récentes).
+- Archives: créer un répertoire `changelogs/`.
+- Format d’archive: 1 fichier par tranche de 10 releases, en partant de la première.
+  - Exemples:
+    - `changelogs/CHANGELOG_1.0.0_to_1.9.x.md`
+    - `changelogs/CHANGELOG_1.10.0_to_1.19.x.md`
+- Contenu: l’archive doit contenir le TEXTE INTÉGRAL d’époque (pas de simplification, pas de résumés).
+- Le `CHANGELOG.md` racine inclut en tête la note: "Older entries have been archived under changelogs/ (range-based files)."
+
+Procédure (manuelle ou scriptée):
+1) Quand une nouvelle release dépasse la fenêtre de 10 versions récentes:
+   - Déplacer les plus anciennes entrées hors fenêtre vers le fichier d’archive de la tranche correspondante (créer le fichier si absent).
+   - Conserver à la racine uniquement les 10 plus récentes.
+2) Ne pas modifier le wording historique lors du déplacement.
+3) Commit standard: `docs(changelog): rotate changelog, archive versions X → Y`
+
+Option script (recommandé):
+- `scripts/archive_changelog.py` qui:
+  - Parse `CHANGELOG.md`
+  - Identifie les sections par version
+  - Déplace les versions hors fenêtre dans la bonne tranche d’archive
+  - Maintient la note d’archive en tête du fichier racine
 
 ---
 
