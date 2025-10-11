@@ -8,6 +8,35 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.18.0] - 2025-01-11
+
+### Added
+- **finnhub** tool: Complete stock market data via Finnhub API
+  - **10 operations**: get_quote, get_candles, search_symbol, get_company_profile, get_market_news, get_earnings, get_recommendation_trends, get_peers, get_forex_rates, get_crypto_candles
+  - Real-time stock quotes worldwide (US, Europe, Asia)
+  - Historical OHLCV data with customizable resolution (1min to monthly)
+  - Company profiles and fundamentals
+  - Market news by category (general, forex, crypto, merger)
+  - Earnings calendar with EPS and revenue estimates
+  - Analyst recommendation trends
+  - Company peers/competitors
+  - Forex exchange rates
+  - Crypto market data
+  - **Free tier**: 60 requests/minute (no monthly limit)
+  - **Worldwide coverage**: 170,000+ tickers across global exchanges
+  - **Output size optimization**: Smart truncation (max 100 candles), summary statistics, pagination info
+  - **Rate limiting**: Automatic 1s delay between requests to stay under 60/min
+  - Category: data
+  - Tags: finance, stocks, api, external_sources
+  - Architecture: `_finnhub/` (api, core, validators, utils, services/api_client)
+  - Requires: FINNHUB_API_KEY (free registration at https://finnhub.io/register)
+
+### Changed
+- README.md: Updated tool count to 38, added finnhub in Data & Storage section
+- .env.example: Added FINNHUB_API_KEY with instructions
+
+---
+
 ## [1.17.0] - 2025-01-11
 
 ### Added
