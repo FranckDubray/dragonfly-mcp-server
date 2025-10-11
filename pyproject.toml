@@ -30,6 +30,7 @@ dependencies = [
     "yt-dlp>=2023.10.0",
     "websocket-client>=1.6.0",
     "docx2pdf>=0.1.8",
+    "skyfield>=1.48",
 ]
 
 [project.optional-dependencies]

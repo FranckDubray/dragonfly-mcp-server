@@ -1,0 +1,3 @@
+"""
+Astronomy services package
+"""

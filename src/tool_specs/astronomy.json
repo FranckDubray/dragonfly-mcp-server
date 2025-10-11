@@ -1,0 +1,88 @@
+{
+  "type": "function",
+  "function": {
+    "name": "astronomy",
+    "displayName": "Astronomy & Space",
+    "category": "entertainment",
+    "tags": ["space", "astronomy", "science", "educational", "planets", "stars"],
+    "description": "Complete astronomy calculations using Skyfield (100% local, no API key required). Planet positions, moon phases, ephemeris, celestial events, ISS tracking, physical data of solar system bodies. High precision NASA JPL ephemeris data.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": [
+            "planet_position",
+            "moon_phase",
+            "sun_moon_times",
+            "celestial_events",
+            "planet_info",
+            "visible_planets",
+            "iss_position",
+            "star_position"
+          ],
+          "description": "Operation: planet_position (positions of planets/sun/moon), moon_phase (current lunar phase), sun_moon_times (rise/set times), celestial_events (eclipses/conjunctions), planet_info (physical characteristics), visible_planets (tonight's visible planets), iss_position (International Space Station), star_position (star coordinates)"
+        },
+        "body": {
+          "type": "string",
+          "enum": [
+            "sun",
+            "moon",
+            "mercury",
+            "venus",
+            "mars",
+            "jupiter",
+            "saturn",
+            "uranus",
+            "neptune",
+            "pluto"
+          ],
+          "description": "Celestial body for planet_position, planet_info operations"
+        },
+        "latitude": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90,
+          "description": "Observer latitude in degrees (e.g., 48.8566 for Paris)"
+        },
+        "longitude": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180,
+          "description": "Observer longitude in degrees (e.g., 2.3522 for Paris)"
+        },
+        "elevation": {
+          "type": "number",
+          "minimum": -500,
+          "maximum": 9000,
+          "default": 0,
+          "description": "Observer elevation in meters (default: 0 = sea level)"
+        },
+        "date": {
+          "type": "string",
+          "description": "Date/time for calculations (ISO 8601 format: YYYY-MM-DDTHH:MM:SS or YYYY-MM-DD). Default: now (UTC)"
+        },
+        "days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30,
+          "default": 7,
+          "description": "Number of days for celestial_events or visible_planets operations (default: 7, max: 30)"
+        },
+        "star_name": {
+          "type": "string",
+          "description": "Star name for star_position (e.g., 'Sirius', 'Betelgeuse', 'Vega', 'Polaris')"
+        },
+        "horizon": {
+          "type": "number",
+          "minimum": -18,
+          "maximum": 0,
+          "default": -6,
+          "description": "Horizon angle in degrees for twilight calculations (0=geometric, -6=civil, -12=nautical, -18=astronomical). Default: -6 (civil twilight)"
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}
