@@ -3,6 +3,20 @@ Utility functions for astronomy tool
 """
 
 import math
+import json
+
+
+def _to_python(obj):
+    """Convert numpy/Skyfield types to Python native types for JSON serialization"""
+    if hasattr(obj, 'item'):  # numpy types
+        return obj.item()
+    elif hasattr(obj, '__float__'):
+        return float(obj)
+    elif hasattr(obj, '__int__'):
+        return int(obj)
+    elif hasattr(obj, '__bool__'):
+        return bool(obj)
+    return obj
 
 
 def format_position(astrometric, observer_time):
@@ -24,35 +38,65 @@ def format_position(astrometric, observer_time):
     # Alt/Az (horizontal coordinates)
     alt, az, _ = apparent.altaz()
     
-    return {
+    # Build result dict with explicit type conversions
+    result = {
         'equatorial': {
             'right_ascension': {
-                'hours': round(ra.hours, 4),
-                'degrees': round(ra.degrees, 4),
-                'hms': ra.hstr()
+                'hours': float(ra.hours),
+                'degrees': float(ra.degrees),
+                'hms': str(ra.hstr())
             },
             'declination': {
-                'degrees': round(dec.degrees, 4),
-                'dms': dec.dstr()
+                'degrees': float(dec.degrees),
+                'dms': str(dec.dstr())
             }
         },
         'horizontal': {
             'altitude': {
-                'degrees': round(alt.degrees, 2),
-                'dms': alt.dstr()
+                'degrees': float(alt.degrees),
+                'dms': str(alt.dstr())
             },
             'azimuth': {
-                'degrees': round(az.degrees, 2),
-                'dms': az.dstr()
+                'degrees': float(az.degrees),
+                'dms': str(az.dstr())
             }
         },
         'distance': {
-            'au': round(distance.au, 6),
-            'km': round(distance.km, 0),
-            'light_minutes': round(distance.au * 8.317, 2)
+            'au': float(distance.au),
+            'km': float(distance.km),
+            'light_minutes': float(distance.au * 8.317)
         },
-        'is_visible': alt.degrees > 0
+        'is_visible': bool(float(alt.degrees) > 0)
     }
+    
+    # Force JSON serialization test to catch any remaining issues
+    try:
+        json.dumps(result)
+    except TypeError as e:
+        # If serialization fails, recursively convert all values
+        result = _deep_convert(result)
+    
+    return result
+
+
+def _deep_convert(obj):
+    """Recursively convert all non-serializable types"""
+    if isinstance(obj, dict):
+        return {k: _deep_convert(v) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return [_deep_convert(v) for v in obj]
+    elif hasattr(obj, 'item'):  # numpy
+        return obj.item()
+    elif hasattr(obj, '__float__'):
+        return float(obj)
+    elif hasattr(obj, '__int__'):
+        return int(obj)
+    elif hasattr(obj, '__bool__'):
+        return bool(obj)
+    elif isinstance(obj, (int, float, str, bool, type(None))):
+        return obj
+    else:
+        return str(obj)
 
 
 def format_time(skyfield_time):
@@ -71,6 +115,8 @@ def calculate_visibility(altitude_degrees):
     Returns:
         str: Visibility status
     """
+    altitude_degrees = float(altitude_degrees)  # Ensure Python float
+    
     if altitude_degrees < -18:
         return "Below horizon (not visible)"
     elif altitude_degrees < -12:
@@ -173,5 +219,5 @@ def degrees_to_cardinal(degrees):
     directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
                   'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW']
     
-    idx = round(degrees / 22.5) % 16
+    idx = round(float(degrees) / 22.5) % 16
     return directions[idx]
