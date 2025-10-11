@@ -1,10 +1,46 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 <div align="center">
 
 <img src="assets/LOGO_DRAGONFLY_HD.jpg" alt="Dragonfly logo" width="120" style="background:#ffffff; padding:6px; border-radius:8px;" />
 
 # 🐉 Dragonfly MCP Server
 
-Serveur MCP multi‑outils, rapide et extensible, propulsé par FastAPI. 29 tools prêts à l'emploi, orchestrateur LLM avancé, panneau de contrôle web moderne.
+Serveur MCP multi‑outils, rapide et extensible, propulsé par FastAPI. 30 tools prêts à l'emploi, orchestrateur LLM avancé, panneau de contrôle web moderne.
 
 [![License: MIT](./LICENSE)](./LICENSE)
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB)
@@ -29,7 +65,7 @@ Par défaut: http://127.0.0.1:8000
 
 ---
 
-## 🧰 Outils inclus (29)
+## 🧰 Outils inclus (30)
 
 Les outils sont groupés par 10 catégories canoniques (invariantes). L'UI affiche "Social & Entertainment" pour la clé `entertainment`.
 
@@ -64,7 +100,7 @@ Les outils sont groupés par 10 catégories canoniques (invariantes). L'UI affic
 - youtube_download — Téléchargement YouTube
 - video_transcribe — Transcription Whisper
 - ffmpeg_frames — Extraction de frames vidéo
-- generate_edit_image — Génération/édition d’images (Gemini)
+- generate_edit_image — Génération/édition d'images (Gemini)
 
 ### ✈️ Transportation
 - ship_tracker — Navires temps réel (AIS)
@@ -78,6 +114,7 @@ Les outils sont groupés par 10 catégories canoniques (invariantes). L'UI affic
 ### 🔢 Utilities
 - math — Calcul avancé (numérique/symbolique/stats)
 - date — Utilitaires date/heure
+- device_location — Localisation device (IP geolocation)
 
 ### 🎮 Social & Entertainment
 - chess_com — Chess.com API
@@ -126,11 +163,12 @@ Toutes les variables : `.env.example`
 http://127.0.0.1:8000/control
 
 - ✅ Groupement clair par catégories avec compte et emoji (catégories fermées par défaut)
-- ✅ Badges: nom technique du tool, catégorie visible dans l’en-tête
+- ✅ Badges: catégorie visible dans l'en-tête du tool détaillé
 - ✅ Favoris (★/☆) avec persistance locale
 - ✅ Raccourcis clavier: `/` (focus recherche), `Ctrl/Cmd+Enter` (exécuter)
 - ✅ Reprise du dernier outil sélectionné
 - ✅ Configuration live (hot‑reload) avec secrets masqués
+- ✅ Design aligné avec le portail (vert #10b981, moderne et épuré)
 
 ---
 
@@ -146,3 +184,39 @@ http://127.0.0.1:8000/control
 ## 📄 Licence
 
 MIT — voir [LICENSE](./LICENSE)
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
