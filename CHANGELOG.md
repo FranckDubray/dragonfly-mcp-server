@@ -128,3 +128,51 @@ All notable changes to this project will be documented in this file.
  
  
  
+
+
+## [1.15.0] - 2025-01-11
+
+### Added
+- **openweathermap** tool: Complete weather data access via OpenWeatherMap API
+  - **8 operations**: current_weather, forecast_5day, forecast_hourly, air_pollution, geocoding, reverse_geocoding, weather_alerts, onecall
+  - Current weather, 5-day forecast (3h intervals), hourly forecast (48h), air quality (AQI + pollutants)
+  - Geocoding/reverse geocoding, weather alerts, all-in-one OneCall API
+  - Free tier: 60 calls/min, no credit card required
+  - Requires: OPENWEATHERMAP_API_KEY
+  - Category: utilities
+  - Architecture: `_openweathermap/` (api, core, validators, utils, services/api_client)
+
+- **coingecko** tool: Complete cryptocurrency data via CoinGecko API
+  - **10 operations**: get_price, get_coin_info, search_coins, get_market_chart, get_trending, get_global_data, list_coins, get_exchanges, get_coin_history, compare_coins
+  - Real-time prices, market data, historical charts, trending coins, global crypto stats
+  - Exchange rankings, coin search, multi-coin comparison
+  - Free tier: 50 calls/min, **no API key required**
+  - Category: data
+  - Architecture: `_coingecko/` (api, core, validators, utils, services/api_client)
+
+- **google_maps** tool: Complete Google Maps API access
+  - **9 operations**: geocode, reverse_geocode, directions, distance_matrix, places_search, place_details, places_nearby, timezone, elevation
+  - Geocoding (address ↔ coordinates), directions (driving/walking/transit/bicycling)
+  - Distance matrix (multiple origins/destinations), places search/nearby/details
+  - Timezone, elevation data
+  - Free tier: $200 credit/month (~28,000 geocoding requests)
+  - Requires: GOOGLE_MAPS_API_KEY or **GOOGLE_API_KEY (fallback)**
+  - Category: utilities
+  - Architecture: `_google_maps/` (api, core, validators, utils, services/api_client with fallback token logic)
+
+- **telegram_bot** tool: Complete Telegram Bot API access
+  - **10 operations**: send_message, send_photo, send_document, send_location, send_video, get_updates, get_me, delete_message, edit_message, send_poll
+  - Send messages (text/Markdown/HTML), photos, documents, videos, locations
+  - Read updates (long polling), edit/delete messages, polls
+  - Free and unlimited
+  - Requires: TELEGRAM_BOT_TOKEN
+  - Category: communication
+  - Architecture: `_telegram_bot/` (api, core, validators, utils, services/api_client)
+
+### Changed
+- **Google API token fallback logic**: All Google services (YouTube, Google Maps) now support fallback to GOOGLE_API_KEY if specific key not set
+  - Priority: GOOGLE_MAPS_API_KEY (specific) → GOOGLE_API_KEY (generic fallback)
+  - Example: youtube_search uses YOUTUBE_API_KEY → GOOGLE_API_KEY
+  - Simplifies configuration for users with single Google API key
+
+---

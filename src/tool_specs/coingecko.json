@@ -1,0 +1,85 @@
+{
+  "type": "function",
+  "function": {
+    "name": "coingecko",
+    "displayName": "CoinGecko",
+    "category": "data",
+    "tags": ["crypto", "cryptocurrency", "prices", "market_data"],
+    "description": "Complete cryptocurrency data via CoinGecko API. Prices, market data, historical charts, trending coins, exchanges. Free tier: 50 calls/min, no API key required.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": [
+            "get_price",
+            "get_coin_info",
+            "search_coins",
+            "get_market_chart",
+            "get_trending",
+            "get_global_data",
+            "list_coins",
+            "get_exchanges",
+            "get_coin_history",
+            "compare_coins"
+          ],
+          "description": "Operation to perform"
+        },
+        "coin_id": {
+          "type": "string",
+          "description": "Coin ID (e.g., 'bitcoin', 'ethereum'). For get_price, get_coin_info, get_market_chart, get_coin_history. Use list_coins to find IDs."
+        },
+        "coin_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Array of coin IDs for compare_coins operation (max 10)"
+        },
+        "vs_currency": {
+          "type": "string",
+          "description": "Target currency (e.g., 'usd', 'eur', 'btc'). Default: usd",
+          "default": "usd"
+        },
+        "query": {
+          "type": "string",
+          "description": "Search query for search_coins operation (min 3 characters)"
+        },
+        "days": {
+          "type": "string",
+          "description": "Time range for market_chart: '1', '7', '14', '30', '90', '180', '365', 'max'. Default: 7",
+          "enum": ["1", "7", "14", "30", "90", "180", "365", "max"],
+          "default": "7"
+        },
+        "date": {
+          "type": "string",
+          "description": "Historical date for get_coin_history (format: DD-MM-YYYY, e.g., '30-12-2023')"
+        },
+        "include_market_cap": {
+          "type": "boolean",
+          "description": "Include market cap data in price queries. Default: true",
+          "default": true
+        },
+        "include_24hr_vol": {
+          "type": "boolean",
+          "description": "Include 24h volume data in price queries. Default: true",
+          "default": true
+        },
+        "include_24hr_change": {
+          "type": "boolean",
+          "description": "Include 24h change data in price queries. Default: true",
+          "default": true
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Max results for list operations. Default: 50, max: 250",
+          "minimum": 1,
+          "maximum": 250,
+          "default": 50
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}

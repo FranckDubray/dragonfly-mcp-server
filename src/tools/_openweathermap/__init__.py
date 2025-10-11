@@ -1,0 +1,3 @@
+"""
+OpenWeatherMap tool implementation
+"""

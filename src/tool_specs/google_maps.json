@@ -1,0 +1,132 @@
+{
+  "type": "function",
+  "function": {
+    "name": "google_maps",
+    "displayName": "Google Maps",
+    "category": "utilities",
+    "tags": ["maps", "geocoding", "directions", "places", "navigation"],
+    "description": "Complete Google Maps API access. Geocoding, directions, places search, distance matrix, timezone, elevation. Free tier: $200 credit/month. Uses GOOGLE_MAPS_API_KEY or GOOGLE_API_KEY (fallback).",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": [
+            "geocode",
+            "reverse_geocode",
+            "directions",
+            "distance_matrix",
+            "places_search",
+            "place_details",
+            "places_nearby",
+            "timezone",
+            "elevation"
+          ],
+          "description": "Operation to perform"
+        },
+        "address": {
+          "type": "string",
+          "description": "Address string for geocode operation (e.g., '1600 Amphitheatre Parkway, Mountain View, CA')"
+        },
+        "lat": {
+          "type": "number",
+          "description": "Latitude for operations using coordinates",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "lon": {
+          "type": "number",
+          "description": "Longitude for operations using coordinates",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "origin": {
+          "type": "string",
+          "description": "Origin address/coordinates for directions/distance_matrix (e.g., 'Paris, France' or '48.8566,2.3522')"
+        },
+        "destination": {
+          "type": "string",
+          "description": "Destination address/coordinates for directions/distance_matrix"
+        },
+        "origins": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Array of origin addresses/coordinates for distance_matrix (max 25)"
+        },
+        "destinations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Array of destination addresses/coordinates for distance_matrix (max 25)"
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["driving", "walking", "bicycling", "transit"],
+          "description": "Travel mode for directions. Default: driving",
+          "default": "driving"
+        },
+        "query": {
+          "type": "string",
+          "description": "Search query for places_search (e.g., 'restaurants near Eiffel Tower')"
+        },
+        "place_id": {
+          "type": "string",
+          "description": "Place ID for place_details operation"
+        },
+        "type": {
+          "type": "string",
+          "description": "Place type for places_nearby (e.g., 'restaurant', 'hotel', 'cafe', 'bar', 'museum'). See Google Places types."
+        },
+        "radius": {
+          "type": "integer",
+          "description": "Search radius in meters for places_nearby. Default: 1000, max: 50000",
+          "minimum": 1,
+          "maximum": 50000,
+          "default": 1000
+        },
+        "keyword": {
+          "type": "string",
+          "description": "Keyword filter for places_nearby (e.g., 'vegan', 'cheap', 'luxury')"
+        },
+        "alternatives": {
+          "type": "boolean",
+          "description": "Return alternative routes for directions. Default: false",
+          "default": false
+        },
+        "avoid": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["tolls", "highways", "ferries", "indoor"]
+          },
+          "description": "Route features to avoid for directions"
+        },
+        "departure_time": {
+          "type": "string",
+          "description": "Departure time for directions (ISO 8601 or 'now'). For transit/traffic predictions."
+        },
+        "arrival_time": {
+          "type": "string",
+          "description": "Arrival time for directions (ISO 8601). For transit mode only."
+        },
+        "language": {
+          "type": "string",
+          "description": "Language for results (e.g., 'en', 'fr', 'de'). Default: en",
+          "default": "en"
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Max results for search operations. Default: 20, max: 60",
+          "minimum": 1,
+          "maximum": 60,
+          "default": 20
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,4 +1,4 @@
-"""YouTube Data API v3 client."""
+"""YouTube Data API v3 client with fallback token logic."""
 
 import os
 import requests
@@ -11,11 +11,16 @@ class YouTubeAPIClient:
     BASE_URL = "https://www.googleapis.com/youtube/v3"
     
     def __init__(self):
-        """Initialize YouTube API client."""
+        """Initialize YouTube API client with token fallback."""
+        # Try specific key first
         self.api_key = os.getenv("YOUTUBE_API_KEY", "").strip()
         if not self.api_key:
+            # Fallback to generic Google key
+            self.api_key = os.getenv("GOOGLE_API_KEY", "").strip()
+        
+        if not self.api_key:
             raise ValueError(
-                "YOUTUBE_API_KEY not found in environment variables. "
+                "Missing Google API token. Set either YOUTUBE_API_KEY or GOOGLE_API_KEY in .env. "
                 "Get a free API key at: https://console.developers.google.com/"
             )
     

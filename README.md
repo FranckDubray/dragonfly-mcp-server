@@ -1,46 +1,10 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 <div align="center">
 
 <img src="assets/LOGO_DRAGONFLY_HD.jpg" alt="Dragonfly logo" width="120" style="background:#ffffff; padding:6px; border-radius:8px;" />
 
 # 🐉 Dragonfly MCP Server
 
-Serveur MCP multi‑outils, rapide et extensible, propulsé par FastAPI. 30 tools prêts à l'emploi, orchestrateur LLM avancé, panneau de contrôle web moderne.
+Serveur MCP multi‑outils, rapide et extensible, propulsé par FastAPI. **34 tools** prêts à l'emploi, orchestrateur LLM avancé, panneau de contrôle web moderne.
 
 [![License: MIT](./LICENSE)](./LICENSE)
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB)
@@ -65,7 +29,7 @@ Par défaut: http://127.0.0.1:8000
 
 ---
 
-## 🧰 Outils inclus (30)
+## 🧰 Outils inclus (34)
 
 Les outils sont groupés par 10 catégories canoniques (invariantes). L'UI affiche "Social & Entertainment" pour la clé `entertainment`.
 
@@ -83,10 +47,12 @@ Les outils sont groupés par 10 catégories canoniques (invariantes). L'UI affic
 - email_send — Envoi SMTP (Gmail/Infomaniak)
 - imap — Réception emails multi-comptes
 - discord_webhook — Publication Discord
+- **telegram_bot** 🆕 — Bot Telegram complet (messages, médias, polls)
 
 ### 🗄️ Data & Storage
 - sqlite_db — SQLite avec chroot
 - excel_to_sqlite — Import Excel (.xlsx) → SQLite
+- **coingecko** 🆕 — Données crypto (prix, market, trending)
 
 ### 📄 Documents
 - office_to_pdf — Conversion Office → PDF
@@ -115,6 +81,8 @@ Les outils sont groupés par 10 catégories canoniques (invariantes). L'UI affic
 - math — Calcul avancé (numérique/symbolique/stats)
 - date — Utilitaires date/heure
 - device_location — Localisation device (IP geolocation)
+- **openweathermap** 🆕 — Météo complète (actuelle, prévisions, qualité air)
+- **google_maps** 🆕 — Geocoding, directions, places, distance matrix
 
 ### 🎮 Social & Entertainment
 - chess_com — Chess.com API
@@ -141,8 +109,16 @@ IMAP_GMAIL_PASSWORD=app_password
 IMAP_INFOMANIAK_EMAIL=contact@domain.com
 IMAP_INFOMANIAK_PASSWORD=password
 
-# YouTube
-YOUTUBE_API_KEY=your_key
+# Google Services (YouTube, Maps) - fallback logique
+GOOGLE_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  # Fallback générique
+YOUTUBE_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  # Spécifique (prioritaire)
+GOOGLE_MAPS_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  # Spécifique (prioritaire)
+
+# Weather
+OPENWEATHERMAP_API_KEY=your_key
+
+# Communication
+TELEGRAM_BOT_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
 
 # Ship tracking
 AISSTREAM_API_KEY=your_key
@@ -153,6 +129,8 @@ GITHUB_TOKEN=ghp_xxxxx
 # Chess.com (optionnel)
 CHESS_COM_RATE_LIMIT_DELAY=0.1
 ```
+
+**Note**: Les tools Google (YouTube, Maps) supportent un fallback automatique vers `GOOGLE_API_KEY` si leur token spécifique n'est pas défini. Pratique si vous avez une seule clé Google API.
 
 Toutes les variables : `.env.example`
 
@@ -184,39 +162,3 @@ http://127.0.0.1:8000/control
 ## 📄 Licence
 
 MIT — voir [LICENSE](./LICENSE)
-
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
