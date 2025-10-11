@@ -1,6 +1,49 @@
+
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
+
+---
+
+## [1.14.0] - 2025-01-11
+
+### Added
+- **chess_com** tool: Complete Chess.com public API access (no authentication required)
+  - **24 operations** covering all public endpoints
+  - **Players (9 ops)**: get_player_profile, get_player_stats, get_player_games_current, get_player_games_archives_list, get_player_games_archives, get_player_clubs, get_player_matches, get_player_tournaments, get_titled_players
+  - **Clubs (3 ops)**: get_club_details, get_club_members, get_club_matches
+  - **Tournaments (3 ops)**: get_tournament_details, get_tournament_round, get_tournament_round_group
+  - **Countries (3 ops)**: get_country_details, get_country_players, get_country_clubs
+  - **Matches (2 ops)**: get_match_details, get_match_board
+  - **Leaderboards (1 op)**: get_leaderboards
+  - **Puzzles (2 ops)**: get_daily_puzzle, get_random_puzzle
+  - **Streamers (1 op)**: get_streamers
+  - **Features**:
+    - Rate limiting: 100ms delay between requests (configurable via CHESS_COM_RATE_LIMIT_DELAY)
+    - User-Agent: Required by Chess.com API (included)
+    - Error handling: Detailed HTTP error messages (404, 429, 500, etc.)
+    - No authentication: All endpoints are public
+    - Data formats: JSON-LD, PGN, FEN
+    - Reuses http_client tool for HTTP requests
+  - **Use cases**: Player analysis, game archives, club management, tournament tracking, leaderboard research, training with puzzles, live streaming discovery
+  - Architecture: `_chess_com/` (api, core, validators, utils, services/chess_client)
+  - **Configuration** (optional): `CHESS_COM_RATE_LIMIT_DELAY=0.1` (delay between requests in seconds)
+
+### Changed
+- Tool count: 28 → **29 tools**
+- README.md: Updated tool count and added chess_com to Chess section
+- src/tools/README.md: Added complete chess_com documentation with all 24 operations
+
+### Use Cases
+- **Player analysis**: Get profiles, stats, game history by month/year
+- **Club management**: Monitor members, matches, activity
+- **Tournament tracking**: Follow tournament progress, rounds, groups
+- **Leaderboards**: Research top players by category (blitz, bullet, rapid, etc.)
+- **Training**: Access daily/random puzzles for improvement
+- **Content discovery**: Find live streamers on Twitch/YouTube
+- **Country statistics**: Analyze players and clubs by country
+- **Team matches**: Track club vs club competitions
 
 ---
 
