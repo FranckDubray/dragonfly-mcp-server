@@ -64,6 +64,7 @@ def search_coins(params):
     data = make_request('search', {'query': query})
     
     coins = data.get('coins', [])[:params['limit']]
+    total = len(data.get('coins', []))
     
     return {
         'success': True,
@@ -80,13 +81,14 @@ def search_coins(params):
             }
             for coin in coins
         ],
-        'total_count': len(data.get('coins', [])),
-        'returned_count': len(coins)
+        'total_count': total,
+        'returned_count': len(coins),
+        'truncated': total > params['limit']
     }
 
 
 def get_market_chart(params):
-    """Get historical market data (price, market cap, volume)"""
+    """Get historical market data (price, market cap, volume) - TRUNCATED"""
     coin_id = params['coin_id']
     vs_currency = params['vs_currency']
     days = params['days']
@@ -102,13 +104,32 @@ def get_market_chart(params):
     market_caps = data.get('market_caps', [])
     volumes = data.get('total_volumes', [])
     
+    # CRITICAL: Limit data points to avoid overwhelming LLM
+    max_points = 100  # Maximum 100 data points
+    total_points = len(prices)
+    
+    # Sample data if too many points
+    if total_points > max_points:
+        step = total_points // max_points
+        prices = prices[::step][:max_points]
+        market_caps = market_caps[::step][:max_points]
+        volumes = volumes[::step][:max_points]
+        truncated = True
+        warning = f"Data sampled: showing {len(prices)} of {total_points} points (every {step}th point)"
+    else:
+        truncated = False
+        warning = None
+    
     return {
         'success': True,
         'operation': 'get_market_chart',
         'coin_id': coin_id,
         'vs_currency': vs_currency,
         'days': days,
-        'data_points': len(prices),
+        'total_data_points': total_points,
+        'returned_data_points': len(prices),
+        'truncated': truncated,
+        'warning': warning,
         'prices': [{'timestamp': p[0], 'price': p[1]} for p in prices],
         'market_caps': [{'timestamp': m[0], 'market_cap': m[1]} for m in market_caps],
         'volumes': [{'timestamp': v[0], 'volume': v[1]} for v in volumes]
@@ -146,15 +167,23 @@ def get_global_data(params):
     
     global_data = data.get('data', {})
     
+    # Limit market cap data to top 10 currencies
+    total_market_cap = global_data.get('total_market_cap', {})
+    total_volume = global_data.get('total_volume', {})
+    market_cap_percentage = global_data.get('market_cap_percentage', {})
+    
+    # Keep only major currencies
+    major_currencies = ['usd', 'eur', 'gbp', 'jpy', 'btc', 'eth']
+    
     return {
         'success': True,
         'operation': 'get_global_data',
         'data': {
             'active_cryptocurrencies': global_data.get('active_cryptocurrencies'),
             'markets': global_data.get('markets'),
-            'total_market_cap': global_data.get('total_market_cap', {}),
-            'total_volume': global_data.get('total_volume', {}),
-            'market_cap_percentage': global_data.get('market_cap_percentage', {}),
+            'total_market_cap': {k: v for k, v in total_market_cap.items() if k in major_currencies},
+            'total_volume': {k: v for k, v in total_volume.items() if k in major_currencies},
+            'market_cap_percentage': market_cap_percentage,
             'market_cap_change_percentage_24h_usd': global_data.get('market_cap_change_percentage_24h_usd'),
             'updated_at': global_data.get('updated_at')
         }
@@ -162,11 +191,12 @@ def get_global_data(params):
 
 
 def list_coins(params):
-    """List all coins with ID, name, symbol"""
+    """List all coins with ID, name, symbol - ALWAYS TRUNCATED"""
     limit = params['limit']
     
     data = make_request('coins/list')
     
+    total = len(data)
     coins = data[:limit]
     
     return {
@@ -180,9 +210,10 @@ def list_coins(params):
             }
             for coin in coins
         ],
-        'total_available': len(data),
+        'total_available': total,
         'returned_count': len(coins),
-        'truncated': len(data) > limit
+        'truncated': total > limit,
+        'warning': f"Showing {len(coins)} of {total} coins. Use search_coins for specific coins." if total > limit else None
     }
 
 
@@ -231,6 +262,13 @@ def get_coin_history(params):
     
     market_data = data.get('market_data', {})
     
+    # Limit to major currencies only
+    major_currencies = ['usd', 'eur', 'gbp', 'jpy', 'btc']
+    
+    current_price = market_data.get('current_price', {})
+    market_cap = market_data.get('market_cap', {})
+    total_volume = market_data.get('total_volume', {})
+    
     return {
         'success': True,
         'operation': 'get_coin_history',
@@ -239,9 +277,9 @@ def get_coin_history(params):
         'name': data.get('name'),
         'symbol': data.get('symbol'),
         'market_data': {
-            'current_price': market_data.get('current_price', {}),
-            'market_cap': market_data.get('market_cap', {}),
-            'total_volume': market_data.get('total_volume', {})
+            'current_price': {k: v for k, v in current_price.items() if k in major_currencies},
+            'market_cap': {k: v for k, v in market_cap.items() if k in major_currencies},
+            'total_volume': {k: v for k, v in total_volume.items() if k in major_currencies}
         }
     }
 
