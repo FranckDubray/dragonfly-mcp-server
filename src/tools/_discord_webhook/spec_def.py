@@ -7,6 +7,7 @@ def tool_spec() -> Dict[str, Any]:
         "function": {
             "name": "discord_webhook",
             "displayName": "Discord Webhook",
+            "category": "communication",
             "description": "Publie et gère des articles sous forme d'Embeds sur Discord via un webhook global (DISCORD_WEBHOOK_URL). Supporte create/update/upsert/delete/get/list avec persistance article_key → messages en SQLite. Découpe automatiquement le contenu long.",
             "parameters": {
                 "type": "object",
