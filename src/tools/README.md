@@ -1,4 +1,49 @@
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Tools catalog (src/tools)
 
 This folder contains the MCP tools exposed by the server. Each tool MUST provide:
@@ -26,7 +71,7 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 - Keep modules small and single‑responsibility. Glue in __init__.py should be minimal (no business logic).
 - Security: any file access must be chrooted to the project (no absolute/parent paths). Validate user inputs strictly.
 
-## Available tools (29 complete)
+## Available tools (30 complete)
 
 ### 🤖 Intelligence & Orchestration
 
@@ -170,6 +215,11 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 - Extract frames + shot detection
 - Per-frame debug, export images + timestamps
 
+#### **generate_edit_image** 🆕 ⭐
+- Generate and edit images using Gemini API
+- 3 operations: generate, edit, describe
+- Architecture: `_generate_edit_image/`
+
 ### ✈️ Aviation & Transport
 
 #### **ship_tracker** ⭐
@@ -197,6 +247,14 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 
 #### **date**
 - Date/time helpers: now, today, diff, add, format, parse, weekday, week_number
+
+#### **device_location** 🆕⭐
+- Get GPS coordinates and location info for current device
+- IP-based geolocation (free, no API key required)
+- Returns: latitude, longitude, city, region, country, timezone, ISP, ASN
+- 2 providers with automatic fallback: ipapi.co (default), ip-api.com
+- Accuracy: city/region level (~1-5 km radius)
+- Architecture: `_device_location/`
 
 ### 🌐 Networking & API
 
@@ -238,3 +296,48 @@ This folder contains the MCP tools exposed by the server. Each tool MUST provide
 ## Notes
 - Tests and examples are recommended but kept outside the repo's ignored data paths (e.g., not under docs/ unless explicitly whitelisted).
 - Do not commit user data or runtime outputs; use chrooted, ignored folders.
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

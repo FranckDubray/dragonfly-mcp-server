@@ -23,6 +23,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **device_location** tool: Get GPS coordinates and location info for current device
+  - IP-based geolocation (free, no API key required)
+  - Returns: latitude, longitude, city, region, country, timezone, ISP, ASN
+  - 2 providers with automatic fallback: ipapi.co (default), ip-api.com
+  - Accuracy: city/region level (~1-5 km radius)
+  - Category: utilities
+
 ### Removed
 - Control panel (/control): removed non-working tag filters (chips) and tag bar entirely
   - Tags are no longer displayed, used, or loaded in the UI
