@@ -1,0 +1,127 @@
+{
+  "type": "function",
+  "function": {
+    "name": "telegram_bot",
+    "displayName": "Telegram Bot",
+    "category": "communication",
+    "tags": ["telegram", "messaging", "bot", "notifications"],
+    "description": "Complete Telegram Bot API access. Send messages (text, photos, documents, videos, locations), read updates, edit/delete messages, polls. Free and unlimited. Requires TELEGRAM_BOT_TOKEN.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": [
+            "send_message",
+            "send_photo",
+            "send_document",
+            "send_location",
+            "send_video",
+            "get_updates",
+            "get_me",
+            "delete_message",
+            "edit_message",
+            "send_poll"
+          ],
+          "description": "Operation to perform"
+        },
+        "chat_id": {
+          "type": "string",
+          "description": "Chat ID (user ID, group ID, or channel username @channelname). Required for send/edit/delete operations. Use get_updates to find chat IDs."
+        },
+        "text": {
+          "type": "string",
+          "description": "Message text for send_message, edit_message. Max 4096 characters. Supports Markdown/HTML."
+        },
+        "parse_mode": {
+          "type": "string",
+          "enum": ["Markdown", "MarkdownV2", "HTML"],
+          "description": "Text formatting mode. Default: Markdown"
+        },
+        "photo": {
+          "type": "string",
+          "description": "Photo URL or file_id for send_photo"
+        },
+        "caption": {
+          "type": "string",
+          "description": "Caption for photo/video/document. Max 1024 characters."
+        },
+        "document": {
+          "type": "string",
+          "description": "Document URL or file_id for send_document"
+        },
+        "video": {
+          "type": "string",
+          "description": "Video URL or file_id for send_video"
+        },
+        "latitude": {
+          "type": "number",
+          "description": "Latitude for send_location",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "longitude": {
+          "type": "number",
+          "description": "Longitude for send_location",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "message_id": {
+          "type": "integer",
+          "description": "Message ID for edit_message, delete_message operations"
+        },
+        "question": {
+          "type": "string",
+          "description": "Poll question for send_poll. Max 300 characters."
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Poll options array for send_poll (2-10 options, each max 100 chars)"
+        },
+        "is_anonymous": {
+          "type": "boolean",
+          "description": "Poll anonymity for send_poll. Default: true",
+          "default": true
+        },
+        "allows_multiple_answers": {
+          "type": "boolean",
+          "description": "Allow multiple answers in poll. Default: false",
+          "default": false
+        },
+        "disable_notification": {
+          "type": "boolean",
+          "description": "Send message silently. Default: false",
+          "default": false
+        },
+        "reply_to_message_id": {
+          "type": "integer",
+          "description": "Message ID to reply to"
+        },
+        "offset": {
+          "type": "integer",
+          "description": "Update offset for get_updates. Use last update_id + 1 to acknowledge.",
+          "minimum": 0
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Max updates to retrieve for get_updates. Default: 20, max: 100",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 20
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Long polling timeout for get_updates (seconds). Default: 0 (short polling), max: 50",
+          "minimum": 0,
+          "maximum": 50,
+          "default": 0
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}
