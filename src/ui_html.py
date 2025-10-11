@@ -1,4 +1,24 @@
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 CONTROL_HTML = '''<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -83,13 +103,6 @@ CONTROL_HTML = '''<!DOCTYPE html>
         .search-box { padding: 12px 16px; border-bottom: 1px solid var(--border); }
         .search-input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; outline: none; transition: all 0.2s; }
         .search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
-        
-        /* Tags bar */
-        .tags-box { padding: 8px 16px; border-bottom: 1px solid var(--border); }
-        .tags-bar { display: flex; flex-wrap: wrap; gap: 8px; }
-        .tag-chip { padding: 6px 10px; border-radius: 999px; background: var(--chip-bg); color: var(--chip-text); font-size: 12px; cursor: pointer; user-select: none; }
-        .tag-chip.active { background: var(--chip-active-bg); font-weight: 700; }
-        .tag-chip .count { opacity: 0.7; margin-left: 4px; }
         
         /* Tools list */
         .tools-list { flex: 1; overflow-y: auto; padding: 8px 0; }
@@ -205,11 +218,7 @@ CONTROL_HTML = '''<!DOCTYPE html>
                 <input type="text" id="searchInput" class="search-input" placeholder="🔍 Search tools...">
             </div>
 
-            <div class="tags-box">
-                <div id="tagBar" class="tags-bar">
-                    <!-- Tag chips injected here -->
-                </div>
-            </div>
+            <!-- Tags box removed -->
             
             <div class="tools-list" id="toolsList">
                 <!-- Tools seront injectés ici par catégorie -->
@@ -263,3 +272,24 @@ CONTROL_HTML = '''<!DOCTYPE html>
     <script src="/static/js/main.js"></script>
 </body>
 </html>'''
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
