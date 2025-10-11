@@ -1,0 +1,62 @@
+{
+  "type": "function",
+  "function": {
+    "name": "trivia_api",
+    "displayName": "Trivia API",
+    "category": "entertainment",
+    "tags": ["quiz", "games", "educational", "trivia"],
+    "description": "Complete Open Trivia Database API access. Get trivia questions, manage categories, session tokens. 100% free, no API key required. Supports multiple choice and true/false questions across 24 categories.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": [
+            "get_questions",
+            "list_categories",
+            "get_category_count",
+            "get_global_count",
+            "create_session_token",
+            "reset_session_token"
+          ],
+          "description": "Operation to perform"
+        },
+        "amount": {
+          "type": "integer",
+          "description": "Number of questions to retrieve (get_questions only). Default: 10, min: 1, max: 50",
+          "minimum": 1,
+          "maximum": 50,
+          "default": 10
+        },
+        "category": {
+          "type": "integer",
+          "description": "Category ID for filtering questions (get_questions) or counting (get_category_count). Use list_categories to get IDs.",
+          "minimum": 9,
+          "maximum": 32
+        },
+        "difficulty": {
+          "type": "string",
+          "enum": ["easy", "medium", "hard"],
+          "description": "Filter questions by difficulty (get_questions only)"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["multiple", "boolean"],
+          "description": "Question type: 'multiple' for multiple choice, 'boolean' for true/false (get_questions only)"
+        },
+        "encode": {
+          "type": "string",
+          "enum": ["url3986", "urlLegacy", "base64"],
+          "default": "base64",
+          "description": "Text encoding type for questions/answers. Default: base64 (recommended for special characters)"
+        },
+        "token": {
+          "type": "string",
+          "description": "Session token to avoid duplicate questions (get_questions) or to reset (reset_session_token). Create with create_session_token."
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}

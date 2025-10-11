@@ -8,6 +8,27 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.17.0] - 2025-01-11
+
+### Added
+- **trivia_api** tool: Complete Open Trivia Database API access
+  - **6 operations**: get_questions, list_categories, get_category_count, get_global_count, create_session_token, reset_session_token
+  - Get trivia questions with filters (amount, category, difficulty, type)
+  - 24 categories available (General Knowledge, Science, History, Sports, Entertainment, etc.)
+  - Multiple choice and true/false questions
+  - Session token management to avoid duplicate questions
+  - **100% FREE**: No API key required, unlimited access
+  - Automatic rate limit handling (5s retry on 429)
+  - Multiple encoding support (base64, url3986, urlLegacy) with automatic decoding
+  - HTML entity decoding for special characters
+  - Shuffled answers with correct answer index for quiz applications
+  - Category question counts by difficulty level
+  - Category: entertainment
+  - Tags: quiz, games, educational, trivia
+  - Architecture: `_trivia_api/` (api, core, validators, utils, services/api_client)
+
+---
+
 ## [1.16.0] - 2025-01-11
 
 ### Added
