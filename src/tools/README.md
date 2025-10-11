@@ -229,13 +229,13 @@ Localisation device par IP (géolocalisation).
 - **Token**: aucun (gratuit)
 - **Catégorie**: utilities
 
-### openweathermap 🆕
-Météo complète (actuelle, prévisions, qualité air).
-- **Opérations**: current_weather, forecast_5day, forecast_hourly, air_pollution, geocoding, reverse_geocoding, weather_alerts, onecall
-- **Token**: OPENWEATHERMAP_API_KEY
-- **Gratuit**: 60 calls/min
+### open_meteo 🆕
+Météo complète (100% gratuit, open source).
+- **Opérations**: current_weather, forecast_hourly, forecast_daily, air_quality, geocoding, reverse_geocoding
+- **Token**: aucun (100% gratuit)
+- **Gratuit**: illimité pour usage non-commercial
 - **Catégorie**: utilities
-- **Tags**: weather, forecast, air_quality, geocoding
+- **Tags**: weather, forecast, air_quality, free
 
 ### google_maps 🆕
 Google Maps complet (geocoding, directions, places).
@@ -267,9 +267,9 @@ Reddit scraping et analyse.
 ## 📊 Statistiques
 
 - **Total tools**: 34
-- **Gratuits (pas de token)**: 18
-- **Tokens requis**: 16
-- **Nouveaux (v1.15.0)**: 4 (openweathermap, coingecko, google_maps, telegram_bot)
+- **Gratuits (pas de token)**: 19
+- **Tokens requis**: 15
+- **Nouveaux (v1.15.0)**: 4 (open_meteo, coingecko, google_maps, telegram_bot)
 
 ---
 
@@ -284,7 +284,6 @@ Reddit scraping et analyse.
 | TELEGRAM_BOT_TOKEN | telegram_bot | Gratuit ✅ |
 | YOUTUBE_API_KEY (ou GOOGLE_API_KEY) | youtube_search | Gratuit ✅ |
 | GOOGLE_MAPS_API_KEY (ou GOOGLE_API_KEY) | google_maps | $200 crédit/mois ✅ |
-| OPENWEATHERMAP_API_KEY | openweathermap | Gratuit ✅ |
 | AISSTREAM_API_KEY | ship_tracker | Gratuit |
 | AVIATIONSTACK_API_KEY | flight_tracker | Freemium |
 
@@ -293,7 +292,7 @@ Reddit scraping et analyse.
 ## 🆕 Dernières additions
 
 ### v1.15.0 (11/01/2025)
-- **openweathermap** (utilities) — Météo complète
+- **open_meteo** (utilities) — Météo complète 100% gratuite
 - **coingecko** (data) — Crypto données
 - **google_maps** (utilities) — Maps complet
 - **telegram_bot** (communication) — Bot Telegram

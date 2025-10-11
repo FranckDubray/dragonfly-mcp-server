@@ -1,0 +1,101 @@
+{
+  "type": "function",
+  "function": {
+    "name": "open_meteo",
+    "displayName": "Open-Meteo",
+    "category": "utilities",
+    "tags": ["weather", "forecast", "air_quality", "free"],
+    "description": "Complete weather data via Open-Meteo API (open source). Current weather, hourly/daily forecasts, air quality, geocoding. 100% free, no API key required, unlimited for non-commercial use.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": [
+            "current_weather",
+            "forecast_hourly",
+            "forecast_daily",
+            "air_quality",
+            "geocoding",
+            "reverse_geocoding"
+          ],
+          "description": "Operation to perform"
+        },
+        "location": {
+          "type": "string",
+          "description": "Location name for geocoding operation (e.g., 'Paris', 'New York', 'Tokyo')"
+        },
+        "lat": {
+          "type": "number",
+          "description": "Latitude (-90 to 90). Required for weather/air quality operations",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "lon": {
+          "type": "number",
+          "description": "Longitude (-180 to 180). Required for weather/air quality operations",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "temperature_unit": {
+          "type": "string",
+          "enum": ["celsius", "fahrenheit"],
+          "description": "Temperature unit. Default: celsius",
+          "default": "celsius"
+        },
+        "wind_speed_unit": {
+          "type": "string",
+          "enum": ["kmh", "ms", "mph", "kn"],
+          "description": "Wind speed unit (kmh=km/h, ms=m/s, mph=miles/h, kn=knots). Default: kmh",
+          "default": "kmh"
+        },
+        "precipitation_unit": {
+          "type": "string",
+          "enum": ["mm", "inch"],
+          "description": "Precipitation unit. Default: mm",
+          "default": "mm"
+        },
+        "timezone": {
+          "type": "string",
+          "description": "Timezone for forecast times (e.g., 'Europe/Paris', 'America/New_York', 'auto'). Default: auto",
+          "default": "auto"
+        },
+        "forecast_days": {
+          "type": "integer",
+          "description": "Number of forecast days for daily forecast. Default: 7, max: 16",
+          "minimum": 1,
+          "maximum": 16,
+          "default": 7
+        },
+        "forecast_hours": {
+          "type": "integer",
+          "description": "Number of forecast hours for hourly forecast. Default: 24, max: 168 (7 days)",
+          "minimum": 1,
+          "maximum": 168,
+          "default": 24
+        },
+        "past_days": {
+          "type": "integer",
+          "description": "Include past days in forecast (0-92). Default: 0",
+          "minimum": 0,
+          "maximum": 92,
+          "default": 0
+        },
+        "language": {
+          "type": "string",
+          "description": "Language code for location names (e.g., 'en', 'fr', 'de', 'es'). Default: en",
+          "default": "en"
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Max results for geocoding operations. Default: 5, max: 100",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 5
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}
