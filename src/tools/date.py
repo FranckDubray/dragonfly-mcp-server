@@ -5,6 +5,11 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 import datetime as dt
 import re
+import json
+import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 try:
     from zoneinfo import ZoneInfo
@@ -23,11 +28,13 @@ def _get_tz(tz: Optional[str]) -> Optional[Any]:
     if not tz:
         return None
     if ZoneInfo is None:
+        logger.warning("ZoneInfo not available (Python <3.11), timezone ignored")
         return None
     try:
         return ZoneInfo(tz)
-    except Exception:
-        return None
+    except Exception as e:
+        logger.warning(f"Invalid timezone '{tz}': {e}, using UTC")
+        return dt.timezone.utc
 
 
 def _now(tz: Optional[str]) -> dt.datetime:
@@ -179,12 +186,17 @@ def run(operation: str, **params) -> Dict[str, Any]:
             input_format = params.get("input_format")
             tz = params.get("tz")
             dtv = _parse_datetime(s, input_format, tz)
-            # Build timedelta
+            # Build timedelta with validation
             weeks = int(params.get("weeks") or 0)
             days = int(params.get("days") or 0)
             hours = int(params.get("hours") or 0)
             minutes = int(params.get("minutes") or 0)
             seconds = int(params.get("seconds") or 0)
+            
+            # Validation: prevent absurd values
+            if abs(weeks) > 520 or abs(days) > 3650 or abs(hours) > 87600 or abs(minutes) > 525600 or abs(seconds) > 31536000:
+                logger.warning(f"add: large delta values detected (weeks={weeks}, days={days}, hours={hours}, minutes={minutes}, seconds={seconds})")
+            
             delta = dt.timedelta(weeks=weeks, days=days, hours=hours, minutes=minutes, seconds=seconds)
             out = dtv + delta
             return {"result": out.isoformat()}
@@ -196,6 +208,11 @@ def run(operation: str, **params) -> Dict[str, Any]:
             input_format = params.get("input_format")
             tz = params.get("tz")
             fmt = params.get("format") or "%Y-%m-%d %H:%M:%S%z"
+            
+            # Validation: prevent complex format strings
+            if len(fmt) > 100:
+                return {"error": "Format string too long (max 100 chars)"}
+            
             dtv = _parse_datetime(s, input_format, tz)
             return {"result": dtv.strftime(fmt)}
 
@@ -221,45 +238,13 @@ def run(operation: str, **params) -> Dict[str, Any]:
         return {"error": f"Unknown operation: '{operation}'. Available: now, today, day_of_week, diff, diff_days, add, format, parse, week_number"}
 
     except Exception as e:
+        logger.error(f"date tool error (operation={operation}): {e}")
         return {"error": str(e)}
 
 
 def spec() -> Dict[str, Any]:
-    return {
-        "type": "function",
-        "function": {
-            "name": "date",
-            "displayName": "Date/Time",
-            "description": "Calculs de dates: jour de la semaine, différence entre 2 dates, maintenant/aujourd'hui, ajout de durées, formatage et parsing.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "operation": {
-                        "type": "string",
-                        "enum": [
-                            "now", "today", "day_of_week", "diff", "diff_days", "add", "format", "parse", "week_number"
-                        ],
-                        "description": "Type d'opération date/heure"
-                    },
-                    "date": {"type": "string", "description": "Date/DateTime d'entrée (ISO ou selon input_format)"},
-                    "datetime": {"type": "string", "description": "Alias pour 'date'"},
-                    "start": {"type": "string", "description": "Date/DateTime de début pour diff"},
-                    "end": {"type": "string", "description": "Date/DateTime de fin pour diff"},
-                    "date1": {"type": "string", "description": "Alias pour début"},
-                    "date2": {"type": "string", "description": "Alias pour fin"},
-                    "unit": {"type": "string", "enum": ["days", "hours", "minutes", "seconds"], "description": "Unité pour diff"},
-                    "weeks": {"type": "integer", "description": "Semaines à ajouter (add)"},
-                    "days": {"type": "integer", "description": "Jours à ajouter (add)"},
-                    "hours": {"type": "integer", "description": "Heures à ajouter (add)"},
-                    "minutes": {"type": "integer", "description": "Minutes à ajouter (add)"},
-                    "seconds": {"type": "integer", "description": "Secondes à ajouter (add)"},
-                    "format": {"type": "string", "description": "Format de sortie strftime pour format"},
-                    "input_format": {"type": "string", "description": "Format d'entrée strptime"},
-                    "tz": {"type": "string", "description": "Fuseau horaire IANA (ex: Europe/Paris)"},
-                    "locale": {"type": "string", "description": "Locale pour noms de jours (fr/en)"}
-                },
-                "required": ["operation"],
-                "additionalProperties": False
-            }
-        }
-    }
+    """Load canonical JSON spec"""
+    here = os.path.dirname(__file__)
+    spec_path = os.path.abspath(os.path.join(here, '..', 'tool_specs', 'date.json'))
+    with open(spec_path, 'r', encoding='utf-8') as f:
+        return json.load(f)

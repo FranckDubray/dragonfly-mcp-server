@@ -4,7 +4,8 @@
     "name": "date",
     "displayName": "Date/Time",
     "category": "utilities",
-    "description": "Calculs de dates: jour de la semaine, différence entre 2 dates, maintenant/aujourd'hui, ajout de durées, formatage et parsing.",
+    "tags": ["datetime", "calendar", "timezone"],
+    "description": "Common date/time operations: weekday name, difference between dates, now/today, add duration, format, parse, week number. Supports timezones (IANA) and multiple date formats.",
     "parameters": {
       "type": "object",
       "properties": {
@@ -13,72 +14,93 @@
           "enum": [
             "now", "today", "day_of_week", "diff", "diff_days", "add", "format", "parse", "week_number"
           ],
-          "description": "Type d'opération date/heure"
+          "description": "Operation: now (current datetime), today (current date), day_of_week (weekday name from date), diff (time difference), diff_days (same as diff with unit=days), add (add duration to date), format (format date with strftime), parse (parse date string to ISO), week_number (ISO week number)"
         },
         "date": {
           "type": "string",
-          "description": "Date/DateTime d'entrée (ISO ou selon input_format)"
+          "description": "Input date/datetime (ISO format YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS, or custom with input_format). Used by: day_of_week, add, format, parse, week_number."
         },
         "datetime": {
           "type": "string",
-          "description": "Alias pour 'date'"
+          "description": "Alias for 'date' parameter (use either, not both)"
         },
         "start": {
           "type": "string",
-          "description": "Date/DateTime de début pour diff"
+          "description": "Start date/datetime for diff/diff_days (ISO or custom format)"
         },
         "end": {
           "type": "string",
-          "description": "Date/DateTime de fin pour diff"
+          "description": "End date/datetime for diff/diff_days (ISO or custom format)"
         },
         "date1": {
           "type": "string",
-          "description": "Alias pour début"
+          "description": "Alias for 'start' (use either, not both)"
         },
         "date2": {
           "type": "string",
-          "description": "Alias pour fin"
+          "description": "Alias for 'end' (use either, not both)"
         },
         "unit": {
           "type": "string",
           "enum": ["days", "hours", "minutes", "seconds"],
-          "description": "Unité pour diff/diff_days"
+          "default": "days",
+          "description": "Unit for diff/diff_days result (default: days)"
         },
         "weeks": {
           "type": "integer",
-          "description": "Semaines à ajouter (add)"
+          "default": 0,
+          "minimum": -520,
+          "maximum": 520,
+          "description": "Weeks to add (add operation, default: 0, range: -520 to 520 = ±10 years)"
         },
         "days": {
           "type": "integer",
-          "description": "Jours à ajouter (add)"
+          "default": 0,
+          "minimum": -3650,
+          "maximum": 3650,
+          "description": "Days to add (add operation, default: 0, range: -3650 to 3650 = ±10 years)"
         },
         "hours": {
           "type": "integer",
-          "description": "Heures à ajouter (add)"
+          "default": 0,
+          "minimum": -87600,
+          "maximum": 87600,
+          "description": "Hours to add (add operation, default: 0, range: ±10 years)"
         },
         "minutes": {
           "type": "integer",
-          "description": "Minutes à ajouter (add)"
+          "default": 0,
+          "minimum": -525600,
+          "maximum": 525600,
+          "description": "Minutes to add (add operation, default: 0, range: ±10 years)"
         },
         "seconds": {
           "type": "integer",
-          "description": "Secondes à ajouter (add)"
+          "default": 0,
+          "minimum": -31536000,
+          "maximum": 31536000,
+          "description": "Seconds to add (add operation, default: 0, range: ±10 years)"
         },
         "format": {
           "type": "string",
-          "description": "Format de sortie strftime pour format"
+          "default": "%Y-%m-%d %H:%M:%S%z",
+          "maxLength": 100,
+          "description": "Output format (strftime syntax) for format operation. Default: '%Y-%m-%d %H:%M:%S%z'. Examples: '%Y-%m-%d' (date only), '%d/%m/%Y %H:%M' (EU format), '%B %d, %Y' (Month DD, YYYY)"
         },
         "input_format": {
           "type": "string",
-          "description": "Format d'entrée strptime"
+          "maxLength": 100,
+          "description": "Input date format (strptime syntax) if not ISO. Examples: '%d/%m/%Y' (DD/MM/YYYY), '%m/%d/%Y' (MM/DD/YYYY), '%Y/%m/%d %H:%M:%S'. If omitted, tries ISO then common formats."
         },
         "tz": {
           "type": "string",
-          "description": "Fuseau horaire IANA (ex: Europe/Paris)"
+          "description": "Timezone (IANA format, e.g., 'Europe/Paris', 'America/New_York', 'UTC'). Used for now/today and parsing dates without timezone. If invalid, falls back to UTC with warning."
         },
         "locale": {
           "type": "string",
-          "description": "Locale pour noms de jours (fr/en)"
+          "enum": ["en", "fr"],
+          "default": "en",
+          "description": "Locale for weekday names (day_of_week operation). 'en' for English (Monday, Tuesday...), 'fr' for French (lundi, mardi...). Default: en"
         }
       },
       "required": ["operation"],
