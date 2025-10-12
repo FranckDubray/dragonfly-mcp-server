@@ -2,12 +2,16 @@
 
 Ce fichier est généré automatiquement par `scripts/generate_tools_catalog.py`. Ne pas éditer à la main.
 
-Total tools: 37
+Total tools: 38
 
-## 📊 Intelligence & Orchestration (3)
+## 📊 Intelligence & Orchestration (4)
 
 - LLM Orchestrator — Appelle un modèle LLM en streaming. Orchestration tool_calls (MCP) en 2 phases. Supporte l’entrée multi-modale (images) via messages Open…
   - Opérations: N/A
+  - Tokens: aucun
+
+- News Aggregator — Agrégateur d'actualités multi-sources (NewsAPI free tier limité, NYT, Guardian). IMPORTANT: NewsAPI free tier supporte UNIQUEMENT 'top_he… · Tags: external_sources, knowledge, search
+  - Opérations: search_news, top_headlines, list_sources
   - Tokens: aucun
 
 - Ollama Local + Web Search — Interface avec Ollama local (localhost:11434) + recherche web cloud. Gestion modèles, génération, chat, embeddings, recherche web. IMPORT…
