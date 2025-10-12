@@ -15,6 +15,10 @@ from pathlib import Path
 import re
 from datetime import datetime, timedelta, timezone
 import os
+import logging
+
+# Setup logging
+logger = logging.getLogger(__name__)
 
 ATOM_NS = {
     'atom': 'http://www.w3.org/2005/Atom',
@@ -87,7 +91,8 @@ class AcademicResearchSuper:
             if m:
                 y = int(m.group(1)); mon = self.MONTHS.get(m.group(2).lower()) or 1; d = int(m.group(3) or 1)
                 return datetime(y, mon, d, tzinfo=timezone.utc)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to parse date '{s}': {e}")
             return None
         return None
 
@@ -100,17 +105,22 @@ class AcademicResearchSuper:
                 out.append(it)
         return out
 
-    def _http_get(self, url: str, timeout: int = 20, expect_json: bool = False) -> Any:
+    def _http_get(self, url: str, timeout: int = 30, expect_json: bool = False) -> Any:
+        """HTTP GET with increased timeout for arXiv stability"""
         req = urllib.request.Request(url, headers=self.headers)
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            data = resp.read()
-            text = data.decode('utf-8', errors='replace')
-            if expect_json:
-                try:
-                    return json.loads(text)
-                except Exception:
-                    return {}
-            return text
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                data = resp.read()
+                text = data.decode('utf-8', errors='replace')
+                if expect_json:
+                    try:
+                        return json.loads(text)
+                    except Exception:
+                        return {}
+                return text
+        except Exception as e:
+            logger.warning(f"HTTP GET failed for {url}: {e}")
+            raise
 
     def _norm_str(self, s: str) -> str:
         return (s or '').strip().lower()
@@ -183,7 +193,8 @@ class AcademicResearchSuper:
     def _arxiv_search(self, query: str, max_results: int = 10) -> Dict[str, Any]:
         url = self._arxiv_build_url(query=query, start=0, max_results=max_results)
         self.last_request = {'provider': 'arxiv', 'url': url}
-        xml_text = self._http_get(url, timeout=20, expect_json=False)
+        logger.info(f"arXiv search: query={query}, max_results={max_results}")
+        xml_text = self._http_get(url, timeout=30, expect_json=False)
         items: List[Dict[str, Any]] = []
         try:
             root = ET.fromstring(xml_text)
@@ -218,7 +229,8 @@ class AcademicResearchSuper:
                     'citations_count': 0,
                     'full_text_url': pdf_url,
                 })
-        except Exception:
+        except Exception as e:
+            logger.warning(f"arXiv parsing error: {e}")
             items = []
         return {'provider': 'arxiv', 'count': len(items), 'items': items, 'request': self.last_request}
 
@@ -231,7 +243,8 @@ class AcademicResearchSuper:
     def _pubmed_esearch(self, query: str, max_results: int) -> List[str]:
         q = urllib.parse.quote(query)
         url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&retmax={max_results}&term={q}"
-        data = self._http_get(url, timeout=20, expect_json=True)
+        logger.info(f"PubMed search: query={query}, max_results={max_results}")
+        data = self._http_get(url, timeout=30, expect_json=True)
         idlist = (((data or {}).get('esearchresult') or {}).get('idlist') or [])
         return idlist[:max_results]
 
@@ -240,7 +253,7 @@ class AcademicResearchSuper:
             return {}
         ids = ','.join(pmids)
         url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&id={ids}"
-        return self._http_get(url, timeout=20, expect_json=True)
+        return self._http_get(url, timeout=30, expect_json=True)
 
     def _pubmed_search(self, query: str, max_results: int = 10) -> Dict[str, Any]:
         pmids = self._pubmed_esearch(query, max_results)
@@ -284,7 +297,8 @@ class AcademicResearchSuper:
     def _crossref_search(self, query: str, max_results: int = 10) -> Dict[str, Any]:
         params = urllib.parse.urlencode({'query': query, 'rows': max_results})
         url = f"https://api.crossref.org/works?{params}"
-        data = self._http_get(url, timeout=20, expect_json=True)
+        logger.info(f"Crossref search: query={query}, max_results={max_results}")
+        data = self._http_get(url, timeout=30, expect_json=True)
         items_in = (((data or {}).get('message') or {}).get('items') or [])
         items: List[Dict[str, Any]] = []
         for it in items_in:
@@ -326,7 +340,8 @@ class AcademicResearchSuper:
     def _crossref_search_by_author(self, author_name: str, max_results: int = 10) -> Dict[str, Any]:
         params = urllib.parse.urlencode({'query.author': author_name, 'rows': max_results})
         url = f"https://api.crossref.org/works?{params}"
-        data = self._http_get(url, timeout=20, expect_json=True)
+        logger.info(f"Crossref author search: author={author_name}, max_results={max_results}")
+        data = self._http_get(url, timeout=30, expect_json=True)
         # Reuse mapping logic by feeding through _crossref_search on a synthesized 'query' would not apply query.author
         items_in = (((data or {}).get('message') or {}).get('items') or [])
         items: List[Dict[str, Any]] = []
@@ -376,7 +391,8 @@ class AcademicResearchSuper:
             'fl': ','.join(fl)
         })
         url = f"https://api.archives-ouvertes.fr/search/?{params}"
-        data = self._http_get(url, timeout=20, expect_json=True)
+        logger.info(f"HAL search: query={query}, max_results={max_results}")
+        data = self._http_get(url, timeout=30, expect_json=True)
         docs = (((data or {}).get('response') or {}).get('docs') or [])
         items: List[Dict[str, Any]] = []
         for d in docs:
@@ -446,15 +462,20 @@ class AcademicResearchSuper:
             # Limiter le nombre d'auteurs à 20 pour éviter des listes énormes
             if 'authors' in it and isinstance(it['authors'], list) and len(it['authors']) > 20:
                 it['authors'] = it['authors'][:20]
+        
+        total_before_truncation = len(results)
+        
         # 2) Limiter le nombre total d'items
         if len(results) > max_total_items:
-            notes.append(f"results truncated to max_total_items={max_total_items}")
+            notes.append(f"Results truncated: {total_before_truncation} found, returning {max_total_items} (max limit)")
             results = results[:max_total_items]
+        
         # 3) Limite bytes globale. On coupe des items jusqu'à passer sous la limite.
         def payload_size(cur_results: List[Dict[str, Any]]) -> int:
             payload = {
-                'success': True,
                 'results': cur_results,
+                'total_count': total_before_truncation,
+                'returned_count': len(cur_results),
                 'notes': notes or None,
             }
             try:
@@ -462,17 +483,20 @@ class AcademicResearchSuper:
                 return len(enc)
             except Exception:
                 return 10**9
+        
         while results and payload_size(results) > max_bytes:
             results = results[:-1]
+        
         if payload_size(results) > max_bytes:
             # Si même un seul résultat dépasse, tronque davantage les abstracts
             for it in results:
                 if 'abstract' in it and isinstance(it['abstract'], str):
                     it['abstract'] = self._truncate_text(it['abstract'], max(200, max_abstract_chars // 2))
+        
         if payload_size(results) > max_bytes:
-            notes.append("payload still exceeds max_bytes after truncation; consider lowering max_results or max_abstract_chars")
-        else:
-            notes.append(f"payload size <= {max_bytes} bytes")
+            logger.warning(f"Payload still exceeds max_bytes ({max_bytes}) after truncation")
+            notes.append("Payload exceeds max_bytes despite truncation; consider lowering max_results or max_abstract_chars")
+        
         return results
 
     # ------------------- façade run -------------------
@@ -497,13 +521,15 @@ class AcademicResearchSuper:
         if operation == 'search_papers':
             collected: List[Dict[str, Any]] = []
             notes: List[str] = []
+            
             if not query:
-                return {"success": False, "error": "query requis"}
+                return {"error": "query parameter is required for search_papers"}
 
             # Extract optional submittedDate filter and clean query for providers
             clean_query, cutoff = self._extract_date_filter(query)
             if clean_query != query:
                 notes.append("submittedDate filter detected and applied client-side")
+                logger.info("submittedDate filter applied")
 
             lower_sources = [s.lower() for s in sources]
             for s in lower_sources:
@@ -517,7 +543,8 @@ class AcademicResearchSuper:
                     elif s == 'hal':
                         data = self._hal_search(query=clean_query or query, max_results=max_results)
                     else:
-                        notes.append(f"source non supportée: {s}")
+                        logger.warning(f"Unsupported source: {s}")
+                        notes.append(f"Unsupported source: {s}")
                         continue
                     items = data.get('items', [])
 
@@ -544,7 +571,8 @@ class AcademicResearchSuper:
 
                     collected.extend(items)
                 except Exception as e:
-                    notes.append(f"{s} error: {e}")
+                    logger.error(f"{s} error: {e}")
+                    notes.append(f"{s} error: {str(e)}")
 
             # Déduplication + fusion multi-sources
             unique_results = self._deduplicate_and_merge(collected, include_abstracts=include_abstracts)
@@ -565,23 +593,22 @@ class AcademicResearchSuper:
                 max_bytes=max_bytes,
             )
 
-            unsupported = [s for s in sources if s.lower() not in ('arxiv','pubmed','crossref','hal')]
-            if unsupported:
-                notes.append(f"sources non supportées dans cette implémentation: {unsupported}")
             return {
-                "success": True,
                 "results": bounded,
-                "source_count": len(sources),
-                "notes": notes or None
+                "total_count": len(unique_results),
+                "returned_count": len(bounded),
+                "notes": notes if notes else None
             }
 
         if operation == 'search_authors':
             author_name = str(params.get('author_name') or '').strip()
             if not author_name:
-                return {"success": False, "error": "author_name requis"}
+                return {"error": "author_name parameter is required for search_authors"}
+            
             notes: List[str] = []
             collected: List[Dict[str, Any]] = []
             lower_sources = [s.lower() for s in sources]
+            
             for s in lower_sources:
                 try:
                     if s == 'arxiv':
@@ -593,12 +620,14 @@ class AcademicResearchSuper:
                     elif s == 'hal':
                         data = self._hal_search_by_author(author_name=author_name, max_results=max_results)
                     else:
-                        notes.append(f"source non supportée: {s}")
+                        logger.warning(f"Unsupported source: {s}")
+                        notes.append(f"Unsupported source: {s}")
                         continue
                     items = data.get('items', [])
                     collected.extend(items)
                 except Exception as e:
-                    notes.append(f"{s} error: {e}")
+                    logger.error(f"{s} error: {e}")
+                    notes.append(f"{s} error: {str(e)}")
 
             # Déduplication + tri
             unique_results = self._deduplicate_and_merge(collected, include_abstracts=include_abstracts)
@@ -616,20 +645,17 @@ class AcademicResearchSuper:
                 max_bytes=max_bytes,
             )
 
-            unsupported = [s for s in sources if s.lower() not in ('arxiv','pubmed','crossref','hal')]
-            if unsupported:
-                notes.append(f"sources non supportées dans cette implémentation: {unsupported}")
             return {
-                "success": True,
                 "results": bounded,
-                "source_count": len(sources),
-                "notes": notes or None
+                "total_count": len(unique_results),
+                "returned_count": len(bounded),
+                "notes": notes if notes else None
             }
 
         if operation in ("get_paper_details", "get_citations"):
-            return {"success": False, "error": f"operation '{operation}' non implémentée dans cette version"}
+            return {"error": f"Operation '{operation}' not implemented in this version"}
 
-        return {"success": False, "error": f"operation inconnue: {operation}"}
+        return {"error": f"Unknown operation: {operation}"}
 
 
 _tool = AcademicResearchSuper()
@@ -651,7 +677,8 @@ def run(**params) -> Dict[str, Any]:
         operation = params.pop('operation', 'search_papers')
         return _tool.run(operation=operation, **params)
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        logger.exception(f"Tool execution failed: {e}")
+        return {"error": str(e)}
 
 def spec() -> Dict[str, Any]:
     base = {
