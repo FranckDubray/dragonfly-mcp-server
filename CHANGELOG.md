@@ -1,5 +1,11 @@
 
 
+
+
+
+
+
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
@@ -12,14 +18,18 @@ Note: Older entries have been archived under changelogs/ (range-based files).
 
 Campagne d'audit en profondeur de tous les tools pour conformité LLM_DEV_GUIDE.
 
-### call_llm - [2025-10-12] ✅ AUDITED (9.0→9.2/10)
+### call_llm - [2025-10-12] ✅ AUDITED (9.2/10) → CLEANUP
 
 **Fixed**:
 - 🔴 CRITICAL: NameError 'tool_Dict' resolved by adding `from __future__ import annotations` to all _call_llm modules (deferred annotation evaluation)
 - 🔴 CRITICAL: Découpage call_llm.py sous 7KB (9.2KB → 4.6KB) : extraction helpers vers file_utils.py
 - 🟡 MINOR: Clé debug normalisée (" debug" → "debug" dans core.py)
 
-**Technical**: call_llm.py -4.6KB (helpers → file_utils.py +4.1KB), 10 modules +35B each (from __future__), core.py +4B (debug key). Conformité: 85%→92%.
+**Cleanup (2025-10-12 22:23)** :
+- 🧹 REFACTOR: Suppression phase1.py (4.6 KB code mort jamais utilisé)
+- 🧹 Architecture module mise à jour dans README.md
+
+**Technical**: call_llm.py -4.6KB (helpers → file_utils.py +4.1KB), 10 modules +35B each (from __future__), core.py +4B (debug key), phase1.py -4.6KB (supprimé). Conformité: 85%→92%.
 
 **Tests**: 5/5 non-régression OK (simple, tools orchestration, vision, validation model/message).
 
@@ -186,3 +196,9 @@ True random number generator using physical sources (RANDOM.ORG atmospheric nois
 ---
 
 For older versions, see: [changelogs/](changelogs/) (range-based archives).
+
+ 
+ 
+ 
+ 
+ 
