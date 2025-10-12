@@ -2,7 +2,7 @@
 
 Ce fichier est généré automatiquement par `scripts/generate_tools_catalog.py`. Ne pas éditer à la main.
 
-Total tools: 38
+Total tools: 39
 
 ## 📊 Intelligence & Orchestration (4)
 
@@ -36,10 +36,14 @@ Total tools: 38
   - Opérations: N/A
   - Tokens: aucun
 
-## 📧 Communication (4)
+## 📧 Communication (5)
+
+- Discord Bot — Client Discord Bot complet (REST API). Gestion messages, channels, threads, reactions, search. Requiert DISCORD_BOT_TOKEN. 28 opérations…
+  - Opérations: list_messages, get_message, send_message, edit_message, delete_message, bulk_delete …
+  - Tokens: aucun
 
 - Discord Webhook — Publie et gère des articles sous forme d'Embeds sur Discord via un webhook global (DISCORD_WEBHOOK_URL). Supporte create/update/upsert/de…
-  - Opérations: create, update, upsert, delete, get, list
+  - Opérations: create, update, upsert, delete, get, list …
   - Tokens: aucun
 
 - Email Send (SMTP) — Envoyer des emails via SMTP (Gmail ou Infomaniak). Supporte texte/HTML, pièces jointes, CC/BCC, priorité.
