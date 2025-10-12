@@ -33,23 +33,24 @@ from ._http_client.api import route_request
 from ._http_client import spec as _spec
 
 
-def run(method: str = "GET", url: str = None, **params) -> Dict[str, Any]:
+def run(**params) -> Dict[str, Any]:
     """Execute HTTP request.
     
     Args:
-        method: HTTP method (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS)
-        url: Target URL (required)
-        **params: Request parameters (headers, body, auth, etc.)
+        **params: Request parameters (method, url, headers, body, auth, etc.)
         
     Returns:
         Response with status, headers, body
     """
-    # Normalize method
-    method = (method or params.get("method", "GET")).strip().upper()
+    # Extract method and url from params
+    method = params.get("method", "GET")
+    url = params.get("url")
     
-    # Extract URL from params if not provided
-    if not url:
-        url = params.get("url")
+    # Normalize method
+    if method:
+        method = str(method).strip().upper()
+    else:
+        method = "GET"
     
     # Validate required params
     if not url:
