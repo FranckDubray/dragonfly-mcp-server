@@ -7,8 +7,11 @@ from pathlib import Path
 import base64
 import os
 import mimetypes
+import logging
 
 from .utils import download_to_data_url
+
+logger = logging.getLogger(__name__)
 
 
 def _get_docs_root() -> Path:
@@ -59,6 +62,8 @@ def load_local_images(file_paths: List[str]) -> Tuple[List[str], Optional[str]]:
     data_urls: List[str] = []
     errors: List[str] = []
     
+    logger.info(f"Loading {len(file_paths)} local image(s) from ./docs")
+    
     for fp in file_paths:
         if not isinstance(fp, str):
             continue
@@ -73,10 +78,12 @@ def load_local_images(file_paths: List[str]) -> Tuple[List[str], Optional[str]]:
             
             # Security: ensure path is still under docs_root
             if not str(full_path).startswith(str(docs_root.resolve())):
+                logger.warning(f"Path traversal denied: {fp}")
                 errors.append(f"{fp}: path traversal denied")
                 continue
             
             if not full_path.is_file():
+                logger.warning(f"File not found: {fp}")
                 errors.append(f"{fp}: file not found in ./docs")
                 continue
             
@@ -94,11 +101,17 @@ def load_local_images(file_paths: List[str]) -> Tuple[List[str], Optional[str]]:
             data_url = f"data:{mime_type};base64,{b64}"
             data_urls.append(data_url)
             
+            logger.info(f"Loaded {fp} ({len(img_bytes)} bytes, {mime_type})")
+            
         except Exception as e:
+            logger.error(f"Failed to load {fp}: {e}")
             errors.append(f"{fp}: {str(e)}")
     
     if errors and not data_urls:
         return [], "; ".join(errors)
+    
+    if errors:
+        logger.warning(f"Loaded {len(data_urls)}/{len(file_paths)} images (errors: {len(errors)})")
     
     return data_urls, None
 
@@ -129,6 +142,8 @@ def normalize_image_inputs(images: Optional[List[str]]) -> Tuple[List[str], Opti
     
     normalized: List[str] = []
     
+    logger.info(f"Normalizing {len(images)} image input(s)")
+    
     for im in images:
         if not isinstance(im, str):
             continue
@@ -140,14 +155,18 @@ def normalize_image_inputs(images: Optional[List[str]]) -> Tuple[List[str], Opti
         # Already a data URL → keep as-is
         if s.startswith("data:"):
             normalized.append(s)
+            logger.info("Image source: data URL (kept as-is)")
             continue
         
         # HTTP(S) URL → download and convert
         if s.startswith("http://") or s.startswith("https://"):
+            logger.info(f"Downloading http(s) image: {s[:60]}...")
             du = download_to_data_url(s)
             if du:
                 normalized.append(du)
+                logger.info("Download successful, converted to data URL")
             else:
+                logger.warning(f"Download failed, keeping http(s) URL as-is: {s[:60]}...")
                 # Fallback: keep http(s) if download fails
                 normalized.append(s)
             continue
@@ -156,13 +175,17 @@ def normalize_image_inputs(images: Optional[List[str]]) -> Tuple[List[str], Opti
         try:
             base64.b64decode(s, validate=True)
             normalized.append(f"data:image/png;base64,{s}")
+            logger.info("Raw base64 detected, wrapped in data URL")
         except Exception:
             # If not valid base64, keep as-is (best effort)
+            logger.warning(f"Invalid base64, keeping as-is: {s[:60]}...")
             normalized.append(s)
     
     if not normalized:
+        logger.error("No valid images after normalization")
         return [], "Could not prepare images (must be http(s), data:URL, or valid base64)"
     
+    logger.info(f"Normalized {len(normalized)} image(s) successfully")
     return normalized, None
 
 
