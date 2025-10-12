@@ -49,7 +49,6 @@ def route_operation(**params):
             
     except Exception as e:
         return {
-            'success': False,
             'error': str(e),
             'error_type': type(e).__name__
         }

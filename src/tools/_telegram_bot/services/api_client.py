@@ -3,6 +3,9 @@ Telegram Bot API client
 """
 import os
 import requests
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def get_bot_token():
@@ -19,6 +22,18 @@ def get_api_url(method):
     return f"https://api.telegram.org/bot{token}/{method}"
 
 
+def mask_url(url):
+    """Mask bot token in URL for logging/errors"""
+    # Replace token part (between /bot and /)
+    if '/bot' in url:
+        parts = url.split('/bot')
+        if len(parts) >= 2:
+            rest = parts[1].split('/', 1)
+            if len(rest) >= 2:
+                return f"{parts[0]}/bot***TOKEN_MASKED***/{rest[1]}"
+    return url
+
+
 def make_request(method, params=None, data=None, timeout=30):
     """
     Make request to Telegram Bot API
@@ -26,13 +41,15 @@ def make_request(method, params=None, data=None, timeout=30):
     Args:
         method: API method name (e.g., 'sendMessage', 'getUpdates')
         params: Query parameters dict
-        POST data dict
+        data: POST data dict
         timeout: Request timeout in seconds
     
     Returns:
         Response result dict
     """
     url = get_api_url(method)
+    
+    logger.info(f"Telegram API call: {method} (timeout={timeout}s)")
     
     try:
         if data:
@@ -46,6 +63,8 @@ def make_request(method, params=None, data=None, timeout=30):
         if not result.get('ok'):
             error_code = result.get('error_code')
             description = result.get('description', 'Unknown error')
+            
+            logger.warning(f"Telegram API error {error_code}: {description}")
             
             # Provide helpful error messages
             if error_code == 400:
@@ -62,6 +81,11 @@ def make_request(method, params=None, data=None, timeout=30):
         return result.get('result')
         
     except requests.exceptions.Timeout:
+        logger.warning(f"Telegram API timeout ({timeout}s)")
         raise ValueError(f"API request timeout ({timeout}s)")
     except requests.exceptions.RequestException as e:
-        raise ValueError(f"API request failed: {e}")
+        # SECURITY: Mask token in error messages
+        safe_url = mask_url(url)
+        error_msg = str(e).replace(url, safe_url)
+        logger.error(f"Telegram API request failed: {error_msg}")
+        raise ValueError(f"API request failed: {error_msg}")

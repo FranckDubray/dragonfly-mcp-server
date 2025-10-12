@@ -3,6 +3,9 @@ Telegram Bot core business logic
 """
 from .services.api_client import make_request
 from .utils import format_message, format_update
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def send_text_message(params):
@@ -18,10 +21,9 @@ def send_text_message(params):
         payload['reply_to_message_id'] = params['reply_to_message_id']
     
     result = make_request('sendMessage', data=payload)
+    logger.info(f"Message sent to chat {params['chat_id']}")
     
     return {
-        'success': True,
-        'operation': 'send_message',
         'message': format_message(result)
     }
 
@@ -42,10 +44,9 @@ def send_photo_message(params):
         payload['reply_to_message_id'] = params['reply_to_message_id']
     
     result = make_request('sendPhoto', data=payload)
+    logger.info(f"Photo sent to chat {params['chat_id']}")
     
     return {
-        'success': True,
-        'operation': 'send_photo',
         'message': format_message(result)
     }
 
@@ -66,10 +67,9 @@ def send_document_message(params):
         payload['reply_to_message_id'] = params['reply_to_message_id']
     
     result = make_request('sendDocument', data=payload)
+    logger.info(f"Document sent to chat {params['chat_id']}")
     
     return {
-        'success': True,
-        'operation': 'send_document',
         'message': format_message(result)
     }
 
@@ -90,10 +90,9 @@ def send_video_message(params):
         payload['reply_to_message_id'] = params['reply_to_message_id']
     
     result = make_request('sendVideo', data=payload)
+    logger.info(f"Video sent to chat {params['chat_id']}")
     
     return {
-        'success': True,
-        'operation': 'send_video',
         'message': format_message(result)
     }
 
@@ -111,10 +110,9 @@ def send_location_message(params):
         payload['reply_to_message_id'] = params['reply_to_message_id']
     
     result = make_request('sendLocation', data=payload)
+    logger.info(f"Location sent to chat {params['chat_id']} ({params['latitude']}, {params['longitude']})")
     
     return {
-        'success': True,
-        'operation': 'send_location',
         'message': format_message(result)
     }
 
@@ -137,11 +135,15 @@ def get_bot_updates(params):
     # Result is an array of updates
     updates = result if isinstance(result, list) else []
     
+    logger.info(f"Retrieved {len(updates)} updates (limit={params['limit']}, timeout={params['timeout']}s)")
+    
+    # Truncation warning si limite atteinte
+    if len(updates) >= params['limit']:
+        logger.warning(f"Updates truncated to limit ({params['limit']}). Use pagination (offset parameter) to retrieve more.")
+    
     return {
-        'success': True,
-        'operation': 'get_updates',
         'updates': [format_update(u) for u in updates],
-        'count': len(updates),
+        'returned_count': len(updates),
         'latest_update_id': updates[-1]['update_id'] if updates else None
     }
 
@@ -150,9 +152,9 @@ def get_bot_info(params):
     """Get bot information"""
     result = make_request('getMe')
     
+    logger.info(f"Retrieved bot info: @{result.get('username')}")
+    
     return {
-        'success': True,
-        'operation': 'get_me',
         'bot_info': {
             'id': result.get('id'),
             'is_bot': result.get('is_bot'),
@@ -174,9 +176,9 @@ def delete_bot_message(params):
     
     result = make_request('deleteMessage', data=payload)
     
+    logger.info(f"Message {params['message_id']} deleted from chat {params['chat_id']}")
+    
     return {
-        'success': True,
-        'operation': 'delete_message',
         'chat_id': params['chat_id'],
         'message_id': params['message_id'],
         'deleted': result
@@ -194,9 +196,9 @@ def edit_bot_message(params):
     
     result = make_request('editMessageText', data=payload)
     
+    logger.info(f"Message {params['message_id']} edited in chat {params['chat_id']}")
+    
     return {
-        'success': True,
-        'operation': 'edit_message',
         'message': format_message(result)
     }
 
@@ -217,8 +219,8 @@ def send_bot_poll(params):
     
     result = make_request('sendPoll', data=payload)
     
+    logger.info(f"Poll sent to chat {params['chat_id']} ({len(params['options'])} options)")
+    
     return {
-        'success': True,
-        'operation': 'send_poll',
         'message': format_message(result)
     }
