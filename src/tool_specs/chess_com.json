@@ -41,7 +41,8 @@
         },
         "username": {
           "type": "string",
-          "description": "Chess.com username (lowercase, alphanumeric + _ - .). Required for player operations."
+          "description": "Chess.com username (lowercase, alphanumeric + _ - .). Required for player operations.",
+          "pattern": "^[a-zA-Z0-9_.-]{2,25}$"
         },
         "year": {
           "type": "integer",
@@ -102,7 +103,7 @@
         },
         "limit": {
           "type": "integer",
-          "description": "Maximum number of results to return (default: 50, max: 500). IMPORTANT: For get_leaderboards, this 'limit' applies PER category (default: 10, max: 50).",
+          "description": "Maximum results to return. Default/max varies by operation: Most operations: default=50, max=500. get_leaderboards only: default=10, max=50 (applies per category). Use this to control result size and avoid truncation.",
           "minimum": 1,
           "maximum": 500,
           "default": 50

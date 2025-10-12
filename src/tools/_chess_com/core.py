@@ -16,7 +16,6 @@ def get_player_profile(username: str) -> Dict[str, Any]:
     data = client.get(f"/pub/player/{username}")
     
     return {
-        'username': data.get('username'),
         'player_id': data.get('player_id'),
         'title': data.get('title'),
         'status': data.get('status'),
@@ -78,7 +77,6 @@ def get_player_stats(username: str) -> Dict[str, Any]:
         }
     
     return {
-        'username': username,
         'stats': stats_formatted,
         'puzzles': puzzle_stats,
         'fide': data.get('fide'),
@@ -104,7 +102,6 @@ def get_player_games_current(username: str) -> Dict[str, Any]:
         })
     
     return {
-        'username': username,
         'games_count': len(games),
         'games': games,
     }
@@ -118,7 +115,6 @@ def get_player_games_archives_list(username: str) -> Dict[str, Any]:
     archives = data.get('archives', [])
     
     return {
-        'username': username,
         'archives_count': len(archives),
         'archives': archives,
     }
@@ -162,7 +158,6 @@ def get_player_games_archives(username: str, year: int, month: int, limit: int =
         })
     
     result = {
-        'username': username,
         'year': year,
         'month': month,
         'total_games': total_count,
@@ -172,7 +167,7 @@ def get_player_games_archives(username: str, year: int, month: int, limit: int =
     
     if truncated:
         result['truncated'] = True
-        result['message'] = f"Showing {limit} of {total_count} games. Increase 'limit' parameter to see more (max 500)."
+        result['warning'] = f"Showing {limit} of {total_count} games. Increase 'limit' parameter to see more (max 500)."
     
     return result
 
@@ -194,7 +189,6 @@ def get_player_clubs(username: str) -> Dict[str, Any]:
         })
     
     return {
-        'username': username,
         'clubs_count': len(clubs),
         'clubs': clubs,
     }
@@ -217,7 +211,6 @@ def get_player_matches(username: str) -> Dict[str, Any]:
         })
     
     return {
-        'username': username,
         'matches_count': len(matches),
         'matches': matches,
     }
@@ -237,7 +230,6 @@ def get_player_tournaments(username: str) -> Dict[str, Any]:
         })
     
     return {
-        'username': username,
         'tournaments_count': len(tournaments),
         'tournaments': tournaments,
     }
@@ -263,7 +255,7 @@ def get_titled_players(title: str, limit: int = 50) -> Dict[str, Any]:
     
     if truncated:
         result['truncated'] = True
-        result['message'] = f"Showing {limit} of {total_count} players. Increase 'limit' parameter to see more (max 500)."
+        result['warning'] = f"Showing {limit} of {total_count} players. Increase 'limit' parameter to see more (max 500)."
     
     return result
 
@@ -318,7 +310,6 @@ def get_club_members(club_id: str, limit: int = 50) -> Dict[str, Any]:
     members = all_members[:limit]
     
     result = {
-        'club_id': club_id,
         'total_members': total_count,
         'members_returned': len(members),
         'members': members,
@@ -326,7 +317,7 @@ def get_club_members(club_id: str, limit: int = 50) -> Dict[str, Any]:
     
     if truncated:
         result['truncated'] = True
-        result['message'] = f"Showing {limit} of {total_count} members. Increase 'limit' parameter to see more (max 500)."
+        result['warning'] = f"Showing {limit} of {total_count} members. Increase 'limit' parameter to see more (max 500)."
     
     return result
 
@@ -347,7 +338,6 @@ def get_club_matches(club_id: str) -> Dict[str, Any]:
         })
     
     return {
-        'club_id': club_id,
         'matches_count': len(matches),
         'matches': matches,
     }
@@ -363,7 +353,6 @@ def get_tournament_details(tournament_id: str) -> Dict[str, Any]:
     data = client.get(f"/pub/tournament/{tournament_id}")
     
     return {
-        'tournament_id': tournament_id,
         'name': data.get('name'),
         'url': data.get('url'),
         'description': data.get('description'),
@@ -390,7 +379,6 @@ def get_tournament_round(tournament_id: str, round: int) -> Dict[str, Any]:
         })
     
     return {
-        'tournament_id': tournament_id,
         'round': round,
         'groups_count': len(groups),
         'groups': groups,
@@ -424,7 +412,6 @@ def get_tournament_round_group(tournament_id: str, round: int, group: int) -> Di
         })
     
     return {
-        'tournament_id': tournament_id,
         'round': round,
         'group': group,
         'players_count': len(players),
@@ -462,7 +449,6 @@ def get_country_players(country_iso: str, limit: int = 50) -> Dict[str, Any]:
     players = all_players[:limit]
     
     result = {
-        'country_iso': country_iso,
         'total_players': total_count,
         'players_returned': len(players),
         'players': players,
@@ -470,7 +456,7 @@ def get_country_players(country_iso: str, limit: int = 50) -> Dict[str, Any]:
     
     if truncated:
         result['truncated'] = True
-        result['message'] = f"Showing {limit} of {total_count} players. Increase 'limit' parameter to see more (max 500)."
+        result['warning'] = f"Showing {limit} of {total_count} players. Increase 'limit' parameter to see more (max 500)."
     
     return result
 
@@ -486,7 +472,6 @@ def get_country_clubs(country_iso: str) -> Dict[str, Any]:
         clubs.append(club_id)
     
     return {
-        'country_iso': country_iso,
         'clubs_count': len(clubs),
         'clubs': clubs,
     }
@@ -523,7 +508,6 @@ def get_match_details(match_id: str) -> Dict[str, Any]:
             }
     
     return {
-        'match_id': match_id,
         'name': data.get('name'),
         'url': data.get('url'),
         'start_time': utils.timestamp_to_iso(data.get('start_time')),
@@ -567,7 +551,6 @@ def get_match_board(match_id: str, board: int) -> Dict[str, Any]:
         })
     
     return {
-        'match_id': match_id,
         'board': board,
         'board_scores': board_scores,
         'games_count': len(games),
@@ -630,7 +613,6 @@ def get_leaderboards(categories: List[str] = None, limit: int = 10) -> Dict[str,
         'categories_returned': len(leaderboards),
         'total_players_returned': total_players_returned,
         'players_per_category': limit,
-        'note': f'Showing top {limit} players per category. Use "categories" parameter to filter specific categories, and "limit" to adjust players per category (max 50).',
     }
 
 
@@ -700,6 +682,6 @@ def get_streamers(limit: int = 50) -> Dict[str, Any]:
     
     if truncated:
         result['truncated'] = True
-        result['message'] = f"Showing {limit} of {total_count} streamers. Increase 'limit' parameter to see more (max 500)."
+        result['warning'] = f"Showing {limit} of {total_count} streamers. Increase 'limit' parameter to see more (max 500)."
     
     return result
