@@ -36,7 +36,8 @@
         "parse_mode": {
           "type": "string",
           "enum": ["Markdown", "MarkdownV2", "HTML"],
-          "description": "Text formatting mode. Default: Markdown"
+          "description": "Text formatting mode. Default: Markdown",
+          "default": "Markdown"
         },
         "photo": {
           "type": "string",
