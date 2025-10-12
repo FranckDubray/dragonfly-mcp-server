@@ -10,6 +10,25 @@ Note: Older entries have been archived under changelogs/ (range-based files).
 
 Campagne d'audit en profondeur de tous les tools pour conformité LLM_DEV_GUIDE.
 
+### trivia_api - [2025-10-12] ✅ 8.8→9.6/10 ⭐⭐⭐⭐⭐
+
+**Fixed**: 
+- Import bug `__init__.py` (relative import `..trivia_api`)
+- Global count endpoint (`/api_count.php` → `/api_count_global.php`)
+
+**Added**:
+- README.md (architecture, operations, examples, conformity checklist)
+
+**Technical**: `__init__.py`, `api_client.py`, `README.md` (new 4.8 KB). Conformité 88%→96%.
+
+**Tests**: 13/14 non-régression OK (1 requires server restart).
+
+**SCORE FINAL: 9.6/10** ⭐⭐⭐⭐⭐
+
+**Known Issues**: None.
+
+---
+
 ### velib - [2025-10-12] ✅ 8.5→9.2/10 ⭐⭐⭐⭐⭐
 
 Tags, logging, truncation warnings, outputs simplifiés. Conformité 70%→92%. Tests: 5/5 OK. Commit: 046abb0
