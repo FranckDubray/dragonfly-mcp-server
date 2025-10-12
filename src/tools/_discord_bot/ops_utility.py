@@ -4,6 +4,10 @@ Discord Bot: Search & utility operations (8 ops - updated).
 from __future__ import annotations
 from typing import Any, Dict, List
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
+
 from .client import http_request
 from .utils import safe_snowflake, check_response, parse_iso_datetime, clean_bot_user
 
@@ -164,23 +168,42 @@ def op_list_emojis(params: Dict[str, Any]) -> Dict[str, Any]:
 def op_health_check(params: Dict[str, Any]) -> Dict[str, Any]:
     """Test bot connection and token validity."""
     try:
+        logger.info("discord_bot: health_check starting")
         endpoint = "/users/@me"
         result = http_request("GET", endpoint, timeout=10.0)
         
         if result.status_code == 401:
+            logger.warning("discord_bot: health_check failed - invalid token")
             return {
-                "error": "Invalid bot token (401 Unauthorized)"
+                "error": "Invalid bot token (401 Unauthorized)",
+                "connection": "failed"
             }
         
         check_response(result, "health_check")
         
         bot_user = result.json or {}
+        logger.info(f"discord_bot: health_check OK - bot user ID: {bot_user.get('id', 'unknown')}")
         
         return {
             "bot_user": clean_bot_user(bot_user),
             "connection": "healthy"
         }
-    except Exception as e:
+    except ValueError as e:
+        logger.error(f"discord_bot: health_check validation error: {e}")
         return {
-            "error": str(e)
+            "error": f"Validation error: {str(e)}",
+            "connection": "failed"
+        }
+    except RuntimeError as e:
+        logger.error(f"discord_bot: health_check runtime error: {e}")
+        return {
+            "error": f"Runtime error: {str(e)}",
+            "connection": "failed"
+        }
+    except Exception as e:
+        logger.exception("discord_bot: health_check unexpected error")
+        return {
+            "error": f"Unexpected error in health_check: {type(e).__name__}: {str(e)}",
+            "error_type": type(e).__name__,
+            "connection": "failed"
         }
