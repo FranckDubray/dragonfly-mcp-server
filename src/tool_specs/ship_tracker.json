@@ -27,10 +27,10 @@
         },
         "timeout": {
           "type": "integer",
-          "description": "WebSocket collection timeout in seconds (3-60, default: 10). How long to listen for AIS messages before returning results. Longer timeout = more ships but slower response.",
+          "description": "WebSocket collection timeout in seconds (3-60, default: 15). How long to listen for AIS messages before returning results. Longer timeout = more ships but slower response.",
           "minimum": 3,
           "maximum": 60,
-          "default": 10
+          "default": 15
         },
         "mmsi": {
           "type": "integer",
