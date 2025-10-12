@@ -2,50 +2,50 @@
   "type": "function",
   "function": {
     "name": "random",
-    "displayName": "True Random Numbers",
+    "displayName": "Random Numbers",
     "category": "utilities",
-    "tags": ["randomness", "cryptography", "quantum", "physical"],
-    "description": "Générateur de nombres aléatoires VRAIS basés sur sources physiques (bruit atmosphérique, décroissance quantique). Idéal pour cryptographie, jeux, sélection aléatoire.",
+    "tags": ["randomness", "physical"],
+    "description": "Générateur nombres aléatoires VRAIS (bruit atmosphérique RANDOM.ORG). Fallback CSPRNG si échec. Output MINIMAL.",
     "parameters": {
       "type": "object",
       "properties": {
         "operation": {
           "type": "string",
           "enum": ["generate_integers", "generate_floats", "generate_bytes", "coin_flip", "dice_roll", "shuffle", "pick_random"],
-          "description": "Operation: generate_integers (entiers), generate_floats (décimaux), generate_bytes (bytes aléatoires), coin_flip (pile/face), dice_roll (dé), shuffle (mélanger liste), pick_random (choisir dans liste)"
+          "description": "Operation: generate_integers (entiers), generate_floats (décimaux), generate_bytes (bytes), coin_flip (pile/face), dice_roll (dé), shuffle (mélanger), pick_random (choisir)"
         },
         "min": {
           "type": "integer",
-          "description": "Minimum value (inclusive) for integers. Default: 0",
+          "description": "Min value (inclusive) for integers. Default: 0",
           "default": 0
         },
         "max": {
           "type": "integer",
-          "description": "Maximum value (inclusive) for integers. Default: 100",
+          "description": "Max value (inclusive) for integers. Default: 100",
           "default": 100
         },
         "count": {
           "type": "integer",
-          "description": "Number of random values to generate (1-10000, default: 1)",
+          "description": "Number of values (1-10000, default: 1)",
           "minimum": 1,
           "maximum": 10000,
           "default": 1
         },
         "unique": {
           "type": "boolean",
-          "description": "Ensure all generated integers are unique (no duplicates). Only for generate_integers. Default: false",
+          "description": "Unique integers only (no duplicates). Default: false",
           "default": false
         },
         "decimals": {
           "type": "integer",
-          "description": "Number of decimal places for floats (1-20, default: 2). Only for generate_floats.",
+          "description": "Decimal places for floats (1-20, default: 2)",
           "minimum": 1,
           "maximum": 20,
           "default": 2
         },
         "length": {
           "type": "integer",
-          "description": "Number of bytes to generate (1-1000, default: 16). Only for generate_bytes.",
+          "description": "Bytes length (1-1000, default: 16)",
           "minimum": 1,
           "maximum": 1000,
           "default": 16
@@ -53,30 +53,24 @@
         "format": {
           "type": "string",
           "enum": ["hex", "base64", "decimal"],
-          "description": "Output format for bytes: hex, base64, or decimal array. Default: hex",
+          "description": "Bytes format: hex, base64, decimal. Default: hex",
           "default": "hex"
         },
         "sides": {
           "type": "integer",
-          "description": "Number of sides on the die (3-100, default: 6). Only for dice_roll.",
+          "description": "Die sides (3-100, default: 6)",
           "minimum": 3,
           "maximum": 100,
           "default": 6
         },
         "items": {
           "type": "array",
-          "description": "List of items to shuffle or pick from. Required for shuffle and pick_random operations.",
+          "description": "Items to shuffle or pick from (required for shuffle/pick_random)",
           "items": {
             "type": "string"
           },
           "minItems": 1,
           "maxItems": 10000
-        },
-        "source": {
-          "type": "string",
-          "enum": ["auto", "atmospheric", "quantum"],
-          "description": "Random source: auto (fallback logic), atmospheric (RANDOM.ORG), quantum (Cisco QRNG). Default: auto",
-          "default": "auto"
         }
       },
       "required": ["operation"],
