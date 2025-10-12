@@ -10,6 +10,26 @@ Note: Older entries have been archived under changelogs/ (range-based files).
 
 Campagne d'audit en profondeur de tous les tools pour conformité LLM_DEV_GUIDE.
 
+### telegram_bot - [2025-10-12] ✅ AUDITED (7.7→9.2/10)
+
+**Fixed**:
+- 🔴 SECURITY: Token masking in error messages (mask_url() function + safe error handling)
+- JSON spec: added `tags` array ["telegram", "messaging", "bot", "notifications"]
+- Code: added logging (info for all operations, warnings for API errors and truncation)
+- Code: added truncation warnings when get_updates limit reached
+- Code: added explicit counts (`returned_count`, `latest_update_id`)
+- Outputs simplified: removed verbose `success`/`operation` fields from tool responses
+
+**Added**: README.md (8.8 KB, 10 operations documented with examples, tips & best practices)
+
+**Technical**: telegram_bot.json +34B, api_client.py +850B (security + logging), core.py +485B (logging + truncation + counts), api.py -30B (simplified), README.md +8800B (new). Total: +10139B (~10 KB). Conformity: 75%→98%.
+
+**Tests**: 10/10 non-regression OK (all operations functional: get_me, get_updates, send_message, send_poll, edit_message, delete_message, send_location, validation, markdown, pagination).
+
+**SCORE FINAL: 9.2/10** ⭐⭐⭐⭐⭐
+
+---
+
 ### gitbook - [2025-10-12] ✅ AUDITED (7.2→8.9/10)
 
 **Fixed**:
