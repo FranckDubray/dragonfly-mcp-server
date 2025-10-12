@@ -2,7 +2,7 @@
 
 Ce fichier est généré automatiquement par `scripts/generate_tools_catalog.py`. Ne pas éditer à la main.
 
-Total tools: 40
+Total tools: 41
 
 ## 📊 Intelligence & Orchestration (4)
 
@@ -38,8 +38,8 @@ Total tools: 40
 
 ## 📧 Communication (5)
 
-- Discord Bot — Client Discord Bot complet (REST API). Gestion messages, channels, threads, reactions, search. Requiert DISCORD_BOT_TOKEN. 28 opérations…
-  - Opérations: list_messages, get_message, send_message, edit_message, delete_message, bulk_delete …
+- Discord Bot — Client Discord Bot complet (REST API). Gestion messages, channels, threads, reactions, search. Requiert DISCORD_BOT_TOKEN. 29 opérations…
+  - Opérations: list_guilds, list_messages, get_message, send_message, edit_message, delete_message …
   - Tokens: aucun
 
 - Discord Webhook — Publie et gère des articles sous forme d'Embeds sur Discord via un webhook global (DISCORD_WEBHOOK_URL). Supporte create/update/upsert/de…
@@ -140,7 +140,7 @@ Total tools: 40
   - Opérations: N/A
   - Tokens: aucun
 
-## 🔢 Utilities (6)
+## 🔢 Utilities (7)
 
 - Date/Time — Calculs de dates: jour de la semaine, différence entre 2 dates, maintenant/aujourd'hui, ajout de durées, formatage et parsing.
   - Opérations: now, today, day_of_week, diff, diff_days, add …
@@ -164,6 +164,10 @@ Total tools: 40
 
 - SSH Admin — Administration et audit de serveurs distants via SSH (authentification par clés SSH uniquement). Permet d'exécuter des commandes/scripts… · Tags: system, admin, ssh, devops
   - Opérations: connect, exec, exec_file, upload, download
+  - Tokens: aucun
+
+- True Random Numbers — Générateur de nombres aléatoires VRAIS basés sur sources physiques (bruit atmosphérique, décroissance quantique). Idéal pour cryptographi… · Tags: randomness, cryptography, quantum, physical
+  - Opérations: generate_integers, generate_floats, generate_bytes, coin_flip, dice_roll, shuffle …
   - Tokens: aucun
 
 ## 🎮 Social & Entertainment (4)
