@@ -1,3 +1,4 @@
+
 # LLM Orchestrator (call_llm)
 
 **Orchestrateur LLM en 2 phases avec streaming** : appelle un modèle LLM avec orchestration automatique des tool_calls MCP et support multimodal (vision).
@@ -209,7 +210,8 @@ _call_llm/
 ├── http_client.py              # POST streaming avec headers
 ├── debug_utils.py              # Flags debug, trimming
 ├── usage_utils.py              # Merge usage cumulatif
-├── tool_execution.py           # (Legacy, non utilisé actuellement)
+├── utils_images.py             # Helpers vision (chroot, data URL)
+├── file_utils.py               # Helpers filesystem (find project root)
 └── mcp_tools.py                # (Legacy, remplacé par tools_exec.py)
 ```
 
@@ -219,6 +221,8 @@ _call_llm/
 
 ### 🔴 CRITICAL
 - **Bug tool_call.id null** : génération automatique d'un UUID fallback si provider ne retourne pas d'ID → évite erreur OpenAI API phase 2
+- **NameError tool_Dict** : ajout de `from __future__ import annotations` dans tous les modules (deferred annotations)
+- **Découpage call_llm.py** : extraction helpers vers file_utils.py (9.2KB → 4.6KB)
 
 ### 🟡 MAJOR
 - **Defaults JSON** : `temperature: 1`, `debug: false` ajoutés explicitement dans spec
@@ -227,7 +231,8 @@ _call_llm/
 ### 🟢 IMPROVEMENTS
 - **Découpage fichiers** : streaming.py découpé en 4 modules (SSE, media, fallback, main)
 - **Usage tracking** : cumulative usage avec récursion sur tools imbriqués
-- **README.md** : documentation complète (10 KB)
+- **README.md** : documentation complète (8 KB)
+- **Code mort supprimé** : phase1.py (4.6 KB de code inutilisé)
 
 ---
 
@@ -245,7 +250,7 @@ _call_llm/
 
 ---
 
-## 📊 Score audit : **7.1 → 8.9/10** ⭐⭐⭐⭐
+## 📊 Score audit : **9.0 → 9.2/10** ⭐⭐⭐⭐⭐
 
 | Critère | Avant | Après | Commentaire |
 |---------|-------|-------|-------------|
@@ -255,7 +260,7 @@ _call_llm/
 | Robustesse | 4/10 | 9/10 | **Bug ID null corrigé** |
 | Conformité | 7/10 | 9/10 | Logging + defaults |
 | Performance | 8/10 | 8/10 | Inchangé (déjà OK) |
-| Maintenabilité | 7/10 | 8/10 | Découpage amélioré |
+| Maintenabilité | 7/10 | 9/10 | Code mort supprimé |
 | Documentation | 6/10 | 9/10 | README complet |
 
 ---
@@ -265,3 +270,4 @@ _call_llm/
 - Spec JSON canonique : `src/tool_specs/call_llm.json`
 - Bootstrap : `src/tools/call_llm.py`
 - Tests : voir CHANGELOG.md
+
