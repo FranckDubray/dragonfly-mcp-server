@@ -102,7 +102,7 @@ JSON Spec LLM | Architecture | Sécurité | Robustesse | Conformité | Performan
 
 ### 5. CORRECTIFS
 
-**⚠️ DÉCOUPAGE FICHIERS**: Si un fichier dépasse 10KB ou 300 lignes, découper logiquement en modules séparés (api.py, core.py, validators.py, utils.py, services/).
+**⚠️ DÉCOUPAGE FICHIERS**: Si un fichier dépasse **7KB** ou 250 lignes, découper logiquement en modules séparés (api.py, core.py, validators.py, utils.py, services/). **NOUVELLE LIMITE: 7KB MAX par fichier pour faciliter la maintenance.**
 
 **⚠️ WORKSPACE AUTO-SYNC**: Après chaque `writeFile`, le workspace est mis à jour automatiquement (pas besoin de reload manuel).
 
@@ -219,7 +219,7 @@ unload_file: ["src/tools/{tool}.py", "src/tool_specs/{tool}.json", "src/tools/_{
 10. **Perplexity** pour 404/bugs API externes
 11. **Unload** toujours à la fin (libère workspace capacity)
 12. **Procédure** màj après chaque audit
-13. 🚨 **Découpage fichiers** si > 10KB ou 300 lignes
+13. 🚨 **Découpage fichiers** si > **7KB** ou 250 lignes
 14. 🚨 **CHANGELOG condensé** (essentiel uniquement, pas de blabla)
 15. 🚨 **Workspace auto-sync** : writeFile/deleteFile mettent à jour le workspace automatiquement (pas de reload manuel)
 16. 🚨 **Pas de double-load** : vérifier qu'un fichier n'est pas déjà chargé avant load_file
