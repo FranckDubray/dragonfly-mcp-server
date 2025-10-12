@@ -28,3 +28,8 @@ files/imap/
 # Skyfield ephemeris data (downloaded on first use)
 *.bsp
 *.npy
+
+# SSH Keys (CRITICAL: never commit private keys)
+ssh_keys/*
+!ssh_keys/.gitkeep
+!ssh_keys/README.md
