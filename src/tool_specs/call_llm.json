@@ -4,7 +4,8 @@
     "name": "call_llm",
     "displayName": "LLM Orchestrator",
     "category": "intelligence",
-    "description": "Appelle un modèle LLM en streaming. Orchestration tool_calls (MCP) en 2 phases. Supporte l’entrée multi-modale (images) via messages OpenAI, image_urls ou des fichiers du répertoire docs/.",
+    "tags": ["llm", "orchestration", "vision", "multimodal"],
+    "description": "Appelle un modèle LLM en streaming. Orchestration tool_calls (MCP) en 2 phases. Supporte l'entrée multi-modale (images) via messages OpenAI, image_urls ou des fichiers du répertoire docs/.",
     "parameters": {
       "type": "object",
       "properties": {
@@ -33,25 +34,25 @@
         },
         "image_urls": {
           "type": "array",
-          "description": "URLs d’images à inclure avec le message (raccourci).",
+          "description": "URLs d'images à inclure avec le message (raccourci).",
           "items": { "type": "string", "minLength": 1 }
         },
         "image_files": {
           "type": "array",
-          "description": "Chemins d’images stockées dans docs/images ou docs/video/frames (ex: 'docs/images/plan.png'). Seront encodées en data URL.",
+          "description": "Chemins d'images stockées dans docs/images ou docs/video/frames (ex: 'docs/images/plan.png'). Seront encodées en data URL.",
           "items": { "type": "string", "minLength": 1 }
         },
         "promptSystem": { "type": "string", "description": "Contexte système séparé (pas dans messages)." },
         "model": { "type": "string", "description": "Nom du modèle (ex: gpt-4o/gpt-5-vision)." },
         "assistantId": { "type": "string", "description": "Identifiant d'assistant (portail) si vous souhaitez cibler un assistant préconfiguré." },
-        "temperature": { "type": "number", "description": "Température d'échantillonnage (défaut: 1)." },
+        "temperature": { "type": "number", "description": "Température d'échantillonnage (défaut: 1).", "default": 1 },
         "max_tokens": { "type": "integer", "description": "Max tokens de la réponse finale." },
         "tool_names": {
           "type": "array",
           "description": "Outils MCP autorisés pour le 1er appel.",
           "items": { "type": "string" }
         },
-        "debug": { "type": "boolean", "description": "Inclut un debug détaillé." }
+        "debug": { "type": "boolean", "description": "Inclut un debug détaillé.", "default": false }
       },
       "required": ["message","model"],
       "additionalProperties": false
