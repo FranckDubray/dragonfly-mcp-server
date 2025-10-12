@@ -61,8 +61,11 @@ def run(**params) -> Dict[str, Any]:
     if method not in valid_methods:
         return {"error": f"Invalid method '{method}'. Must be one of: {', '.join(valid_methods)}"}
     
+    # Remove method and url from params to avoid duplicate arguments
+    clean_params = {k: v for k, v in params.items() if k not in ("method", "url")}
+    
     # Route to handler
-    return route_request(method, url, **params)
+    return route_request(method, url, **clean_params)
 
 
 def spec() -> Dict[str, Any]:
