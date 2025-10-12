@@ -6,6 +6,41 @@ Note: Older entries have been archived under changelogs/ (range-based files).
 
 ---
 
+## [1.18.1] - 2025-10-12
+
+### Fixed
+- **generate_edit_image**: Major refactoring and bug fixes
+  - Corrected regex in streaming.py: `data:image/` instead of `data:image//` (double slash bug)
+  - Reduced core.py complexity by 36% (403 → 259 lines, -5.5KB)
+  - Extracted sequential fallback logic to dedicated function (no more duplication)
+  - Simplified timeout management (unified system with env overrides)
+  - Moved image normalization to new validators.py module (proper separation)
+  - Removed dims.py (unused, backend always returns 1024×1024)
+
+### Removed
+- **generate_edit_image**: Unused parameters from spec JSON
+  - `format`: Backend always returns PNG (parameter was validated but ignored)
+  - `ratio`: Backend always returns 1:1 (parameter was validated but ignored)
+  - `width`: Backend always returns 1024px (parameter was validated but ignored)
+  - `height`: Backend always returns 1024px (parameter was validated but ignored)
+  - Note: Backend is fixed to 1024×1024 PNG output
+
+### Changed
+- **generate_edit_image**: Output optimization
+  - Debug output now returns `raw_preview_lines` count instead of full preview content
+  - Reduced typical debug payload by ~80% (from 40KB to ~8KB)
+  - Simplified bootstrap (generate_edit_image.py): -34% lines (75 → 49)
+
+### Technical Details
+- generate_edit_image: Code quality improved dramatically
+  - Cyclomatic complexity: 25 → 12 (halved)
+  - DRY violations: 3× duplication → 0
+  - Single responsibility: better separation (client/core/validators/payloads/streaming)
+  - Timeouts: unified system respecting IMAGE_TIMEOUT_SEC, IMAGE_MULTI_TIMEOUT_SEC, IMAGE_CONNECT_TIMEOUT_SEC
+  - All changes maintain backward compatibility (existing integrations unaffected)
+
+---
+
 ## [1.18.0] - 2025-10-12
 
 ### Added
