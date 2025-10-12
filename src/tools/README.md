@@ -162,12 +162,12 @@ Total tools: 41
   - Opérations: current_weather, forecast_hourly, forecast_daily, air_quality, geocoding, reverse_geocoding
   - Tokens: aucun
 
-- SSH Admin — Administration et audit de serveurs distants via SSH (authentification par clés SSH uniquement). Permet d'exécuter des commandes/scripts… · Tags: system, admin, ssh, devops
-  - Opérations: connect, exec, exec_file, upload, download
+- Random Numbers — Générateur nombres aléatoires VRAIS (bruit atmosphérique RANDOM.ORG). Fallback CSPRNG si échec. Output MINIMAL. · Tags: randomness, physical
+  - Opérations: generate_integers, generate_floats, generate_bytes, coin_flip, dice_roll, shuffle …
   - Tokens: aucun
 
-- True Random Numbers — Générateur de nombres aléatoires VRAIS basés sur sources physiques (bruit atmosphérique, décroissance quantique). Idéal pour cryptographi… · Tags: randomness, cryptography, quantum, physical
-  - Opérations: generate_integers, generate_floats, generate_bytes, coin_flip, dice_roll, shuffle …
+- SSH Admin — Administration et audit de serveurs distants via SSH (authentification par clés SSH uniquement). Permet d'exécuter des commandes/scripts… · Tags: system, admin, ssh, devops
+  - Opérations: connect, exec, exec_file, upload, download
   - Tokens: aucun
 
 ## 🎮 Social & Entertainment (4)
