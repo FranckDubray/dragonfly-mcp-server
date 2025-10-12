@@ -17,7 +17,7 @@ class OllamaLocalClient:
         Args:
             method: HTTP method
             endpoint: API endpoint
-            Request payload
+            data: Request payload
             timeout: Request timeout
             stream: If True, handle streaming response (for pull/push operations)
         """
@@ -152,6 +152,35 @@ class OllamaLocalClient:
                 "lines_processed": lines_processed
             }
     
+    def _clean_response(self, result: Dict[str, Any], keep_fields: List[str]) -> Dict[str, Any]:
+        """Clean API response to keep only essential fields.
+        
+        Args:
+            result: Raw API response
+            keep_fields: List of field names to keep
+            
+        Returns:
+            Cleaned response with only essential fields
+        """
+        if not result.get("success"):
+            return result  # Keep errors as-is
+        
+        # Start with success flag
+        cleaned = {"success": True}
+        
+        # Add requested fields
+        for field in keep_fields:
+            if field in result:
+                cleaned[field] = result[field]
+        
+        # Add formatted durations if present
+        for key in ["total_duration", "load_duration", "prompt_eval_duration", "eval_duration"]:
+            formatted_key = f"{key}_formatted"
+            if formatted_key in result:
+                cleaned[formatted_key] = result[formatted_key]
+        
+        return cleaned
+    
     # ==========================================
     # MODEL MANAGEMENT
     # ==========================================
@@ -256,9 +285,13 @@ class OllamaLocalClient:
         temperature: float = 0.7,
         max_tokens: int = 4000,
         timeout: int = DEFAULT_LOCAL_TIMEOUT,
-        options: Dict = None
+        options: Dict = None,
+        images: List[str] = None
     ) -> Dict[str, Any]:
-        """Generate text completion."""
+        """Generate text completion with optional image support.
+        
+        Returns clean response with only: success, response, model, timing.
+        """
         payload = {
             "model": model,
             "prompt": prompt,
@@ -270,14 +303,27 @@ class OllamaLocalClient:
             }
         }
         
+        # Add images if provided (for vision models)
+        if images:
+            payload["images"] = images
+        
         result = self._make_request("POST", "/api/generate", payload, timeout)
         
-        # Enhance result with timing info
+        # Clean output - keep only essentials
         if result.get("success"):
-            # Format durations if present
+            # Format durations
             for key in ["total_duration", "load_duration", "prompt_eval_duration", "eval_duration"]:
                 if key in result:
                     result[f"{key}_formatted"] = format_duration(result[key])
+            
+            # Return clean response
+            return self._clean_response(result, [
+                "response",  # The actual text response
+                "model",     # Model name
+                "total_duration_formatted",
+                "prompt_eval_count",
+                "eval_count"
+            ])
         
         return result
     
@@ -289,9 +335,13 @@ class OllamaLocalClient:
         temperature: float = 0.7,
         max_tokens: int = 4000,
         timeout: int = DEFAULT_LOCAL_TIMEOUT,
-        options: Dict = None
+        options: Dict = None,
+        images: List[str] = None
     ) -> Dict[str, Any]:
-        """Chat with context."""
+        """Chat with context.
+        
+        Returns clean response with only: success, message (with role/content), model, timing.
+        """
         payload = {
             "model": model,
             "messages": messages,
@@ -303,14 +353,27 @@ class OllamaLocalClient:
             }
         }
         
+        # Add images if provided (for vision models)
+        if images:
+            payload["images"] = images
+        
         result = self._make_request("POST", "/api/chat", payload, timeout)
         
-        # Enhance result with timing info
+        # Clean output - keep only essentials
         if result.get("success"):
-            # Format durations if present
+            # Format durations
             for key in ["total_duration", "load_duration", "prompt_eval_duration", "eval_duration"]:
                 if key in result:
                     result[f"{key}_formatted"] = format_duration(result[key])
+            
+            # Return clean response
+            return self._clean_response(result, [
+                "message",  # The message object with role/content
+                "model",    # Model name
+                "total_duration_formatted",
+                "prompt_eval_count",
+                "eval_count"
+            ])
         
         return result
     
