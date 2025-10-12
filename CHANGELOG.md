@@ -6,6 +6,32 @@ Note: Older entries have been archived under changelogs/ (range-based files).
 
 ---
 
+## [1.18.2] - 2025-10-12
+
+### Added
+- **generate_edit_image**: Local file support for image inputs
+  - New `image_files` parameter: accepts local image paths relative to `./docs`
+  - Examples: `"test.png"`, `"images/photo.jpg"`, `"subdir/image.webp"`
+  - Supports PNG, JPEG, WebP with automatic MIME type detection
+  - Can be combined with `images` parameter (URLs/data URLs) — max 3 total
+  - Intelligent path resolution using same strategy as `call_llm` (project root detection)
+  - Security: Path traversal protection (chroot to ./docs)
+  - Optional `DOCS_ABS_ROOT` env var override for custom docs location
+
+### Changed
+- **generate_edit_image**: Enhanced validators.py
+  - Added `load_local_images()` function for file loading
+  - Added `_get_docs_root()` for intelligent ./docs discovery
+  - Bootstrap now handles 3 input types: local files, URLs, data URLs/base64
+
+### Technical Details
+- Path resolution: `Path(__file__).parent.parent.parent.parent / "docs"` (same as call_llm)
+- File reading: binary mode with base64 encoding to data URL
+- Error handling: clear messages for missing files, path traversal attempts
+- Validation: total image count (local + remote) enforced to max 3
+
+---
+
 ## [1.18.1] - 2025-10-12
 
 ### Fixed
