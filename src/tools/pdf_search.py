@@ -11,6 +11,7 @@ PDF Search Tool - Search text inside one or multiple PDF files.
 from __future__ import annotations
 
 import re
+import logging
 from typing import Any, Dict, List, Tuple, Iterable, Optional
 from pathlib import Path
 import json
@@ -26,6 +27,7 @@ try:
 except Exception:  # pragma: no cover - dependency might be missing at import-time
     PdfReader = None
 
+logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = find_project_root()
 MAX_RESULTS = 50  # Hard cap of returned detailed results
@@ -57,6 +59,7 @@ def _list_pdf_files(targets: Iterable[str], recursive: bool = True) -> List[Path
             else:
                 files.extend([q for q in p.glob("*.pdf") if q.is_file()])
         else:
+            logger.warning(f"Path not found or not PDF: {t}")
             continue
     # De-duplicate while preserving order
     seen = set()
@@ -84,6 +87,7 @@ def _parse_pages(pages: str | None, total: int) -> List[int]:
                 start = int(a) - 1 if a else 0
                 end = int(b) - 1 if b else total - 1
             except ValueError:
+                logger.warning(f"Invalid page range: {part}")
                 continue
             start = max(0, start)
             end = min(total - 1, end)
@@ -93,6 +97,7 @@ def _parse_pages(pages: str | None, total: int) -> List[int]:
             try:
                 idx = int(part) - 1
             except ValueError:
+                logger.warning(f"Invalid page number: {part}")
                 continue
             if 0 <= idx < total:
                 indices.append(idx)
@@ -114,6 +119,7 @@ def _merge_page_selections(pages: Optional[str], pages_list: Optional[List[int]]
             try:
                 i = int(p) - 1
             except Exception:
+                logger.warning(f"Invalid page in pages_list: {p}")
                 continue
             if 0 <= i < total:
                 indices.append(i)
@@ -136,7 +142,8 @@ def _find_all(text: str, query: str, *, regex: bool, case_sensitive: bool) -> Li
         flags = 0 if case_sensitive else re.IGNORECASE
         try:
             pattern = re.compile(query, flags)
-        except re.error:
+        except re.error as e:
+            logger.warning(f"Invalid regex pattern: {e}")
             return matches
         for m in pattern.finditer(text):
             matches.append((m.start(), m.end(), m.group(0)))
@@ -187,6 +194,11 @@ def run(
     if query is None or (isinstance(query, str) and query.strip() == ""):
         return {"error": "query is required"}
 
+    # Validate context
+    if context < 0 or context > 500:
+        logger.warning(f"context={context} out of range [0, 500], clamping")
+        context = max(0, min(500, context))
+
     target_list: List[str] = []
     if paths and isinstance(paths, list):
         target_list.extend([str(p) for p in paths])
@@ -199,9 +211,14 @@ def run(
     if PdfReader is None:
         return {"error": "pypdf is not installed. Please add 'pypdf' to your dependencies and install."}
 
+    logger.info(f"Searching '{query}' in {len(target_list)} path(s), regex={regex}, case_sensitive={case_sensitive}")
+
     files = _list_pdf_files(target_list, recursive=recursive)
     if not files:
+        logger.warning("No PDF files found for given path(s)")
         return {"error": "No PDF files found for given path(s)"}
+
+    logger.info(f"Found {len(files)} PDF file(s) to search")
 
     results: List[Dict[str, Any]] = []
     per_file: List[Dict[str, Any]] = []
@@ -216,7 +233,9 @@ def run(
         try:
             reader = PdfReader(str(f))
         except Exception as e:
-            errors.append({"file": str(f), "error": f"Failed to open PDF: {e}"})
+            err_msg = f"Failed to open PDF: {e}"
+            logger.error(f"{f}: {err_msg}")
+            errors.append({"file": str(f), "error": err_msg})
             continue
 
         total_pages = len(reader.pages)
@@ -226,7 +245,9 @@ def run(
             try:
                 text = reader.pages[idx].extract_text() or ""
             except Exception as e:
-                errors.append({"file": str(f), "error": f"Failed to extract text from page {idx+1}: {e}"})
+                err_msg = f"Failed to extract text from page {idx+1}: {e}"
+                logger.error(f"{f}: {err_msg}")
+                errors.append({"file": str(f), "error": err_msg})
                 continue
 
             matches = _find_all(text, query, regex=regex, case_sensitive=case_sensitive)
@@ -242,8 +263,6 @@ def run(
                     results.append({
                         "file": str(f),
                         "page": idx + 1,
-                        "start": s,
-                        "end": e,
                         "match": mtxt,
                         "snippet": snippet,
                     })
@@ -255,26 +274,33 @@ def run(
         })
         total_pages_scanned += pages_scanned_here
 
+    logger.info(f"Search complete: {total_matches} matches across {total_pages_scanned} pages")
+
+    # Minimal output
     response: Dict[str, Any] = {
-        "success": True,
-        "query": query,
-        "searched_files": len(files),
-        "pages_total_scanned": total_pages_scanned,
         "total_matches": total_matches,
-        "results_count": len(results),
+        "returned_count": len(results),
         "results": results,
-        "per_file": per_file,
-        "errors": errors,
     }
 
     if total_matches > MAX_RESULTS:
-        response["limit_reached"] = True
-        response["notice"] = (
-            f"Found {total_matches} matches across {total_pages_scanned} pages. "
-            f"Showing first {MAX_RESULTS}. Refine your query or restrict page ranges (e.g., pages='10-20')."
+        response["truncated"] = True
+        response["message"] = (
+            f"Found {total_matches} matches. Showing first {MAX_RESULTS}. "
+            f"Refine query or restrict pages (e.g., pages='10-20')."
         )
-    else:
-        response["limit_reached"] = False
+        logger.warning(f"Results truncated: {total_matches} matches, showing {MAX_RESULTS}")
+    
+    # Optional: add summary if errors or multiple files
+    if len(files) > 1 or errors:
+        response["summary"] = {
+            "files_searched": len(files),
+            "pages_scanned": total_pages_scanned,
+            "per_file": per_file,
+        }
+    
+    if errors:
+        response["errors"] = errors
 
     return response
 
