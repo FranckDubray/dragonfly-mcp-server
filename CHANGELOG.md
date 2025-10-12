@@ -6,6 +6,42 @@ Note: Older entries have been archived under changelogs/ (range-based files).
 
 ---
 
+## [1.18.0] - 2025-10-12
+
+### Added
+- **news_aggregator** tool: Multi-source news aggregation with anti-flood protection
+  - 3 providers: NewsAPI.org, New York Times, The Guardian
+  - Parallel queries with ThreadPoolExecutor (60% faster than sequential)
+  - 3 operations: search_news, top_headlines, list_sources
+  - Unified article format across all providers
+  - Deduplication by URL + automatic sorting by date
+  - Pagination support with `page` parameter
+  - Anti-flood policies:
+    - Default limit: 20 articles, max: 100
+    - Descriptions truncated to 300 chars
+    - Provider metadata simplified
+    - Sources list limited to 100 entries
+    - Worst case output: ~17k tokens (7-11x under LLM limits)
+  - Clean error messages with API registration URLs
+  - Category: intelligence
+  - Tags: external_sources, knowledge, search
+
+### Technical Details
+- news_aggregator: Fully compliant with LLM_DEV_GUIDE anti-flood policies
+- Parallel execution reduces response time from ~9s to ~3s (3 providers)
+- Requires at least one API key: NEWS_API_KEY, NYT_API_KEY, or GUARDIAN_API_KEY
+- NewsAPI: 100 req/day, 150k+ sources worldwide
+- NYT: 1000 req/day, full archive access
+- Guardian: ~500 req/day, archive since 1999
+- Total daily quota: ~1600 requests across all providers
+
+### Cleanup
+- Removed test scripts (test_news_aggregator.sh)
+- Removed RESUME_SESSION.md
+- Removed commit_and_push.sh
+
+---
+
 ## [1.17.3] - 2025-10-12
 
 ### Fixed
