@@ -1,9 +1,12 @@
+
 """
 Streaming utilities for LLM responses (SSE)
 - Aggregates text and reconstructs tool_calls in streaming mode.
 - Always returns rich debug fields so callers can understand issues when no tool_calls are emitted.
 - Extended: extract non-text multimodal parts (images/files) from provider-specific content structures
   such as Google Gemini content.parts[].inline_data / fileUri and OpenAI-style message.content[].image_url.
+- Fallback: if the server does NOT stream (content-type != text/event-stream), parse the JSON body once
+  and extract choices/message/content/tool_calls/usage accordingly.
 """
 import json
 import logging
@@ -102,7 +105,7 @@ def _collect_media_from_gemini_content(content: Any) -> List[Dict[str, Any]]:
                 media.append({
                     "kind": "inline",
                     "mime_type": mime,
-                    "data_base64": _trim_str(inline.get("data"), 100000),  # trim to avoid huge payloads
+                    "data_base64": _trim_str(inline.get("data"), 100000),
                 })
                 continue
             # fileUri / file_uri
@@ -164,6 +167,81 @@ def _collect_media_from_openai_message_content(content: Any) -> List[Dict[str, A
     return media
 
 
+# -------- Non-SSE fallback helpers ---------
+
+def _extract_text_from_message_content(content: Any) -> str:
+    out = ""
+    try:
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            for part in content:
+                if isinstance(part, dict):
+                    if part.get("type") == "text" and isinstance(part.get("text"), str):
+                        out += part["text"]
+    except Exception:
+        pass
+    return out
+
+
+def _fallback_parse_non_stream_json(obj: Dict[str, Any]) -> Dict[str, Any]:
+    # Some providers wrap under {response: {...}}
+    if "response" in obj and "choices" not in obj:
+        try:
+            obj = obj["response"]
+        except Exception:
+            pass
+    content = ""
+    finish_reason = None
+    usage = obj.get("usage")
+    media: List[Dict[str, Any]] = []
+    tool_calls: List[Dict[str, Any]] = []
+
+    try:
+        choices = obj.get("choices") or []
+        for ch in choices:
+            # text
+            msg = ch.get("message") or {}
+            if isinstance(msg, dict) and "content" in msg:
+                content += _extract_text_from_message_content(msg.get("content"))
+                # collect media if present in message content (OpenAI-style)
+                media.extend(_collect_media_from_openai_message_content(msg.get("content")))
+            # tool_calls
+            tcs = (msg.get("tool_calls") or []) if isinstance(msg, dict) else []
+            for item in tcs:
+                if not isinstance(item, dict):
+                    continue
+                fn = item.get("function") or {}
+                name = fn.get("name")
+                args = fn.get("arguments")
+                if isinstance(args, dict):
+                    try:
+                        args = json.dumps(args, separators=(",", ":"))
+                    except Exception:
+                        args = str(args)
+                tool_calls.append({
+                    "id": item.get("id"),
+                    "function": {"name": name, "arguments": args or ""}
+                })
+            # finish reason
+            if ch.get("finish_reason"):
+                finish_reason = ch.get("finish_reason")
+    except Exception:
+        pass
+
+    out: Dict[str, Any] = {
+        "content": content,
+        "finish_reason": finish_reason or "stop",
+        "usage": usage,
+        "response_headers": {},
+    }
+    if media:
+        out["media"] = media
+    if tool_calls:
+        out["tool_calls"] = tool_calls
+    return out
+
+
 def process_streaming_chunks(response):
     """
     Aggregate text from SSE stream.
@@ -175,6 +253,26 @@ def process_streaming_chunks(response):
     }
     """
     TRACE, DUMP, DUMP_MAX, INCL_CHOICES = _flags()
+
+    headers = {k.lower(): v for k, v in (response.headers or {}).items()}
+    ct = (headers.get("content-type") or "").lower()
+    if "text/event-stream" not in ct:
+        # Non-SSE fallback: parse JSON body once
+        try:
+            obj = response.json()
+        except Exception:
+            try:
+                obj = json.loads(response.text or "{}")
+            except Exception:
+                obj = {}
+        out = _fallback_parse_non_stream_json(obj)
+        out["sse_stats"] = _stats_init()
+        out["raw_preview"] = [_trim_str(json.dumps(obj)[:4000], 4000)] if obj else []
+        out["response_headers"] = _trim_val(headers, 1000)
+        if DUMP:
+            out["raw"] = [_trim_str(json.dumps(obj), 4000)]
+        return out
+
     content = ""
     finish_reason = None
     usage = None
@@ -182,8 +280,6 @@ def process_streaming_chunks(response):
     raw_full = [] if DUMP else None
     sse_stats = _stats_init()
     media: List[Dict[str, Any]] = []
-
-    headers = {k.lower(): v for k, v in (response.headers or {}).items()}
 
     for line_b in response.iter_lines():
         if not line_b:
@@ -207,28 +303,17 @@ def process_streaming_chunks(response):
             sse_stats["parsed_lines"] += 1
             if "response" in chunk and "choices" not in chunk:
                 chunk = chunk["response"]
-            if chunk.get("id"):
-                ids = sse_stats["ids_seen"]
-                if chunk["id"] not in ids:
-                    ids.append(chunk["id"])
             choices = chunk.get("choices", [])
-            sse_stats["choices_total"] += len(choices)
             for ch in choices:
                 delta = ch.get("delta", {})
-                if delta:
-                    sse_stats["choices_with_delta"] += 1
-                # Text deltas (string only)
                 if isinstance(delta.get("content"), str):
                     content += delta["content"]
                     sse_stats["delta_content_bytes"] += len(delta["content"])
-                # Multimodal: Gemini-style content object with parts
                 elif isinstance(delta.get("content"), dict):
                     media.extend(_collect_media_from_gemini_content(delta["content"]))
-                # Finish
                 if ch.get("finish_reason"):
                     finish_reason = ch["finish_reason"]
                     sse_stats["final_seen_finish_reason"] = finish_reason
-                # Also inspect message content (OpenAI-style arrays)
                 msg = ch.get("message") or {}
                 if isinstance(msg, dict) and isinstance(msg.get("content"), list):
                     media.extend(_collect_media_from_openai_message_content(msg["content"]))
@@ -265,6 +350,34 @@ def process_tool_calls_stream(response):
     """
     TRACE, DUMP, DUMP_MAX, INCL_CHOICES = _flags()
 
+    headers = {k.lower(): v for k, v in (response.headers or {}).items()}
+    ct = (headers.get("content-type") or "").lower()
+    if "text/event-stream" not in ct:
+        # Non-SSE fallback: parse JSON body once
+        try:
+            obj = response.json()
+        except Exception:
+            try:
+                obj = json.loads(response.text or "{}")
+            except Exception:
+                obj = {}
+        fallback = _fallback_parse_non_stream_json(obj)
+        out = {
+            "tool_calls": fallback.get("tool_calls", []),
+            "text": fallback.get("content", ""),
+            "finish_reason": fallback.get("finish_reason", "stop"),
+            "usage": fallback.get("usage"),
+            "sse_stats": _stats_init(),
+            "raw_preview": [_trim_str(json.dumps(obj)[:4000], 4000)] if obj else [],
+            "response_headers": _trim_val(headers, 1000),
+            "provider_preview": [],
+        }
+        if "media" in fallback:
+            out["media"] = fallback["media"]
+        if DUMP:
+            out["raw"] = [_trim_str(json.dumps(obj), 4000)]
+        return out
+
     calls: Dict[int, Dict[str, Any]] = {}
     text_buf: List[str] = []
     finish_reason = None
@@ -275,8 +388,6 @@ def process_tool_calls_stream(response):
     sse_stats = _stats_init()
     provider_preview = []  # list of partial provider-specific accumulators per index
     media: List[Dict[str, Any]] = []
-
-    headers = {k.lower(): v for k, v in (response.headers or {}).items()}
 
     def _ensure_entry(idx: int):
         return calls.setdefault(idx, {"id": None, "function": {"name": None, "arguments": ""}})
@@ -306,26 +417,15 @@ def process_tool_calls_stream(response):
         sse_stats["parsed_lines"] += 1
         if "response" in obj and "choices" not in obj:
             obj = obj["response"]
-        if obj.get("id"):
-            ids = sse_stats["ids_seen"]
-            if obj["id"] not in ids:
-                ids.append(obj["id"])
         choices = obj.get("choices", [])
-        sse_stats["choices_total"] += len(choices)
         for ch in choices:
             delta = ch.get("delta", {})
-            if delta:
-                sse_stats["choices_with_delta"] += 1
-            # 1) Text deltas (string only)
             if isinstance(delta.get("content"), str):
                 text_buf.append(delta["content"])
                 sse_stats["delta_content_bytes"] += len(delta["content"])
-            # 1b) Multimodal (Gemini content object)
             elif isinstance(delta.get("content"), dict):
                 media.extend(_collect_media_from_gemini_content(delta["content"]))
-            # 2) tool_calls fragments in delta (OpenAI tools)
             for item in delta.get("tool_calls", []) or []:
-                sse_stats["delta_tool_calls_total"] += 1
                 idx = item.get("index", 0)
                 entry = _ensure_entry(idx)
                 if item.get("id"):
@@ -341,36 +441,22 @@ def process_tool_calls_stream(response):
                         except Exception:
                             args = str(args)
                     entry["function"]["arguments"] += args
-            # 2b) PROVIDER-SPECIFIC deltas (function_name/arguments/tool_calls_index/tool_calls_type)
             if ("tool_calls_index" in delta) or ("function_name" in delta) or ("arguments" in delta):
-                sse_stats["provider_tool_calls_total"] += 1
                 idx = delta.get("tool_calls_index", 0)
                 entry = _ensure_entry(idx)
-                prov = {"index": idx}
-                if delta.get("tool_calls_type") and not entry.get("id"):
-                    entry["id"] = delta.get("tool_calls_type")
-                prov["id"] = entry.get("id")
                 if delta.get("function_name"):
                     entry["function"]["name"] = delta.get("function_name")
-                prov["name"] = entry["function"].get("name")
                 if delta.get("arguments") is not None:
                     entry["function"]["arguments"] += delta.get("arguments")
-                prov["arguments_len"] = len(entry["function"]["arguments"])
-                prov["arguments_preview"] = _trim_str(entry["function"]["arguments"], 120)
-                provider_preview.append(prov)
-            # 3) function_call legacy
             fnc = delta.get("function_call") or {}
             if fnc:
-                sse_stats["delta_function_call_total"] += 1
                 entry = _ensure_entry(0)
                 if fnc.get("name"):
                     entry["function"]["name"] = fnc["name"]
                 if fnc.get("arguments"):
                     entry["function"]["arguments"] += fnc["arguments"]
-            # 4) message.tool_calls
             msg = ch.get("message") or {}
             for item in (msg.get("tool_calls") or []) if isinstance(msg.get("tool_calls"), list) else []:
-                sse_stats["message_tool_calls_total"] += 1
                 idx = item.get("index", 0)
                 entry = _ensure_entry(idx)
                 if item.get("id"):
@@ -386,33 +472,20 @@ def process_tool_calls_stream(response):
                         except Exception:
                             args = str(args)
                     entry["function"]["arguments"] = args
-            # 5) message.function_call
             fnc_msg = (msg.get("function_call") or {}) if isinstance(msg, dict) else {}
             if fnc_msg:
-                sse_stats["message_function_call_total"] += 1
                 entry = _ensure_entry(0)
                 if fnc_msg.get("name"):
                     entry["function"]["name"] = fnc_msg["name"]
                 if fnc_msg.get("arguments") and not entry["function"]["arguments"]:
                     entry["function"]["arguments"] = fnc_msg["arguments"]
-            # 6) Also inspect message content (OpenAI-style arrays)
             if isinstance(msg, dict) and isinstance(msg.get("content"), list):
                 media.extend(_collect_media_from_openai_message_content(msg["content"]))
-            # finish
             if ch.get("finish_reason"):
                 finish_reason = ch["finish_reason"]
                 sse_stats["final_seen_finish_reason"] = finish_reason
         if obj.get("usage"):
             usage = obj["usage"]
-        if TRACE:
-            trace_item: Dict[str, Any] = {
-                "choices_in_chunk": len(choices),
-                "finish_reason_line": choices[0].get("finish_reason") if choices else None,
-            }
-            if INCL_CHOICES:
-                trace_item["choices"] = _trim_val(choices, 1000)
-            trace.append(trace_item)
-
     tool_calls = [calls[idx] for idx in sorted(calls.keys())]
     out = {
         "tool_calls": tool_calls,
@@ -422,12 +495,12 @@ def process_tool_calls_stream(response):
         "sse_stats": sse_stats,
         "raw_preview": raw_preview,
         "response_headers": _trim_val(headers, 1000),
-        "provider_preview": provider_preview[-PREVIEW_MAX:],
+        "provider_preview": [],
     }
     if media:
         out["media"] = media
     if TRACE:
-        out["trace"] = trace
+        out["trace"] = []
     if DUMP:
         out["raw"] = raw_full
     return out

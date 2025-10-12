@@ -15,16 +15,25 @@ def strip_system_to_promptSystem(messages: List[Dict[str, Any]], explicit: Optio
     return new_msgs, prompt
 
 
-def build_initial_payload(model: str, messages: List[Dict[str, Any]], prompt_system: Optional[str], max_tokens: Optional[int]) -> Dict[str, Any]:
+def build_initial_payload(
+    model: str,
+    messages: List[Dict[str, Any]],
+    prompt_system: Optional[str],
+    max_tokens: Optional[int],
+    assistant_id: Optional[str] = None,
+    temperature: Optional[float] = None,
+) -> Dict[str, Any]:
     p: Dict[str, Any] = {
         "model": model,
         "messages": messages,
-        "temperature": 1,
+        "temperature": 1 if (temperature is None) else temperature,
     }
     if prompt_system:
         p["promptSystem"] = prompt_system
     if max_tokens:
         p["max_tokens"] = max_tokens
+    if assistant_id:
+        p["assistantId"] = assistant_id
     return p
 
 
@@ -39,7 +48,5 @@ def summarize_payload(payload: Dict[str, Any], tool_data: Optional[Dict[str, Any
         out.update({
             "tools_count": len(tool_data.get("tools") or []),
             "tool_names": list(tool_data.get("found_tools") or []),
-            # Intentionnellement, on n'expose plus "tool_choice" ni "parallel_tool_calls"
-            # pour éviter de laisser paraître des champs null/indésirables dans le debug.
         })
     return out
