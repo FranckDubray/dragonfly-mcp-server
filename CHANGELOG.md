@@ -16,14 +16,32 @@ Campagne d'audit en profondeur de tous les tools pour conformité LLM_DEV_GUIDE.
 - 🟡 CONFORMITY: Tags ajoutés `["discord", "bot", "messaging", "api"]` dans spec JSON
 - 🟡 CONFORMITY: Description `limit` mise à jour (default: 5 pour list_messages/search_messages, 50 pour autres)
 - 🟡 CONFORMITY: Outputs simplifiés (suppression champs verbeux `status`, `operation`)
-- 🟡 CONFORMITY: Bot_user nettoyé dans health_check (suppression champs null/inutiles: public_flags, flags, banner, mfa_enabled, locale, premium_type, email, verified, bio, etc.)
-- 🟢 DOCUMENTATION: Truncation warnings déjà présents ✅, counts clarifiés ✅
+- 🟡 CONFORMITY: Bot_user nettoyé dans health_check (suppression 15+ champs null/inutiles: public_flags, flags, banner, mfa_enabled, locale, premium_type, email, verified, bio, etc.)
+- 🟢 IMPROVEMENTS: Logging ajouté (INFO/WARNING/ERROR) dans ops_utility.py
+- 🟢 IMPROVEMENTS: Messages d'erreur détaillés avec error_type et operation context
 
-**Technical**: discord_bot.json +92B (tags), utils.py +800B (clean_bot_user), ops_utility.py -618B (simplification), ops_messages.py -600B (simplification). Conformity: 70%→98%.
+**Technical**: discord_bot.json +92B (tags), utils.py +800B (clean_bot_user), ops_utility.py +967B (logging), operations.py +481B (error handling), ops_messages.py -600B (simplification). Conformity: 70%→98%.
 
-**Tests**: 5/5 preliminary OK, full non-regression tests after server restart.
+**Tests**: 3/3 non-regression OK (health_check, list_guilds, list_messages validés après redémarrage serveur).
 
 **SCORE FINAL: 9.6/10** ⭐⭐⭐⭐⭐
+
+**Commits**: f0aee0c, a03acc5
+
+---
+
+### http_client - [2025-10-12] 🔴 CRITICAL FIXES (broken during discord_bot audit)
+
+**Fixed**:
+- 🔴 CRITICAL: Syntax error in utils.py line 57 (`response_Dict[str, Any]` → `response_data: Dict[str, Any]`)
+- 🔴 CRITICAL: Duplicate method/url parameters causing `route_request() got multiple values for argument 'method'`
+- 🔴 CRITICAL: Parameter extraction bug in run() causing all requests to fail with HTTP 500
+
+**Technical**: http_client.py fixed (params cleanup), utils.py fixed (syntax error). Module was completely broken for ~30 minutes.
+
+**Tests**: Fixed and validated with discord_bot tests.
+
+**Commits**: 2faf5d5, a5b7348, b4568fe
 
 ---
 
