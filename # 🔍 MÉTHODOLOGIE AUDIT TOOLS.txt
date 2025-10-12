@@ -8,6 +8,8 @@
 
 
 
+
+
 # 🔍 MÉTHODOLOGIE AUDIT TOOLS
 
 ## État: 8/40 audités
@@ -44,6 +46,11 @@ load_file: [
 
 **Objectif** : Comprendre comment le tool fonctionne réellement, identifier les bugs évidents.
 
+**⚠️ RÈGLE CRITIQUE : PAS D'APPELS PARALLÈLES** ⚠️
+- **NE JAMAIS** faire plusieurs appels `http_client` en parallèle dans le même bloc `<function_calls>`
+- Le système n'attend pas les réponses et ça échoue
+- **TOUJOURS** faire les tests UN PAR UN (un appel → attendre réponse → appel suivant)
+
 **Étapes** :
 
 1. **Reload tools**
@@ -56,7 +63,7 @@ load_file: [
    - Quels paramètres requis ?
    - Y a-t-il des defaults ?
 
-3. **Tester 3-5 opérations représentatives**
+3. **Tester 3-5 opérations représentatives (UN PAR UN !)**
    - Opération la plus simple (ex: get_info, list, health_check)
    - Opération avec paramètres (ex: search avec query)
    - Opération avec limites (si applicable)
@@ -73,6 +80,8 @@ POST /execute {
   }
 }
 
+# ⚠️ ATTENDRE LA RÉPONSE avant Test 2
+
 # Test 2: Opération avec params valides
 POST /execute {
   "tool": "{tool}",
@@ -83,6 +92,8 @@ POST /execute {
   }
 }
 
+# ⚠️ ATTENDRE LA RÉPONSE avant Test 3
+
 # Test 3: Validation (paramètre invalide)
 POST /execute {
   "tool": "{tool}",
@@ -92,6 +103,8 @@ POST /execute {
   }
 }
 
+# ⚠️ ATTENDRE LA RÉPONSE avant Test 4
+
 # Test 4: Edge case (limite dépassée)
 POST /execute {
   "tool": "{tool}",
@@ -100,6 +113,8 @@ POST /execute {
     "limit": 99999
   }
 }
+
+# ⚠️ ATTENDRE LA RÉPONSE avant Test 5
 
 # Test 5: Opération complexe (si applicable)
 POST /execute {
@@ -255,12 +270,14 @@ Part of: [Unreleased] Tools Audit Campaign
 
 **Re-tester uniquement les cas problématiques** pour valider les correctifs :
 
+**⚠️ RAPPEL : PAS D'APPELS PARALLÈLES ! UN PAR UN !**
+
 #### A. Reload tools
 ```bash
 GET /tools?reload=1
 ```
 
-#### B. Re-tester les cas qui posaient problème
+#### B. Re-tester les cas qui posaient problème (UN PAR UN)
 - Test qui avait échoué / montré un bug
 - Test avec output verbeux (vérifier simplification)
 - Test avec validation faible (vérifier renforcement)
@@ -431,16 +448,17 @@ unload_file: [
 
 ## RÈGLES ABSOLUES
 
-1. **TESTS D'ABORD** : 🆕 Tester AVANT d'auditer le code (étape 3A)
-2. **JSON** : Auditer lisibilité LLM + cohérence avec tests
-3. **OUTPUTS** : Minimaux (pas metadata) - détecté dans tests
-4. **TRUNCATION** : Warnings si > 50 items - vérifié dans tests
-5. **TESTS VALIDATION** : ⚡ Re-tester après correctifs (étape 5)
-6. **CHANGELOG** : Toujours màj + rotation si > 10KB
-7. **PAS RELEASE** : Juste push
-8. **PERPLEXITY** : Systématique pour les 404 ou bugs suspects d'API externe
-9. **UNLOAD** : 🧹 **TOUJOURS** unload à la fin pour libérer workspace
-10. **PROCÉDURE** : 📝 **TOUJOURS** mettre à jour cette procédure après chaque audit
+1. **⚠️ APPELS SÉQUENTIELS UNIQUEMENT** : 🚨 **NE JAMAIS faire d'appels http_client en parallèle** 🚨 → Toujours UN PAR UN, attendre la réponse avant l'appel suivant (sinon échec système)
+2. **TESTS D'ABORD** : 🆕 Tester AVANT d'auditer le code (étape 3A)
+3. **JSON** : Auditer lisibilité LLM + cohérence avec tests
+4. **OUTPUTS** : Minimaux (pas metadata) - détecté dans tests
+5. **TRUNCATION** : Warnings si > 50 items - vérifié dans tests
+6. **TESTS VALIDATION** : ⚡ Re-tester après correctifs (étape 5), UN PAR UN
+7. **CHANGELOG** : Toujours màj + rotation si > 10KB
+8. **PAS RELEASE** : Juste push
+9. **PERPLEXITY** : Systématique pour les 404 ou bugs suspects d'API externe
+10. **UNLOAD** : 🧹 **TOUJOURS** unload à la fin pour libérer workspace
+11. **PROCÉDURE** : 📝 **TOUJOURS** mettre à jour cette procédure après chaque audit
 
 ---
 
@@ -473,4 +491,6 @@ Prêt. 🚀
  
  
  
+ 
+
  
