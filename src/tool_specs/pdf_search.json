@@ -4,49 +4,69 @@
     "name": "pdf_search",
     "displayName": "PDF Search",
     "category": "documents",
-    "description": "Recherche de texte dans des fichiers PDF avec contexte et positions.",
+    "tags": ["search", "pdf", "text"],
+    "description": "Recherche texte dans un ou plusieurs PDFs. Hard cap à 50 résultats détaillés, affiche le total trouvé. Supporte regex, pages, récursif.",
     "parameters": {
       "type": "object",
       "properties": {
         "operation": {
           "type": "string",
-          "enum": ["search", "search_all"],
-          "description": "Type de recherche : 'search' pour un PDF spécifique, 'search_all' pour tous les PDFs du dossier"
+          "enum": ["search"],
+          "description": "Opération (uniquement 'search' implémenté)"
         },
-        "pattern": {
+        "query": {
           "type": "string",
-          "description": "Motif de recherche (texte ou regex selon regex_mode)"
+          "description": "Texte ou regex à rechercher dans les PDFs",
+          "minLength": 1
         },
         "path": {
           "type": "string",
-          "description": "Chemin du fichier PDF (pour operation='search')"
+          "description": "Chemin vers un fichier PDF ou répertoire (relatif à project root)"
         },
-        "directory": {
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Liste de chemins (fichiers ou répertoires). Alternative à 'path'."
+        },
+        "pages": {
           "type": "string",
-          "description": "Répertoire contenant les PDFs (pour operation='search_all')"
+          "description": "Pages à scanner (ex: '1,3,5-10'). Défaut: toutes. Format: '1' (page 1), '1-5' (1 à 5), '1,3,5' (1, 3, 5).",
+          "pattern": "^[0-9,-]+$"
         },
-        "regex_mode": {
-          "type": "boolean",
-          "description": "Utiliser le pattern comme regex (default: false)"
+        "pages_list": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "description": "Liste explicite de numéros de pages (ex: [1, 3, 5]). Combiné avec 'pages' si les deux fournis."
         },
         "case_sensitive": {
           "type": "boolean",
-          "description": "Recherche sensible à la casse (default: false)"
+          "description": "Recherche sensible à la casse (default: false)",
+          "default": false
         },
-        "context_chars": {
+        "regex": {
+          "type": "boolean",
+          "description": "Interpréter 'query' comme regex (default: false)",
+          "default": false
+        },
+        "recursive": {
+          "type": "boolean",
+          "description": "Scanner récursivement les sous-répertoires (default: true)",
+          "default": true
+        },
+        "context": {
           "type": "integer",
-          "description": "Nombre de caractères de contexte autour du match (default: 100)",
+          "description": "Nombre de caractères de contexte autour du match (default: 80)",
           "minimum": 0,
-          "maximum": 1000
-        },
-        "max_results": {
-          "type": "integer",
-          "description": "Nombre maximum de résultats par fichier (default: 50)",
-          "minimum": 1,
-          "maximum": 500
+          "maximum": 500,
+          "default": 80
         }
       },
-      "required": ["operation", "pattern"],
+      "required": ["operation", "query"],
       "additionalProperties": false
     }
   }

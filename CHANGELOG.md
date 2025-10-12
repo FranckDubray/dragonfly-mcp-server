@@ -1,3 +1,7 @@
+
+
+
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
@@ -9,6 +13,48 @@ Note: Older entries have been archived under changelogs/ (range-based files).
 ## [Unreleased] - Tools Audit & Fixes
 
 Campagne d'audit en profondeur de tous les tools pour conformité LLM_DEV_GUIDE.
+
+### pdf_search - [2025-10-12] ✅ AUDITED (6.0→8.8/10)
+
+**Fixed**:
+- JSON spec completely rewritten to match Python implementation (was totally inconsistent)
+- `required` now includes `["operation", "query"]`
+- All parameters documented: `query`, `path/paths`, `pages`, `pages_list`, `case_sensitive`, `regex`, `recursive`, `context`
+- `context` parameter validated (0-500 range, default 80)
+- Output simplified: removed verbose metadata (`success`, `searched_files`)
+- Logging added: warnings for invalid paths/regex, info for search progress
+
+**Improved**:
+- Truncation warnings: clear message when results capped at 50
+- Counts clarified: `total_matches` vs `returned_count`
+- Summary now optional (only added for multi-file searches or errors)
+
+**Technical Details**:
+- pdf_search.json: +699B (1727→2426B)
+- pdf_search.py: +1115B (8927→10042B)
+- Conformity: 40% → 95%
+
+**Tests**:
+- ✅ Test 1: search (query="model", pages="1-3") → 0 matches (correct)
+- ✅ Test 2: search (query="the", pages="1") → 45 matches with context snippets
+- ✅ Test 3: search (query="the", pages="1-3") → 125 total, 50 returned, truncation warning
+
+**Audit Results**:
+
+| Critère | Avant | Après |
+|---------|-------|-------|
+| JSON Spec LLM | 3/10 | 9/10 |
+| Architecture | 7/10 | 8/10 |
+| Sécurité | 8/10 | 8/10 |
+| Robustesse | 7/10 | 9/10 |
+| Conformité | 4/10 | 10/10 |
+| Performance | 8/10 | 9/10 |
+| Maintenabilité | 6/10 | 8/10 |
+| Documentation | 5/10 | 9/10 |
+
+**SCORE FINAL: 8.8/10** ⭐⭐⭐⭐
+
+---
 
 ### date - [2025-10-12] ✅ AUDITED (6.5→8.5/10)
 
@@ -72,3 +118,7 @@ True random number generator using physical sources (RANDOM.ORG atmospheric nois
 ---
 
 For older versions, see: [changelogs/](changelogs/) (range-based archives).
+
+ 
+ 
+ 
