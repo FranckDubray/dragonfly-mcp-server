@@ -2,6 +2,7 @@
 SSH client wrapper (paramiko).
 """
 from __future__ import annotations
+import os
 import paramiko
 from typing import Dict, Any
 
@@ -100,6 +101,7 @@ def create_ssh_client(profile_name: str) -> paramiko.SSHClient:
             timeout=timeout,
             look_for_keys=False,  # Don't try other keys
             allow_agent=False,    # Don't use SSH agent
+            banner_timeout=10,    # FIXED: Timeout on banner read
         )
     except paramiko.AuthenticationException as e:
         raise ValueError(f"SSH authentication failed for {profile_name}: {e}")
@@ -109,5 +111,3 @@ def create_ssh_client(profile_name: str) -> paramiko.SSHClient:
         raise RuntimeError(f"Failed to connect to {profile_name}: {e}")
     
     return client
-
-import os
