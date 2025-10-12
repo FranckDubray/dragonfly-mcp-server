@@ -1,8 +1,8 @@
 # 🔍 MÉTHODOLOGIE AUDIT TOOLS
 
-## État: 4/40 audités (CAMPAGNE EN COURS)
+## État: 5/40 audités (CAMPAGNE EN COURS)
 
-**36 tools à auditer**: academic_research_super, astronomy, aviation_weather, call_llm, chess_com, coingecko, date, device_location, discord_webhook, email_send, excel_to_sqlite, ffmpeg_frames, flight_tracker, generate_edit_image, git, gitbook, http_client, imap, math, news_aggregator, office_to_pdf, ollama_local, open_meteo, pdf2text, pdf_download, pdf_search, random, reddit_intelligence, script_executor, ship_tracker, sqlite_db, ssh_admin, telegram_bot, universal_doc_scraper, video_transcribe, youtube_download, youtube_search
+**35 tools à auditer**: astronomy, aviation_weather, coingecko, device_location, discord_webhook, email_send, excel_to_sqlite, ffmpeg_frames, flight_tracker, git, imap, math, news_aggregator, office_to_pdf, ollama_local, open_meteo, pdf2text, pdf_download, reddit_intelligence, script_executor, ssh_admin, universal_doc_scraper, video_transcribe, youtube_search
 
 ---
 
@@ -30,7 +30,7 @@
 ## PROCESS (10 étapes)
 
 ### 1. SÉLECTION
-`random pick_random` sur la liste des 36 tools à auditer (MAJ après chaque audit)
+`random pick_random` sur la liste des 35 tools à auditer (MAJ après chaque audit)
 
 ### 2. CHARGEMENT
 ```
@@ -189,9 +189,9 @@ unload_file: ["src/tools/{tool}.py", "src/tool_specs/{tool}.json", "src/tools/_{
 ```
 
 **Mettre à jour cette procédure**:
-- Incrémenter compteur (3→4/40)
+- Incrémenter compteur (4→5/40)
 - Ajouter tool à liste "AUDITÉS CETTE CAMPAGNE" (ordre chronologique)
-- Retirer de liste "36 tools à auditer"
+- Retirer de liste "35 tools à auditer"
 - Commit: `docs(audit): update methodology - {tool} audited (X/40)`
 
 **⚠️ WORKSPACE AUTO-SYNC**: writeFile met à jour la procédure dans le workspace automatiquement.
@@ -243,6 +243,20 @@ unload_file: ["src/tools/{tool}.py", "src/tool_specs/{tool}.json", "src/tools/_{
    - **Commit**: 8295c5a
    - **Tests**: 9/9 OK (geocode, reverse_geocode, directions, validation coords, required params, error handling, defaults, token fallback, module imports)
    - **Note**: Tous fichiers < 7KB ✅ (core.py 8.9KB → 3.8KB, formatters.py 6.2KB, operations_geo.py 3.9KB, operations_places.py 3.2KB)
+
+5. **generate_edit_image** [2025-10-12] - 8.25→9.5/10 ⭐⭐⭐⭐⭐
+   - ⚠️ **core.py découpage** (9.75 KB → 6.29 KB)
+     - Extrait `operations.py` (4.4 KB) - _single_call, _sequential_fallback
+     - `core.py` garde uniquement run_image_op
+   - 🟡 **Default n: 4→1** (plus économique)
+   - 🟡 **additionalProperties: false** (JSON spec)
+   - 🟢 **Logging** (INFO/WARNING/ERROR) - core.py, validators.py
+   - 🟢 **__init__.py** créé - exports propres
+   - 🟢 **README.md** (3.8 KB) - architecture, 2 ops, examples, timeouts, conformity
+   - Conformité 80%→95%
+   - **Commit**: 605b857
+   - **Tests**: 7/7 OK (generate n=1, generate n=3, validation n>8, edit sans images, param invalide, default n=1, edit fichier local)
+   - **Note**: Tous fichiers < 7KB ✅ (core.py 9.75KB → 6.29KB, operations.py 4.4KB, validators.py 6.69KB)
 
 ---
 
