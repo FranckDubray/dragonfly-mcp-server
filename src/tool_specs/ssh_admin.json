@@ -24,7 +24,7 @@
         },
         "script_path": {
           "type": "string",
-          "description": "Chemin LOCAL vers script bash à exécuter (requis pour 'exec_file'). Le chemin est RELATIF à la racine projet. Le script est lu localement puis exécuté sur le serveur distant. Exemples: 'scripts/deploy.sh', 'scripts/monitoring/check_disk.sh'"
+          "description": "Chemin LOCAL vers script bash à exécuter (requis pour 'exec_file'). Le chemin est RELATIF à la racine projet. Le script est lu localement puis exécuté sur le serveur distant. Exemples: 'scripts_ssh/health_check.sh', 'scripts_ssh/deployment/deploy_nginx.sh'"
         },
         "args": {
           "type": "array",
