@@ -36,35 +36,154 @@ load_file: [
 ]
 ```
 
-### 3. AUDIT
+### 3. TESTS PRÉLIMINAIRES + AUDIT 🆕
 
-#### A. JSON SPEC (CRITIQUE - LLM)
+**NOUVEAU** : Tester le tool AVANT d'auditer le code pour comprendre son comportement réel.
+
+#### A. TESTS PRÉLIMINAIRES (AVANT AUDIT)
+
+**Objectif** : Comprendre comment le tool fonctionne réellement, identifier les bugs évidents.
+
+**Étapes** :
+
+1. **Reload tools**
+   ```bash
+   GET /tools?reload=1
+   ```
+
+2. **Lire la spec JSON rapidement**
+   - Quelles opérations disponibles ?
+   - Quels paramètres requis ?
+   - Y a-t-il des defaults ?
+
+3. **Tester 3-5 opérations représentatives**
+   - Opération la plus simple (ex: get_info, list, health_check)
+   - Opération avec paramètres (ex: search avec query)
+   - Opération avec limites (si applicable)
+   - Opération edge case (paramètre invalide, limite dépassée)
+   - Opération complexe (si applicable)
+
+**Template de test** :
+```python
+# Test 1: Opération simple (baseline)
+POST /execute {
+  "tool": "{tool}",
+  "params": {
+    "operation": "xxx"
+  }
+}
+
+# Test 2: Opération avec params valides
+POST /execute {
+  "tool": "{tool}",
+  "params": {
+    "operation": "yyy",
+    "param1": "value",
+    "limit": 5
+  }
+}
+
+# Test 3: Validation (paramètre invalide)
+POST /execute {
+  "tool": "{tool}",
+  "params": {
+    "operation": "yyy",
+    "param1": "INVALID_VALUE"
+  }
+}
+
+# Test 4: Edge case (limite dépassée)
+POST /execute {
+  "tool": "{tool}",
+  "params": {
+    "operation": "yyy",
+    "limit": 99999
+  }
+}
+
+# Test 5: Opération complexe (si applicable)
+POST /execute {
+  "tool": "{tool}",
+  "params": {
+    "operation": "zzz",
+    ...
+  }
+}
+```
+
+4. **Noter les observations** :
+   - ✅ Outputs propres ou verbeux ?
+   - ✅ Erreurs claires ?
+   - ✅ Validation stricte ?
+   - ✅ Truncation warnings ?
+   - ✅ Counts clairs (total vs returned) ?
+   - ✅ Timeouts raisonnables ?
+   - ⚠️ Bugs détectés ?
+   - ⚠️ Comportement inattendu ?
+
+**Format d'affichage** :
+```
+=== TESTS PRÉLIMINAIRES ===
+
+✅ Test 1 (get_info): OK
+   Output: {résumé 2-3 lignes}
+
+✅ Test 2 (search): OK
+   Output: 10 résultats, counts clairs
+
+⚠️ Test 3 (validation): PROBLÈME
+   Paramètre invalide accepté, pas d'erreur !
+
+✅ Test 4 (edge case): OK
+   Limite respectée, warning affiché
+
+OBSERVATIONS:
+- Output verbeux (success: true partout)
+- Pas de truncation warnings
+- Validation faible sur param1
+- Timeouts raisonnables
+```
+
+#### B. AUDIT JSON SPEC (CRITIQUE - LLM)
+
+**Maintenant qu'on connaît le comportement réel, auditer la spec JSON** :
+
 - [ ] `category` définie
 - [ ] `displayName` présent
 - [ ] `additionalProperties: false`
 - [ ] Arrays avec `items`
 - [ ] Enums complets
 - [ ] `description` claire (1 ligne max)
-- [ ] `required` corrects
-- [ ] Defaults sensés
-- [ ] Limits min/max
+- [ ] `required` corrects (correspond aux tests ?)
+- [ ] Defaults sensés (correspond au comportement ?)
+- [ ] Limits min/max (correspondent aux validations réelles ?)
 
-**Questions**:
+**Questions critiques** :
 - LLM comprend CHAQUE param ?
 - Descriptions ambiguës ?
+- Defaults documentés vs réels : cohérents ?
+- Enums complets vs code : cohérents ?
 - Params secrets ?
 
-#### B. CODE
-- [ ] Output size: limits + truncation warnings
-- [ ] Validation stricte
+**Vérifier cohérence JSON ↔ TESTS** :
+- Les defaults dans JSON correspondent aux tests ?
+- Les enums dans JSON correspondent aux opérations testées ?
+- Les validations dans JSON correspondent aux erreurs obtenues ?
+
+#### C. AUDIT CODE
+
+**Maintenant auditer le code avec le contexte des tests** :
+
+- [ ] Output size: limits + truncation warnings (vu dans les tests ?)
+- [ ] Validation stricte (cohérente avec les tests ?)
 - [ ] Try-catch global
-- [ ] Timeouts
+- [ ] Timeouts (cohérents avec les tests ?)
 - [ ] Pas side-effects import
 - [ ] Logging minimal
 - [ ] DRY
 - [ ] Modulaire
 
-**Outputs MINIMAUX**:
+**Outputs MINIMAUX** :
 ```python
 ✅ return [1,2,3]
 ✅ return "heads"
@@ -72,32 +191,54 @@ load_file: [
 ❌ return {"success": true, "operation": "...", ...}
 ```
 
-#### C. NOTATION
-- JSON Spec LLM: /10
-- Architecture: /10
-- Sécurité: /10
-- Robustesse: /10
-- Conformité: /10
-- Performance: /10
-- Maintenabilité: /10
-- Documentation: /10
+**Vérifier cohérence CODE ↔ TESTS** :
+- Le code valide ce que les tests ont montré ?
+- Les erreurs du code correspondent aux erreurs obtenues ?
+- Les limites du code correspondent aux tests ?
 
-**Score total**: X.X/10
+#### D. NOTATION
+
+| Critère | Score | Justification |
+|---------|-------|---------------|
+| JSON Spec LLM | /10 | Basé sur tests + lecture JSON |
+| Architecture | /10 | Basé sur structure fichiers |
+| Sécurité | /10 | Basé sur code + comportement |
+| Robustesse | /10 | Basé sur tests edge cases |
+| Conformité | /10 | Basé sur cohérence JSON↔code↔tests |
+| Performance | /10 | Basé sur timeouts + tests |
+| Maintenabilité | /10 | Basé sur code |
+| Documentation | /10 | Basé sur JSON + docstrings |
+
+**Score total** : X.X/10
+
+**IMPORTANT** : Les tests préliminaires influencent la notation !
+- Si validation faible détectée dans tests → Robustesse -2
+- Si outputs verbeux détectés → Conformité -2
+- Si pas de truncation warning → Performance -1
+- Si erreurs pas claires → Documentation -1
+
+---
 
 ### 4. CORRECTIFS
+
+**Prioriser les correctifs basés sur les tests** :
+
 ```
 fix({tool}): critical audit fixes (X.X→Y.Y/10)
 
 🔴 CRITICAL:
-- Bug 1
-  → BEFORE: ...
-  → AFTER: ...
+- Bug détecté dans test 3: ...
+  → BEFORE: accepte valeur invalide
+  → AFTER: validation stricte ajoutée
 
 🟡 MAJOR:
-- Amélioration 1
+- Output verbeux détecté dans tous les tests
+  → BEFORE: {"success": true, "data": ...}
+  → AFTER: retourne directement data
 
 🟢 IMPROVEMENTS:
-- Amélioration 2
+- Truncation warnings manquants (test 4)
+  → Ajout de warnings explicites
 
 TECHNICAL DETAILS:
 - file.py: +XXX bytes
@@ -108,73 +249,47 @@ AUDIT SCORE: X.X/10 → Y.Y/10 ⭐⭐⭐⭐
 Part of: [Unreleased] Tools Audit Campaign
 ```
 
-### 5. TEST HTTP ⚡ AUTOMATIQUE
+---
 
-**IMPORTANT**: Tester directement avec `http_client` pour valider les correctifs.
+### 5. TESTS DE VALIDATION (APRÈS CORRECTIFS)
+
+**Re-tester uniquement les cas problématiques** pour valider les correctifs :
 
 #### A. Reload tools
 ```bash
 GET /tools?reload=1
 ```
 
-#### B. Tester 2-3 opérations représentatives
-Choisir des opérations qui couvrent :
-- Une opération simple (ex: get_info, list, search)
-- Une opération avec paramètres (ex: search avec query)
-- Une opération avec limits (si applicable)
+#### B. Re-tester les cas qui posaient problème
+- Test qui avait échoué / montré un bug
+- Test avec output verbeux (vérifier simplification)
+- Test avec validation faible (vérifier renforcement)
+- Test sans truncation warning (vérifier ajout)
 
-**Template de test**:
-```python
-# Test 1: Opération simple
-POST /execute {
-  "tool": "{tool}",
-  "params": {
-    "operation": "xxx",
-    ...
-  }
-}
+**Format d'affichage** :
+```
+=== TESTS DE VALIDATION ===
 
-# Test 2: Opération avec params
-POST /execute {
-  "tool": "{tool}",
-  "params": {
-    "operation": "yyy",
-    "query": "test",
-    "limit": 5
-  }
-}
+✅ Test 3 (validation): CORRIGÉ
+   AVANT: acceptait valeur invalide
+   APRÈS: {"error": "Invalid param1: must be..."}
 
-# Test 3: Opération edge case (optionnel)
-POST /execute {
-  "tool": "{tool}",
-  "params": {
-    "operation": "zzz",
-    ...
-  }
-}
+✅ Test 2 (output): SIMPLIFIÉ
+   AVANT: {"success": true, "data": [...]}
+   APRÈS: [...]
+
+✅ Test 4 (truncation): WARNING AJOUTÉ
+   AVANT: 125 résultats, pas de message
+   APRÈS: {"total": 125, "returned": 50, "truncated": true, "message": "..."}
 ```
 
-#### C. Validation des résultats
-- ✅ Extraire **JUSTE** `body.result` (pas le HTTP complet)
-- ✅ Vérifier structure conforme
-- ✅ Vérifier truncation warnings (si applicable)
-- ✅ Vérifier counts clairs (total vs returned)
-- ✅ Pas de metadata superflue
-
-**Format d'affichage**:
-```
-✅ Test 1 PASSED: {operation} fonctionne
-Result: {extraire les 5-10 premières lignes du result}
-
-❌ Test 2 FAILED: {operation} erreur
-Error: {message d'erreur}
-```
-
-#### D. En cas d'erreur
+#### C. En cas d'erreur persistante
 - Analyser l'erreur
-- Corriger le code
+- Corriger à nouveau
 - Re-tester
 - Documenter dans CHANGELOG (section "Fixed during testing")
+
+---
 
 ### 6. CHANGELOG
 
@@ -185,15 +300,25 @@ Ajouter section dans `[Unreleased]`:
 **Score**: X.X → Y.Y/10
 
 #### Fixed
-- Bug 1
-- Bug 2
+- Bug 1 (détecté dans test 3)
+- Bug 2 (détecté dans test 4)
 
 #### Improved
-- Amélioration 1
+- Output simplifié (tous les tests)
+- Validation renforcée (test 3)
 
 #### Technical Details
 - Files modifiés
 - Conformité: XX% → YY%
+
+#### Tests Préliminaires
+- ✅ Test 1: ...
+- ⚠️ Test 3: bug détecté, corrigé
+- ✅ Test 4: ...
+
+#### Tests de Validation
+- ✅ Test 3: bug corrigé, validation OK
+- ✅ Test 4: truncation warning ajouté
 
 #### Audit Results
 [Tableau scores]
@@ -204,18 +329,20 @@ Ajouter section dans `[Unreleased]`:
 - Issue 1: Description (confirmé Perplexity si externe)
 ```
 
-**IMPORTANT**: Vérifier la taille du CHANGELOG :
+**IMPORTANT** : Vérifier la taille du CHANGELOG :
 - Si > 10KB : **ROTATION OBLIGATOIRE**
   - Créer `changelogs/CHANGELOG_{start}_to_{end}.md`
   - Garder uniquement `[Unreleased]` dans CHANGELOG.md racine
   - Note en tête: "Older entries have been archived under changelogs/"
+
+---
 
 ### 7. COMMIT + PUSH
 ```bash
 git commit_all -m "fix({tool}): critical audit fixes (X.X→Y.Y/10)
 
 🔴 CRITICAL:
-- Fix 1
+- Fix 1 (détecté en test)
 
 🟡 MAJOR:
 - Fix 2
@@ -226,6 +353,11 @@ git commit_all -m "fix({tool}): critical audit fixes (X.X→Y.Y/10)
 TECHNICAL DETAILS:
 - file.py: +XXX bytes
 - Conformité: XX% → YY%
+
+TESTS:
+✅ Test 1: ...
+⚠️ Test 3: bug détecté → corrigé
+✅ Validation: tous les tests passent
 
 AUDIT SCORE: X.X/10 → Y.Y/10 ⭐⭐⭐⭐
 
@@ -239,9 +371,11 @@ CHANGELOG: [OK / Rotated to changelogs/XXX]"
 git push main
 ```
 
+---
+
 ### 8. UNLOAD WORKSPACE 🧹
 
-**CRITIQUE**: Libérer l'espace workspace pour le prochain audit.
+**CRITIQUE** : Libérer l'espace workspace pour le prochain audit.
 
 ```bash
 unload_file: [
@@ -251,16 +385,18 @@ unload_file: [
 ]
 ```
 
-**Vérification**:
+**Vérification** :
 - Confirmer l'espace libéré (workspace summary)
 - Garder uniquement les fichiers de base (LLM_DEV_GUIDE.md, README.md, CHANGELOG.md, procédure)
 
+---
+
 ### 9. METTRE À JOUR CETTE PROCÉDURE 📝
 
-**OBLIGATOIRE**: Après chaque audit complet, mettre à jour cette procédure :
+**OBLIGATOIRE** : Après chaque audit complet, mettre à jour cette procédure :
 
 1. **Incrémenter le compteur**
-   - "État: 7/40 audités" → "État: 8/40 audités"
+   - "État: 8/40 audités" → "État: 9/40 audités"
 
 2. **Ajouter le tool à la liste des audités**
    ```
@@ -270,8 +406,8 @@ unload_file: [
    ```
 
 3. **Retirer le tool de la liste des restants**
-   - Liste "33 tools restants" → "32 tools restants"
-   - Supprimer `youtube_download` de la liste alphabétique
+   - Liste "32 tools restants" → "31 tools restants"
+   - Supprimer `{tool}` de la liste alphabétique
 
 4. **Commit la procédure**
    ```bash
@@ -279,31 +415,43 @@ unload_file: [
    git push main
    ```
 
-**Exemple**:
+**Exemple** :
 ```
 # AVANT
-État: 7/40 audités
-33 tools restants: academic_research_super, astronomy, ...
-
-# APRÈS (audit de youtube_download)
 État: 8/40 audités
-- youtube_download: 9.3/10 ✅
 32 tools restants: academic_research_super, astronomy, ...
+
+# APRÈS (audit de {tool})
+État: 9/40 audités
+- {tool}: X.X/10 ✅
+31 tools restants: academic_research_super, astronomy, ...
 ```
 
 ---
 
 ## RÈGLES ABSOLUES
 
-1. **JSON**: Auditer lisibilité LLM
-2. **OUTPUTS**: Minimaux (pas metadata)
-3. **TRUNCATION**: Warnings si > 50 items
-4. **TESTS**: ⚡ **AUTOMATIQUES** avec http_client (extraire `body.result` uniquement)
-5. **CHANGELOG**: Toujours màj + rotation si > 10KB
-6. **PAS RELEASE**: Juste push
-7. **PERPLEXITY**: Systématique pour les 404 ou bugs suspects d'API externe
-8. **UNLOAD**: 🧹 **TOUJOURS** unload à la fin pour libérer workspace
-9. **PROCÉDURE**: 📝 **TOUJOURS** mettre à jour cette procédure après chaque audit
+1. **TESTS D'ABORD** : 🆕 Tester AVANT d'auditer le code (étape 3A)
+2. **JSON** : Auditer lisibilité LLM + cohérence avec tests
+3. **OUTPUTS** : Minimaux (pas metadata) - détecté dans tests
+4. **TRUNCATION** : Warnings si > 50 items - vérifié dans tests
+5. **TESTS VALIDATION** : ⚡ Re-tester après correctifs (étape 5)
+6. **CHANGELOG** : Toujours màj + rotation si > 10KB
+7. **PAS RELEASE** : Juste push
+8. **PERPLEXITY** : Systématique pour les 404 ou bugs suspects d'API externe
+9. **UNLOAD** : 🧹 **TOUJOURS** unload à la fin pour libérer workspace
+10. **PROCÉDURE** : 📝 **TOUJOURS** mettre à jour cette procédure après chaque audit
+
+---
+
+## AVANTAGES DE LA NOUVELLE APPROCHE 🆕
+
+✅ **Comprendre avant d'auditer** : comportement réel vs spec
+✅ **Détection précoce** : bugs détectés avant même de lire le code
+✅ **Audit ciblé** : focus sur les incohérences JSON↔code↔tests
+✅ **Validation efficace** : re-test uniquement ce qui posait problème
+✅ **Documentation précise** : CHANGELOG avec références aux tests
+✅ **Score plus juste** : basé sur comportement réel, pas juste le code
 
 ---
 
@@ -313,9 +461,9 @@ unload_file: [
 Audite le prochain tool (random)
 ```
 
-**Workspace déjà chargé**: LLM_DEV_GUIDE.md, README.md, CHANGELOG.md, procédure
+**Workspace déjà chargé** : LLM_DEV_GUIDE.md, README.md, CHANGELOG.md, procédure
 
-**32 tools restants**: academic_research_super, astronomy, aviation_weather, call_llm, coingecko, device_location, discord_webhook, email_send, excel_to_sqlite, ffmpeg_frames, flight_tracker, generate_edit_image, git, gitbook, google_maps, http_client, imap, math, news_aggregator, office_to_pdf, ollama_local, open_meteo, pdf2text, pdf_download, reddit_intelligence, script_executor, sqlite_db, ssh_admin, telegram_bot, trivia_api, universal_doc_scraper, velib, video_transcribe, youtube_search
+**32 tools restants** : academic_research_super, astronomy, aviation_weather, call_llm, coingecko, device_location, discord_webhook, email_send, excel_to_sqlite, ffmpeg_frames, flight_tracker, generate_edit_image, git, gitbook, google_maps, http_client, imap, math, news_aggregator, office_to_pdf, ollama_local, open_meteo, pdf2text, pdf_download, reddit_intelligence, script_executor, sqlite_db, ssh_admin, telegram_bot, trivia_api, universal_doc_scraper, velib, video_transcribe, youtube_search
 
 Prêt. 🚀
 
