@@ -4,6 +4,7 @@
     "name": "velib",
     "displayName": "Vélib' Métropole",
     "category": "transportation",
+    "tags": ["paris", "bike_sharing", "transport", "realtime"],
     "description": "Gestionnaire de cache Vélib' Métropole (Paris). Rafraîchit les données statiques des stations (stockées en SQLite), récupère la disponibilité temps réel d'une station. IMPORTANT: Pour rechercher des stations (par nom, localisation, capacité, etc.), utilisez le tool sqlite_db avec db_name='velib'. La table 'stations' contient: station_code, station_id, name, lat, lon, capacity, station_opening_hours.",
     "parameters": {
       "type": "object",
@@ -11,7 +12,7 @@
         "operation": {
           "type": "string",
           "enum": ["refresh_stations", "get_availability", "check_cache"],
-          "description": "Opération à effectuer : refresh_stations (recharge les données statiques depuis l'API Open Data), get_availability (dispo temps réel d'une station : vélos mécaniques/électriques, places libres), check_cache (infos métadonnées : dernière MAJ, nb stations)"
+          "description": "Opération : refresh_stations (recharge données statiques), get_availability (dispo temps réel : vélos méca/elec, places), check_cache (métadonnées : dernière MAJ, nb stations)"
         },
         "station_code": {
           "type": "string",

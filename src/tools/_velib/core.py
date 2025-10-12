@@ -1,11 +1,14 @@
 """Core business logic for Vélib' operations."""
 from __future__ import annotations
 from typing import Dict, Any
+import logging
 
 from .validators import validate_station_code
 from .utils import format_iso_timestamp, extract_station_data, extract_availability_data
 from .fetcher import fetch_station_information, fetch_station_status
 from . import db
+
+logger = logging.getLogger(__name__)
 
 
 def handle_refresh_stations() -> Dict[str, Any]:
@@ -14,62 +17,78 @@ def handle_refresh_stations() -> Dict[str, Any]:
     Returns:
         Dict with operation result
     """
+    logger.info("Starting station data refresh from Open Data API")
+    
     # Initialize database schema
     init_result = db.init_database()
     if not init_result.get("success"):
-        return init_result
+        logger.error(f"Database initialization failed: {init_result.get('error')}")
+        return {"error": init_result.get("error")}
     
     # Fetch station information from API
     fetch_result = fetch_station_information()
     if not fetch_result.get("success"):
-        return fetch_result
+        logger.error(f"API fetch failed: {fetch_result.get('error')}")
+        return {"error": fetch_result.get("error")}
     
     stations_raw = fetch_result.get("data", [])
     
     if not stations_raw:
-        return {
-            "success": False,
-            "error": "No stations received from API"
-        }
+        logger.error("No stations received from API")
+        return {"error": "No stations received from API"}
+    
+    logger.info(f"Received {len(stations_raw)} stations from API")
     
     # Normalize station data
     stations_normalized = []
+    errors_count = 0
     for station in stations_raw:
         try:
             normalized = extract_station_data(station)
             stations_normalized.append(normalized)
         except Exception as e:
-            # Skip malformed stations but continue
-            pass
+            errors_count += 1
+    
+    if errors_count > 0:
+        logger.warning(f"Failed to normalize {errors_count} stations (skipped)")
     
     if not stations_normalized:
-        return {
-            "success": False,
-            "error": "Failed to normalize station data"
-        }
+        logger.error("Failed to normalize any station data")
+        return {"error": "Failed to normalize station data"}
     
     # Clear existing data
     clear_result = db.clear_stations_table()
     if not clear_result.get("success"):
-        return clear_result
+        logger.error(f"Failed to clear stations table: {clear_result.get('error')}")
+        return {"error": clear_result.get("error")}
     
     # Insert new data
     insert_result = db.insert_stations(stations_normalized)
     if not insert_result.get("success"):
-        return insert_result
+        logger.error(f"Failed to insert stations: {insert_result.get('error')}")
+        return {"error": insert_result.get("error")}
+    
+    inserted_count = insert_result.get("inserted_count", 0)
     
     # Update metadata
     timestamp = format_iso_timestamp()
     db.update_metadata("last_refresh", timestamp, timestamp)
-    db.update_metadata("station_count", str(insert_result.get("inserted_count", 0)), timestamp)
+    db.update_metadata("station_count", str(inserted_count), timestamp)
     
-    return {
-        "success": True,
-        "operation": "refresh_stations",
-        "stations_imported": insert_result.get("inserted_count", 0),
-        "last_update": timestamp,
-        "message": f"{insert_result.get('inserted_count', 0)} stations imported successfully"
+    logger.info(f"Successfully imported {inserted_count} stations")
+    
+    # Truncation warning if > 1000 stations
+    result = {
+        "stations_imported": inserted_count,
+        "last_update": timestamp
     }
+    
+    if inserted_count > 1000:
+        logger.warning(f"Large dataset imported: {inserted_count} stations")
+        result["truncated"] = False
+        result["message"] = f"{inserted_count} stations imported successfully (full dataset)"
+    
+    return result
 
 
 def handle_get_availability(station_code: str) -> Dict[str, Any]:
@@ -84,35 +103,35 @@ def handle_get_availability(station_code: str) -> Dict[str, Any]:
     # Validate station code
     validation = validate_station_code(station_code)
     if not validation.get("valid"):
-        return {"success": False, "error": validation.get("error")}
+        logger.warning(f"Invalid station_code: {validation.get('error')}")
+        return {"error": validation.get("error")}
     
     station_code = validation.get("station_code")
+    
+    logger.info(f"Fetching availability for station {station_code}")
     
     # Fetch real-time status
     fetch_result = fetch_station_status(station_code)
     if not fetch_result.get("success"):
-        return fetch_result
+        logger.error(f"Failed to fetch status for {station_code}: {fetch_result.get('error')}")
+        return {"error": fetch_result.get("error")}
     
     status_raw = fetch_result.get("data")
     
     if not status_raw:
-        return {
-            "success": False,
-            "error": f"No status data for station {station_code}"
-        }
+        logger.error(f"No status data for station {station_code}")
+        return {"error": f"No status data for station {station_code}"}
     
     # Normalize availability data
     try:
         availability = extract_availability_data(status_raw)
     except Exception as e:
-        return {
-            "success": False,
-            "error": f"Failed to parse availability data: {str(e)}"
-        }
+        logger.error(f"Failed to parse availability data: {str(e)}")
+        return {"error": f"Failed to parse availability {str(e)}"}
+    
+    logger.info(f"Station {station_code}: {availability.get('num_bikes_available')} bikes, {availability.get('num_docks_available')} docks")
     
     return {
-        "success": True,
-        "operation": "get_availability",
         "station_code": availability.get("station_code"),
         "bikes": {
             "total": availability.get("num_bikes_available"),
@@ -136,6 +155,8 @@ def handle_check_cache() -> Dict[str, Any]:
     Returns:
         Dict with cache info
     """
+    logger.info("Checking cache metadata")
+    
     # Initialize database if needed
     db.init_database()
     
@@ -146,9 +167,9 @@ def handle_check_cache() -> Dict[str, Any]:
     # Get actual count from DB
     actual_count = db.get_station_count()
     
+    logger.info(f"Cache contains {actual_count} stations, last refresh: {last_refresh.get('updated_at') if last_refresh else 'never'}")
+    
     result = {
-        "success": True,
-        "operation": "check_cache",
         "cache": {
             "last_refresh": last_refresh.get("updated_at") if last_refresh else None,
             "station_count": actual_count,
@@ -156,9 +177,8 @@ def handle_check_cache() -> Dict[str, Any]:
         }
     }
     
-    if last_refresh:
-        result["cache"]["last_refresh_iso"] = last_refresh.get("updated_at")
-    else:
+    if not last_refresh:
         result["cache"]["message"] = "Cache is empty. Run 'refresh_stations' to populate."
+        logger.warning("Cache is empty")
     
     return result
