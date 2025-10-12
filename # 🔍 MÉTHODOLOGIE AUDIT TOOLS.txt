@@ -7,6 +7,27 @@ telegram_bot: 9.2/10 | discord_bot: 9.6/10 | ship_tracker: 9.4/10 | youtube_down
 
 ---
 
+## WORKSPACE - RÈGLES IMPORTANTES
+
+⚠️ **Le workspace est synchronisé automatiquement avec le filesystem** :
+- Quand le LLM utilise `filesystem_v3` pour **créer/modifier/supprimer** un fichier, le workspace est **mis à jour automatiquement**
+- **Pas besoin de reload** après un `writeFile`, `deleteFile`, etc.
+- Le message de retour indique toujours : `"Workspace synchronisé automatiquement"` + détails des changements
+
+⚠️ **Inutile de charger un fichier déjà dans le workspace** :
+- Avant de faire `load_file`, vérifier si le fichier est déjà chargé
+- Si déjà chargé, filesystem retourne : `"already_loaded"` avec code `"NO_FILES_LOADED"`
+- Workspace limite : **500 KB total** (affiche `remainingCapacity` dans chaque réponse)
+
+💡 **Bonne pratique** :
+```
+1. Charger UNIQUEMENT les fichiers nécessaires à l'audit en cours
+2. Unload SYSTÉMATIQUEMENT à la fin (libère la capacité)
+3. Les fichiers de référence (LLM_DEV_GUIDE.md, README.md, CHANGELOG.md, procédure) restent chargés en permanence
+```
+
+---
+
 ## PROCESS (10 étapes)
 
 ### 1. SÉLECTION
@@ -16,6 +37,8 @@ telegram_bot: 9.2/10 | discord_bot: 9.6/10 | ship_tracker: 9.4/10 | youtube_down
 ```
 load_file: ["src/tools/{tool}.py", "src/tool_specs/{tool}.json", "src/tools/_{tool}/*.py"]
 ```
+
+⚠️ **Vérifier d'abord qu'ils ne sont PAS déjà chargés** (filesystem retournera "already_loaded" si c'est le cas)
 
 ### 3. TESTS PRÉLIMINAIRES
 
@@ -34,6 +57,7 @@ B. **Charger JSON spec localement**:
    load_file: "src/tool_specs/{tool}.json"
    ```
    → Examiner le JSON pour comprendre les operations/params
+   → Si déjà chargé, filesystem retourne "already_loaded" (ignorer)
 
 C. **5 tests baseline** (UN PAR UN):
    1. Opération simple (get_info/list)
@@ -79,6 +103,8 @@ JSON Spec LLM | Architecture | Sécurité | Robustesse | Conformité | Performan
 ### 5. CORRECTIFS
 
 **⚠️ DÉCOUPAGE FICHIERS**: Si un fichier dépasse 10KB ou 300 lignes, découper logiquement en modules séparés (api.py, core.py, validators.py, utils.py, services/).
+
+**⚠️ WORKSPACE AUTO-SYNC**: Après chaque `writeFile`, le workspace est mis à jour automatiquement (pas besoin de reload manuel).
 
 Format commit:
 ```
@@ -149,6 +175,8 @@ Ajouter dans `[Unreleased]`:
 **Known Issues**: [si applicable]
 ```
 
+**⚠️ WORKSPACE AUTO-SYNC**: Le CHANGELOG.md est déjà chargé, writeFile le met à jour dans le workspace automatiquement.
+
 **Si CHANGELOG > 10KB**: rotation obligatoire → `changelogs/CHANGELOG_{start}_to_{end}.md`
 
 ### 9. COMMIT + PUSH
@@ -168,10 +196,12 @@ unload_file: ["src/tools/{tool}.py", "src/tool_specs/{tool}.json", "src/tools/_{
 ```
 
 **Mettre à jour cette procédure**:
-- Incrémenter compteur (12→13/40)
+- Incrémenter compteur (13→14/40)
 - Ajouter tool à liste audités (ordre décroissant score)
 - Retirer de liste restants
 - Commit: `docs(audit): update methodology - {tool} audited (X/40)`
+
+**⚠️ WORKSPACE AUTO-SYNC**: writeFile met à jour la procédure dans le workspace automatiquement.
 
 ---
 
@@ -179,7 +209,7 @@ unload_file: ["src/tools/{tool}.py", "src/tool_specs/{tool}.json", "src/tools/_{
 
 1. 🚨 **Appels UN PAR UN** (jamais parallèle http_client)
 2. 🚨 **NE PAS examiner body de `/tools?reload=1`** (119KB, floods LLM)
-3. **Charger JSON spec localement** avant tests
+3. **Charger JSON spec localement** avant tests (si pas déjà chargé)
 4. **Tests avant audit** (étape 3)
 5. **Outputs minimaux** (pas metadata success/operation)
 6. **Truncation warnings** si > 50 items
@@ -187,10 +217,12 @@ unload_file: ["src/tools/{tool}.py", "src/tool_specs/{tool}.json", "src/tools/_{
 8. 🚨 **Tests non-régression OBLIGATOIRES**
 9. **CHANGELOG** màj + rotation si > 10KB
 10. **Perplexity** pour 404/bugs API externes
-11. **Unload** toujours à la fin
+11. **Unload** toujours à la fin (libère workspace capacity)
 12. **Procédure** màj après chaque audit
 13. 🚨 **Découpage fichiers** si > 10KB ou 300 lignes
 14. 🚨 **CHANGELOG condensé** (essentiel uniquement, pas de blabla)
+15. 🚨 **Workspace auto-sync** : writeFile/deleteFile mettent à jour le workspace automatiquement (pas de reload manuel)
+16. 🚨 **Pas de double-load** : vérifier qu'un fichier n'est pas déjà chargé avant load_file
 
 ---
 
