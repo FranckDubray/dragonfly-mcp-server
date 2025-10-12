@@ -1,0 +1,86 @@
+{
+  "type": "function",
+  "function": {
+    "name": "random",
+    "displayName": "True Random Numbers",
+    "category": "utilities",
+    "tags": ["randomness", "cryptography", "quantum", "physical"],
+    "description": "Générateur de nombres aléatoires VRAIS basés sur sources physiques (bruit atmosphérique, décroissance quantique). Idéal pour cryptographie, jeux, sélection aléatoire.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["generate_integers", "generate_floats", "generate_bytes", "coin_flip", "dice_roll", "shuffle", "pick_random"],
+          "description": "Operation: generate_integers (entiers), generate_floats (décimaux), generate_bytes (bytes aléatoires), coin_flip (pile/face), dice_roll (dé), shuffle (mélanger liste), pick_random (choisir dans liste)"
+        },
+        "min": {
+          "type": "integer",
+          "description": "Minimum value (inclusive) for integers. Default: 0",
+          "default": 0
+        },
+        "max": {
+          "type": "integer",
+          "description": "Maximum value (inclusive) for integers. Default: 100",
+          "default": 100
+        },
+        "count": {
+          "type": "integer",
+          "description": "Number of random values to generate (1-10000, default: 1)",
+          "minimum": 1,
+          "maximum": 10000,
+          "default": 1
+        },
+        "unique": {
+          "type": "boolean",
+          "description": "Ensure all generated integers are unique (no duplicates). Only for generate_integers. Default: false",
+          "default": false
+        },
+        "decimals": {
+          "type": "integer",
+          "description": "Number of decimal places for floats (1-20, default: 2). Only for generate_floats.",
+          "minimum": 1,
+          "maximum": 20,
+          "default": 2
+        },
+        "length": {
+          "type": "integer",
+          "description": "Number of bytes to generate (1-1000, default: 16). Only for generate_bytes.",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 16
+        },
+        "format": {
+          "type": "string",
+          "enum": ["hex", "base64", "decimal"],
+          "description": "Output format for bytes: hex, base64, or decimal array. Default: hex",
+          "default": "hex"
+        },
+        "sides": {
+          "type": "integer",
+          "description": "Number of sides on the die (3-100, default: 6). Only for dice_roll.",
+          "minimum": 3,
+          "maximum": 100,
+          "default": 6
+        },
+        "items": {
+          "type": "array",
+          "description": "List of items to shuffle or pick from. Required for shuffle and pick_random operations.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "maxItems": 10000
+        },
+        "source": {
+          "type": "string",
+          "enum": ["auto", "atmospheric", "quantum"],
+          "description": "Random source: auto (fallback logic), atmospheric (RANDOM.ORG), quantum (Cisco QRNG). Default: auto",
+          "default": "auto"
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}
