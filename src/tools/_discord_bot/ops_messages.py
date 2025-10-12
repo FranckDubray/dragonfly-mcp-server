@@ -34,12 +34,19 @@ def op_list_messages(params: Dict[str, Any]) -> Dict[str, Any]:
     # Clean messages to remove null/useless fields
     cleaned = clean_messages(result.json or [])
     
-    return {
+    response = {
         "status": "ok",
         "operation": "list_messages",
         "messages": cleaned,
         "count": len(cleaned)
     }
+    
+    # Truncation warning
+    if len(cleaned) >= limit:
+        response["truncated"] = True
+        response["warning"] = f"Results limited to {limit}. Use pagination (before/after) for more."
+    
+    return response
 
 def op_get_message(params: Dict[str, Any]) -> Dict[str, Any]:
     """Get a specific message."""

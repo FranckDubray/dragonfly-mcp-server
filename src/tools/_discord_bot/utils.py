@@ -24,6 +24,11 @@ def parse_iso_datetime(dt_str: str) -> Optional[datetime]:
 
 def check_response(result, operation: str):
     """Check HTTP result and raise on error."""
+    if result.status_code == 400:
+        error_msg = "Bad request - invalid parameters"
+        if result.json and isinstance(result.json, dict):
+            error_msg = result.json.get("message", error_msg)
+        raise ValueError(f"{operation}: {error_msg} (400)")
     if result.status_code == 401:
         raise ValueError(f"{operation}: Invalid bot token (401 Unauthorized)")
     if result.status_code == 403:
@@ -37,7 +42,7 @@ def check_response(result, operation: str):
         raise RuntimeError(f"{operation}: Discord API error ({result.status_code}): {error_msg}")
 
 def _remove_null_fields(obj: Any) -> Any:
-    """Recursively remove all null/empty/useless fields."""
+    """Recursively remove all null/empty fields (but keep essential ones)."""
     if isinstance(obj, dict):
         cleaned = {}
         for key, value in obj.items():
@@ -50,12 +55,13 @@ def _remove_null_fields(obj: Any) -> Any:
             # Skip empty arrays
             if isinstance(value, list) and len(value) == 0:
                 continue
-            # Skip useless Discord metadata fields
+            # Skip ONLY truly useless Discord metadata fields
+            # KEEP: pinned, mention_everyone, type, channel_id, guild_id (essential context)
             if key in ("public_flags", "flags", "banner", "accent_color", "avatar_decoration_data", 
                       "collectibles", "display_name_styles", "banner_color", "clan", "primary_guild",
-                      "components", "mention_everyone", "pinned", "tts", "content_scan_version", 
+                      "components", "content_scan_version", 
                       "placeholder", "placeholder_version", "original_content_type", "title",
-                      "proxy_url", "guild_id", "type", "channel_id", "me_burst", "burst_me", 
+                      "proxy_url", "me_burst", "burst_me", 
                       "me", "burst_count", "burst_colors", "count_details", "rate_limit_per_user",
                       "bitrate", "user_limit", "rtc_region", "owner_id", "thread_metadata"):
                 continue
@@ -90,7 +96,7 @@ def clean_user(user: Dict[str, Any]) -> Dict[str, Any]:
     return _remove_null_fields(cleaned)
 
 def clean_message(msg: Dict[str, Any]) -> Dict[str, Any]:
-    """Remove null/useless fields from message object - AGGRESSIVE CLEANING."""
+    """Remove null/useless fields from message object - BALANCED CLEANING (keeps essential context)."""
     if not isinstance(msg, dict):
         return msg
     
@@ -100,6 +106,25 @@ def clean_message(msg: Dict[str, Any]) -> Dict[str, Any]:
         "content": msg.get("content", ""),
         "timestamp": msg.get("timestamp"),
     }
+    
+    # ESSENTIAL CONTEXT - Always include if present
+    if msg.get("channel_id"):
+        cleaned["channel_id"] = msg["channel_id"]
+    
+    if msg.get("guild_id"):
+        cleaned["guild_id"] = msg["guild_id"]
+    
+    if msg.get("type") is not None:
+        cleaned["type"] = msg["type"]
+    
+    if msg.get("pinned") is not None:
+        cleaned["pinned"] = msg["pinned"]
+    
+    if msg.get("mention_everyone") is not None:
+        cleaned["mention_everyone"] = msg["mention_everyone"]
+    
+    if msg.get("tts") is not None:
+        cleaned["tts"] = msg["tts"]
     
     # Only include non-empty optional fields
     if msg.get("edited_timestamp"):

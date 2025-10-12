@@ -4,7 +4,7 @@
     "name": "discord_bot",
     "displayName": "Discord Bot",
     "category": "communication",
-    "description": "Client Discord Bot complet (REST API). Gestion messages, channels, threads, reactions, search. Requiert DISCORD_BOT_TOKEN. 28 opérations disponibles.",
+    "description": "Client Discord Bot complet (REST API). Gestion messages, channels, threads, reactions, search. Requiert DISCORD_BOT_TOKEN. 29 opérations disponibles.",
     "parameters": {
       "type": "object",
       "additionalProperties": false,
@@ -12,13 +12,14 @@
         "operation": {
           "type": "string",
           "enum": [
+            "list_guilds",
             "list_messages", "get_message", "send_message", "edit_message", "delete_message", "bulk_delete", "pin_message", "unpin_message",
             "list_channels", "get_channel", "create_channel", "modify_channel", "delete_channel",
             "add_reaction", "remove_reaction", "get_reactions",
             "create_thread", "list_threads", "join_thread", "leave_thread", "archive_thread",
             "search_messages", "get_guild_info", "list_members", "get_permissions", "get_user", "list_emojis", "health_check"
           ],
-          "description": "Opération à effectuer (28 ops disponibles)."
+          "description": "Opération à effectuer (29 ops disponibles)."
         },
         "channel_id": {
           "type": "string",
