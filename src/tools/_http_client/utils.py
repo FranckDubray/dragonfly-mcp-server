@@ -54,7 +54,7 @@ def parse_response(
     return result
 
 
-def save_response_to_file(response_Dict[str, Any], filename: Optional[str] = None) -> Dict[str, Any]:
+def save_response_to_file(response_data: Dict[str, Any], filename: Optional[str] = None) -> Dict[str, Any]:
     """Save response to files/http_responses/.
     
     Args:
