@@ -1,7 +1,10 @@
 """
 Open-Meteo API client for upper air weather data.
 """
+import logging
 import requests
+
+logger = logging.getLogger(__name__)
 
 OPENMETEO_API_URL = "https://api.open-meteo.com/v1/forecast"
 TIMEOUT_SECONDS = 30
@@ -18,6 +21,8 @@ def get_winds_aloft(latitude, longitude, pressure_level_hpa):
     Returns:
         dict: Weather data or error dict
     """
+    logger.info(f"Fetching winds aloft: lat={latitude}, lon={longitude}, pressure={pressure_level_hpa}hPa")
+    
     # Build parameter names for the requested pressure level
     params = {
         'latitude': latitude,
@@ -40,6 +45,7 @@ def get_winds_aloft(latitude, longitude, pressure_level_hpa):
         temp_key = f'temperature_{pressure_level_hpa}hPa'
         
         if wind_speed_key not in hourly or wind_dir_key not in hourly:
+            logger.warning(f"No data available for pressure level {pressure_level_hpa} hPa")
             return {
                 "error": f"No data available for pressure level {pressure_level_hpa} hPa at this location"
             }
@@ -51,6 +57,8 @@ def get_winds_aloft(latitude, longitude, pressure_level_hpa):
         
         # Get timestamp
         timestamp = hourly.get('time', [None])[0]
+        
+        logger.info(f"Open-Meteo success: wind {wind_speed} km/h @ {pressure_level_hpa}hPa")
         
         return {
             'success': True,
@@ -64,8 +72,11 @@ def get_winds_aloft(latitude, longitude, pressure_level_hpa):
         }
         
     except requests.exceptions.Timeout:
+        logger.error(f"Request timeout after {TIMEOUT_SECONDS}s")
         return {"error": f"Request to Open-Meteo API timed out after {TIMEOUT_SECONDS}s"}
     except requests.exceptions.RequestException as e:
+        logger.error(f"API request failed: {str(e)}")
         return {"error": f"Failed to fetch data from Open-Meteo API: {str(e)}"}
     except (KeyError, IndexError, ValueError) as e:
+        logger.error(f"Response parsing failed: {str(e)}")
         return {"error": f"Failed to parse Open-Meteo API response: {str(e)}"}

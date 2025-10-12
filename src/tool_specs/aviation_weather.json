@@ -4,6 +4,7 @@
     "name": "aviation_weather",
     "displayName": "Aviation Weather",
     "category": "transportation",
+    "tags": ["weather", "aviation", "flight"],
     "description": "Get upper air weather data (winds, temperature) at specific altitude and coordinates using Open-Meteo API. Useful for flight planning and explaining aircraft performance.",
     "parameters": {
       "type": "object",
@@ -11,7 +12,7 @@
         "operation": {
           "type": "string",
           "enum": ["get_winds_aloft", "calculate_tas"],
-          "description": "Operation to perform: 'get_winds_alo' retrieves wind/temp at altitude, 'calculate_tas' computes True Airspeed from ground speed and wind"
+          "description": "Operation to perform: 'get_winds_aloft' retrieves wind/temp at altitude, 'calculate_tas' computes True Airspeed from ground speed and wind"
         },
         "latitude": {
           "type": "number",
@@ -29,6 +30,7 @@
           "type": "integer",
           "minimum": 1000,
           "maximum": 20000,
+          "default": 11000,
           "description": "Altitude in meters (1000-20000m). Automatically converted to nearest pressure level. Default: 11000m (FL360)"
         },
         "ground_speed_kmh": {

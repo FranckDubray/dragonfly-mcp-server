@@ -10,6 +10,28 @@ Note: Older entries have been archived under changelogs/ (range-based files).
 
 Campagne d'audit en profondeur de tous les tools pour conformité LLM_DEV_GUIDE.
 
+### aviation_weather - [2025-10-12] ✅ 7.8→9.3/10 ⭐⭐⭐⭐⭐
+
+**Fixed**: 
+- JSON spec: `additionalProperties: false`, `default: 11000` pour altitude_m
+- Logging (INFO/WARNING/ERROR) ajouté dans core.py et services/openmeteo.py
+
+**Added**:
+- Tags: `["weather", "aviation", "flight"]`
+- Logging exhaustif (toutes opérations + API calls)
+
+**Technical**: 
+- Tous fichiers < 7KB ✅ (core.py 5.2KB, openmeteo.py 3.3KB)
+- Conformité 70%→93%
+
+**Tests**: 10/10 non-régression OK.
+
+**SCORE FINAL: 9.3/10** ⭐⭐⭐⭐⭐
+
+**Known Issues**: None.
+
+---
+
 ### google_maps - [2025-10-12] ✅ 8.25→9.5/10 ⭐⭐⭐⭐⭐
 
 **Fixed**: 

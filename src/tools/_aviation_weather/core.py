@@ -1,6 +1,7 @@
 """
 Core logic for aviation weather operations.
 """
+import logging
 from .services.openmeteo import get_winds_aloft as fetch_winds
 from .utils import (
     get_nearest_pressure_level,
@@ -8,6 +9,8 @@ from .utils import (
     meters_to_feet,
     kmh_to_knots
 )
+
+logger = logging.getLogger(__name__)
 
 def get_winds_aloft(latitude, longitude, altitude_m=11000):
     """
@@ -21,6 +24,8 @@ def get_winds_aloft(latitude, longitude, altitude_m=11000):
     Returns:
         dict: Weather data with wind speed, direction, temperature
     """
+    logger.info(f"get_winds_aloft: lat={latitude}, lon={longitude}, alt={altitude_m}m")
+    
     # Convert altitude to pressure level
     pressure_level_hpa = get_nearest_pressure_level(altitude_m)
     
@@ -28,6 +33,7 @@ def get_winds_aloft(latitude, longitude, altitude_m=11000):
     result = fetch_winds(latitude, longitude, pressure_level_hpa)
     
     if 'error' in result:
+        logger.warning(f"get_winds_aloft failed: {result['error']}")
         return result
     
     # Enrich response with conversions
@@ -60,6 +66,7 @@ def get_winds_aloft(latitude, longitude, altitude_m=11000):
         'source': result.get('source')
     }
     
+    logger.info(f"get_winds_aloft success: wind {wind_speed_kmh} km/h @ FL{response['altitude']['flight_level']}")
     return response
 
 def calculate_tas(latitude, longitude, ground_speed_kmh, heading, altitude_m=11000):
@@ -76,6 +83,8 @@ def calculate_tas(latitude, longitude, ground_speed_kmh, heading, altitude_m=110
     Returns:
         dict: TAS calculation results
     """
+    logger.info(f"calculate_tas: lat={latitude}, lon={longitude}, gs={ground_speed_kmh}, hdg={heading}, alt={altitude_m}m")
+    
     # First get wind data
     winds = get_winds_aloft(latitude, longitude, altitude_m)
     
@@ -87,6 +96,7 @@ def calculate_tas(latitude, longitude, ground_speed_kmh, heading, altitude_m=110
     wind_direction = winds['wind']['direction']
     
     if wind_speed_kmh is None or wind_direction is None:
+        logger.warning("calculate_tas: Wind data not available")
         return {"error": "Wind data not available for this location/altitude"}
     
     # Calculate TAS
@@ -117,6 +127,7 @@ def calculate_tas(latitude, longitude, ground_speed_kmh, heading, altitude_m=110
         'source': winds['source']
     }
     
+    logger.info(f"calculate_tas success: TAS={tas_result['tas_kmh']} km/h, {tas_result['wind_effect']}")
     return response
 
 def get_wind_direction_name(direction):
