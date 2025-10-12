@@ -5,14 +5,14 @@
     "displayName": "SSH Admin",
     "category": "utilities",
     "tags": ["system", "admin", "ssh", "devops"],
-    "description": "Administration et audit de serveurs distants via SSH (authentification par clés SSH uniquement). Permet d'exécuter des commandes/scripts bash, transférer des fichiers (SCP). Chaque appel = 1 nouvelle connexion SSH. Optimisation: utilisez des scripts bash multi-commandes pour réduire l'overhead connexion.",
+    "description": "Administration et audit de serveurs distants via SSH (authentification par clés SSH uniquement). Permet d'exécuter des commandes/scripts bash, transférer des fichiers (SCP), exécuter des scripts locaux sur le serveur. Chaque appel = 1 nouvelle connexion SSH. Optimisation: utilisez des scripts bash multi-commandes pour réduire l'overhead connexion.",
     "parameters": {
       "type": "object",
       "properties": {
         "operation": {
           "type": "string",
-          "enum": ["connect", "exec", "upload", "download"],
-          "description": "Opération à effectuer:\n- connect: test connexion SSH\n- exec: exécute commande ou script bash\n- upload: transfert fichier local → serveur (SCP)\n- download: transfert fichier serveur → local (SCP)"
+          "enum": ["connect", "exec", "exec_file", "upload", "download"],
+          "description": "Opération à effectuer:\n- connect: test connexion SSH\n- exec: exécute commande ou script bash inline\n- exec_file: exécute script bash LOCAL sur serveur distant\n- upload: transfert fichier local → serveur (SCP)\n- download: transfert fichier serveur → local (SCP)"
         },
         "profile": {
           "type": "string",
@@ -20,7 +20,18 @@
         },
         "command": {
           "type": "string",
-          "description": "Commande ou script bash à exécuter (requis pour 'exec'). Peut être une ligne ou multi-lignes. Le script est exécuté via 'bash -s'. Exemples:\n- Simple: 'uptime'\n- Pipe: 'ps aux | grep nginx'\n- Multi: 'uptime\\nfree -m\\ndf -h'\n- Script: '#!/bin/bash\\nset -e\\necho \"Starting...\"\\nuptime'"
+          "description": "Commande ou script bash à exécuter inline (requis pour 'exec'). Peut être une ligne ou multi-lignes. Le script est exécuté via 'bash -s'. Exemples:\n- Simple: 'uptime'\n- Pipe: 'ps aux | grep nginx'\n- Multi: 'uptime\\nfree -m\\ndf -h'\n- Script: '#!/bin/bash\\nset -e\\necho \"Starting...\"\\nuptime'"
+        },
+        "script_path": {
+          "type": "string",
+          "description": "Chemin LOCAL vers script bash à exécuter (requis pour 'exec_file'). Le chemin est RELATIF à la racine projet. Le script est lu localement puis exécuté sur le serveur distant. Exemples: 'scripts/deploy.sh', 'scripts/monitoring/check_disk.sh'"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Arguments à passer au script (optionnel, pour 'exec_file'). Les arguments sont passés au script bash via $1, $2, etc. Exemple: ['--verbose', 'production']"
         },
         "local_path": {
           "type": "string",
@@ -35,7 +46,7 @@
           "default": 30,
           "minimum": 1,
           "maximum": 300,
-          "description": "Timeout en secondes (défaut: 30s, max: 300s). Pour exec: timeout commande. Pour upload/download: timeout transfert."
+          "description": "Timeout en secondes (défaut: 30s, max: 300s). Pour exec/exec_file: timeout commande. Pour upload/download: timeout transfert."
         }
       },
       "required": ["operation", "profile"],
