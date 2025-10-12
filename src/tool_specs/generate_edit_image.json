@@ -4,11 +4,12 @@
     "name": "generate_edit_image",
     "displayName": "Gemini Image Studio",
     "category": "media",
-    "description": "Génère ou édite des images avec gemini-2.5-flash-image-preview. Entrées: data URL, http(s), ou base64 brut. Sortie: URLs http(s). IMPORTANT: backend fixe 1024×1024 PNG (ratio 1:1).",
+    "description": "Génère ou édite des images avec gemini-2.5-flash-image-preview. Entrées: URLs http(s), fichiers locaux (./docs), data URLs, ou base64 brut. Sortie: URLs http(s). IMPORTANT: backend fixe 1024×1024 PNG (ratio 1:1).",
     "notes": [
       "Backend produit TOUJOURS du PNG 1024×1024 (ratio 1:1 fixe)",
       "Max 3 images source pour edit, 8 variations max",
-      "Timeouts ajustés automatiquement pour edit multi-images"
+      "Timeouts ajustés automatiquement pour edit multi-images",
+      "Fichiers locaux: paths relatifs à ./docs (ex: 'test.png' ou 'images/photo.jpg')"
     ],
     "parameters": {
       "type": "object",
@@ -27,7 +28,14 @@
           "items": { "type": "string" },
           "minItems": 1,
           "maxItems": 3,
-          "description": "Images source pour edit (1-3). Formats acceptés: data URL (data:image/...;base64,...), URLs http(s), ou base64 brut. Requis pour edit, ignoré pour generate."
+          "description": "Images source pour edit (1-3). Formats acceptés: URLs http(s), data URLs (data:image/...;base64,...), ou base64 brut. Peut être combiné avec image_files."
+        },
+        "image_files": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "maxItems": 3,
+          "description": "Fichiers image locaux pour edit (1-3). Paths relatifs à ./docs (ex: 'test.png', 'images/photo.jpg'). Supporte PNG, JPEG, WebP. Peut être combiné avec images."
         },
         "n": {
           "type": "integer",
