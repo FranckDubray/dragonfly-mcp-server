@@ -1,19 +1,16 @@
 """
 SSE aggregation for image generation/editing responses.
-Collects text deltas and any content items that include image data (image_url, b64_json, or data URLs in text).
-NOTE (2025-10): To keep tool responses small and safe, we now strictly avoid returning any base64 image payloads.
-- Any inline data URLs (data:image/*;base64,...) are fully removed from previews and NEVER propagated in the returned structure.
-- We do NOT return an 'images' field at all.
-- We DO collect http(s) URLs from streamed items and text and expose them via 'http_urls' (consumed upstream by core).
+Collects text deltas and HTTP(S) image URLs only (base64 data URLs are stripped).
 """
 from typing import Any, Dict, List
 import json
 import re
 
 PREVIEW_MAX = 10
-DATA_URL_RE = re.compile(r"data:image\/\/(?:png|jpeg|jpg|webp);base64,[A-Za-z0-9+\\/=]+")
-B64_JSON_FIELD_RE = re.compile(r'\"(b64_json|image_base64)\"\s*:\s*\"[A-Za-z0-9+\\/=]+\"')
-_HTTP_IMG_RE = re.compile(r"https?:\/\/[^\s\"'>]+\.(?:png|jpe?g|webp)(?:\?[^\s\"'>]*)?", re.IGNORECASE)
+# FIXED: Single slash in data:image/ (was double slash //)
+DATA_URL_RE = re.compile(r"data:image/(?:png|jpeg|jpg|webp);base64,[A-Za-z0-9+\/=]+")
+B64_JSON_FIELD_RE = re.compile(r'"(b64_json|image_base64)"\s*:\s*"[A-Za-z0-9+\/=]+"')
+_HTTP_IMG_RE = re.compile(r"https?://[^\s\"'<>]+\.(?:png|jpe?g|webp)(?:\?[^\s\"'<>]*)?", re.IGNORECASE)
 
 
 def _extract_data_str(line: str) -> str | None:
@@ -32,12 +29,12 @@ def _trim_str(s: str, limit: int = 2000) -> str:
 
 
 def _sanitize_preview(s: str) -> str:
-    """Remove/obfuscate base64 payloads from preview lines to avoid huge responses and any 'data:image' remnants."""
+    """Remove/obfuscate base64 payloads from preview lines to avoid huge responses."""
     try:
         # Remove inline data URLs entirely
-        s = DATA_URL_RE.sub("[omitted]", s)
+        s = DATA_URL_RE.sub("[base64_omitted]", s)
         # Replace common base64 JSON fields
-        s = B64_JSON_FIELD_RE.sub(r'"\\1":"[omitted]"', s)
+        s = B64_JSON_FIELD_RE.sub(r'"\1":"[base64_omitted]"', s)
     except Exception:
         pass
     return s
@@ -53,6 +50,13 @@ def _collect_http_image_items(content_list: List[Any], http_urls: List[str]):
 
 
 def process_stream_for_images(response) -> Dict[str, Any]:
+    """
+    Parse SSE stream and extract:
+    - Text content
+    - HTTP(S) image URLs (data URLs are stripped)
+    - Usage metadata
+    - Preview (sanitized, limited)
+    """
     content_text = ""
     finish_reason = None
     usage = None
@@ -107,7 +111,6 @@ def process_stream_for_images(response) -> Dict[str, Any]:
 
     return {
         "text": content_text,
-        # No 'images' key returned by design
         "finish_reason": finish_reason or "stop",
         "usage": usage,
         "raw_preview": raw_preview,
