@@ -4,7 +4,7 @@ Backend is fixed to 1024x1024 PNG output.
 """
 from typing import Any, Dict, List
 
-DEFAULT_N = 4
+DEFAULT_N = 1
 DEFAULT_SIZE = 1024
 
 
