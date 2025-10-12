@@ -10,6 +10,70 @@ Note: Older entries have been archived under changelogs/ (range-based files).
 
 Campagne d'audit en profondeur de tous les tools pour conformité LLM_DEV_GUIDE.
 
+### random - [2025-10-12] ✨ NEW TOOL
+
+**Nouveau tool complet de génération aléatoire VRAIE (sources physiques)**.
+
+#### Features
+- **2 sources physiques**:
+  - 🌀 **Atmospheric**: RANDOM.ORG (bruit atmosphérique radio)
+  - ⚛️ **Quantum**: Cisco Outshift QRNG (hardware quantique)
+  - 🔒 **Fallback**: Python `secrets` (CSPRNG cryptographique)
+
+- **7 opérations**:
+  - `generate_integers` - Entiers aléatoires (range, unique)
+  - `generate_floats` - Décimaux aléatoires (précision configurable)
+  - `generate_bytes` - Bytes aléatoires (hex/base64/decimal)
+  - `coin_flip` - Pile ou face (heads/tails)
+  - `dice_roll` - Dé N faces (3-100 faces)
+  - `shuffle` - Mélange Fisher-Yates avec vraie aléa
+  - `pick_random` - Sélection aléatoire dans liste (no duplicates)
+
+- **Auto-fallback intelligent**:
+  1. Essaie Quantum (rapide, ~100ms)
+  2. Fallback Atmospheric (~200ms)
+  3. Final fallback CSPRNG (instant)
+
+- **Source tracking**: Retourne quelle source a été utilisée
+
+#### Use Cases
+- Cryptographie (clés, nonces, IVs)
+- Gaming / Loteries (dés, pile-face)
+- Sélection aléatoire (A/B testing, random sampling)
+- Shuffle sécurisé (playlist, quiz questions)
+
+#### Configuration
+```bash
+# Optional: Cisco QRNG (100k bits/day free)
+CISCO_QRNG_API_KEY=your_api_key
+
+# RANDOM.ORG: no key required (1M bits/day free)
+```
+
+#### Technical Details
+- Category: `utilities`
+- Tags: `randomness`, `cryptography`, `quantum`, `physical`
+- Dependencies: `requests` (HTTP calls)
+- Architecture: modulaire (api/core/validators/sources)
+- Documentation: README complet (5KB)
+
+#### Examples
+```json
+// Quantum integers
+{"operation": "generate_integers", "min": 1, "max": 100, "count": 10, "source": "quantum"}
+
+// Atmospheric coin flips
+{"operation": "coin_flip", "count": 50, "source": "atmospheric"}
+
+// Crypto bytes
+{"operation": "generate_bytes", "length": 32, "format": "hex", "source": "auto"}
+
+// Random selection
+{"operation": "pick_random", "items": ["A", "B", "C"], "count": 1}
+```
+
+---
+
 ### ship_tracker - [2025-10-12] ✅ AUDITED
 
 **Score**: 8.6/10 → **9.4/10** 🎉
