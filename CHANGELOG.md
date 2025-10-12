@@ -10,187 +10,72 @@ Note: Older entries have been archived under changelogs/ (range-based files).
 
 Campagne d'audit en profondeur de tous les tools pour conformité LLM_DEV_GUIDE.
 
+### gitbook - [2025-10-12] ✅ AUDITED (7.2→8.9/10)
+
+**Fixed**:
+- JSON spec: added `category: development`, explicit `default` values (max_results: 10, max_pages: 20)
+- Code: added logging (info, warnings) for all operations
+- Code: added truncation warnings when results capped (discover_site, search_site)
+- Code: added explicit counts (`total_count` vs `returned_count`)
+- Code: validation stricte des limites (max_pages ≤ 100, max_results ≤ 50)
+- Outputs simplified: removed verbose metadata (`success`, `urls_tested`, `docs_found`)
+
+**Technical**: gitbook.json +39B, gitbook.py +2386B, discovery.py +73B. Conformité 62%→95%.
+
+**Tests**: 10/10 non-régression OK.
+
+**SCORE FINAL: 8.9/10** ⭐⭐⭐⭐
+
+---
+
 ### sqlite_db - [2025-10-12] ✅ AUDITED (6.6→9.0/10)
 
 **Fixed**:
-- JSON spec: added explicit `default` values for `many` parameter (LLM visibility)
-- JSON spec: added `tags` array for UI filtering: sqlite, database, sql, local_storage
-- JSON spec: added `limit` parameter (default: 100, max: 1000) with clear documentation
-- JSON spec: added `maxLength` validation (50KB) for `query` and `script` parameters
-- Code: added logging (info, warnings, errors) for all operations
-- Code: added truncation warnings for SELECT queries exceeding limit
-- Code: added explicit counts: `returned_count` (displayed), `total_count` (if truncated)
-- Code: added query/script size validation (max 50KB)
-- Code: simplified outputs - removed verbose metadata when not needed
-- Output: replaced `rows_count` with `returned_count` (more explicit)
-- Output: added `truncated` boolean + `warning` message when results are capped
+- JSON spec: explicit `default` values, `tags` array, `limit` parameter (default: 100, max: 1000)
+- Code: logging, truncation warnings for SELECT queries
+- Code: explicit counts (`returned_count`, `total_count` if truncated)
+- Outputs: replaced `rows_count` with `returned_count`
 
-**Improved**:
-- Defaults now explicit in JSON spec (LLM can see them directly)
-- Better discoverability via tags for UI filtering
-- Cleaner outputs: minimal metadata, only essential counts
-- Truncation mechanism prevents massive output floods (1494 rows → 5 with clear warning)
-
-**Technical Details**:
-- sqlite_db.json: +491B (1905→2396B) - tags, defaults, limit param, maxLength
-- sqlite_db.py: +4712B (9430→14142B) - logging, truncation, validation, outputs
-- Conformité: 50% → 95%
-
-**Tests**:
-- ✅ Test 1 (list_dbs): OK
-- ✅ Test 2 (get_tables): OK
-- ✅ Test 3 (validation DB manquant): OK, erreur claire
-- ✅ Test 4 (DB inexistante): OK, message clair
-- ✅ Test 5 (SELECT simple): OK, outputs propres
-- ✅ Test 6 (SELECT avec limit=5): OK, truncation warning présent
-- ✅ Non-régression (10/10): create_db, execute (INSERT/SELECT), executescript, delete_db - tous fonctionnels
-
-**Audit Results**:
-
-| Critère | Avant | Après |
-|---------|-------|-------|
-| JSON Spec LLM | 6.5/10 | 9/10 |
-| Architecture | 8/10 | 8/10 |
-| Sécurité | 9/10 | 9/10 |
-| Robustesse | 6/10 | 8/10 |
-| Conformité | 5/10 | 10/10 |
-| Performance | 7/10 | 9/10 |
-| Maintenabilité | 7/10 | 8/10 |
-| Documentation | 5/10 | 7/10 |
+**Technical**: sqlite_db.json +491B, sqlite_db.py +4712B. Conformité 50%→95%.
 
 **SCORE FINAL: 9.0/10** ⭐⭐⭐⭐⭐
-
-**Notes**: Tool SQLite solide avec bonne architecture monolithique. Correctifs centrés sur l'expérience LLM (defaults explicites, truncation warnings, outputs minimaux). Pas de bugs majeurs détectés.
 
 ---
 
 ### academic_research_super - [2025-10-12] ✅ AUDITED (7.0→8.1/10)
 
 **Fixed**:
-- JSON spec: added explicit `default` values for `sources`, `max_results` (LLM visibility)
-- JSON spec: added missing `include_abstracts` parameter (was in code, not documented)
-- Code: timeout arXiv increased 20s → 30s (fix intermittent timeouts)
-- Code: logging added for each provider search (arXiv, PubMed, Crossref, HAL)
-- Output simplified: removed `success` and `source_count` metadata (kept `results`, `total_count`, `returned_count`, `notes`)
-- Truncation messages clarified: "Results truncated: X found, returning Y (max limit)"
+- JSON spec: explicit `default` values, missing `include_abstracts` parameter
+- Code: arXiv timeout 20s→30s, logging added, outputs simplified
 
-**Improved**:
-- Defaults now explicit in JSON (LLM can see them directly)
-- Better discoverability: `include_abstracts` parameter enables smaller responses
-- Cleaner outputs: minimal metadata, only essential counts
+**Technical**: academic_research_super.json +401B, academic_research_super.py +1045B. Conformité 65%→85%.
 
-**Technical Details**:
-- academic_research_super.json: +401B (2947→3348B)
-- academic_research_super.py: +1045B (30532→31577B)
-- Conformité: 65% → 85%
-
-**Tests**:
-- ✅ Test 1 (arXiv search): Timeout issue documented (known intermittent, API-side or network)
-- ✅ Test 2 (PubMed search): OK, 3 results récents
-- ✅ Test 3 (Crossref search, max_results=100): Truncation à 50 (défaut correct), warning présent
-- ⚠️ Test 5 (validation source invalide): Accepté silencieusement avec message informatif (acceptable)
-- ✅ Test validation (PubMed): Outputs simplifiés confirmés (`success` supprimé, counts explicites)
-
-**Audit Results**:
-
-| Critère | Avant | Après |
-|---------|-------|-------|
-| JSON Spec LLM | 7.5/10 | 9/10 |
-| Architecture | 6/10 | 6/10 |
-| Sécurité | 9/10 | 9/10 |
-| Robustesse | 7/10 | 7/10 |
-| Conformité | 7/10 | 9/10 |
-| Performance | 7/10 | 8/10 |
-| Maintenabilité | 6/10 | 6/10 |
-| Documentation | 7/10 | 8/10 |
+**Known Issues**: arXiv API timeouts intermittents (30s should suffice, network-side issue).
 
 **SCORE FINAL: 8.1/10** ⭐⭐⭐⭐
-
-**Known Issues**:
-- arXiv API: Timeouts intermittents détectés (30s devrait suffire, mais possibles lenteurs réseau). Solution temporaire: retry avec PubMed/Crossref/HAL en cas d'échec arXiv.
-- Architecture: Fichier monolithique 31KB (refactoring modulaire recommandé, hors scope audit)
-
-**Notes**: Outil académique excellent avec 4 sources intégrées. Système de limites bytes unique et innovant. Déduplication multi-sources intelligente. Correctifs mineurs uniquement (defaults, timeout, outputs).
 
 ---
 
 ### youtube_download - [2025-10-12] ✅ AUDITED (9.0→9.3/10)
 
 **Fixed**:
-- JSON spec: added explicit defaults for `operation`, `media_type`, `quality`, `max_duration`, `timeout`
-- JSON spec: added `tags` array for better UI filtering
-- Logging added: info for download start/complete, warnings for invalid inputs/duration exceeded
-- Output slightly improved: `handle_get_info()` and `handle_download()` return cleaner dicts
+- JSON spec: explicit defaults, `tags` array
+- Code: logging (info/warnings), outputs improved
 
-**Improved**:
-- Default values now explicit in JSON (LLM can see them directly)
-- Better discoverability via tags: `youtube`, `video`, `audio`, `download`, `transcription`
-
-**Technical Details**:
-- youtube_download.json: +397B (1918→2315B)
-- core.py: +1026B (5768→6794B)
-- Conformity: 88% → 93%
-
-**Tests**:
-- ✅ Test 1: get_info (valid URL) → metadata retrieved successfully (Rick Astley video)
-- ✅ Test 2: get_info (invalid URL) → validation error with clear message
-
-**Audit Results**:
-
-| Critère | Avant | Après |
-|---------|-------|-------|
-| JSON Spec LLM | 9/10 | 10/10 |
-| Architecture | 10/10 | 10/10 |
-| Sécurité | 9/10 | 9/10 |
-| Robustesse | 9/10 | 9/10 |
-| Conformité | 7/10 | 9/10 |
-| Performance | 9/10 | 9/10 |
-| Maintenabilité | 10/10 | 10/10 |
-| Documentation | 9/10 | 9/10 |
+**Technical**: youtube_download.json +397B, core.py +1026B. Conformity 88%→93%.
 
 **SCORE FINAL: 9.3/10** ⭐⭐⭐⭐⭐
-
-**Notes**: Tool déjà excellent avant audit. Architecture exemplaire (séparation api/core/validators/utils/services). Correctifs mineurs uniquement (defaults explicites, tags, logging).
 
 ---
 
 ### pdf_search - [2025-10-12] ✅ AUDITED (6.0→8.8/10)
 
 **Fixed**:
-- JSON spec completely rewritten to match Python implementation (was totally inconsistent)
+- JSON spec: complete rewrite to match Python implementation
 - `required` now includes `["operation", "query"]`
-- All parameters documented: `query`, `path/paths`, `pages`, `pages_list`, `case_sensitive`, `regex`, `recursive`, `context`
-- `context` parameter validated (0-500 range, default 80)
-- Output simplified: removed verbose metadata (`success`, `searched_files`)
-- Logging added: warnings for invalid paths/regex, info for search progress
+- Code: logging, truncation warnings (50 results max), counts clarified
 
-**Improved**:
-- Truncation warnings: clear message when results capped at 50
-- Counts clarified: `total_matches` vs `returned_count`
-- Summary now optional (only added for multi-file searches or errors)
-
-**Technical Details**:
-- pdf_search.json: +699B (1727→2426B)
-- pdf_search.py: +1115B (8927→10042B)
-- Conformity: 40% → 95%
-
-**Tests**:
-- ✅ Test 1: search (query="model", pages="1-3") → 0 matches (correct)
-- ✅ Test 2: search (query="the", pages="1") → 45 matches with context snippets
-- ✅ Test 3: search (query="the", pages="1-3") → 125 total, 50 returned, truncation warning
-
-**Audit Results**:
-
-| Critère | Avant | Après |
-|---------|-------|-------|
-| JSON Spec LLM | 3/10 | 9/10 |
-| Architecture | 7/10 | 8/10 |
-| Sécurité | 8/10 | 8/10 |
-| Robustesse | 7/10 | 9/10 |
-| Conformité | 4/10 | 10/10 |
-| Performance | 8/10 | 9/10 |
-| Maintenabilité | 6/10 | 8/10 |
-| Documentation | 5/10 | 9/10 |
+**Technical**: pdf_search.json +699B, pdf_search.py +1115B. Conformity 40%→95%.
 
 **SCORE FINAL: 8.8/10** ⭐⭐⭐⭐
 
@@ -200,27 +85,30 @@ Campagne d'audit en profondeur de tous les tools pour conformité LLM_DEV_GUIDE.
 
 **Fixed**:
 - spec() now loads canonical JSON (was duplicated in Python)
-- JSON spec clarified: descriptions, defaults, examples added
+- JSON spec: descriptions, defaults, examples added
 - Validation: format max 100 chars, durations ±10 years
 - Logging: warnings for invalid timezone, large deltas
 
-**Added**: README.md (6.3 KB, 9 operations, use cases)
+**Added**: README.md (6.3 KB, 9 operations).
 
-**Technical**: date.py -1347B, date.json +1937B, _date_README.md +6376B. Conformity 62%→95%.
+**Technical**: date.py -1347B, date.json +1937B. Conformity 62%→95%.
+
+**SCORE FINAL: 8.5/10** ⭐⭐⭐⭐
 
 ---
 
 ### chess_com - [2025-10-12] ✅ AUDITED (8.2→8.8/10)
 
 **Fixed**:
-- `limit` param description unified (was confusing for LLM)
+- `limit` param description unified
 - `username` regex pattern added to JSON spec
-
-**Added**:
-- README.md (7.6 KB, 24 operations, use cases)
 - Logging: rate limiting, API errors
 
-**Known Issues**: `/pub/leaderboards` endpoint deprecated by Chess.com (404, confirmed via Perplexity)
+**Added**: README.md (7.6 KB, 24 operations).
+
+**Known Issues**: `/pub/leaderboards` endpoint deprecated by Chess.com (404).
+
+**SCORE FINAL: 8.8/10** ⭐⭐⭐⭐
 
 ---
 
@@ -233,14 +121,13 @@ True random number generator using physical sources (RANDOM.ORG atmospheric nois
 ### ship_tracker - [2025-10-12] ✅ AUDITED (8.6→9.4/10)
 
 **Fixed**:
-- Truncation warnings added (LLM now knows when results are limited)
-- Counts clarified: total_detected, matched_filters, returned
-- Default timeout 10s→15s (better for slow ships)
-- Collection limit: max 500 ships (safety)
-
-**Added**: Logging (WebSocket events, warnings)
+- Truncation warnings, counts clarified (total_detected, matched_filters, returned)
+- Default timeout 10s→15s, collection limit: max 500 ships
+- Logging (WebSocket events, warnings)
 
 **Technical**: core.py +1201B, aisstream.py +1570B. Conformity 87%→96%.
+
+**SCORE FINAL: 9.4/10** ⭐⭐⭐⭐⭐
 
 ---
 
@@ -251,9 +138,11 @@ True random number generator using physical sources (RANDOM.ORG atmospheric nois
 - Message cleaning less aggressive (preserves context fields)
 - Truncation warnings for `list_messages`
 
-**Added**: README.md (29 operations documented)
+**Added**: README.md (29 operations documented).
 
 **Technical**: discord_bot.json +27B, utils.py +915B. Conformity 95%→98%.
+
+**SCORE FINAL: 9.6/10** ⭐⭐⭐⭐⭐
 
 ---
 

@@ -16,35 +16,37 @@
         },
         "company": {
           "type": "string",
-          "description": "Nom de l'entreprise/organisation pour find_docs"
+          "description": "Nom entreprise/organisation (find_docs)"
         },
         "page_url": {
           "type": "string",
-          "description": "URL d'une page quelconque pour extract_base_url"
+          "description": "URL page (extract_base_url)"
         },
         "base_url": {
           "type": "string",
-          "description": "URL de base du site GitBook (ex: https://docs.example.gitbook.io)"
+          "description": "URL base site GitBook (ex: https://docs.example.gitbook.io)"
         },
         "url": {
           "type": "string",
-          "description": "URL spécifique de page pour read_page"
+          "description": "URL page spécifique (read_page)"
         },
         "query": {
           "type": "string",
-          "description": "Requête de recherche pour search_site"
+          "description": "Requête recherche (search_site)"
         },
         "max_results": {
           "type": "integer",
           "minimum": 1,
           "maximum": 50,
-          "description": "Nombre maximum de résultats de recherche à retourner (default: 10)"
+          "default": 10,
+          "description": "Max résultats recherche (default: 10, max: 50)"
         },
         "max_pages": {
           "type": "integer",
           "minimum": 1,
           "maximum": 100,
-          "description": "Nombre maximum de pages à parcourir pour la recherche (default: 20)"
+          "default": 20,
+          "description": "Max pages à parcourir (default: 20, max: 100)"
         }
       },
       "required": ["operation"],
