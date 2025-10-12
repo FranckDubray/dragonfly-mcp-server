@@ -24,7 +24,7 @@
 
 ---
 
-## PROCESS (9 étapes)
+## PROCESS (10 étapes) 🆕
 
 ### 1. SÉLECTION RANDOM
 - Utiliser le tool `random`: `pick_random` avec la liste des 31 tools restants
@@ -309,7 +309,85 @@ GET /tools?reload=1
 
 ---
 
-### 6. CHANGELOG
+### 6. TESTS DE NON-RÉGRESSION COMPLETS 🆕
+
+**⚠️ PHASE CRITIQUE : Vérifier que RIEN n'est cassé !**
+
+**Objectif** : S'assurer que **ce qui fonctionnait AVANT fonctionne toujours APRÈS** les correctifs.
+
+**⚠️ RAPPEL : PAS D'APPELS PARALLÈLES ! UN PAR UN !**
+
+#### A. Identifier toutes les fonctionnalités du tool
+
+Basé sur la spec JSON et le code :
+- Lister **toutes les opérations** disponibles
+- Lister **tous les paramètres** importants (sources, filtres, limites, etc.)
+- Lister **toutes les combinaisons** critiques (multi-sources, edge cases, etc.)
+
+#### B. Tester systématiquement (UN PAR UN)
+
+**Template de tests exhaustifs** :
+
+```python
+# Test 1: Opération principale (baseline)
+# Test 2: Toutes les sources/providers individuellement
+# Test 3: Multi-sources (si applicable)
+# Test 4: Tous les filtres (dates, types, etc.)
+# Test 5: Overrides de limites (max_results, max_items, etc.)
+# Test 6: Gestion d'erreur (params manquants, invalides)
+# Test 7: Edge cases spécifiques au tool
+# Test 8: Nouvelles fonctionnalités ajoutées
+```
+
+**Exemples concrets** :
+```
+✅ Test 6: Source HAL (4ème source, pas encore testée)
+✅ Test 7: search_authors (opération différente de search_papers)
+✅ Test 8: Filtres temporels (year_from, year_to)
+✅ Test 9: Override max_total_items
+✅ Test 10: Nouveau paramètre include_abstracts
+```
+
+#### C. Tableau de synthèse OBLIGATOIRE
+
+**Format** :
+```
+| Test | Fonctionnalité | Avant | Après | Statut |
+|------|----------------|-------|-------|--------|
+| ✅ 1 | Source PubMed | ✅ | ✅ | **OK** |
+| ✅ 2 | Source Crossref | ✅ | ✅ | **OK** |
+| ✅ 3 | Source HAL | ✅ | ✅ | **OK** |
+| ✅ 4 | Multi-sources | ✅ | ✅ | **OK** |
+| ✅ 5 | Filtres temporels | ✅ | ✅ | **OK** |
+| ✅ 6 | include_abstracts | ❌ (nouveau) | ✅ | **OK** |
+| ❌ 7 | Feature X | ✅ | ❌ | **CASSÉ** |
+```
+
+#### D. Si régression détectée
+
+**STOP** : Ne pas continuer l'audit, corriger immédiatement !
+
+1. Analyser la cause de la régression
+2. Rollback du correctif problématique OU fix immédiat
+3. Re-tester
+4. Reprendre à l'étape 6A
+
+#### E. Validation finale
+
+**Seulement quand TOUS les tests passent** :
+
+```
+✅ CONCLUSION: Aucune régression détectée !
+
+- Toutes les fonctionnalités existantes fonctionnent
+- Nouvelles fonctionnalités ajoutées fonctionnent
+- Pas de crash, pas d'erreur inattendue
+- Ready to commit ✅
+```
+
+---
+
+### 7. CHANGELOG
 
 Ajouter section dans `[Unreleased]`:
 ```markdown
@@ -338,6 +416,13 @@ Ajouter section dans `[Unreleased]`:
 - ✅ Test 3: bug corrigé, validation OK
 - ✅ Test 4: truncation warning ajouté
 
+#### Tests de Non-Régression 🆕
+- ✅ Toutes sources testées (4/4)
+- ✅ Toutes opérations testées (2/2)
+- ✅ Filtres temporels OK
+- ✅ Nouveau paramètre include_abstracts OK
+- ✅ Aucune régression détectée
+
 #### Audit Results
 [Tableau scores]
 
@@ -355,7 +440,7 @@ Ajouter section dans `[Unreleased]`:
 
 ---
 
-### 7. COMMIT + PUSH
+### 8. COMMIT + PUSH
 ```bash
 git commit_all -m "fix({tool}): critical audit fixes (X.X→Y.Y/10)
 
@@ -376,6 +461,7 @@ TESTS:
 ✅ Test 1: ...
 ⚠️ Test 3: bug détecté → corrigé
 ✅ Validation: tous les tests passent
+✅ Non-régression: toutes fonctionnalités OK (X/X tests)
 
 AUDIT SCORE: X.X/10 → Y.Y/10 ⭐⭐⭐⭐
 
@@ -391,7 +477,7 @@ git push main
 
 ---
 
-### 8. UNLOAD WORKSPACE 🧹
+### 9. UNLOAD WORKSPACE 🧹
 
 **CRITIQUE** : Libérer l'espace workspace pour le prochain audit.
 
@@ -409,7 +495,7 @@ unload_file: [
 
 ---
 
-### 9. METTRE À JOUR CETTE PROCÉDURE 📝
+### 10. METTRE À JOUR CETTE PROCÉDURE 📝
 
 **OBLIGATOIRE** : Après chaque audit complet, mettre à jour cette procédure :
 
@@ -455,11 +541,12 @@ unload_file: [
 4. **OUTPUTS** : Minimaux (pas metadata) - détecté dans tests
 5. **TRUNCATION** : Warnings si > 50 items - vérifié dans tests
 6. **TESTS VALIDATION** : ⚡ Re-tester après correctifs (étape 5), UN PAR UN
-7. **CHANGELOG** : Toujours màj + rotation si > 10KB
-8. **PAS RELEASE** : Juste push
-9. **PERPLEXITY** : Systématique pour les 404 ou bugs suspects d'API externe
-10. **UNLOAD** : 🧹 **TOUJOURS** unload à la fin pour libérer workspace
-11. **PROCÉDURE** : 📝 **TOUJOURS** mettre à jour cette procédure après chaque audit
+7. **TESTS NON-RÉGRESSION** : 🚨 **OBLIGATOIRE** - Vérifier que rien n'est cassé (étape 6), UN PAR UN
+8. **CHANGELOG** : Toujours màj + rotation si > 10KB
+9. **PAS RELEASE** : Juste push
+10. **PERPLEXITY** : Systématique pour les 404 ou bugs suspects d'API externe
+11. **UNLOAD** : 🧹 **TOUJOURS** unload à la fin pour libérer workspace
+12. **PROCÉDURE** : 📝 **TOUJOURS** mettre à jour cette procédure après chaque audit
 
 ---
 
@@ -469,8 +556,10 @@ unload_file: [
 ✅ **Détection précoce** : bugs détectés avant même de lire le code
 ✅ **Audit ciblé** : focus sur les incohérences JSON↔code↔tests
 ✅ **Validation efficace** : re-test uniquement ce qui posait problème
+✅ **Non-régression garantie** : 🆕 toutes fonctionnalités vérifiées avant commit
 ✅ **Documentation précise** : CHANGELOG avec références aux tests
 ✅ **Score plus juste** : basé sur comportement réel, pas juste le code
+✅ **Zéro casse** : 🆕 engagement qualité sur les tools existants
 
 ---
 
