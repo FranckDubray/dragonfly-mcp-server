@@ -4,7 +4,7 @@
 
 # 🐉 Dragonfly MCP Server
 
-Serveur MCP multi‑outils, rapide et extensible, propulsé par FastAPI. **38 tools** prêts à l'emploi, orchestrateur LLM avancé, panneau de contrôle web moderne.
+Serveur MCP multi‑outils, rapide et extensible, propulsé par FastAPI. **39 tools** prêts à l'emploi, orchestrateur LLM avancé, panneau de contrôle web moderne.
 
 [![License: MIT](./LICENSE)](./LICENSE)
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB)
@@ -29,7 +29,7 @@ Par défaut: http://127.0.0.1:8000
 
 ---
 
-## 🧰 Outils inclus (38)
+## 🧰 Outils inclus (39)
 
 Les outils sont groupés par 10 catégories canoniques (invariantes). L'UI affiche "Social & Entertainment" pour la clé `entertainment`.
 
@@ -47,7 +47,8 @@ Les outils sont groupés par 10 catégories canoniques (invariantes). L'UI affic
 ### 📧 Communication
 - email_send — Envoi SMTP (Gmail/Infomaniak)
 - imap — Réception emails multi-comptes
-- discord_webhook — Publication Discord
+- discord_webhook — Publication Discord (webhook)
+- discord_bot — Bot Discord complet (29 opérations, multi-channel)
 - telegram_bot — Bot Telegram complet (messages, médias, polls)
 
 ### 🗄️ Data & Storage
@@ -123,6 +124,8 @@ NYT_API_KEY=your_nyt_key
 GUARDIAN_API_KEY=your_guardian_key
 
 # Communication
+DISCORD_BOT_TOKEN=your_discord_bot_token
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
 TELEGRAM_BOT_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
 
 # Ship tracking
