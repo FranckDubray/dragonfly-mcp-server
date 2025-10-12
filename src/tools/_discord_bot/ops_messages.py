@@ -4,7 +4,7 @@ Discord Bot: Message operations (8 ops).
 from __future__ import annotations
 from typing import Any, Dict
 from .client import http_request
-from .utils import safe_snowflake, check_response, clean_messages
+from .utils import safe_snowflake, check_response, clean_messages, clean_message
 
 def op_list_messages(params: Dict[str, Any]) -> Dict[str, Any]:
     """List messages in a channel."""
@@ -35,8 +35,6 @@ def op_list_messages(params: Dict[str, Any]) -> Dict[str, Any]:
     cleaned = clean_messages(result.json or [])
     
     response = {
-        "status": "ok",
-        "operation": "list_messages",
         "messages": cleaned,
         "count": len(cleaned)
     }
@@ -60,11 +58,7 @@ def op_get_message(params: Dict[str, Any]) -> Dict[str, Any]:
     result = http_request("GET", endpoint)
     check_response(result, "get_message")
     
-    from .utils import clean_message
-    
     return {
-        "status": "ok",
-        "operation": "get_message",
         "message": clean_message(result.json)
     }
 
@@ -90,11 +84,7 @@ def op_send_message(params: Dict[str, Any]) -> Dict[str, Any]:
     result = http_request("POST", endpoint, json_body=payload)
     check_response(result, "send_message")
     
-    from .utils import clean_message
-    
     return {
-        "status": "ok",
-        "operation": "send_message",
         "message": clean_message(result.json)
     }
 
@@ -121,11 +111,7 @@ def op_edit_message(params: Dict[str, Any]) -> Dict[str, Any]:
     result = http_request("PATCH", endpoint, json_body=payload)
     check_response(result, "edit_message")
     
-    from .utils import clean_message
-    
     return {
-        "status": "ok",
-        "operation": "edit_message",
         "message": clean_message(result.json)
     }
 
@@ -142,8 +128,6 @@ def op_delete_message(params: Dict[str, Any]) -> Dict[str, Any]:
     check_response(result, "delete_message")
     
     return {
-        "status": "ok",
-        "operation": "delete_message",
         "message_id": message_id
     }
 
@@ -167,8 +151,6 @@ def op_bulk_delete(params: Dict[str, Any]) -> Dict[str, Any]:
     check_response(result, "bulk_delete")
     
     return {
-        "status": "ok",
-        "operation": "bulk_delete",
         "deleted_count": len(message_ids)
     }
 
@@ -185,8 +167,6 @@ def op_pin_message(params: Dict[str, Any]) -> Dict[str, Any]:
     check_response(result, "pin_message")
     
     return {
-        "status": "ok",
-        "operation": "pin_message",
         "message_id": message_id
     }
 
@@ -203,7 +183,5 @@ def op_unpin_message(params: Dict[str, Any]) -> Dict[str, Any]:
     check_response(result, "unpin_message")
     
     return {
-        "status": "ok",
-        "operation": "unpin_message",
         "message_id": message_id
     }

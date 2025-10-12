@@ -4,6 +4,7 @@
     "name": "discord_bot",
     "displayName": "Discord Bot",
     "category": "communication",
+    "tags": ["discord", "bot", "messaging", "api"],
     "description": "Client Discord Bot complet (REST API). Gestion messages, channels, threads, reactions, search. Requiert DISCORD_BOT_TOKEN. 29 opérations disponibles.",
     "parameters": {
       "type": "object",
@@ -112,7 +113,7 @@
         },
         "limit": {
           "type": "integer",
-          "description": "Nombre max de résultats (défaut: 50, max: 100 pour messages).",
+          "description": "Nombre max de résultats (défaut: 5 pour list_messages/search_messages, 50 pour autres ops, max: 100).",
           "minimum": 1,
           "maximum": 100,
           "default": 50

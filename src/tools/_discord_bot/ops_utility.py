@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any, Dict, List
 from datetime import datetime
 from .client import http_request
-from .utils import safe_snowflake, check_response, parse_iso_datetime
+from .utils import safe_snowflake, check_response, parse_iso_datetime, clean_bot_user
 
 def op_list_guilds(params: Dict[str, Any]) -> Dict[str, Any]:
     """List all guilds (servers) where the bot is a member."""
@@ -17,8 +17,6 @@ def op_list_guilds(params: Dict[str, Any]) -> Dict[str, Any]:
     guilds = result.json or []
     
     return {
-        "status": "ok",
-        "operation": "list_guilds",
         "guilds": guilds,
         "count": len(guilds)
     }
@@ -81,8 +79,6 @@ def op_search_messages(params: Dict[str, Any]) -> Dict[str, Any]:
         filtered.append(msg)
     
     return {
-        "status": "ok",
-        "operation": "search_messages",
         "messages": filtered,
         "count": len(filtered),
         "total_scanned": len(messages)
@@ -99,8 +95,6 @@ def op_get_guild_info(params: Dict[str, Any]) -> Dict[str, Any]:
     check_response(result, "get_guild_info")
     
     return {
-        "status": "ok",
-        "operation": "get_guild_info",
         "guild": result.json
     }
 
@@ -116,8 +110,6 @@ def op_list_members(params: Dict[str, Any]) -> Dict[str, Any]:
     check_response(result, "list_members")
     
     return {
-        "status": "ok",
-        "operation": "list_members",
         "members": result.json or [],
         "count": len(result.json or [])
     }
@@ -136,8 +128,6 @@ def op_get_permissions(params: Dict[str, Any]) -> Dict[str, Any]:
     channel_data = result.json or {}
     
     return {
-        "status": "ok",
-        "operation": "get_permissions",
         "channel_id": channel_id,
         "permission_overwrites": channel_data.get("permission_overwrites", [])
     }
@@ -153,8 +143,6 @@ def op_get_user(params: Dict[str, Any]) -> Dict[str, Any]:
     check_response(result, "get_user")
     
     return {
-        "status": "ok",
-        "operation": "get_user",
         "user": result.json
     }
 
@@ -169,8 +157,6 @@ def op_list_emojis(params: Dict[str, Any]) -> Dict[str, Any]:
     check_response(result, "list_emojis")
     
     return {
-        "status": "ok",
-        "operation": "list_emojis",
         "emojis": result.json or [],
         "count": len(result.json or [])
     }
@@ -183,8 +169,6 @@ def op_health_check(params: Dict[str, Any]) -> Dict[str, Any]:
         
         if result.status_code == 401:
             return {
-                "status": "error",
-                "operation": "health_check",
                 "error": "Invalid bot token (401 Unauthorized)"
             }
         
@@ -193,14 +177,10 @@ def op_health_check(params: Dict[str, Any]) -> Dict[str, Any]:
         bot_user = result.json or {}
         
         return {
-            "status": "ok",
-            "operation": "health_check",
-            "bot_user": bot_user,
+            "bot_user": clean_bot_user(bot_user),
             "connection": "healthy"
         }
     except Exception as e:
         return {
-            "status": "error",
-            "operation": "health_check",
             "error": str(e)
         }

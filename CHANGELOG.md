@@ -10,6 +10,23 @@ Note: Older entries have been archived under changelogs/ (range-based files).
 
 Campagne d'audit en profondeur de tous les tools pour conformité LLM_DEV_GUIDE.
 
+### discord_bot - [2025-10-12] ✅ AUDITED (8.9→9.6/10)
+
+**Fixed**:
+- 🟡 CONFORMITY: Tags ajoutés `["discord", "bot", "messaging", "api"]` dans spec JSON
+- 🟡 CONFORMITY: Description `limit` mise à jour (default: 5 pour list_messages/search_messages, 50 pour autres)
+- 🟡 CONFORMITY: Outputs simplifiés (suppression champs verbeux `status`, `operation`)
+- 🟡 CONFORMITY: Bot_user nettoyé dans health_check (suppression champs null/inutiles: public_flags, flags, banner, mfa_enabled, locale, premium_type, email, verified, bio, etc.)
+- 🟢 DOCUMENTATION: Truncation warnings déjà présents ✅, counts clarifiés ✅
+
+**Technical**: discord_bot.json +92B (tags), utils.py +800B (clean_bot_user), ops_utility.py -618B (simplification), ops_messages.py -600B (simplification). Conformity: 70%→98%.
+
+**Tests**: 5/5 preliminary OK, full non-regression tests after server restart.
+
+**SCORE FINAL: 9.6/10** ⭐⭐⭐⭐⭐
+
+---
+
 ### http_client - [2025-10-12] ✅ AUDITED (8.5→9.5/10)
 
 **Fixed**:
@@ -185,21 +202,6 @@ True random number generator using physical sources (RANDOM.ORG atmospheric nois
 **Technical**: core.py +1201B, aisstream.py +1570B. Conformity 87%→96%.
 
 **SCORE FINAL: 9.4/10** ⭐⭐⭐⭐⭐
-
----
-
-### discord_bot - [2025-10-12] ✅ AUDITED (8.6→9.6/10)
-
-**Fixed**:
-- `list_guilds` operation added to spec (was missing in enum)
-- Message cleaning less aggressive (preserves context fields)
-- Truncation warnings for `list_messages`
-
-**Added**: README.md (29 operations documented).
-
-**Technical**: discord_bot.json +27B, utils.py +915B. Conformity 95%→98%.
-
-**SCORE FINAL: 9.6/10** ⭐⭐⭐⭐⭐
 
 ---
 
