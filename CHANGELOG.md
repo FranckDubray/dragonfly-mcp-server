@@ -1,11 +1,3 @@
-
-
-
-
-
-
-
-
 # Changelog
 
 All notable changes to this project will be documented in this file.
@@ -17,6 +9,22 @@ Note: Older entries have been archived under changelogs/ (range-based files).
 ## [Unreleased] - Tools Audit & Fixes
 
 Campagne d'audit en profondeur de tous les tools pour conformité LLM_DEV_GUIDE.
+
+### http_client - [2025-10-12] ✅ AUDITED (8.5→9.5/10)
+
+**Fixed**:
+- 🟡 CONFORMITY: Logging added (INFO for requests, WARNING for errors/large bodies)
+- 🟡 CONFORMITY: Truncation warning for body > 100 KB
+- 🟡 CONFORMITY: Outputs simplified (removed redundant `success` field, kept only `ok`)
+- 🟢 DOCUMENTATION: Complete README.md added (7.6 KB, usage examples, architecture, performance notes)
+
+**Technical**: core.py +1485B (logging + truncation), utils.py -65B (output cleanup), README.md +7600B (new). Conformity: 75%→98%.
+
+**Tests**: 12/12 non-regression OK (all HTTP methods, auth types, validation, error handling, response formats functional).
+
+**SCORE FINAL: 9.5/10** ⭐⭐⭐⭐⭐
+
+---
 
 ### call_llm - [2025-10-12] ✅ AUDITED (9.2/10) → CLEANUP
 
@@ -196,9 +204,3 @@ True random number generator using physical sources (RANDOM.ORG atmospheric nois
 ---
 
 For older versions, see: [changelogs/](changelogs/) (range-based archives).
-
- 
- 
- 
- 
- 

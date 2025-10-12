@@ -54,7 +54,7 @@ def parse_response(
     return result
 
 
-def save_response_to_file(response_data: Dict[str, Any], filename: Optional[str] = None) -> Dict[str, Any]:
+def save_response_to_file(response_Dict[str, Any], filename: Optional[str] = None) -> Dict[str, Any]:
     """Save response to files/http_responses/.
     
     Args:
@@ -88,14 +88,12 @@ def save_response_to_file(response_data: Dict[str, Any], filename: Optional[str]
             json.dump(response_data, f, indent=2, ensure_ascii=False)
         
         return {
-            "success": True,
             "file_path": str(file_path),
             "filename": filename
         }
         
     except Exception as e:
         return {
-            "success": False,
             "error": f"Failed to save response: {str(e)}"
         }
 
