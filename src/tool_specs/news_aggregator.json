@@ -1,0 +1,82 @@
+{
+  "type": "function",
+  "function": {
+    "name": "news_aggregator",
+    "displayName": "News Aggregator",
+    "category": "intelligence",
+    "tags": ["external_sources", "knowledge", "search"],
+    "description": "Agrégateur d'actualités multi-sources (NewsAPI free tier limité, NYT, Guardian). IMPORTANT: NewsAPI free tier supporte UNIQUEMENT 'top_headlines' (pas 'search_news'). Pour recherche par mots-clés, utiliser providers=['nyt','guardian'] SANS 'newsapi'. Pour actualités du jour par pays, utiliser top_headlines avec NewsAPI.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["search_news", "top_headlines", "list_sources"],
+          "description": "Opération: search_news (recherche multi-critères, NYT+Guardian uniquement), top_headlines (actualités du moment par pays, NewsAPI OK), list_sources (sources disponibles)"
+        },
+        "query": {
+          "type": "string",
+          "description": "Mots-clés de recherche. Supporte opérateurs: AND, OR, NOT, \"phrase exacte\". Requis pour search_news. Ex: 'bitcoin AND (price OR value)'. ATTENTION: search_news ne fonctionne PAS avec provider='newsapi' (free tier). Utiliser providers=['nyt','guardian'] à la place."
+        },
+        "from_date": {
+          "type": "string",
+          "description": "Date début (format: YYYY-MM-DD). Pour search_news uniquement. Ex: '2024-10-01'. Ne fonctionne qu'avec NYT et Guardian (pas NewsAPI sur free tier)."
+        },
+        "to_date": {
+          "type": "string",
+          "description": "Date fin (format: YYYY-MM-DD). Pour search_news uniquement. Ex: '2024-10-12'. Ne fonctionne qu'avec NYT et Guardian."
+        },
+        "language": {
+          "type": "string",
+          "enum": ["ar", "de", "en", "es", "fr", "he", "it", "nl", "no", "pt", "ru", "sv", "zh"],
+          "description": "Langue des articles. Défaut: 'en'. IMPORTANT: Ne PAS utiliser avec 'sources' ou avec provider='newsapi' en search_news."
+        },
+        "category": {
+          "type": "string",
+          "enum": ["business", "entertainment", "general", "health", "science", "sports", "technology"],
+          "description": "Catégorie pour top_headlines (NewsAPI). IMPORTANT: Ne PAS utiliser avec 'sources'."
+        },
+        "country": {
+          "type": "string",
+          "enum": ["ae", "ar", "at", "au", "be", "bg", "br", "ca", "ch", "cn", "co", "cu", "cz", "de", "eg", "fr", "gb", "gr", "hk", "hu", "id", "ie", "il", "in", "it", "jp", "kr", "lt", "lv", "ma", "mx", "my", "ng", "nl", "no", "nz", "ph", "pl", "pt", "ro", "rs", "ru", "sa", "se", "sg", "si", "sk", "th", "tr", "tw", "ua", "us", "ve", "za"],
+          "description": "Code pays ISO pour top_headlines (NewsAPI uniquement). Ex: 'fr' (France), 'us' (USA), 'gb' (UK). IMPORTANT: Ne PAS utiliser avec 'sources'."
+        },
+        "providers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["newsapi", "nyt", "guardian"]
+          },
+          "description": "Providers à utiliser. IMPORTANT: NewsAPI free tier supporte UNIQUEMENT top_headlines (pas search_news). Pour search_news, utiliser ['nyt','guardian'] SANS 'newsapi'. Pour top_headlines, 'newsapi' fonctionne parfaitement."
+        },
+        "sort_by": {
+          "type": "string",
+          "enum": ["relevancy", "popularity", "publishedAt"],
+          "description": "Tri des résultats (ignoré par NewsAPI free tier). Défaut: 'publishedAt' (plus récent)"
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Nombre max d'articles à retourner. Défaut: 20, Max: 100",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 20
+        },
+        "page": {
+          "type": "integer",
+          "description": "Numéro de page (pagination). Défaut: 1",
+          "minimum": 1,
+          "default": 1
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Filtre par sources (NewsAPI). Ex: ['bbc-news', 'cnn']. ATTENTION: NewsAPI free tier NE SUPPORTE PAS les sources avec search_news (HTTP 426). Utiliser UNIQUEMENT avec top_headlines. Pour search_news, préférer NYT/Guardian."
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}
