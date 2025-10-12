@@ -1,5 +1,5 @@
 """
-Utility functions for Google Maps
+Formatting utilities for Google Maps responses
 """
 
 

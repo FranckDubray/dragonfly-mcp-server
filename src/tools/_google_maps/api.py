@@ -2,16 +2,20 @@
 Google Maps API routing
 """
 from .validators import validate_params
-from .core import (
+from .operations_geo import (
     geocode_address,
     reverse_geocode_coords,
-    get_directions,
-    get_distance_matrix,
-    search_places,
-    get_place_details,
-    search_nearby_places,
     get_timezone,
     get_elevation
+)
+from .core import (
+    get_directions,
+    get_distance_matrix
+)
+from .operations_places import (
+    search_places,
+    get_place_details,
+    search_nearby_places
 )
 
 
@@ -46,7 +50,6 @@ def route_operation(**params):
             
     except Exception as e:
         return {
-            'success': False,
             'error': str(e),
             'error_type': type(e).__name__
         }
