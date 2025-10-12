@@ -43,29 +43,23 @@ load_file: ["src/tools/{tool}.py", "src/tool_specs/{tool}.json", "src/tools/_{to
 
 **⚠️ CRITIQUE: Appels UN PAR UN (jamais parallèle) sinon échec système**
 
-**⚠️ IMPORTANT: NE PAS FAIRE `/tools?reload=1` - FLOODS LE LLM (119KB JSON)**
+**⚠️ CRITIQUE: PAS DE `/tools?reload=1` - FLOODS LE LLM (119KB JSON) ⚠️**
 
-A. **Reload silencieux d'abord**:
-   ```
-   http_client GET http://127.0.0.1:8000/tools?reload=1
-   ```
-   → Ne PAS examiner le body (trop gros), juste vérifier status 200
-
-B. **Charger JSON spec localement**:
+A. **Charger JSON spec localement** (si pas déjà chargé):
    ```
    load_file: "src/tool_specs/{tool}.json"
    ```
    → Examiner le JSON pour comprendre les operations/params
    → Si déjà chargé, filesystem retourne "already_loaded" (ignorer)
 
-C. **5 tests baseline** (UN PAR UN):
+B. **5 tests baseline** (UN PAR UN):
    1. Opération simple (get_info/list)
    2. Avec params (search + query)
    3. Validation (param invalide)
    4. Edge case (limite dépassée)
    5. Opération complexe
 
-D. **Observations**:
+C. **Observations**:
    - Outputs propres/verbeux ?
    - Erreurs claires ?
    - Validation stricte ?
@@ -121,7 +115,7 @@ AUDIT SCORE: X.X→Y.Y/10
 
 **⚠️ UN PAR UN**
 
-Reload tools silencieux → Re-tester uniquement ce qui posait problème:
+Re-tester uniquement ce qui posait problème:
 - Bugs détectés → vérifier correction
 - Outputs verbeux → vérifier simplification
 - Validation faible → vérifier renforcement
@@ -213,7 +207,7 @@ unload_file: ["src/tools/{tool}.py", "src/tool_specs/{tool}.json", "src/tools/_{
 ## RÈGLES ABSOLUES
 
 1. 🚨 **Appels UN PAR UN** (jamais parallèle http_client)
-2. 🚨 **NE PAS examiner body de `/tools?reload=1`** (119KB, floods LLM)
+2. 🚨 **PAS DE `/tools?reload=1`** (119KB, floods LLM avec 60 000+ tokens)
 3. **Charger JSON spec localement** avant tests (si pas déjà chargé)
 4. **Tests avant audit** (étape 3)
 5. **Outputs minimaux** (pas metadata success/operation)

@@ -38,7 +38,7 @@ Total tools: 41
 
 ## 📧 Communication (5)
 
-- Discord Bot — Client Discord Bot complet (REST API). Gestion messages, channels, threads, reactions, search. Requiert DISCORD_BOT_TOKEN. 29 opérations…
+- Discord Bot — Client Discord Bot complet (REST API). Gestion messages, channels, threads, reactions, search. Requiert DISCORD_BOT_TOKEN. 29 opérations… · Tags: discord, bot, messaging, api
   - Opérations: list_guilds, list_messages, get_message, send_message, edit_message, delete_message …
   - Tokens: aucun
 

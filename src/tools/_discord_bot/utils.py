@@ -63,7 +63,8 @@ def _remove_null_fields(obj: Any) -> Any:
                       "placeholder", "placeholder_version", "original_content_type", "title",
                       "proxy_url", "me_burst", "burst_me", 
                       "me", "burst_count", "burst_colors", "count_details", "rate_limit_per_user",
-                      "bitrate", "user_limit", "rtc_region", "owner_id", "thread_metadata"):
+                      "bitrate", "user_limit", "rtc_region", "owner_id", "thread_metadata",
+                      "mfa_enabled", "locale", "premium_type", "email", "verified", "bio"):
                 continue
             # Recursively clean nested objects
             cleaned[key] = _remove_null_fields(value)
@@ -72,6 +73,27 @@ def _remove_null_fields(obj: Any) -> Any:
         return [_remove_null_fields(item) for item in obj]
     else:
         return obj
+
+def clean_bot_user(user: Dict[str, Any]) -> Dict[str, Any]:
+    """Clean bot user object from health_check (remove null/useless fields)."""
+    if not isinstance(user, dict):
+        return user
+    
+    cleaned = {
+        "id": user.get("id"),
+        "username": user.get("username"),
+        "bot": user.get("bot", True)
+    }
+    
+    # Only include non-null optional fields
+    if user.get("global_name"):
+        cleaned["global_name"] = user["global_name"]
+    if user.get("avatar"):
+        cleaned["avatar"] = user["avatar"]
+    if user.get("discriminator") and user.get("discriminator") != "0":
+        cleaned["discriminator"] = user["discriminator"]
+    
+    return _remove_null_fields(cleaned)
 
 def clean_user(user: Dict[str, Any]) -> Dict[str, Any]:
     """Remove null/useless fields from user object."""
