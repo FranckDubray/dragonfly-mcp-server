@@ -1,3 +1,5 @@
+
+
 from __future__ import annotations
 from typing import Any, Dict, List, Tuple, Optional
 from fastapi import HTTPException
@@ -117,8 +119,19 @@ def _base_payload_builder(batches: List[List[Dict[str, Any]]], params: Dict[str,
     return build_payload_for_batch
 
 
-def _create(article_key: str, batches: List[List[Dict[str, Any]]], counts: List[int], files_data, wait: bool, payload_builder, wh_hash: str) -> Dict[str, Any]:
+def _build_url_with_thread(base_url: str, thread_id: Optional[str]) -> str:
+    """Append thread_id query param if provided."""
+    if thread_id:
+        separator = "&" if "?" in base_url else "?"
+        return f"{base_url}{separator}thread_id={thread_id}"
+    return base_url
+
+
+def _create(article_key: str, batches: List[List[Dict[str, Any]]], counts: List[int], files_data, wait: bool, payload_builder, wh_hash: str, thread_id: Optional[str]) -> Dict[str, Any]:
     url = get_discord_webhook_url()
+    # Add thread_id to URL if provided
+    url = _build_url_with_thread(url, thread_id)
+    
     posted_batches = 0
     new_message_ids: List[str] = []
 
@@ -161,7 +174,7 @@ def _create(article_key: str, batches: List[List[Dict[str, Any]]], counts: List[
     return base
 
 
-def _update(article_key: str, batches: List[List[Dict[str, Any]]], counts: List[int], files_data, wait: bool, payload_builder, wh_id: str, token: str, existing_ids: List[str], wh_hash: str) -> Dict[str, Any]:
+def _update(article_key: str, batches: List[List[Dict[str, Any]]], counts: List[int], files_data, wait: bool, payload_builder, wh_id: str, token: str, existing_ids: List[str], wh_hash: str, thread_id: Optional[str]) -> Dict[str, Any]:
     posted_batches = 0
     new_message_ids: List[str] = []
 
@@ -169,6 +182,8 @@ def _update(article_key: str, batches: List[List[Dict[str, Any]]], counts: List[
         raise HTTPException(status_code=400, detail="update avec wait=false requiert que le nombre de messages ne change pas (sinon impossible de maintenir l'état)")
 
     url = get_discord_webhook_url()
+    # Add thread_id to URL if provided
+    url = _build_url_with_thread(url, thread_id)
 
     if files_data:
         posted_batches, maybe_new_ids = send_update_batches(
@@ -246,6 +261,7 @@ def op_create_or_update(params: Dict[str, Any], mode: str) -> Dict[str, Any]:
 
     wait = bool(params.get("wait", True))
     dry_run = bool(params.get("dry_run", False))
+    thread_id = params.get("thread_id")  # NEW: thread support
 
     # Enforce wait=true on create/upsert to persist message ids
     if mode in ("create", "upsert") and not wait:
@@ -274,7 +290,7 @@ def op_create_or_update(params: Dict[str, Any], mode: str) -> Dict[str, Any]:
         if existing_row:
             raise HTTPException(status_code=405, detail="create: article_key déjà existant. Utilisez 'update' ou 'upsert'.")
         payload_builder = _base_payload_builder(batches, params)
-        return _create(article_key, batches, counts, files_data, wait, payload_builder, wh_hash)
+        return _create(article_key, batches, counts, files_data, wait, payload_builder, wh_hash, thread_id)
 
     if effective_mode == "update":
         if existing_row and existing_row.get("webhook_hash") != wh_hash:
@@ -284,6 +300,11 @@ def op_create_or_update(params: Dict[str, Any], mode: str) -> Dict[str, Any]:
         if target_message_ids_param:
             existing_ids = list(map(str, target_message_ids_param))
         payload_builder = _base_payload_builder(batches, params)
-        return _update(article_key, batches, counts, files_data, wait, payload_builder, wh_id, token, existing_ids, wh_hash)
+        return _update(article_key, batches, counts, files_data, wait, payload_builder, wh_id, token, existing_ids, wh_hash, thread_id)
 
     raise HTTPException(status_code=400, detail="operation invalide")
+
+ 
+ 
+ 
+ 

@@ -4,21 +4,47 @@
     "name": "discord_webhook",
     "displayName": "Discord Webhook",
     "category": "communication",
-    "description": "Publie et gère des articles sous forme d'Embeds sur Discord via un webhook global (DISCORD_WEBHOOK_URL). Supporte create/update/upsert/delete/get/list avec persistance article_key → messages en SQLite. Découpe automatiquement le contenu long.",
+    "description": "Publie et gère des articles sous forme d'Embeds sur Discord via un webhook global (DISCORD_WEBHOOK_URL). Supporte create/update/upsert/delete/get/list/read avec persistance article_key → messages en SQLite. Découpe automatiquement le contenu long. Support threads Discord.",
     "parameters": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "operation": {
           "type": "string",
-          "enum": ["create", "update", "upsert", "delete", "get", "list"],
+          "enum": ["create", "update", "upsert", "delete", "get", "list", "read"],
           "default": "create",
-          "description": "Opération à effectuer."
+          "description": "Opération à effectuer. 'read' récupère un message Discord complet depuis l'API (embeds, reactions, attachments, mentions)."
         },
         "article_key": {
           "type": "string",
-          "description": "Identifiant unique et stable de l'article (slug). Sert de clé pour les mises à jour.",
+          "description": "Identifiant unique et stable de l'article (slug). Sert de clé pour les mises à jour. Pour 'read', permet de récupérer tous les messages associés.",
           "maxLength": 200
+        },
+        "message_id": {
+          "type": "string",
+          "description": "ID Discord du message à lire (opération 'read' uniquement). IMPORTANT: Passer comme STRING entre guillemets pour éviter perte de précision (ex: \"1234567890123456789\"). Si fourni avec article_key, lit ce message spécifique. Alternative recommandée: utiliser message_ids (array) pour éviter tout problème de conversion.",
+          "pattern": "^[0-9]{17,20}$"
+        },
+        "message_ids": {
+          "type": "array",
+          "description": "Batch read: liste d'IDs Discord à récupérer (opération 'read'). Max 50 messages par appel. IMPORTANT: Passer les IDs comme STRINGS (ex: [\"123\", \"456\"]). Mode recommandé pour éviter les conversions automatiques.",
+          "items": { "type": "string", "pattern": "^[0-9]{17,20}$" },
+          "maxItems": 50
+        },
+        "thread_id": {
+          "type": "string",
+          "description": "ID du thread Discord où poster/lire le message. IMPORTANT: Passer comme STRING entre guillemets. Si fourni avec 'read', spécifie le contexte du thread.",
+          "pattern": "^[0-9]{17,20}$"
+        },
+        "include_metadata": {
+          "type": "boolean",
+          "default": true,
+          "description": "Pour 'read': inclure métadonnées complètes (reactions, mentions, attachments metadata, timestamps)."
+        },
+        "parse_embeds": {
+          "type": "boolean",
+          "default": true,
+          "description": "Pour 'read': parser les embeds en structure détaillée. Si false, retourne embeds bruts."
         },
         "article": {
           "type": "object",
@@ -149,7 +175,7 @@
         },
         "attachments": {
           "type": "array",
-          "description": "Pièces jointes à envoyer avec le premier message (batch 0). Utilisez de préférence 'upload_image_url' si vous partez d'une URL.",
+          "description": "Pièces jointes à envoyer avec le premier message (batch 0). Utilisez de préférence 'upload_image_url' si vous partez d'une URL. LIMITE: 25 Mo total par message.",
           "items": {
             "type": "object",
             "additionalProperties": false,

@@ -1,14 +1,17 @@
+
 from __future__ import annotations
 from typing import Any, Dict
 from fastapi import HTTPException
 
 try:
     from .ops_create_update import op_create_or_update  # type: ignore
+    from .ops_read import op_read  # type: ignore
     from .util import API_BASE, get_discord_webhook_url, parse_webhook, webhook_hash  # type: ignore
     from . import db as DB  # type: ignore
     from .http_client import http_request  # type: ignore
 except Exception:
     from src.tools._discord_webhook.ops_create_update import op_create_or_update  # type: ignore
+    from src.tools._discord_webhook.ops_read import op_read  # type: ignore
     from src.tools._discord_webhook.util import API_BASE, get_discord_webhook_url, parse_webhook, webhook_hash  # type: ignore
     from src.tools._discord_webhook import db as DB  # type: ignore
     from src.tools._discord_webhook.http_client import http_request  # type: ignore
@@ -87,4 +90,6 @@ def run_operation(**params) -> Any:
         return _op_get(params)
     if operation == "list":
         return _op_list(params)
+    if operation == "read":
+        return op_read(params)
     raise HTTPException(status_code=400, detail="operation invalide")
