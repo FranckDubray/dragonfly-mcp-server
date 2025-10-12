@@ -96,7 +96,7 @@ Total tools: 38
   - Opérations: extract_frames
   - Tokens: aucun
 
-- Gemini Image Studio — Génère ou édite des images avec le modèle gemini-2.5-flash-image-preview. Entrées possibles: data URL, URLs http(s), base64 brut. Sortie:…
+- Gemini Image Studio — Génère ou édite des images avec gemini-2.5-flash-image-preview. Entrées: URLs http(s), fichiers locaux (./docs), data URLs, ou base64 bru…
   - Opérations: generate, edit
   - Tokens: aucun
 
