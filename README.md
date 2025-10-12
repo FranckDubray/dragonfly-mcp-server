@@ -4,7 +4,7 @@
 
 # 🐉 Dragonfly MCP Server
 
-Serveur MCP multi‑outils, rapide et extensible, propulsé par FastAPI. **37 tools** prêts à l'emploi, orchestrateur LLM avancé, panneau de contrôle web moderne.
+Serveur MCP multi‑outils, rapide et extensible, propulsé par FastAPI. **38 tools** prêts à l'emploi, orchestrateur LLM avancé, panneau de contrôle web moderne.
 
 [![License: MIT](./LICENSE)](./LICENSE)
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB)
@@ -29,7 +29,7 @@ Par défaut: http://127.0.0.1:8000
 
 ---
 
-## 🧰 Outils inclus (37)
+## 🧰 Outils inclus (38)
 
 Les outils sont groupés par 10 catégories canoniques (invariantes). L'UI affiche "Social & Entertainment" pour la clé `entertainment`.
 
@@ -37,6 +37,7 @@ Les outils sont groupés par 10 catégories canoniques (invariantes). L'UI affic
 - call_llm — Orchestrateur LLM 2 phases avec streaming
 - academic_research_super — Recherche académique multi-sources
 - ollama_local — Interface Ollama local + recherche web
+- news_aggregator — Agrégation actualités multi-sources (NewsAPI, NYT, Guardian)
 
 ### 🔧 Développement
 - git — GitHub API + Git local
@@ -115,6 +116,11 @@ IMAP_INFOMANIAK_PASSWORD=password
 GOOGLE_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  # Fallback générique
 YOUTUBE_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  # Spécifique (prioritaire)
 GOOGLE_MAPS_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  # Spécifique (prioritaire)
+
+# News Aggregator
+NEWS_API_KEY=your_newsapi_key
+NYT_API_KEY=your_nyt_key
+GUARDIAN_API_KEY=your_guardian_key
 
 # Communication
 TELEGRAM_BOT_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
