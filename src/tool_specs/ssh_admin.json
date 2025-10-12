@@ -1,0 +1,45 @@
+{
+  "type": "function",
+  "function": {
+    "name": "ssh_admin",
+    "displayName": "SSH Admin",
+    "category": "utilities",
+    "tags": ["system", "admin", "ssh", "devops"],
+    "description": "Administration et audit de serveurs distants via SSH (authentification par clés SSH uniquement). Permet d'exécuter des commandes/scripts bash, transférer des fichiers (SCP). Chaque appel = 1 nouvelle connexion SSH. Optimisation: utilisez des scripts bash multi-commandes pour réduire l'overhead connexion.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["connect", "exec", "upload", "download"],
+          "description": "Opération à effectuer:\n- connect: test connexion SSH\n- exec: exécute commande ou script bash\n- upload: transfert fichier local → serveur (SCP)\n- download: transfert fichier serveur → local (SCP)"
+        },
+        "profile": {
+          "type": "string",
+          "description": "Nom du profil serveur (configuré dans .env SSH_PROFILES_JSON). Exemples: 'prod', 'staging', 'dev'"
+        },
+        "command": {
+          "type": "string",
+          "description": "Commande ou script bash à exécuter (requis pour 'exec'). Peut être une ligne ou multi-lignes. Le script est exécuté via 'bash -s'. Exemples:\n- Simple: 'uptime'\n- Pipe: 'ps aux | grep nginx'\n- Multi: 'uptime\\nfree -m\\ndf -h'\n- Script: '#!/bin/bash\\nset -e\\necho \"Starting...\"\\nuptime'"
+        },
+        "local_path": {
+          "type": "string",
+          "description": "Chemin local RELATIF à la racine projet (requis pour upload/download). Le fichier doit exister pour upload. Exemples: 'backups/nginx.conf', 'logs/app.log'"
+        },
+        "remote_path": {
+          "type": "string",
+          "description": "Chemin ABSOLU sur le serveur distant (requis pour upload/download). Exemples: '/etc/nginx/nginx.conf', '/var/log/app.log', '/tmp/backup.tar.gz'"
+        },
+        "timeout": {
+          "type": "integer",
+          "default": 30,
+          "minimum": 1,
+          "maximum": 300,
+          "description": "Timeout en secondes (défaut: 30s, max: 300s). Pour exec: timeout commande. Pour upload/download: timeout transfert."
+        }
+      },
+      "required": ["operation", "profile"],
+      "additionalProperties": false
+    }
+  }
+}
