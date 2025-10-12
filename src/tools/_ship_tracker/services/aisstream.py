@@ -9,15 +9,20 @@ import json
 import time
 import math
 import threading
+import logging
 import websocket
 from typing import Dict, Any, List, Optional
 from ..utils import haversine_distance
+
+# Setup logging
+logger = logging.getLogger(__name__)
 
 
 class AISStreamClient:
     """Client for AISStream.io WebSocket API."""
     
     WS_URL = "wss://stream.aisstream.io/v0/stream"
+    MAX_SHIPS_TO_COLLECT = 500  # Internal safety limit
     
     def __init__(self):
         """Initialize AIS client with API key from environment."""
@@ -34,7 +39,7 @@ class AISStreamClient:
         longitude: float,
         radius_km: float,
         max_results: int = 50,
-        timeout: int = 10
+        timeout: int = 15
     ) -> List[Dict[str, Any]]:
         """Get ships in a geographic area via WebSocket.
         
@@ -43,7 +48,7 @@ class AISStreamClient:
             longitude: Center longitude
             radius_km: Radius in kilometers
             max_results: Maximum number of ships to return
-            timeout: WebSocket collection timeout in seconds (default: 10)
+            timeout: WebSocket collection timeout in seconds (default: 15)
             
         Returns:
             List of ships with AIS data
@@ -63,9 +68,20 @@ class AISStreamClient:
         
         # Collect ships from WebSocket
         ships_by_mmsi = {}  # Deduplicate by MMSI
+        collection_stopped = False  # Flag to stop collection when limit reached
         
         def on_message(ws, message):
             """Handle incoming AIS message."""
+            nonlocal collection_stopped
+            
+            # Stop collecting if we hit internal limit
+            if len(ships_by_mmsi) >= self.MAX_SHIPS_TO_COLLECT:
+                if not collection_stopped:
+                    logger.warning(f"Hit internal collection limit ({self.MAX_SHIPS_TO_COLLECT} ships), stopping early")
+                    collection_stopped = True
+                    ws.close()
+                return
+            
             try:
                 data = json.loads(message)
                 
@@ -119,15 +135,15 @@ class AISStreamClient:
                     
             except Exception as e:
                 # Silent fail on parse errors (don't break the stream)
-                pass
+                logger.debug(f"Error parsing AIS message: {e}")
         
         def on_error(ws, error):
             """Handle WebSocket errors."""
-            pass  # Silent errors
+            logger.debug(f"WebSocket error: {error}")
         
         def on_close(ws, close_status_code, close_msg):
             """Handle WebSocket close."""
-            pass
+            logger.debug(f"WebSocket closed: {close_status_code} - {close_msg}")
         
         def on_open(ws):
             """Send subscription message on connection open."""
@@ -137,6 +153,7 @@ class AISStreamClient:
                 "FilterMessageTypes": ["PositionReport"]  # Only position updates
             }
             ws.send(json.dumps(subscribe_message))
+            logger.debug(f"WebSocket opened, subscribed to bbox: {bbox}")
         
         # Create WebSocket connection
         ws = websocket.WebSocketApp(
@@ -152,12 +169,14 @@ class AISStreamClient:
         wst.daemon = True
         wst.start()
         
-        # Wait for timeout
+        # Wait for timeout (or early stop if collection_stopped)
         time.sleep(timeout)
         
         # Close connection
         ws.close()
         wst.join(timeout=1)
+        
+        logger.info(f"Collected {len(ships_by_mmsi)} ships in {timeout}s (limit: {self.MAX_SHIPS_TO_COLLECT})")
         
         # Convert dict to list and sort by distance
         ships = list(ships_by_mmsi.values())
@@ -165,19 +184,19 @@ class AISStreamClient:
         
         return ships[:max_results]
     
-    def get_ship_by_mmsi(self, mmsi: int, timeout: int = 10) -> Optional[Dict[str, Any]]:
+    def get_ship_by_mmsi(self, mmsi: int, timeout: int = 30) -> Optional[Dict[str, Any]]:
         """Get ship details by MMSI number.
+        
+        NOTE: This operation listens to the GLOBAL AIS stream (no bounding box filter)
+        which is inefficient. Recommended timeout: 30-60s for better chances.
         
         Args:
             mmsi: Maritime Mobile Service Identity number
-            timeout: WebSocket collection timeout in seconds
+            timeout: WebSocket collection timeout in seconds (default: 30)
             
         Returns:
             Ship details or None if not found
         """
-        # For MMSI lookup, we need to listen globally (no bbox filter)
-        # This is expensive, so we use a short timeout
-        
         ship_found = None
         
         def on_message(ws, message):
@@ -212,17 +231,20 @@ class AISStreamClient:
                             "last_position_update": metadata.get("time_utc")
                         }
                         
+                        logger.info(f"Found ship MMSI {mmsi}")
                         # Close immediately when found
                         ws.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Error in get_ship_by_mmsi: {e}")
         
         def on_open(ws):
             subscribe_message = {
                 "APIKey": self.api_key,
                 "FilterMessageTypes": ["PositionReport"]
+                # NOTE: No BoundingBoxes = global stream (inefficient but necessary)
             }
             ws.send(json.dumps(subscribe_message))
+            logger.debug(f"WebSocket opened, listening globally for MMSI {mmsi}")
         
         ws = websocket.WebSocketApp(
             self.WS_URL,
@@ -237,6 +259,11 @@ class AISStreamClient:
         # Wait for timeout or until found
         wst.join(timeout=timeout)
         ws.close()
+        
+        if ship_found:
+            logger.info(f"Ship MMSI {mmsi} found after listening for {timeout}s")
+        else:
+            logger.warning(f"Ship MMSI {mmsi} not found after {timeout}s (try longer timeout)")
         
         return ship_found
 

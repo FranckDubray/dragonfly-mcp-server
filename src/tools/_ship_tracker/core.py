@@ -24,7 +24,7 @@ def handle_track_ships(**params) -> Dict[str, Any]:
             - latitude (float, required): Center latitude (-90 to 90)
             - longitude (float, required): Center longitude (-180 to 180)
             - radius_km (float, optional): Search radius in km (1-500, default: 50)
-            - timeout (int, optional): WebSocket timeout in seconds (3-60, default: 10)
+            - timeout (int, optional): WebSocket timeout in seconds (3-60, default: 15)
             - ship_type (str, optional): Filter by ship type
             - min_length (float, optional): Minimum ship length in meters
             - max_length (float, optional): Maximum ship length in meters
@@ -41,18 +41,18 @@ def handle_track_ships(**params) -> Dict[str, Any]:
         validated = validate_track_ships_params(params)
         client = AISStreamClient()
         
-        # Get ships in area
-        ships = client.get_ships_in_area(
+        # Get ships in area (raw WebSocket data)
+        ships_raw = client.get_ships_in_area(
             latitude=validated["latitude"],
             longitude=validated["longitude"],
             radius_km=validated["radius_km"],
-            max_results=validated["max_results"],
+            max_results=500,  # Internal limit for WebSocket collection
             timeout=validated["timeout"]
         )
         
         # Apply filters
         filtered_ships = []
-        for ship in ships:
+        for ship in ships_raw:
             # Filter by ship type
             if validated["ship_type"]:
                 ship_type_name = get_ship_type_name(ship.get("ship_type", 0)).lower()
@@ -120,7 +120,11 @@ def handle_track_ships(**params) -> Dict[str, Any]:
         
         filtered_ships.sort(key=sort_key, reverse=(validated["sort_by"] != "distance"))
         
-        return {
+        # Truncate to max_results
+        max_results = validated["max_results"]
+        returned_ships = filtered_ships[:max_results]
+        
+        result = {
             "success": True,
             "search_center": {
                 "latitude": validated["latitude"],
@@ -129,8 +133,10 @@ def handle_track_ships(**params) -> Dict[str, Any]:
             },
             "radius_km": validated["radius_km"],
             "timeout_seconds": validated["timeout"],
-            "ships_found": len(filtered_ships),
-            "ships": filtered_ships[:validated["max_results"]],
+            "total_detected": len(ships_raw),  # Raw WebSocket count
+            "matched_filters": len(filtered_ships),  # Post-filtering count
+            "returned": len(returned_ships),  # Actually returned count
+            "ships": returned_ships,
             "filters_applied": {
                 "ship_type": validated["ship_type"],
                 "min_length_m": validated["min_length"],
@@ -140,6 +146,17 @@ def handle_track_ships(**params) -> Dict[str, Any]:
                 "navigation_status": validated["navigation_status"]
             }
         }
+        
+        # Truncation warning
+        if len(filtered_ships) > max_results:
+            result["truncated"] = True
+            result["warning"] = (
+                f"Results limited to {max_results} ships. "
+                f"{len(filtered_ships)} ships matched your filters. "
+                f"Increase max_results (up to 200) or refine filters to see more."
+            )
+        
+        return result
         
     except ValueError as e:
         return {"error": f"Validation error: {str(e)}"}
@@ -153,7 +170,7 @@ def handle_get_ship_details(**params) -> Dict[str, Any]:
     Args:
         **params: Ship details parameters
             - mmsi (int, required): Maritime Mobile Service Identity (9 digits)
-            - timeout (int, optional): WebSocket timeout in seconds (3-60, default: 10)
+            - timeout (int, optional): WebSocket timeout in seconds (3-60, default: 30)
     
     Returns:
         Detailed information about the ship
@@ -162,11 +179,17 @@ def handle_get_ship_details(**params) -> Dict[str, Any]:
         validated = validate_ship_details_params(params)
         client = AISStreamClient()
         
+        # NOTE: This listens globally (no bbox) which is inefficient but necessary
+        # Recommended: Use longer timeout (30-60s) for better chances of finding the ship
         ship = client.get_ship_by_mmsi(validated["mmsi"], timeout=validated["timeout"])
         
         if not ship:
             return {
-                "error": f"Ship with MMSI {validated['mmsi']} not found"
+                "error": f"Ship with MMSI {validated['mmsi']} not found",
+                "note": (
+                    "Ship may be out of AIS coverage or not transmitting. "
+                    "Try increasing timeout (30-60s) or search by location instead."
+                )
             }
         
         return {
@@ -217,7 +240,7 @@ def handle_get_port_traffic(**params) -> Dict[str, Any]:
             - latitude (float, optional): Port latitude (if port_name not provided)
             - longitude (float, optional): Port longitude (if port_name not provided)
             - radius_km (float, optional): Search radius in km (1-100, default: 10)
-            - timeout (int, optional): WebSocket timeout in seconds (3-60, default: 10)
+            - timeout (int, optional): WebSocket timeout in seconds (3-60, default: 15)
             - max_results (int, optional): Maximum results (default: 50)
     
     Returns:
@@ -250,7 +273,7 @@ def handle_get_port_traffic(**params) -> Dict[str, Any]:
             "latitude": validated["latitude"],
             "longitude": validated["longitude"],
             "radius_km": validated.get("radius_km", 10),
-            "timeout": validated.get("timeout", 10),
+            "timeout": validated.get("timeout", 15),
             "max_results": validated.get("max_results", 50)
         }
         
@@ -259,7 +282,8 @@ def handle_get_port_traffic(**params) -> Dict[str, Any]:
         if result.get("success"):
             result["port"] = port_info
             result["traffic_summary"] = {
-                "total_ships": result["ships_found"],
+                "total_detected": result["total_detected"],
+                "matched_filters": result["matched_filters"],
                 "anchored": len([s for s in result["ships"] if "anchor" in s.get("navigation_status", "").lower()]),
                 "underway": len([s for s in result["ships"] if "underway" in s.get("navigation_status", "").lower()]),
                 "moored": len([s for s in result["ships"] if "moor" in s.get("navigation_status", "").lower()])
