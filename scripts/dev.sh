@@ -114,6 +114,10 @@ else
   echo -e "${GREEN}🎞️  PyAV available${NC}"
 fi
 
+# Generate tools catalog (auto)
+echo -e "${YELLOW}🧰 Generating tools catalog (src/tools/README.md)...${NC}"
+python3 scripts/generate_tools_catalog.py || echo -e "${YELLOW}⚠️  Warning: failed to generate tools catalog${NC}"
+
 # Environment variables (use .env values if already set)
 export MCP_HOST="${MCP_HOST:-127.0.0.1}"
 export MCP_PORT="${MCP_PORT:-8000}"

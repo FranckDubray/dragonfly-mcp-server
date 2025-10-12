@@ -1,3 +1,8 @@
+
+
+
+
+
 # LLM DEV GUIDE — Dragonfly MCP Server
 
 Guide technique pour développeurs LLM. Architecture, invariants, checklist, et politique d’archivage du changelog.
@@ -13,12 +18,24 @@ Guide technique pour développeurs LLM. Architecture, invariants, checklist, et 
 - `src/config.py` — gestion `.env`, masquage secrets
 - `src/tools/` — tools (un fichier = un tool) + packages `_<tool>/` (implémentation)
 - `src/tool_specs/` — specs JSON canoniques (source de vérité)
+- `scripts/generate_tools_catalog.py` — génère automatiquement `src/tools/README.md` à partir des specs
 
 **Endpoints :**
 - `GET /tools` (`?reload=1` pour rescanner)
 - `POST /execute` avec `{ "tool": "<nom>", "params": {...} }`
 - `GET/POST /config` (gestion .env)
 - `GET /control` (panneau web)
+
+---
+
+## Catalogue des tools (auto‑généré)
+
+- Le fichier `src/tools/README.md` est désormais AUTO‑GÉNÉRÉ par `scripts/generate_tools_catalog.py` à partir des specs canoniques dans `src/tool_specs/*.json`.
+- Ne PAS éditer `src/tools/README.md` à la main. Les modifications doivent se faire dans les specs JSON et (optionnellement) dans le fichier meta.
+- Optionnel: métadonnées complémentaires dans `src/tool_specs/_meta/tools_meta.json` (ex: `tokens` requis, notes, pricing). Si absent, la génération continue sans.
+- Les scripts de dev exécutent automatiquement la génération au démarrage:
+  - Unix: `./scripts/dev.sh` → exécute `python3 scripts/generate_tools_catalog.py`
+  - Windows: `./scripts/dev.ps1` → exécute `python scripts/generate_tools_catalog.py`
 
 ---
 
@@ -179,3 +196,10 @@ def spec():
 - [ ] Pas d'artefacts (`__pycache__/`, `*.pyc`, `sqlite3/`, `.dgy_backup/`)
 - [ ] Logs clairs, pas verbeux
 - [ ] Chroot respecté (fichiers, DB)
+- [ ] NE PAS éditer `src/tools/README.md` à la main — lancer `scripts/generate_tools_catalog.py` (déjà appelé par `scripts/dev.*`) et committer le résultat
+
+ 
+ 
+ 
+ 
+ 

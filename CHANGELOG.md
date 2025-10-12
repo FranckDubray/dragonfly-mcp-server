@@ -6,6 +6,28 @@ Note: Older entries have been archived under changelogs/ (range-based files).
 
 ---
 
+## [1.17.2] - 2025-10-12
+
+### Fixed
+- **call_llm**: Fixed image path resolution using intelligent project root detection
+  - Before: hardcoded `/docs` (system root) causing "file not found" errors
+  - After: dynamic path resolution using `Path(__file__).parent.parent.parent`
+  - Images under `docs/` now correctly accessible without DOCS_ABS_ROOT env var
+  - Support for `DOCS_ABS_ROOT` override maintained for custom setups
+- **ollama_local**: Fixed massive log flooding during model download/upload
+  - `pull_model` and `push_model` now return concise summaries instead of 500-2000 lines
+  - New `_handle_streaming_response()` aggregates progress and returns structured summary
+  - Output reduction: 98-99.6% (from thousands of lines to 5-8 lines)
+  - Includes download summary with layer count, total size, and completion percentage
+  - Prevents LLM context window saturation and improves token efficiency
+
+### Technical Details
+- call_llm: `PROJECT_ROOT = Path(__file__).parent.parent.parent` for reliable docs/ discovery
+- ollama_local: Streaming response aggregation with human-readable size formatting (e.g., "4.3 GB")
+- Both fixes comply with LLM_DEV_GUIDE output size policies
+
+---
+
 ## [1.17.1] - 2025-10-11
 
 ### Changed
