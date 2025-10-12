@@ -2,7 +2,9 @@
 from __future__ import annotations
 from typing import Dict, Any, Optional
 import os
+import logging
 
+logger = logging.getLogger(__name__)
 
 # Open Data URLs (no authentication required)
 STATION_INFO_URL = os.getenv(
@@ -27,6 +29,8 @@ def fetch_station_information() -> Dict[str, Any]:
     try:
         import requests
         
+        logger.info(f"Fetching station information from {STATION_INFO_URL}")
+        
         response = requests.get(
             STATION_INFO_URL,
             timeout=DEFAULT_TIMEOUT,
@@ -34,6 +38,7 @@ def fetch_station_information() -> Dict[str, Any]:
         )
         
         if response.status_code != 200:
+            logger.error(f"HTTP {response.status_code} from station info API")
             return {
                 "success": False,
                 "error": f"HTTP {response.status_code}: {response.text[:200]}"
@@ -49,10 +54,13 @@ def fetch_station_information() -> Dict[str, Any]:
         elif isinstance(data, list):
             stations = data
         else:
+            logger.error("Unexpected API response format (no 'stations' key)")
             return {
                 "success": False,
                 "error": "Unexpected API response format (no 'stations' key found)"
             }
+        
+        logger.info(f"Fetched {len(stations)} stations from API")
         
         return {
             "success": True,
@@ -61,6 +69,7 @@ def fetch_station_information() -> Dict[str, Any]:
         }
         
     except Exception as e:
+        logger.error(f"Failed to fetch station information: {str(e)}")
         return {
             "success": False,
             "error": f"Failed to fetch station information: {str(e)}"
@@ -79,6 +88,8 @@ def fetch_station_status(station_code: Optional[str] = None) -> Dict[str, Any]:
     try:
         import requests
         
+        logger.info(f"Fetching station status from {STATION_STATUS_URL}" + (f" for station {station_code}" if station_code else " (all stations)"))
+        
         response = requests.get(
             STATION_STATUS_URL,
             timeout=DEFAULT_TIMEOUT,
@@ -86,6 +97,7 @@ def fetch_station_status(station_code: Optional[str] = None) -> Dict[str, Any]:
         )
         
         if response.status_code != 200:
+            logger.error(f"HTTP {response.status_code} from station status API")
             return {
                 "success": False,
                 "error": f"HTTP {response.status_code}: {response.text[:200]}"
@@ -101,6 +113,7 @@ def fetch_station_status(station_code: Optional[str] = None) -> Dict[str, Any]:
         elif isinstance(data, list):
             stations = data
         else:
+            logger.error("Unexpected API response format (no 'stations' key)")
             return {
                 "success": False,
                 "error": "Unexpected API response format (no 'stations' key found)"
@@ -130,15 +143,19 @@ def fetch_station_status(station_code: Optional[str] = None) -> Dict[str, Any]:
                     break
             
             if not matching:
+                logger.warning(f"Station code '{station_code}' not found in real-time data ({len(stations)} stations checked)")
                 return {
                     "success": False,
                     "error": f"Station code '{station_code}' not found in real-time data"
                 }
             
+            logger.info(f"Found station {station_code} in API response")
             return {
                 "success": True,
                 "data": matching[0]
             }
+        
+        logger.info(f"Fetched {len(stations)} station statuses from API")
         
         return {
             "success": True,
@@ -147,6 +164,7 @@ def fetch_station_status(station_code: Optional[str] = None) -> Dict[str, Any]:
         }
         
     except Exception as e:
+        logger.error(f"Failed to fetch station status: {str(e)}")
         return {
             "success": False,
             "error": f"Failed to fetch station status: {str(e)}"

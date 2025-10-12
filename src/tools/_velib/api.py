@@ -17,7 +17,7 @@ def route_operation(operation: str, **params) -> Dict[str, Any]:
         **params: Operation parameters
         
     Returns:
-        Operation result
+        Operation result (without verbose 'success' or 'operation' fields unless error)
     """
     if operation == "refresh_stations":
         return handle_refresh_stations()
