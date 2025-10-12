@@ -1,0 +1,185 @@
+{
+  "type": "function",
+  "function": {
+    "name": "discord_bot",
+    "displayName": "Discord Bot",
+    "category": "communication",
+    "description": "Client Discord Bot complet (REST API). Gestion messages, channels, threads, reactions, search. Requiert DISCORD_BOT_TOKEN. 28 opérations disponibles.",
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": [
+            "list_messages", "get_message", "send_message", "edit_message", "delete_message", "bulk_delete", "pin_message", "unpin_message",
+            "list_channels", "get_channel", "create_channel", "modify_channel", "delete_channel",
+            "add_reaction", "remove_reaction", "get_reactions",
+            "create_thread", "list_threads", "join_thread", "leave_thread", "archive_thread",
+            "search_messages", "get_guild_info", "list_members", "get_permissions", "get_user", "list_emojis", "health_check"
+          ],
+          "description": "Opération à effectuer (28 ops disponibles)."
+        },
+        "channel_id": {
+          "type": "string",
+          "description": "ID du canal Discord (snowflake 17-20 digits). Requis pour la plupart des ops.",
+          "pattern": "^[0-9]{17,20}$"
+        },
+        "message_id": {
+          "type": "string",
+          "description": "ID du message Discord (snowflake).",
+          "pattern": "^[0-9]{17,20}$"
+        },
+        "message_ids": {
+          "type": "array",
+          "description": "Liste d'IDs messages (bulk_delete: 2-100 items, < 14 jours).",
+          "items": { "type": "string", "pattern": "^[0-9]{17,20}$" },
+          "minItems": 2,
+          "maxItems": 100
+        },
+        "guild_id": {
+          "type": "string",
+          "description": "ID du serveur Discord (snowflake).",
+          "pattern": "^[0-9]{17,20}$"
+        },
+        "user_id": {
+          "type": "string",
+          "description": "ID utilisateur Discord (snowflake).",
+          "pattern": "^[0-9]{17,20}$"
+        },
+        "thread_id": {
+          "type": "string",
+          "description": "ID du thread Discord (snowflake).",
+          "pattern": "^[0-9]{17,20}$"
+        },
+        "content": {
+          "type": "string",
+          "description": "Contenu texte du message (max 2000 chars).",
+          "maxLength": 2000
+        },
+        "embeds": {
+          "type": "array",
+          "description": "Liste d'embeds Discord (max 10).",
+          "maxItems": 10,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "title": { "type": "string", "maxLength": 256 },
+              "description": { "type": "string", "maxLength": 4096 },
+              "url": { "type": "string", "format": "uri" },
+              "color": { "type": "integer", "minimum": 0, "maximum": 16777215 },
+              "timestamp": { "type": "string" },
+              "author": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string", "maxLength": 256 },
+                  "url": { "type": "string", "format": "uri" },
+                  "icon_url": { "type": "string", "format": "uri" }
+                }
+              },
+              "footer": {
+                "type": "object",
+                "properties": {
+                  "text": { "type": "string", "maxLength": 2048 },
+                  "icon_url": { "type": "string", "format": "uri" }
+                }
+              },
+              "image": {
+                "type": "object",
+                "properties": { "url": { "type": "string", "format": "uri" } }
+              },
+              "thumbnail": {
+                "type": "object",
+                "properties": { "url": { "type": "string", "format": "uri" } }
+              },
+              "fields": {
+                "type": "array",
+                "maxItems": 25,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": { "type": "string", "maxLength": 256 },
+                    "value": { "type": "string", "maxLength": 1024 },
+                    "inline": { "type": "boolean" }
+                  },
+                  "required": ["name", "value"]
+                }
+              }
+            }
+          }
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Nombre max de résultats (défaut: 50, max: 100 pour messages).",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 50
+        },
+        "before": {
+          "type": "string",
+          "description": "Message ID: récupérer messages AVANT cet ID (pagination).",
+          "pattern": "^[0-9]{17,20}$"
+        },
+        "after": {
+          "type": "string",
+          "description": "Message ID: récupérer messages APRÈS cet ID (pagination).",
+          "pattern": "^[0-9]{17,20}$"
+        },
+        "around": {
+          "type": "string",
+          "description": "Message ID: récupérer messages AUTOUR de cet ID.",
+          "pattern": "^[0-9]{17,20}$"
+        },
+        "emoji": {
+          "type": "string",
+          "description": "Emoji Unicode (ex: '👍') ou custom (ex: 'emoji_name:emoji_id').",
+          "maxLength": 100
+        },
+        "name": {
+          "type": "string",
+          "description": "Nom du canal/thread à créer.",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "type": {
+          "type": "integer",
+          "description": "Type de canal Discord (0=text, 2=voice, 4=category, 5=announcement, 10/11/12=thread).",
+          "enum": [0, 2, 4, 5, 10, 11, 12]
+        },
+        "topic": {
+          "type": "string",
+          "description": "Description du canal (max 1024 chars).",
+          "maxLength": 1024
+        },
+        "auto_archive_duration": {
+          "type": "integer",
+          "description": "Durée avant archivage automatique thread (minutes: 60, 1440, 4320, 10080).",
+          "enum": [60, 1440, 4320, 10080]
+        },
+        "search_query": {
+          "type": "string",
+          "description": "Texte à rechercher dans les messages (search_messages).",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "author_filter": {
+          "type": "string",
+          "description": "Filtrer par auteur (user_id ou username).",
+          "maxLength": 100
+        },
+        "date_from": {
+          "type": "string",
+          "description": "Date début (ISO 8601) pour recherche temporelle.",
+          "format": "date-time"
+        },
+        "date_to": {
+          "type": "string",
+          "description": "Date fin (ISO 8601) pour recherche temporelle.",
+          "format": "date-time"
+        }
+      },
+      "required": ["operation"]
+    }
+  }
+}
