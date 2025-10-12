@@ -6,7 +6,7 @@ Total tools: 41
 
 ## 📊 Intelligence & Orchestration (4)
 
-- LLM Orchestrator — Appelle un modèle LLM en streaming. Orchestration tool_calls (MCP) en 2 phases. Supporte l’entrée multi-modale (images) via messages Open…
+- LLM Orchestrator — Appelle un modèle LLM en streaming. Orchestration tool_calls (MCP) en 2 phases. Supporte l'entrée multi-modale (images) via messages Open… · Tags: llm, orchestration, vision, multimodal
   - Opérations: N/A
   - Tokens: aucun
 
@@ -68,7 +68,7 @@ Total tools: 41
   - Opérations: import_excel, preview, get_sheets, validate_mapping, get_info
   - Tokens: aucun
 
-- SQLite Database — Gestion d'une base SQLite locale dans <projet>/sqlite3. Créer, lister, supprimer des DB et exécuter des requêtes SQL.
+- SQLite Database — Gestion d'une base SQLite locale dans <projet>/sqlite3. Créer, lister, supprimer des DB et exécuter des requêtes SQL. · Tags: sqlite, database, sql, local_storage
   - Opérations: ensure_dir, list_dbs, create_db, delete_db, get_tables, describe …
   - Tokens: aucun
 
@@ -86,8 +86,8 @@ Total tools: 41
   - Opérations: download
   - Tokens: aucun
 
-- PDF Search — Recherche de texte dans des fichiers PDF avec contexte et positions.
-  - Opérations: search, search_all
+- PDF Search — Recherche texte dans un ou plusieurs PDFs. Hard cap à 50 résultats détaillés, affiche le total trouvé. Supporte regex, pages, récursif. · Tags: search, pdf, text
+  - Opérations: search
   - Tokens: aucun
 
 - PDF to Text — Extraction de texte depuis un PDF pour des pages données. Entrée: path (string), pages (string optionnelle) — Sortie: texte concaténé et…
@@ -108,7 +108,7 @@ Total tools: 41
   - Opérations: transcribe, get_info
   - Tokens: aucun
 
-- YouTube Downloader — Download videos or audio from YouTube URLs. Supports audio-only (for transcription), video, or both. Files saved to docs/video/ for integ…
+- YouTube Downloader — Download videos or audio from YouTube URLs. Supports audio-only (for transcription), video, or both. Files saved to docs/video/ for integ… · Tags: youtube, video, audio, download, transcription
   - Opérations: download, get_info
   - Tokens: aucun
 
@@ -142,7 +142,7 @@ Total tools: 41
 
 ## 🔢 Utilities (7)
 
-- Date/Time — Calculs de dates: jour de la semaine, différence entre 2 dates, maintenant/aujourd'hui, ajout de durées, formatage et parsing.
+- Date/Time — Common date/time operations: weekday name, difference between dates, now/today, add duration, format, parse, week number. Supports timezo… · Tags: datetime, calendar, timezone
   - Opérations: now, today, day_of_week, diff, diff_days, add …
   - Tokens: aucun
 

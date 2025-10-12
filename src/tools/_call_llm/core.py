@@ -1,4 +1,4 @@
-
+from __future__ import annotations
 """
 LLM Orchestrator (stream-only):
 - 1st call with tools (stream): collects tool_calls (supports OpenAI + provider-specific + legacy), executes MCP tools.
@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 import os
 import json
 import copy
+import logging
 
 from .payloads import (
     strip_system_to_promptSystem,
@@ -25,30 +26,9 @@ from .tools_exec import (
     append_tool_results_to_messages,
 )
 from .debug_utils import env_truthy, make_debug_container, attach_stream_debug, trim_val
+from .usage_utils import merge_usage
 
-
-def _merge_usage(into: Dict[str, Any], add: Optional[Dict[str, Any]]) -> Dict[str, Any]:
-    """Merge usage dicts cumulatively.
-    - Sum numeric fields (int/float), except keys containing 'price'
-    - For non-numeric or unknown fields, set if missing
-    - Returns the 'into' dict (mutated)
-    """
-    if not add or not isinstance(add, dict):
-        return into
-    for k, v in add.items():
-        try:
-            if isinstance(v, (int, float)) and ("price" not in k.lower()):
-                if isinstance(into.get(k), (int, float)):
-                    into[k] += v
-                elif k not in into:
-                    into[k] = v
-            else:
-                if k not in into:
-                    into[k] = v
-        except Exception:
-            if k not in into:
-                into[k] = v
-    return into
+LOG = logging.getLogger(__name__)
 
 
 def execute_call_llm(
@@ -66,8 +46,12 @@ def execute_call_llm(
 
     token = os.getenv("AI_PORTAL_TOKEN")
     if not token:
+        if LOG.isEnabledFor(logging.ERROR):
+            LOG.error("Missing AI_PORTAL_TOKEN")
         return {"error": "AI_PORTAL_TOKEN required", **({"debug": debug} if debug_enabled else {})}
     if not messages:
+        if LOG.isEnabledFor(logging.ERROR):
+            LOG.error("Missing messages parameter")
         return {"error": "messages required", **({"debug": debug} if debug_enabled else {})}
 
     # Strip system messages to promptSystem unless provided explicitly
@@ -76,6 +60,9 @@ def execute_call_llm(
     endpoint = os.getenv("LLM_ENDPOINT", "https://dev-ai.dragonflygroup.fr/api/v1/chat/completions")
     mcp_url = os.getenv("MCP_URL", "http://127.0.0.1:8000")
     timeout_sec = int(os.getenv("LLM_REQUEST_TIMEOUT_SEC", "180"))
+
+    if LOG.isEnabledFor(logging.INFO):
+        LOG.info(f"LLM call: model={model}, messages_count={len(messages)}, tool_names={tool_names}")
 
     payload = build_initial_payload(model, messages, prompt_system, max_tokens, assistant_id=assistantId, temperature=temperature)
 
@@ -89,6 +76,8 @@ def execute_call_llm(
                 if debug_enabled:
                     debug["tools"]["prepared"] = list(tool_data.get("found_tools") or [])
         except Exception as e:
+            if LOG.isEnabledFor(logging.ERROR):
+                LOG.error(f"Failed to get MCP tools: {e}")
             return {"error": f"Failed to get MCP tools: {e}", **({"debug": debug} if debug_enabled else {})}
 
     headers = build_headers(token)
@@ -104,6 +93,9 @@ def execute_call_llm(
         debug["first"]["payload"] = summarize_payload(payload, tool_data)
         debug["first"]["payload_full"] = copy.deepcopy(payload)
 
+    if LOG.isEnabledFor(logging.INFO):
+        LOG.info(f"LLM phase 1: streaming with tools (tools_count={len(payload.get('tools', []))})")
+
     resp = post_stream(endpoint, headers, payload, timeout_sec)
     tc_data = process_tool_calls_stream(resp)
     tool_calls = tc_data.get("tool_calls") or []
@@ -112,7 +104,7 @@ def execute_call_llm(
 
     # Aggregate usage from first stream
     first_usage = tc_data.get("usage")
-    _merge_usage(usage_cumulative, first_usage)
+    merge_usage(usage_cumulative, first_usage)
     if debug_enabled and first_usage:
         usage_breakdown.append({"stage": "first_stream_with_tools", "usage": first_usage})
 
@@ -132,6 +124,8 @@ def execute_call_llm(
     # If no tool_calls but text or media arrived, return the text/media
     if not tool_calls:
         if streamed_text or media:
+            if LOG.isEnabledFor(logging.INFO):
+                LOG.info(f"LLM phase 1 complete: no tool_calls, text_len={len(streamed_text)}, media_count={len(media)}")
             out = {
                 "success": True,
                 "content": streamed_text,
@@ -148,10 +142,16 @@ def execute_call_llm(
                     debug["usage_breakdown"] = usage_breakdown
                 out["debug"] = debug
             return out
+        if LOG.isEnabledFor(logging.WARNING):
+            LOG.warning("LLM phase 1: no tool_calls, no text, and no media")
         return {"error": "No tool_calls, no text, and no media in streaming response", **({"debug": debug} if debug_enabled else {})}
+
+    if LOG.isEnabledFor(logging.INFO):
+        LOG.info(f"LLM phase 1 complete: {len(tool_calls)} tool_calls detected")
 
     # Build assistant tool_calls message and execute MCP tools
     assistant_msg = build_assistant_tool_message(tool_calls)
+
     payload["messages"].append(assistant_msg)
 
     exec_results = []
@@ -167,7 +167,7 @@ def execute_call_llm(
         child_usage = None
         if isinstance(result, dict):
             child_usage = result.get("usage") or result.get("usage_cumulative")
-        _merge_usage(usage_cumulative, child_usage)
+        merge_usage(usage_cumulative, child_usage)
         if debug_enabled and child_usage:
             usage_breakdown.append({"stage": f"tool:{fname}", "usage": child_usage})
         exec_results.append({
@@ -178,6 +178,7 @@ def execute_call_llm(
         })
 
     append_tool_results_to_messages(payload["messages"], tool_calls, exec_results)
+
     if debug_enabled:
         debug["tools"]["executions"] = exec_results
 
@@ -191,14 +192,20 @@ def execute_call_llm(
         debug["second"]["payload"] = summarize_payload(final_payload, None)
         debug["second"]["payload_full"] = copy.deepcopy(final_payload)
 
+    if LOG.isEnabledFor(logging.INFO):
+        LOG.info(f"LLM phase 2: streaming without tools (messages_count={len(final_payload['messages'])})")
+
     resp2 = post_stream(endpoint, headers, final_payload, timeout_sec)
     final_result = process_streaming_chunks(resp2)
 
     # Aggregate usage from second stream
     final_usage = final_result.get("usage")
-    _merge_usage(usage_cumulative, final_usage)
+    merge_usage(usage_cumulative, final_usage)
     if debug_enabled and final_usage:
         usage_breakdown.append({"stage": "second_stream_without_tools", "usage": final_usage})
+
+    if LOG.isEnabledFor(logging.INFO):
+        LOG.info(f"LLM phase 2 complete: content_len={len(final_result.get('content') or '')}")
 
     if debug_enabled:
         second_stream = {

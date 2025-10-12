@@ -1,11 +1,6 @@
-
-
-
-
-
 # LLM DEV GUIDE — Dragonfly MCP Server
 
-Guide technique pour développeurs LLM. Architecture, invariants, checklist, et politique d’archivage du changelog.
+Guide technique pour développeurs LLM. Architecture, invariants, checklist, et politique d'archivage du changelog.
 
 ---
 
@@ -90,28 +85,28 @@ La valeur `function.category` de chaque tool DOIT être exactement l'une de ces 
 | Social & Entertainment | `entertainment` | 🎮 | chess_com, reddit_intelligence |
 
 Notes:
-- Le champ `category` n'est pas exposé dans l'API `/tools` (uniquement utilisé par l'UI pour grouper). L’UI affiche "Social & Entertainment" pour la clé `entertainment`.
+- Le champ `category` n'est pas exposé dans l'API `/tools` (uniquement utilisé par l'UI pour grouper). L'UI affiche "Social & Entertainment" pour la clé `entertainment`.
 - Ne créez pas de nouvelles clés de catégorie. Utilisez des `tags` pour marquer les outils "bases de connaissance externes" (ex: `external_sources`).
 
 ---
 
-## Politique d’archivage du CHANGELOG (rotation)
+## Politique d'archivage du CHANGELOG (rotation)
 
-Objectif: garder un CHANGELOG lisible à la racine tout en préservant l’historique complet.
+Objectif: garder un CHANGELOG lisible à la racine tout en préservant l'historique complet.
 
 Règles:
 - Racine: `CHANGELOG.md` ne contient que les ≤ 10 dernières releases (les plus récentes).
 - Archives: créer un répertoire `changelogs/`.
-- Format d’archive: 1 fichier par tranche de 10 releases, en partant de la première.
+- Format d'archive: 1 fichier par tranche de 10 releases, en partant de la première.
   - Exemples:
     - `changelogs/CHANGELOG_1.0.0_to_1.9.x.md`
     - `changelogs/CHANGELOG_1.10.0_to_1.19.x.md`
-- Contenu: l’archive doit contenir le TEXTE INTÉGRAL d’époque (pas de simplification, pas de résumés).
+- Contenu: l'archive doit contenir le TEXTE INTÉGRAL d'époque (pas de simplification, pas de résumés).
 - Le `CHANGELOG.md` racine inclut en tête la note: "Older entries have been archived under changelogs/ (range-based files)."
 
 Procédure (manuelle ou scriptée):
 1) Quand une nouvelle release dépasse la fenêtre de 10 versions récentes:
-   - Déplacer les plus anciennes entrées hors fenêtre vers le fichier d’archive de la tranche correspondante (créer le fichier si absent).
+   - Déplacer les plus anciennes entrées hors fenêtre vers le fichier d'archive de la tranche correspondante (créer le fichier si absent).
    - Conserver à la racine uniquement les 10 plus récentes.
 2) Ne pas modifier le wording historique lors du déplacement.
 3) Commit standard: `docs(changelog): rotate changelog, archive versions X → Y`
@@ -120,8 +115,8 @@ Option script (recommandé):
 - `scripts/archive_changelog.py` qui:
   - Parse `CHANGELOG.md`
   - Identifie les sections par version
-  - Déplace les versions hors fenêtre dans la bonne tranche d’archive
-  - Maintient la note d’archive en tête du fichier racine
+  - Déplace les versions hors fenêtre dans la bonne tranche d'archive
+  - Maintient la note d'archive en tête du fichier racine
 
 ---
 
@@ -182,6 +177,26 @@ def spec():
 
 ---
 
+## ⚠️ RÈGLE CRITIQUE : Audit obligatoire après dev/modif
+
+**Après avoir développé un nouveau tool OU modifié un tool existant, vous DEVEZ suivre la méthodologie d'audit complète (voir `# 🔍 MÉTHODOLOGIE AUDIT TOOLS.txt`)**
+
+**Pas de tirage au sort** : appliquez la procédure d'audit directement sur le tool développé/modifié.
+
+Cela inclut:
+1. Tests préliminaires (5 tests baseline)
+2. Audit JSON spec + code
+3. Correctifs si nécessaire
+4. Tests validation
+5. Tests non-régression OBLIGATOIRES
+6. CHANGELOG
+7. Commit + push
+8. MAJ procédure
+
+**Pourquoi** : garantir que chaque tool respecte les invariants du guide et éviter les régressions.
+
+---
+
 ## Checklist avant push
 
 - [ ] `parameters` = object, arrays ont `items`
@@ -197,9 +212,132 @@ def spec():
 - [ ] Logs clairs, pas verbeux
 - [ ] Chroot respecté (fichiers, DB)
 - [ ] NE PAS éditer `src/tools/README.md` à la main — lancer `scripts/generate_tools_catalog.py` (déjà appelé par `scripts/dev.*`) et committer le résultat
+- [ ] **Fichiers < 7KB ou 250 lignes** (découper si nécessaire)
+- [ ] **Code mort supprimé** : débusquer et supprimer les fonctions/classes/imports non utilisés (avec prudence, vérifier dépendances)
 
- 
- 
- 
- 
- 
+---
+
+## Audit : débusquer le code mort
+
+Lors d'un audit, **traquer et supprimer le code non utilisé** (avec prudence) :
+
+### Indicateurs de code mort
+
+- Fonctions/méthodes jamais appelées
+- Imports inutilisés
+- Variables définies mais jamais lues
+- Fichiers legacy (ex: `tool_execution.py`, `mcp_tools.py` dupliqués)
+- Blocs commentés (si > 50 lignes)
+- Constantes/config inutilisées
+
+### Méthodologie
+
+1. **Vérifier les imports** : outil `pylint --disable=all --enable=unused-import` ou analyse manuelle
+2. **Grep les usages** : chercher les références dans le codebase avant suppression
+3. **Tests de régression** : après suppression, re-tester toutes les fonctionnalités
+4. **Commit distinct** : `refactor(tool): remove dead code (X bytes saved)`
+
+### Exemples courants
+
+```python
+# ❌ Import non utilisé
+import requests  # si jamais appelé → supprimer
+
+# ❌ Fonction orpheline
+def old_helper():  # si aucun appel → supprimer
+    pass
+
+# ❌ Legacy wrapper
+# def old_api():  # code commenté depuis 6 mois → supprimer
+#     return new_api()
+
+# ❌ Doublon
+# Si tool_execution.py et tools_exec.py font la même chose → garder 1 seul
+```
+
+### Prudence
+
+- **Ne jamais supprimer** les exports publics (`__all__`) sans vérifier les imports externes
+- **Garder** les helpers utilisés dans les tests (même si absents du code principal)
+- **Documenter** dans le commit message pourquoi le code était mort
+
+---
+
+## Découpage des fichiers volumineux (> 7KB)
+
+### Règle
+
+**Aucun fichier Python ne doit dépasser 7KB ou 250 lignes** (facilite maintenance et review).
+
+### Stratégie de découpage
+
+**Exemple : `streaming.py` (19KB) → découper en :**
+- `streaming_sse.py` — parsing SSE (flags, extract, stats)
+- `streaming_media.py` — extraction media multimodal
+- `streaming_fallback.py` — fallback non-SSE (JSON once)
+- `streaming.py` — orchestrateur principal (imports les 3)
+
+**Exemple : `core.py` (10KB) → extraire :**
+- `usage_utils.py` — merge usage cumulatif
+- `vision_utils.py` — helpers images (data URL, chroot)
+
+### Organisation cohérente
+
+```
+_tool_name/
+  ├── api.py          # Routes publiques (< 7KB)
+  ├── core.py         # Logique métier principale (< 7KB)
+  ├── validators.py   # Validations pures (< 7KB)
+  ├── utils.py        # Helpers génériques (< 7KB)
+  ├── streaming/      # Si streaming complexe
+  │   ├── sse.py
+  │   ├── media.py
+  │   └── fallback.py
+  └── services/       # I/O externes
+      ├── http.py
+      └── db.py
+```
+
+**Principe** : 1 fichier = 1 responsabilité claire. Si > 7KB → découper logiquement.
+
+---
+
+## Exemple audit complet (résumé)
+
+**Outil audité** : `telegram_bot`
+
+**Problèmes détectés** :
+- 🔴 Token exposé dans erreurs → masking ajouté
+- 🟡 Pas de truncation warning → ajouté
+- 🟢 Logging manquant → ajouté
+
+**Score** : 7.7 → 9.2/10 ⭐⭐⭐⭐⭐
+
+**Tests non-régression** : 10/10 OK
+
+**Commit** :
+```
+fix(telegram_bot): critical audit fixes (7.7→9.2/10)
+
+🔴 SECURITY: token masking in errors
+🟡 MAJOR: truncation warnings, counts
+🟢 IMPROVEMENTS: logging (INFO/WARNING)
+
+TECHNICAL: conformité 75%→98%
+TESTS: 10/10 non-régression OK
+```
+
+---
+
+## Résumé des règles absolues
+
+1. **Audit obligatoire** après tout dev/modif de tool (pas de tirage au sort)
+2. **Fichiers < 7KB** (découper si nécessaire)
+3. **Code mort supprimé** (avec prudence)
+4. **Specs JSON** = source de vérité (ne jamais dupliquer en Python)
+5. **Tests non-régression OBLIGATOIRES** avant tout commit
+6. **Outputs minimaux** (pas de metadata verbose)
+7. **Truncation warnings** si > 50 items
+8. **Logging** (INFO/WARNING/ERROR) pour debug production
+9. **CHANGELOG** condensé (essentiel uniquement)
+10. **Commit atomique** : 1 tool à la fois, message structuré
