@@ -1,71 +1,37 @@
 # 🔍 MÉTHODOLOGIE AUDIT TOOLS
 
-## État: 5/40 audités (CAMPAGNE EN COURS)
+## État: 5/40 audités
 
-**35 tools à auditer**: astronomy, aviation_weather, coingecko, device_location, discord_webhook, email_send, excel_to_sqlite, ffmpeg_frames, flight_tracker, git, imap, math, news_aggregator, office_to_pdf, ollama_local, open_meteo, pdf2text, pdf_download, reddit_intelligence, script_executor, ssh_admin, universal_doc_scraper, video_transcribe, youtube_search
+**Tools restants**: astronomy, aviation_weather, coingecko, device_location, discord_webhook, email_send, excel_to_sqlite, ffmpeg_frames, flight_tracker, git, imap, math, news_aggregator, office_to_pdf, ollama_local, open_meteo, pdf2text, pdf_download, reddit_intelligence, script_executor, ssh_admin, universal_doc_scraper, video_transcribe, youtube_search
 
 ---
 
-## WORKSPACE - RÈGLES IMPORTANTES
+## WORKSPACE
 
-⚠️ **Le workspace est synchronisé automatiquement avec le filesystem** :
-- Quand le LLM utilise `filesystem_v3` pour **créer/modifier/supprimer** un fichier, le workspace est **mis à jour automatiquement**
-- **Pas besoin de reload** après un `writeFile`, `deleteFile`, etc.
-- Le message de retour indique toujours : `"Workspace synchronisé automatiquement"` + détails des changements
-
-⚠️ **Inutile de charger un fichier déjà dans le workspace** :
-- Avant de faire `load_file`, vérifier si le fichier est déjà chargé
-- Si déjà chargé, filesystem retourne : `"already_loaded"` avec code `"NO_FILES_LOADED"`
-- Workspace limite : **500 KB total** (affiche `remainingCapacity` dans chaque réponse)
-
-💡 **Bonne pratique** :
-```
-1. Charger UNIQUEMENT les fichiers nécessaires à l'audit en cours
-2. Unload SYSTÉMATIQUEMENT à la fin (libère la capacité)
-3. Les fichiers de référence (LLM_DEV_GUIDE.md, README.md projet, CHANGELOG.md, src/tools/README.md, procédure) restent chargés en permanence
-```
+⚠️ **Auto-sync**: writeFile/deleteFile mettent à jour le workspace automatiquement (pas de reload)
+⚠️ **Pas de double-load**: vérifier qu'un fichier n'est pas déjà chargé
+💡 **Limite**: 500 KB total, unload systématiquement à la fin
 
 ---
 
 ## PROCESS (10 étapes)
 
 ### 1. SÉLECTION
-`random pick_random` sur la liste des 35 tools à auditer (MAJ après chaque audit)
+`random pick_random` sur la liste des tools restants
 
 ### 2. CHARGEMENT
 ```
 load_file: ["src/tools/{tool}.py", "src/tool_specs/{tool}.json", "src/tools/_{tool}/*.py"]
 ```
 
-⚠️ **Vérifier d'abord qu'ils ne sont PAS déjà chargés** (filesystem retournera "already_loaded" si c'est le cas)
-
 ### 3. TESTS PRÉLIMINAIRES
 
-**⚠️ CRITIQUE: Appels UN PAR UN (jamais parallèle) sinon échec système**
+**⚠️ UN PAR UN (jamais parallèle)**
+**⚠️ PAS DE `/tools?reload=1` (119KB, floods LLM)**
 
-**⚠️ CRITIQUE: PAS DE `/tools?reload=1` - FLOODS LE LLM (119KB JSON) ⚠️**
-
-A. **Charger JSON spec localement** (si pas déjà chargé):
-   ```
-   load_file: "src/tool_specs/{tool}.json"
-   ```
-   → Examiner le JSON pour comprendre les operations/params
-   → Si déjà chargé, filesystem retourne "already_loaded" (ignorer)
-
-B. **5 tests baseline** (UN PAR UN):
-   1. Opération simple (get_info/list)
-   2. Avec params (search + query)
-   3. Validation (param invalide)
-   4. Edge case (limite dépassée)
-   5. Opération complexe
-
-C. **Observations**:
-   - Outputs propres/verbeux ?
-   - Erreurs claires ?
-   - Validation stricte ?
-   - Truncation warnings ?
-   - Counts explicites (total vs returned) ?
-   - Timeouts OK ?
+A. Charger JSON spec localement (si pas déjà chargé)
+B. 5 tests baseline: simple, params, validation, edge case, complexe
+C. Observations: outputs, erreurs, validation, truncation, counts, timeouts
 
 ### 4. AUDIT
 
@@ -74,212 +40,101 @@ C. **Observations**:
 - [ ] Arrays avec items, enums complets
 - [ ] required corrects, defaults explicites
 - [ ] Descriptions claires (1 ligne max)
-- [ ] Cohérence JSON ↔ tests
 
 **Code**:
 - [ ] Output size: limits + truncation warnings
 - [ ] Validation stricte
 - [ ] Try-catch global
 - [ ] Timeouts cohérents
-- [ ] Logging minimal
+- [ ] Logging (INFO/WARNING/ERROR)
 - [ ] Pas side-effects import
+- [ ] Fichiers < 7KB
 
-**Notation** (score /10 par critère):
-JSON Spec LLM | Architecture | Sécurité | Robustesse | Conformité | Performance | Maintenabilité | Documentation
-
-**Pénalités**:
-- Validation faible → Robustesse -2
-- Outputs verbeux → Conformité -2
-- Pas truncation warning → Performance -1
-- Erreurs floues → Documentation -1
+**Notation** (/10):
+JSON Spec | Architecture | Sécurité | Robustesse | Conformité | Performance | Maintenabilité | Documentation
 
 ### 5. CORRECTIFS
 
-**⚠️ DÉCOUPAGE FICHIERS**: Si un fichier dépasse **7KB** ou 250 lignes, découper logiquement en modules séparés (api.py, core.py, validators.py, utils.py, services/). **NOUVELLE LIMITE: 7KB MAX par fichier pour faciliter la maintenance.**
-
-**⚠️ WORKSPACE AUTO-SYNC**: Après chaque `writeFile`, le workspace est mis à jour automatiquement (pas besoin de reload manuel).
+**⚠️ DÉCOUPAGE**: Si fichier > 7KB, découper logiquement
 
 Format commit:
 ```
 fix({tool}): critical audit fixes (X.X→Y.Y/10)
 
-🔴 CRITICAL: [bugs tests 1-5]
+🔴 CRITICAL: [bugs tests]
 🟡 MAJOR: [outputs, validation]
 🟢 IMPROVEMENTS: [truncation, logging]
 
-TECHNICAL: files modifiés, conformité XX%→YY%
-AUDIT SCORE: X.X→Y.Y/10
+TECHNICAL: conformité XX%→YY%
+TESTS: X/X non-régression OK
+SCORE: X.X→Y.Y/10
 ```
 
 ### 6. TESTS VALIDATION
 
-**⚠️ UN PAR UN**
-
-Re-tester uniquement ce qui posait problème:
-- Bugs détectés → vérifier correction
-- Outputs verbeux → vérifier simplification
-- Validation faible → vérifier renforcement
+Re-tester uniquement ce qui posait problème
 
 ### 7. TESTS NON-RÉGRESSION
 
 **⚠️ OBLIGATOIRE - UN PAR UN**
 
-A. **Identifier** toutes fonctionnalités:
-   - Toutes opérations
-   - Tous providers/sources
-   - Tous filtres (dates, limites)
-   - Multi-sources, edge cases
-
-B. **Tester exhaustivement**:
-   - Chaque source individuellement
-   - Combinaisons multi-sources
-   - Filtres temporels
-   - Overrides limites
-   - Nouveaux paramètres ajoutés
-
-C. **Tableau synthèse OBLIGATOIRE**:
-```
-| Test | Fonctionnalité | Avant | Après | Statut |
-|------|----------------|-------|-------|--------|
-| ✅ 1 | Source A | ✅ | ✅ | OK |
-| ✅ 2 | Source B | ✅ | ✅ | OK |
-| ✅ 3 | Multi-sources | ✅ | ✅ | OK |
-| ❌ 4 | Feature X | ✅ | ❌ | CASSÉ |
-```
-
-D. **Si régression**: STOP → analyser → corriger → re-tester → reprendre 7A
-
-E. **Validation finale**: Tous tests ✅ → commit
+A. Identifier toutes fonctionnalités
+B. Tester exhaustivement
+C. Tableau synthèse OBLIGATOIRE
+D. Si régression: STOP → corriger → reprendre
+E. Validation finale: tous tests ✅
 
 ### 8. CHANGELOG
 
 Ajouter dans `[Unreleased]`:
 ```markdown
-### {tool} - [DATE] ✅ AUDITED (X.X→Y.Y/10)
+### {tool} - [DATE] ✅ X.X→Y.Y/10 ⭐
 
-**Fixed**: [bugs tests]
-
-**Technical**: files modifiés, conformité XX%→YY%
-
-**Tests**: X/X non-régression OK.
-
-**SCORE FINAL: Y.Y/10** ⭐⭐⭐⭐
-
+**Fixed**: [bugs]
+**Added**: [features]
+**Technical**: conformité XX%→YY%
+**Tests**: X/X OK
+**SCORE FINAL: Y.Y/10**
 **Known Issues**: [si applicable]
 ```
 
-**⚠️ WORKSPACE AUTO-SYNC**: Le CHANGELOG.md est déjà chargé, writeFile le met à jour dans le workspace automatiquement.
-
-**Si CHANGELOG > 10KB**: rotation obligatoire → `changelogs/CHANGELOG_{start}_to_{end}.md`
-
 ### 9. COMMIT + PUSH
 
-```bash
-git commit_all -m "fix({tool}): critical audit fixes (X.X→Y.Y/10)
-[message détaillé étape 5]
-✅ Non-régression: X/X tests OK"
-
+```
+git commit_all -m "fix({tool}): critical audit fixes (X.X→Y.Y/10) ..."
 git push main
 ```
 
 ### 10. UNLOAD + MAJ PROCÉDURE
 
-```bash
-unload_file: ["src/tools/{tool}.py", "src/tool_specs/{tool}.json", "src/tools/_{tool}/*.py"]
+```
+unload_file: ["src/tools/{tool}.py", ...]
 ```
 
-**Mettre à jour cette procédure**:
-- Incrémenter compteur (4→5/40)
-- Ajouter tool à liste "AUDITÉS CETTE CAMPAGNE" (ordre chronologique)
-- Retirer de liste "35 tools à auditer"
+**MAJ procédure**:
+- Incrémenter compteur (5→6/40)
+- Retirer de liste tools restants
 - Commit: `docs(audit): update methodology - {tool} audited (X/40)`
-
-**⚠️ WORKSPACE AUTO-SYNC**: writeFile met à jour la procédure dans le workspace automatiquement.
-
----
-
-## AUDITÉS CETTE CAMPAGNE (ordre chronologique)
-
-1. **discord_bot** [2025-10-12] - 8.9→9.6/10 ⭐⭐⭐⭐⭐
-   - Tags ajoutés, outputs simplifiés, bot_user nettoyé (15+ champs supprimés), logging ajouté
-   - Messages d'erreur détaillés avec error_type + operation context
-   - Conformité 70%→98%
-   - **Commits**: f0aee0c, a03acc5
-   - **Tests**: 3/3 OK (health_check, list_guilds, list_messages)
-   - **Note critique**: Audit a révélé 3 bugs dans http_client (corrigés: 2faf5d5, a5b7348, b4568fe)
-
-2. **velib** [2025-10-12] - 8.5→9.2/10 ⭐⭐⭐⭐⭐
-   - Tags ajoutés, logging complet (INFO/WARNING/ERROR), truncation warning si > 1000 stations
-   - Outputs simplifiés (suppression `success`, `operation`)
-   - Messages d'erreur détaillés avec contexte d'opération
-   - Conformité 70%→92%
-   - **Commit**: 046abb0
-   - **Tests**: 5/5 OK (check_cache, get_availability, refresh_stations, validation, edge case)
-   - **Note**: Serveur must be restarted to apply changes (Python modules cached)
-
-3. **trivia_api** [2025-10-12] - 8.8→9.6/10 ⭐⭐⭐⭐⭐
-   - 🔴 **Import bug `__init__.py`** (relative import `..trivia_api`)
-   - 🔴 **Global count endpoint** (`/api_count.php` → `/api_count_global.php`)
-   - 🟢 **README.md ajouté** (4.8 KB: architecture, 6 ops, examples, conformity)
-   - Outputs déjà minimaux (pas de `success`/`response_code`/`message` ajoutés par le tool)
-   - Logging déjà présent (INFO/WARNING)
-   - Conformité 88%→96%
-   - **Commit**: 6e31f24
-   - **Tests**: 13/14 OK (1 requires server restart for endpoint fix validation)
-   - **Note**: Tous fichiers < 7KB (max 4.9 KB), validation stricte, rate limiting OK
-
-4. **google_maps** [2025-10-12] - 8.25→9.5/10 ⭐⭐⭐⭐⭐
-   - ⚠️ **core.py découpage** (8.9 KB → 3.8 KB)
-     - Extrait `formatters.py` (6.2 KB) - format_location, format_route, format_place
-     - Extrait `operations_geo.py` (3.9 KB) - geocode, reverse_geocode, timezone, elevation
-     - Extrait `operations_places.py` (3.2 KB) - places_search, place_details, places_nearby
-     - `core.py` garde uniquement directions + distance_matrix
-   - Supprimé `utils.py` (6.2 KB) - fusionné dans `formatters.py`
-   - 🟢 **Logging (INFO/WARNING)** - toutes opérations
-   - 🟢 **Truncation warnings** (places_search, places_nearby, geocode, reverse_geocode)
-   - 🟢 **Counts explicites** (`total_count` vs `returned_count`)
-   - 🟢 **README.md** (10.0 KB) - architecture, 9 ops, examples, conformity checklist
-   - Conformité 70%→95%
-   - **Commit**: 8295c5a
-   - **Tests**: 9/9 OK (geocode, reverse_geocode, directions, validation coords, required params, error handling, defaults, token fallback, module imports)
-   - **Note**: Tous fichiers < 7KB ✅ (core.py 8.9KB → 3.8KB, formatters.py 6.2KB, operations_geo.py 3.9KB, operations_places.py 3.2KB)
-
-5. **generate_edit_image** [2025-10-12] - 8.25→9.5/10 ⭐⭐⭐⭐⭐
-   - ⚠️ **core.py découpage** (9.75 KB → 6.29 KB)
-     - Extrait `operations.py` (4.4 KB) - _single_call, _sequential_fallback
-     - `core.py` garde uniquement run_image_op
-   - 🟡 **Default n: 4→1** (plus économique)
-   - 🟡 **additionalProperties: false** (JSON spec)
-   - 🟢 **Logging** (INFO/WARNING/ERROR) - core.py, validators.py
-   - 🟢 **__init__.py** créé - exports propres
-   - 🟢 **README.md** (3.8 KB) - architecture, 2 ops, examples, timeouts, conformity
-   - Conformité 80%→95%
-   - **Commit**: 605b857
-   - **Tests**: 7/7 OK (generate n=1, generate n=3, validation n>8, edit sans images, param invalide, default n=1, edit fichier local)
-   - **Note**: Tous fichiers < 7KB ✅ (core.py 9.75KB → 6.29KB, operations.py 4.4KB, validators.py 6.69KB)
 
 ---
 
 ## RÈGLES ABSOLUES
 
-1. 🚨 **Appels UN PAR UN** (jamais parallèle http_client)
-2. 🚨 **PAS DE `/tools?reload=1`** (119KB, floods LLM avec 60 000+ tokens)
-3. **Charger JSON spec localement** avant tests (si pas déjà chargé)
-4. **Tests avant audit** (étape 3)
-5. **Outputs minimaux** (pas metadata success/operation)
-6. **Truncation warnings** si > 50 items
-7. **Tests validation** après correctifs
-8. 🚨 **Tests non-régression OBLIGATOIRES**
-9. **CHANGELOG** màj + rotation si > 10KB
-10. **Perplexity** pour 404/bugs API externes
-11. **Unload** toujours à la fin (libère workspace capacity)
-12. **Procédure** màj après chaque audit
-13. 🚨 **Découpage fichiers** si > **7KB** ou 250 lignes
-14. 🚨 **CHANGELOG condensé** (essentiel uniquement, pas de blabla)
-15. 🚨 **Workspace auto-sync** : writeFile/deleteFile mettent à jour le workspace automatiquement (pas de reload manuel)
-16. 🚨 **Pas de double-load** : vérifier qu'un fichier n'est pas déjà chargé avant load_file
-17. 🚨 **Tester les correctifs** : toujours valider avec tests réels avant commit
-18. 🚨 **Logs serveur** : surveiller les erreurs Python lors des redémarrages
+1. 🚨 Appels UN PAR UN (jamais parallèle)
+2. 🚨 PAS DE `/tools?reload=1` (floods LLM)
+3. Charger JSON spec localement avant tests
+4. Tests avant audit (étape 3)
+5. Outputs minimaux (pas metadata success/operation côté tool)
+6. Truncation warnings si > 50 items
+7. Tests validation après correctifs
+8. 🚨 Tests non-régression OBLIGATOIRES
+9. CHANGELOG màj + rotation si > 10KB
+10. Unload toujours à la fin
+11. Procédure màj après chaque audit
+12. 🚨 Découpage fichiers si > 7KB
+13. 🚨 CHANGELOG condensé (essentiel uniquement)
+14. 🚨 Workspace auto-sync
+15. 🚨 Tester les correctifs avant commit
 
 ---
 
@@ -289,4 +144,4 @@ unload_file: ["src/tools/{tool}.py", "src/tool_specs/{tool}.json", "src/tools/_{
 Audite le prochain tool (random)
 ```
 
-Workspace permanent: LLM_DEV_GUIDE.md, README.md (projet racine), CHANGELOG.md, src/tools/README.md (catalogue), procédure
+Workspace permanent: LLM_DEV_GUIDE.md, README.md, CHANGELOG.md, src/tools/README.md, procédure
