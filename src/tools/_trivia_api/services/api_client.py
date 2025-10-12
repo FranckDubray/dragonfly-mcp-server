@@ -130,7 +130,7 @@ class TriviaAPIClient:
         Returns:
             API response with global counts
         """
-        return self._make_request("/api_count.php")
+        return self._make_request("/api_count_global.php")
     
     def create_session_token(self) -> Dict[str, Any]:
         """
