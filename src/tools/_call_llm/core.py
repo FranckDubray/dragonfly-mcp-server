@@ -1,3 +1,4 @@
+
 """
 LLM Orchestrator (stream-only):
 - 1st call with tools (stream): collects tool_calls (supports OpenAI + provider-specific + legacy), executes MCP tools.
@@ -55,6 +56,8 @@ def execute_call_llm(
     model: str = "gpt-5",
     max_tokens: Optional[int] = None,
     tool_names: Optional[List[str]] = None,
+    assistantId: Optional[str] = None,
+    temperature: Optional[float] = None,
     **kwargs,
 ) -> Dict[str, Any]:
     # Debug returned ONLY if explicitly requested
@@ -74,7 +77,7 @@ def execute_call_llm(
     mcp_url = os.getenv("MCP_URL", "http://127.0.0.1:8000")
     timeout_sec = int(os.getenv("LLM_REQUEST_TIMEOUT_SEC", "180"))
 
-    payload = build_initial_payload(model, messages, prompt_system, max_tokens)
+    payload = build_initial_payload(model, messages, prompt_system, max_tokens, assistant_id=assistantId, temperature=temperature)
 
     # Prepare tools if requested
     tool_data: Dict[str, Any] = {"tools": [], "name_to_reg": {}, "found_tools": []}
@@ -97,7 +100,7 @@ def execute_call_llm(
     # 1) First call (stream, with tools)
     payload["stream"] = True
     if debug_enabled:
-        debug["meta"] = {"endpoint": endpoint, "MCP_URL": mcp_url, "model": model, "max_tokens": max_tokens}
+        debug["meta"] = {"endpoint": endpoint, "MCP_URL": mcp_url, "model": model, "max_tokens": max_tokens, "assistantId": assistantId, "temperature": temperature}
         debug["first"]["payload"] = summarize_payload(payload, tool_data)
         debug["first"]["payload_full"] = copy.deepcopy(payload)
 

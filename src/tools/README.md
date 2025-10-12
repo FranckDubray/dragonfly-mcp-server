@@ -1,320 +1,173 @@
-# 🧰 Dragonfly Tools Catalog
+# 🧰 Dragonfly Tools Catalog (auto‑généré)
 
-Catalog complet des 34 tools disponibles, organisés par catégorie canonique.
+Ce fichier est généré automatiquement par `scripts/generate_tools_catalog.py`. Ne pas éditer à la main.
 
----
+Total tools: 37
 
 ## 📊 Intelligence & Orchestration (3)
 
-### call_llm
-Orchestrateur LLM avancé à 2 phases avec streaming.
-- **Opérations**: 2-phase reasoning, streaming
-- **Token**: AI_PORTAL_TOKEN
-- **Catégorie**: intelligence
+- LLM Orchestrator — Appelle un modèle LLM en streaming. Orchestration tool_calls (MCP) en 2 phases. Supporte l’entrée multi-modale (images) via messages Open…
+  - Opérations: N/A
+  - Tokens: aucun
 
-### academic_research_super
-Recherche académique multi-sources (arXiv, PubMed, Semantic Scholar).
-- **Opérations**: search, get_paper, get_citations
-- **Token**: aucun (gratuit)
-- **Catégorie**: intelligence
-- **Tags**: knowledge, research, external_sources
+- Ollama Local + Web Search — Interface avec Ollama local (localhost:11434) + recherche web cloud. Gestion modèles, génération, chat, embeddings, recherche web.
+  - Opérations: list_models, get_version, get_running_models, show_model, pull_model, push_model …
+  - Tokens: aucun
 
-### ollama_local
-Interface Ollama local + recherche web intégrée.
-- **Opérations**: chat, generate, list_models, web_search
-- **Token**: aucun (local)
-- **Catégorie**: intelligence
-
----
+- Research — Recherche académique multi-sources (PubMed, arXiv, HAL, CrossRef). · Tags: knowledge, research, external_sources
+  - Opérations: search_papers, get_paper_details, search_authors, get_citations
+  - Tokens: aucun
 
 ## 🔧 Development (3)
 
-### git
-GitHub API + Git local complet.
-- **Opérations**: 20+ ops (repos, branches, commits, releases, diff, merge...)
-- **Token**: GITHUB_TOKEN
-- **Catégorie**: development
+- Git — Git et GitHub unifiés. Opérations locales (commit, push, pull, rebase) et GitHub API (repos, branches, releases).
+  - Opérations: ensure_repo, config_user, set_remote, sync_repo, status, fetch …
+  - Tokens: aucun
 
-### gitbook
-GitBook discovery et recherche de documentation.
-- **Opérations**: search_gitbook, discover_gitbook
-- **Token**: aucun
-- **Catégorie**: development
-- **Tags**: knowledge, docs, search
+- GitBook — Recherche et exploration de documentation GitBook. Découverte automatique de pages, recherche globale sans connaître les URLs. · Tags: knowledge, docs, search
+  - Opérations: find_docs, extract_base_url, discover_site, search_site, read_page
+  - Tokens: aucun
 
-### script_executor
-Sandbox Python sécurisé pour exécution de code.
-- **Opérations**: execute
-- **Token**: aucun
-- **Catégorie**: development
-
----
+- Python Sandbox — Exécute du code Python dans un sandbox sécurisé avec accès à des tools MCP. Pas d'imports, API limitée, timeout configurable.
+  - Opérations: N/A
+  - Tokens: aucun
 
 ## 📧 Communication (4)
 
-### email_send
-Envoi emails via SMTP (Gmail, Infomaniak).
-- **Opérations**: send_email
-- **Token**: IMAP_GMAIL_EMAIL + PASSWORD ou IMAP_INFOMANIAK_EMAIL + PASSWORD
-- **Catégorie**: communication
+- Discord Webhook — Publie et gère des articles sous forme d'Embeds sur Discord via un webhook global (DISCORD_WEBHOOK_URL). Supporte create/update/upsert/de…
+  - Opérations: create, update, upsert, delete, get, list
+  - Tokens: aucun
 
-### imap
-Réception emails multi-comptes (Gmail, Infomaniak).
-- **Opérations**: list_accounts, select_account, list_folders, search_emails, get_email, delete_email
-- **Token**: IMAP_GMAIL_EMAIL + PASSWORD ou IMAP_INFOMANIAK_EMAIL + PASSWORD
-- **Catégorie**: communication
+- Email Send (SMTP) — Envoyer des emails via SMTP (Gmail ou Infomaniak). Supporte texte/HTML, pièces jointes, CC/BCC, priorité.
+  - Opérations: send, test_connection
+  - Tokens: aucun
 
-### discord_webhook
-Publication messages Discord via webhooks.
-- **Opérations**: send (text/embed)
-- **Token**: webhook URL
-- **Catégorie**: communication
+- IMAP Email — Accès emails via IMAP (Gmail, Outlook, Yahoo, iCloud, Infomaniak, serveurs custom). Recherche, lecture, téléchargement pièces jointes, ma…
+  - Opérations: connect, list_folders, search_messages, get_message, download_attachments, mark_read …
+  - Tokens: aucun
 
-### telegram_bot 🆕
-Bot Telegram complet (messages, médias, polls).
-- **Opérations**: send_message, send_photo, send_document, send_location, send_video, get_updates, get_me, delete_message, edit_message, send_poll
-- **Token**: TELEGRAM_BOT_TOKEN
-- **Catégorie**: communication
-- **Gratuit**: illimité
-
----
+- Telegram Bot — Complete Telegram Bot API access. Send messages (text, photos, documents, videos, locations), read updates, edit/delete messages, polls.… · Tags: telegram, messaging, bot, notifications
+  - Opérations: send_message, send_photo, send_document, send_location, send_video, get_updates …
+  - Tokens: aucun
 
 ## 🗄️ Data & Storage (3)
 
-### sqlite_db
-Gestion SQLite avec chroot sécurisé.
-- **Opérations**: execute, query, schema, list_tables, create_table, insert, update, delete, backup
-- **Token**: aucun
-- **Catégorie**: data
+- CoinGecko — Complete cryptocurrency data via CoinGecko API. Prices, market data, historical charts, trending coins, exchanges. Free tier: 50 calls/mi… · Tags: crypto, cryptocurrency, prices, market_data
+  - Opérations: get_price, get_coin_info, search_coins, get_market_chart, get_trending, get_global_data …
+  - Tokens: aucun
 
-### excel_to_sqlite
-Import Excel (.xlsx) → SQLite.
-- **Opérations**: import
-- **Token**: aucun
-- **Catégorie**: data
+- Excel to SQLite — Import Excel (.xlsx) data into SQLite database with automatic schema detection, type mapping, and batch processing
+  - Opérations: import_excel, preview, get_sheets, validate_mapping, get_info
+  - Tokens: aucun
 
-### coingecko 🆕
-Données crypto complètes (prix, market, trending).
-- **Opérations**: get_price, get_coin_info, search_coins, get_market_chart, get_trending, get_global_data, list_coins, get_exchanges, get_coin_history, compare_coins
-- **Token**: aucun (gratuit 50 calls/min)
-- **Catégorie**: data
-- **Tags**: crypto, cryptocurrency, prices, market_data
-
----
+- SQLite Database — Gestion d'une base SQLite locale dans <projet>/sqlite3. Créer, lister, supprimer des DB et exécuter des requêtes SQL.
+  - Opérations: ensure_dir, list_dbs, create_db, delete_db, get_tables, describe …
+  - Tokens: aucun
 
 ## 📄 Documents (5)
 
-### office_to_pdf
-Conversion Office → PDF (LibreOffice).
-- **Opérations**: convert
-- **Token**: aucun
-- **Catégorie**: documents
+- Doc Scraper — Universal documentation scraper supporting GitBook, Notion, Confluence, ReadTheDocs, Docusaurus, and other doc platforms. Discover, extra…
+  - Opérations: discover_docs, extract_page, search_across_sites, detect_platform
+  - Tokens: aucun
 
-### pdf_download
-Téléchargement PDF depuis URL.
-- **Opérations**: download
-- **Token**: aucun
-- **Catégorie**: documents
+- Office to PDF Converter — Convert Microsoft Office documents (Word, PowerPoint) to PDF using the Office suite installed on the laptop. Supports .docx, .doc, .pptx,…
+  - Opérations: convert, get_info
+  - Tokens: aucun
 
-### pdf_search
-Recherche dans fichiers PDF.
-- **Opérations**: search
-- **Token**: aucun
-- **Catégorie**: documents
+- PDF Download — Télécharge un fichier PDF depuis une URL et le sauvegarde dans docs/pdfs. Gère automatiquement les conflits de noms avec suffixes numériq…
+  - Opérations: download
+  - Tokens: aucun
 
-### pdf2text
-Extraction texte depuis PDF.
-- **Opérations**: extract
-- **Token**: aucun
-- **Catégorie**: documents
+- PDF Search — Recherche de texte dans des fichiers PDF avec contexte et positions.
+  - Opérations: search, search_all
+  - Tokens: aucun
 
-### universal_doc_scraper
-Scraping documentation technique (MkDocs, GitBook, Sphinx...).
-- **Opérations**: scrape
-- **Token**: aucun
-- **Catégorie**: documents
-- **Tags**: scraping, docs
-
----
+- PDF to Text — Extraction de texte depuis un PDF pour des pages données. Entrée: path (string), pages (string optionnelle) — Sortie: texte concaténé et…
+  - Opérations: N/A
+  - Tokens: aucun
 
 ## 🎬 Media (5)
 
-### youtube_search
-Recherche YouTube API v3.
-- **Opérations**: search_videos, get_video_details, get_channel_info, get_playlist_items
-- **Token**: YOUTUBE_API_KEY ou GOOGLE_API_KEY (fallback)
-- **Catégorie**: media
+- FFmpeg Frames — Extraction d'images d'une vidéo: détection automatique des plans (similarité) + début/fin + samples intraplans.
+  - Opérations: extract_frames
+  - Tokens: aucun
 
-### youtube_download
-Téléchargement vidéos YouTube (yt-dlp).
-- **Opérations**: download
-- **Token**: aucun
-- **Catégorie**: media
+- Gemini Image Studio — Génère ou édite des images avec le modèle gemini-2.5-flash-image-preview. Entrées possibles: data URL, URLs http(s), base64 brut. Sortie:…
+  - Opérations: generate, edit
+  - Tokens: aucun
 
-### video_transcribe
-Transcription audio/vidéo (Whisper).
-- **Opérations**: transcribe
-- **Token**: aucun (local)
-- **Catégorie**: media
+- Video Transcription — Extract audio from video and transcribe using Whisper API. Supports time-based segmentation for large videos. Parallel processing (3 chun…
+  - Opérations: transcribe, get_info
+  - Tokens: aucun
 
-### ffmpeg_frames
-Extraction frames vidéo (FFmpeg).
-- **Opérations**: extract_frames
-- **Token**: aucun
-- **Catégorie**: media
+- YouTube Downloader — Download videos or audio from YouTube URLs. Supports audio-only (for transcription), video, or both. Files saved to docs/video/ for integ…
+  - Opérations: download, get_info
+  - Tokens: aucun
 
-### generate_edit_image
-Génération/édition images (Gemini).
-- **Opérations**: generate, edit
-- **Token**: AI_PORTAL_TOKEN
-- **Catégorie**: media
-
----
+- YouTube Search — Rechercher vidéos, chaînes et playlists YouTube. Filtres : date, popularité, région, safe search.
+  - Opérations: search, get_video_details, get_trending
+  - Tokens: aucun
 
 ## ✈️ Transportation (4)
 
-### ship_tracker
-Suivi navires temps réel (AIS).
-- **Opérations**: track_ship, search_ships
-- **Token**: AISSTREAM_API_KEY
-- **Catégorie**: transportation
+- Aviation Weather — Get upper air weather data (winds, temperature) at specific altitude and coordinates using Open-Meteo API. Useful for flight planning and…
+  - Opérations: get_winds_aloft, calculate_tas
+  - Tokens: aucun
 
-### flight_tracker
-Suivi avions temps réel (AviationStack).
-- **Opérations**: track_flight, search_flights, get_airport, get_airline
-- **Token**: AVIATIONSTACK_API_KEY
-- **Catégorie**: transportation
+- Flight Tracker — Track aircraft in real-time using OpenSky Network API. Filter by position, radius, altitude, speed, country. Get live position, speed, he…
+  - Opérations: track_flights
+  - Tokens: aucun
 
-### aviation_weather
-Météo aviation (METAR/TAF).
-- **Opérations**: get_metar, get_taf
-- **Token**: aucun (NOAA gratuit)
-- **Catégorie**: transportation
+- Ship Tracker — Suivi navires temps réel via AIS. Position, vitesse, cap, destination, type navire. Recherche par zone, MMSI ou port.
+  - Opérations: track_ships, get_ship_details, get_port_traffic
+  - Tokens: aucun
 
-### velib
-Disponibilité vélos Vélib' Paris temps réel.
-- **Opérations**: search_stations, get_station
-- **Token**: aucun (API publique)
-- **Catégorie**: transportation
-
----
+- Vélib' Métropole — Gestionnaire de cache Vélib' Métropole (Paris). Rafraîchit les données statiques des stations (stockées en SQLite), récupère la disponibi…
+  - Opérations: refresh_stations, get_availability, check_cache
+  - Tokens: aucun
 
 ## 🌐 Networking (1)
 
-### http_client
-Client HTTP/REST universel.
-- **Opérations**: request (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS)
-- **Token**: aucun
-- **Catégorie**: networking
-
----
+- HTTP Client — Client HTTP/REST générique pour interagir avec n'importe quelle API. Supporte GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS avec authentif…
+  - Opérations: N/A
+  - Tokens: aucun
 
 ## 🔢 Utilities (5)
 
-### math
-Calcul avancé (numérique/symbolique/stats).
-- **Opérations**: calculate, solve_equation, differentiate, integrate, plot, matrix_operations, statistics, prime_factors, gcd_lcm
-- **Token**: aucun
-- **Catégorie**: utilities
+- Date/Time — Calculs de dates: jour de la semaine, différence entre 2 dates, maintenant/aujourd'hui, ajout de durées, formatage et parsing.
+  - Opérations: now, today, day_of_week, diff, diff_days, add …
+  - Tokens: aucun
 
-### date
-Utilitaires date/heure.
-- **Opérations**: now, parse, format, add, subtract, diff, timezone_convert
-- **Token**: aucun
-- **Catégorie**: utilities
+- Device Location — Get GPS coordinates and location information for the current device based on network/IP geolocation. Returns latitude, longitude, city, r… · Tags: location, gps, network, geo
+  - Opérations: get_location
+  - Tokens: aucun
 
-### device_location
-Localisation device par IP (géolocalisation).
-- **Opérations**: get_location
-- **Token**: aucun (gratuit)
-- **Catégorie**: utilities
+- Google Maps — Complete Google Maps API access. Geocoding, directions, places search, distance matrix, timezone, elevation. Free tier: $200 credit/month… · Tags: maps, geocoding, directions, places, navigation
+  - Opérations: geocode, reverse_geocode, directions, distance_matrix, places_search, place_details …
+  - Tokens: aucun
 
-### open_meteo 🆕
-Météo complète (100% gratuit, open source).
-- **Opérations**: current_weather, forecast_hourly, forecast_daily, air_quality, geocoding, reverse_geocoding
-- **Token**: aucun (100% gratuit)
-- **Gratuit**: illimité pour usage non-commercial
-- **Catégorie**: utilities
-- **Tags**: weather, forecast, air_quality, free
+- Math — Maths: arithmétique (précision arbitr.), expressions (SymPy), symbolique, complexes, probas (suppl.), algèbre linéaire (+ext), solveurs,…
+  - Opérations: add, subtract, multiply, divide, power, modulo …
+  - Tokens: aucun
 
-### google_maps 🆕
-Google Maps complet (geocoding, directions, places).
-- **Opérations**: geocode, reverse_geocode, directions, distance_matrix, places_search, place_details, places_nearby, timezone, elevation
-- **Token**: GOOGLE_MAPS_API_KEY ou GOOGLE_API_KEY (fallback)
-- **Gratuit**: $200 crédit/mois (~28k geocoding)
-- **Catégorie**: utilities
-- **Tags**: maps, geocoding, directions, places, navigation
+- Open-Meteo — Complete weather data via Open-Meteo API (open source). Current weather, hourly/daily forecasts, air quality, geocoding. 100% free, no AP… · Tags: weather, forecast, air_quality, free
+  - Opérations: current_weather, forecast_hourly, forecast_daily, air_quality, geocoding, reverse_geocoding
+  - Tokens: aucun
 
----
+## 🎮 Social & Entertainment (4)
 
-## 🎮 Social & Entertainment (2)
+- Astronomy & Space — Complete astronomy calculations using Skyfield (100% local, no API key required). Planet positions, moon phases, ephemeris, celestial eve… · Tags: space, astronomy, science, educational, planets, stars
+  - Opérations: planet_position, moon_phase, sun_moon_times, celestial_events, planet_info, visible_planets …
+  - Tokens: aucun
 
-### chess_com
-Chess.com API (joueurs, parties, puzzles...).
-- **Opérations**: 24 ops (player_profile, player_stats, player_games, titled_players, leaderboards...)
-- **Token**: aucun (API publique)
-- **Catégorie**: entertainment
+- Chess.com — Access Chess.com public data API - player profiles, games, stats, clubs, tournaments, matches, countries, leaderboards, puzzles, streamer…
+  - Opérations: get_player_profile, get_player_stats, get_player_games_current, get_player_games_archives_list, get_player_games_archives, get_player_clubs …
+  - Tokens: aucun
 
-### reddit_intelligence
-Reddit scraping et analyse.
-- **Opérations**: search_posts, get_subreddit_info, get_post_comments, analyze_sentiment
-- **Token**: aucun
-- **Catégorie**: entertainment
-- **Tags**: social, knowledge, scraping, external_sources
+- Reddit — Advanced Reddit analysis tool. Search subreddits, analyze sentiment, find experts, track trends, get post comments. Discover insights fro… · Tags: social, knowledge, scraping, external_sources
+  - Opérations: search_subreddit, get_comments, analyze_sentiment, find_trending, find_experts, multi_search
+  - Tokens: aucun
 
----
-
-## 📊 Statistiques
-
-- **Total tools**: 34
-- **Gratuits (pas de token)**: 19
-- **Tokens requis**: 15
-- **Nouveaux (v1.15.0)**: 4 (open_meteo, coingecko, google_maps, telegram_bot)
-
----
-
-## 🔑 Tokens requis (récapitulatif)
-
-| Token | Tools | Gratuit ? |
-|-------|-------|-----------|
-| AI_PORTAL_TOKEN | call_llm, generate_edit_image | Payant |
-| GITHUB_TOKEN | git | Gratuit |
-| IMAP_GMAIL_EMAIL + PASSWORD | imap, email_send | Gratuit |
-| IMAP_INFOMANIAK_EMAIL + PASSWORD | imap, email_send | Gratuit |
-| TELEGRAM_BOT_TOKEN | telegram_bot | Gratuit ✅ |
-| YOUTUBE_API_KEY (ou GOOGLE_API_KEY) | youtube_search | Gratuit ✅ |
-| GOOGLE_MAPS_API_KEY (ou GOOGLE_API_KEY) | google_maps | $200 crédit/mois ✅ |
-| AISSTREAM_API_KEY | ship_tracker | Gratuit |
-| AVIATIONSTACK_API_KEY | flight_tracker | Freemium |
-
----
-
-## 🆕 Dernières additions
-
-### v1.15.0 (11/01/2025)
-- **open_meteo** (utilities) — Météo complète 100% gratuite
-- **coingecko** (data) — Crypto données
-- **google_maps** (utilities) — Maps complet
-- **telegram_bot** (communication) — Bot Telegram
-
-### v1.14.3 (11/10/2025)
-- **device_location** (utilities) — Localisation IP
-
-### v1.14.0 (11/01/2025)
-- **chess_com** (entertainment) — Chess.com API
-
----
-
-## 📖 Documentation complète
-
-Chaque tool possède :
-- Spec JSON canonique : `src/tool_specs/<tool_name>.json`
-- Bootstrap Python : `src/tools/<tool_name>.py`
-- Package implémentation : `src/tools/_<tool_name>/`
-  - `api.py` — Routing
-  - `core.py` — Logique métier
-  - `validators.py` — Validation
-  - `utils.py` — Helpers
-  - `services/` — I/O (HTTP, DB, files)
-
-Voir [LLM_DEV_GUIDE.md](../../LLM_DEV_GUIDE.md) pour créer de nouveaux tools.
+- Trivia API — Complete Open Trivia Database API access. Get trivia questions, manage categories, session tokens. 100% free, no API key required. Suppor… · Tags: quiz, games, educational, trivia
+  - Opérations: get_questions, list_categories, get_category_count, get_global_count, create_session_token, reset_session_token
+  - Tokens: aucun

@@ -11,8 +11,16 @@ class OllamaLocalClient:
     def __init__(self, base_url: str = OLLAMA_LOCAL_URL):
         self.base_url = base_url.rstrip('/')
     
-    def _make_request(self, method: str, endpoint: str, data: Dict = None, timeout: int = DEFAULT_LOCAL_TIMEOUT) -> Dict[str, Any]:
-        """Make HTTP request to Ollama local API."""
+    def _make_request(self, method: str, endpoint: str, data: Dict = None, timeout: int = DEFAULT_LOCAL_TIMEOUT, stream: bool = False) -> Dict[str, Any]:
+        """Make HTTP request to Ollama local API.
+        
+        Args:
+            method: HTTP method
+            endpoint: API endpoint
+            Request payload
+            timeout: Request timeout
+            stream: If True, handle streaming response (for pull/push operations)
+        """
         url = f"{self.base_url}{endpoint}"
         
         try:
@@ -25,7 +33,8 @@ class OllamaLocalClient:
                     url,
                     json=data,
                     headers=headers,
-                    timeout=timeout
+                    timeout=timeout,
+                    stream=stream
                 )
             
             # Check if request was successful
@@ -42,6 +51,10 @@ class OllamaLocalClient:
                     "error": f"HTTP {response.status_code}: {response.text}",
                     "status_code": response.status_code
                 }
+            
+            # Handle streaming response (for pull/push operations)
+            if stream:
+                return self._handle_streaming_response(response)
             
             # Try to parse JSON response
             try:
@@ -67,6 +80,76 @@ class OllamaLocalClient:
             return {
                 "success": False,
                 "error": f"Request failed: {str(e)}"
+            }
+    
+    def _handle_streaming_response(self, response) -> Dict[str, Any]:
+        """Handle streaming response from Ollama (pull/push operations).
+        
+        Returns a SUMMARY instead of all progress lines to avoid flooding the LLM.
+        """
+        lines_processed = 0
+        last_status = None
+        layers = {}
+        final_message = None
+        
+        try:
+            for line in response.iter_lines():
+                if not line:
+                    continue
+                
+                lines_processed += 1
+                
+                try:
+                    data = json.loads(line)
+                    status = data.get("status", "")
+                    
+                    # Track last status
+                    last_status = status
+                    
+                    # Track layer progress (pull operations)
+                    if "digest" in data and "completed" in data and "total" in data:
+                        digest = data["digest"][:16]  # Short digest
+                        completed = data["completed"]
+                        total = data["total"]
+                        layers[digest] = {
+                            "completed": completed,
+                            "total": total,
+                            "percent": round((completed / total * 100), 1) if total > 0 else 0
+                        }
+                    
+                    # Capture final success message
+                    if status == "success":
+                        final_message = "Model downloaded successfully"
+                    
+                except json.JSONDecodeError:
+                    continue
+            
+            # Build summary response
+            summary = {
+                "success": True,
+                "status": last_status or "completed",
+                "lines_processed": lines_processed,
+                "message": final_message or f"Operation completed ({lines_processed} progress updates)"
+            }
+            
+            # Add layer summary if available
+            if layers:
+                total_bytes = sum(l["total"] for l in layers.values())
+                completed_bytes = sum(l["completed"] for l in layers.values())
+                summary["download_summary"] = {
+                    "layers_count": len(layers),
+                    "total_size": format_model_size(total_bytes),
+                    "completed_size": format_model_size(completed_bytes),
+                    "overall_percent": round((completed_bytes / total_bytes * 100), 1) if total_bytes > 0 else 0
+                }
+            
+            return summary
+            
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Failed to process streaming response: {str(e)}",
+                "lines_processed": lines_processed
             }
     
     # ==========================================
@@ -130,12 +213,18 @@ class OllamaLocalClient:
         return self._make_request("POST", "/api/show", {"name": model})
     
     def pull_model(self, model: str) -> Dict[str, Any]:
-        """Pull/download a model."""
-        return self._make_request("POST", "/api/pull", {"name": model})
+        """Pull/download a model.
+        
+        Returns a summary instead of hundreds of progress lines.
+        """
+        return self._make_request("POST", "/api/pull", {"name": model}, stream=True)
     
     def push_model(self, model: str) -> Dict[str, Any]:
-        """Push/upload a model."""
-        return self._make_request("POST", "/api/push", {"name": model})
+        """Push/upload a model.
+        
+        Returns a summary instead of hundreds of progress lines.
+        """
+        return self._make_request("POST", "/api/push", {"name": model}, stream=True)
     
     def create_model(self, model: str, modelfile: str) -> Dict[str, Any]:
         """Create a custom model."""

@@ -4,37 +4,56 @@
     "name": "call_llm",
     "displayName": "LLM Orchestrator",
     "category": "intelligence",
-    "description": "Appelle un modèle LLM en mode streaming. Peut orchestrer des tool_calls (MCP) sur un premier appel, exécuter les outils, puis faire un second appel pour produire la réponse finale en texte.",
+    "description": "Appelle un modèle LLM en streaming. Orchestration tool_calls (MCP) en 2 phases. Supporte l’entrée multi-modale (images) via messages OpenAI, image_urls ou des fichiers du répertoire docs/.",
     "parameters": {
       "type": "object",
       "properties": {
         "message": {
           "type": "string",
-          "description": "Message utilisateur (contenu principal)."
+          "description": "Message utilisateur (recommandé même en mode vision)."
         },
-        "promptSystem": {
-          "type": "string",
-          "description": "Contexte système transmis séparément au payload (pas dans messages)."
+        "messages": {
+          "type": "array",
+          "description": "Messages bruts au format OpenAI. Si fourni, il est utilisé tel quel (les champs image_urls et image_files sont ignorés).",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": { "type": "string", "enum": ["system","user","assistant","tool"] },
+              "content": {
+                "description": "String ou tableau de segments OpenAI ({type:'text',text:'...'} | {type:'image_url',image_url:'...'|{url:'...',detail?:'low'|'high'|'auto'}}).",
+                "oneOf": [
+                  { "type": "string" },
+                  { "type": "array", "items": { "type": "object" } }
+                ]
+              }
+            },
+            "required": ["role","content"],
+            "additionalProperties": true
+          }
         },
-        "model": {
-          "type": "string",
-          "description": "Nom du modèle (obligatoire). Ex: gpt-5."
+        "image_urls": {
+          "type": "array",
+          "description": "URLs d’images à inclure avec le message (raccourci).",
+          "items": { "type": "string", "minLength": 1 }
         },
-        "max_tokens": {
-          "type": "integer",
-          "description": "Nombre maximum de tokens générés pour la réponse finale."
+        "image_files": {
+          "type": "array",
+          "description": "Chemins d’images stockées dans docs/images ou docs/video/frames (ex: 'docs/images/plan.png'). Seront encodées en data URL.",
+          "items": { "type": "string", "minLength": 1 }
         },
+        "promptSystem": { "type": "string", "description": "Contexte système séparé (pas dans messages)." },
+        "model": { "type": "string", "description": "Nom du modèle (ex: gpt-4o/gpt-5-vision)." },
+        "assistantId": { "type": "string", "description": "Identifiant d'assistant (portail) si vous souhaitez cibler un assistant préconfiguré." },
+        "temperature": { "type": "number", "description": "Température d'échantillonnage (défaut: 1)." },
+        "max_tokens": { "type": "integer", "description": "Max tokens de la réponse finale." },
         "tool_names": {
           "type": "array",
-          "description": "Liste des outils MCP autorisés pour le 1er appel (ex: [\"math\"]).",
+          "description": "Outils MCP autorisés pour le 1er appel.",
           "items": { "type": "string" }
         },
-        "debug": {
-          "type": "boolean",
-          "description": "Quand true, inclut un bloc debug détaillé dans la réponse (payloads, SSE, exécutions MCP)."
-        }
+        "debug": { "type": "boolean", "description": "Inclut un debug détaillé." }
       },
-      "required": ["message", "model"],
+      "required": ["message","model"],
       "additionalProperties": false
     }
   }

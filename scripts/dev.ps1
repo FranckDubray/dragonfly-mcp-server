@@ -1,3 +1,4 @@
+
 # MCP Server Development Script (PowerShell)
 
 param(
@@ -43,7 +44,7 @@ if (-not (Test-Path ".env")) {
         Write-Host "✅ Created .env from template" -ForegroundColor Green
         Write-Host "⚠️  Please edit .env and fill in your tokens/passwords before starting" -ForegroundColor Yellow
         Write-Host "   notepad .env" -ForegroundColor Yellow
-        $response = Read-Host "Press Enter to continue or Ctrl+C to exit and edit .env"
+        $null = Read-Host "Press Enter to continue or Ctrl+C to exit and edit .env"
     } else {
         Write-Host "⚠️  Warning: No .env or .env.example found" -ForegroundColor Yellow
         Write-Host "   The server will start with default values" -ForegroundColor Yellow
@@ -121,6 +122,13 @@ if ($LASTEXITCODE -ne 0) {
     pip install --quiet "av>=10.0.0"
 } else {
     Write-Host "🎞️  PyAV available" -ForegroundColor Green
+}
+
+# Generate tools catalog (auto)
+Write-Host "🧰 Generating tools catalog (src/tools/README.md)..." -ForegroundColor Yellow
+python scripts/generate_tools_catalog.py
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "⚠️  Warning: failed to generate tools catalog" -ForegroundColor Yellow
 }
 
 # Environment variables (use .env values if already set)
