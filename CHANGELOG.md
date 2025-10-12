@@ -14,6 +14,46 @@ Note: Older entries have been archived under changelogs/ (range-based files).
 
 Campagne d'audit en profondeur de tous les tools pour conformité LLM_DEV_GUIDE.
 
+### youtube_download - [2025-10-12] ✅ AUDITED (9.0→9.3/10)
+
+**Fixed**:
+- JSON spec: added explicit defaults for `operation`, `media_type`, `quality`, `max_duration`, `timeout`
+- JSON spec: added `tags` array for better UI filtering
+- Logging added: info for download start/complete, warnings for invalid inputs/duration exceeded
+- Output slightly improved: `handle_get_info()` and `handle_download()` return cleaner dicts
+
+**Improved**:
+- Default values now explicit in JSON (LLM can see them directly)
+- Better discoverability via tags: `youtube`, `video`, `audio`, `download`, `transcription`
+
+**Technical Details**:
+- youtube_download.json: +397B (1918→2315B)
+- core.py: +1026B (5768→6794B)
+- Conformity: 88% → 93%
+
+**Tests**:
+- ✅ Test 1: get_info (valid URL) → metadata retrieved successfully (Rick Astley video)
+- ✅ Test 2: get_info (invalid URL) → validation error with clear message
+
+**Audit Results**:
+
+| Critère | Avant | Après |
+|---------|-------|-------|
+| JSON Spec LLM | 9/10 | 10/10 |
+| Architecture | 10/10 | 10/10 |
+| Sécurité | 9/10 | 9/10 |
+| Robustesse | 9/10 | 9/10 |
+| Conformité | 7/10 | 9/10 |
+| Performance | 9/10 | 9/10 |
+| Maintenabilité | 10/10 | 10/10 |
+| Documentation | 9/10 | 9/10 |
+
+**SCORE FINAL: 9.3/10** ⭐⭐⭐⭐⭐
+
+**Notes**: Tool déjà excellent avant audit. Architecture exemplaire (séparation api/core/validators/utils/services). Correctifs mineurs uniquement (defaults explicites, tags, logging).
+
+---
+
 ### pdf_search - [2025-10-12] ✅ AUDITED (6.0→8.8/10)
 
 **Fixed**:
