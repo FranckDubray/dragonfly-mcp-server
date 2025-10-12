@@ -24,13 +24,15 @@
             "type": "string",
             "enum": ["pubmed", "arxiv", "hal", "crossref"]
           },
-          "description": "Sources à interroger (default: toutes)"
+          "default": ["arxiv"],
+          "description": "Sources à interroger (default: ['arxiv'])"
         },
         "max_results": {
           "type": "integer",
           "minimum": 1,
           "maximum": 100,
-          "description": "Nombre maximum de résultats par source (default: 10)"
+          "default": 10,
+          "description": "Nombre maximum de résultats par source (default: 10, max: 100)"
         },
         "year_from": {
           "type": "integer",
@@ -43,6 +45,11 @@
           "minimum": 1900,
           "maximum": 2030,
           "description": "Année de fin pour filtrer les résultats"
+        },
+        "include_abstracts": {
+          "type": "boolean",
+          "default": true,
+          "description": "Inclure les abstracts dans les résultats (default: true). Passer à false pour réduire la taille de la réponse."
         },
         "paper_id": {
           "type": "string",
@@ -68,18 +75,21 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 500,
-          "description": "Nombre maximum total d'items retournés après fusion (défaut: 50)"
+          "default": 50,
+          "description": "Nombre maximum total d'items retournés après fusion (défaut: 50, max: 500)"
         },
         "max_abstract_chars": {
           "type": "integer",
           "minimum": 0,
           "maximum": 20000,
+          "default": 2000,
           "description": "Longueur maximum de chaque abstract (défaut: 2000, 0 = aucun abstract)"
         },
         "max_bytes": {
           "type": "integer",
           "minimum": 1000,
           "maximum": 5000000,
+          "default": 200000,
           "description": "Taille JSON maximale du payload de réponse (en octets). Le tool tronque et réduit jusqu'à respecter cette limite (défaut: 200000 ≈ 200KB)"
         }
       },
