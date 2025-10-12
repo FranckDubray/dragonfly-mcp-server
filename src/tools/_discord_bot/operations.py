@@ -3,6 +3,9 @@ Discord Bot: Main operations router (29 ops - updated).
 """
 from __future__ import annotations
 from typing import Any, Dict
+import logging
+
+logger = logging.getLogger(__name__)
 
 try:
     from .ops_messages import (
@@ -92,7 +95,7 @@ def run_operation(**params) -> Any:
     
     if not operation:
         return {
-            "error": "operation parameter required",
+            "error": "Missing required parameter: 'operation'",
             "available_operations": list(OPERATIONS_MAP.keys())
         }
     
@@ -100,15 +103,22 @@ def run_operation(**params) -> Any:
     
     if not handler:
         return {
-            "error": f"Unknown operation: {operation}",
+            "error": f"Unknown operation: '{operation}'",
             "available_operations": list(OPERATIONS_MAP.keys())
         }
     
     try:
         return handler(params)
     except ValueError as e:
-        return {"error": str(e)}
+        logger.error(f"discord_bot validation error in {operation}: {e}")
+        return {"error": f"Validation error: {str(e)}"}
     except RuntimeError as e:
-        return {"error": str(e)}
+        logger.error(f"discord_bot runtime error in {operation}: {e}")
+        return {"error": f"Runtime error: {str(e)}"}
     except Exception as e:
-        return {"error": f"Unexpected error: {e}"}
+        logger.exception(f"discord_bot unexpected error in {operation}")
+        return {
+            "error": f"Unexpected error in operation '{operation}': {type(e).__name__}: {str(e)}",
+            "operation": operation,
+            "error_type": type(e).__name__
+        }
