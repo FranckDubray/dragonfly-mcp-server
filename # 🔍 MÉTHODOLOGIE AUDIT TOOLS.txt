@@ -201,9 +201,12 @@ unload_file: ["src/tools/{tool}.py", "src/tool_specs/{tool}.json", "src/tools/_{
 ## AUDITÉS CETTE CAMPAGNE (ordre chronologique)
 
 1. **discord_bot** [2025-10-12] - 8.9→9.6/10 ⭐⭐⭐⭐⭐
-   - Tags ajoutés, outputs simplifiés, bot_user nettoyé, description limit clarifiée
+   - Tags ajoutés, outputs simplifiés, bot_user nettoyé (15+ champs supprimés), logging ajouté
+   - Messages d'erreur détaillés avec error_type + operation context
    - Conformité 70%→98%
-   - **Note**: Serveur doit être redémarré pour appliquer les corrections
+   - **Commits**: f0aee0c, a03acc5
+   - **Tests**: 3/3 OK (health_check, list_guilds, list_messages)
+   - **Note critique**: Audit a révélé 3 bugs dans http_client (corrigés: 2faf5d5, a5b7348, b4568fe)
 
 ---
 
@@ -225,6 +228,8 @@ unload_file: ["src/tools/{tool}.py", "src/tool_specs/{tool}.json", "src/tools/_{
 14. 🚨 **CHANGELOG condensé** (essentiel uniquement, pas de blabla)
 15. 🚨 **Workspace auto-sync** : writeFile/deleteFile mettent à jour le workspace automatiquement (pas de reload manuel)
 16. 🚨 **Pas de double-load** : vérifier qu'un fichier n'est pas déjà chargé avant load_file
+17. 🚨 **Tester les correctifs** : toujours valider avec tests réels avant commit
+18. 🚨 **Logs serveur** : surveiller les erreurs Python lors des redémarrages
 
 ---
 
