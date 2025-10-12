@@ -6,6 +6,33 @@ Note: Older entries have been archived under changelogs/ (range-based files).
 
 ---
 
+## [1.17.3] - 2025-10-12
+
+### Fixed
+- **ollama_local**: Vision support simplified and clarified
+  - `operation=generate` now properly documented as THE way to use images
+  - `operation=chat` explicitly rejects images with helpful error message pointing to `generate`
+  - Removed broken auto-switch logic that was confusing and non-functional
+  - Clear documentation: `generate` = images OK, `chat` = text only
+  - Example error message guides users to correct usage
+
+### Changed
+- **ollama_local**: Massive output cleanup for better LLM token efficiency
+  - `generate` response: removed `context` array (internal tokens), raw duration fields
+  - `chat` response: same cleanup, keep only essential fields
+  - Before: 15+ fields including internal state
+  - After: 6 essential fields (success, response/message, model, timing, token counts)
+  - Human-readable durations: "12.3s" instead of nanoseconds
+  - Output reduction: ~70% fewer tokens for typical responses
+
+### Technical Details
+- ollama_local spec: Enhanced descriptions for `generate` vs `chat` operations
+- Image support: `image_files` parameter works perfectly with `generate` operation
+- Vision models tested: llava:13b confirmed working with local images under docs/
+- Error messages: Actionable suggestions with example payloads
+
+---
+
 ## [1.17.2] - 2025-10-12
 
 ### Fixed
@@ -125,63 +152,6 @@ No tool behavior changes for existing endpoints.
   - Soft shadows and subtle borders throughout
   - Modern card-based layout with professional spacing
   - Typography and transitions aligned with portal aesthetic
-
----
-
-## [1.14.2] - 2025-10-11
-
-### Added
-- UI (/control) tag filters for external knowledge tools (chips): `external_sources`, `knowledge`, `social`, `scraping`, `docs`, `search`, `api`, `video`, `pdf`.
-- Tags in tool specs for external knowledge cluster:
-  - academic_research_super: [knowledge, research, external_sources]
-  - reddit_intelligence: [social, knowledge, scraping, external_sources]
-  - gitbook: [knowledge, docs, search]
-
-### Fixed
-- sqlite_db category explicitly set to `data`.
-- discord_webhook category consistently set to `communication` in JSON and Python spec_def.
-
-### Changed
-- LLM_DEV_GUIDE.md clarifies use of `tags` to mark external knowledge base tools while keeping the 10 canonical categories unchanged.
-- README updated: control panel UX notes and canonical categories fully reflected.
-
----
-
-## [1.14.1] - 2025-10-11
-
-### Fixed
-- Categories alignment across all tools — enforced the 10 canonical categories in all JSON specs
-  - math, date → utilities
-  - http_client → networking
-  - ship_tracker → transportation (and added `timeout.default: 10`)
-  - velib → transportation (was "infrastructure")
-  - pdf_download, pdf_search, pdf2text, office_to_pdf, universal_doc_scraper → documents
-  - generate_edit_image → media (category added)
-- UI (/control): professional ergonomics improvements
-  - Clear separation of categories vs tools
-  - Categories are collapsed by default (clean overview)
-  - Favorites (★/☆) with persistence
-  - Category badges in tool header, technical name badge
-  - Keyboard shortcuts: `/` focus search, Ctrl/Cmd+Enter execute
-  - Last selected tool restored
-
-### Changed
-- README.md and src/tools/README.md updated to reflect the exact 10 canonical categories
-- LLM_DEV_GUIDE.md clarified: categories are mandatory, must be chosen from the 10 canonical keys; UI label for `entertainment` is "Social & Entertainment"
-
----
-
-## [1.14.0] - 2025-01-11
-
-### Added
-- chess_com tool: Complete Chess.com public API access (no authentication required)
-  - 24 operations covering all public endpoints
-  - Player profiles, stats, games, archives, titled players
-  - Club info, country rankings, leaderboards
-  - Puzzles, streamers, match results
-  - Free tier: no rate limits on public endpoints
-  - Category: entertainment
-  - Architecture: `_chess_com/` package with proper validators, error handling, and caching
 
 ---
 

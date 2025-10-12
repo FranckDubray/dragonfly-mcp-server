@@ -10,7 +10,7 @@ Total tools: 37
   - Opérations: N/A
   - Tokens: aucun
 
-- Ollama Local + Web Search — Interface avec Ollama local (localhost:11434) + recherche web cloud. Gestion modèles, génération, chat, embeddings, recherche web.
+- Ollama Local + Web Search — Interface avec Ollama local (localhost:11434) + recherche web cloud. Gestion modèles, génération, chat, embeddings, recherche web. IMPORT…
   - Opérations: list_models, get_version, get_running_models, show_model, pull_model, push_model …
   - Tokens: aucun
 

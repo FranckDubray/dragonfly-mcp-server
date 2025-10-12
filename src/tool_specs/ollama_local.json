@@ -4,7 +4,7 @@
     "name": "ollama_local",
     "displayName": "Ollama Local + Web Search",
     "category": "intelligence",
-    "description": "Interface avec Ollama local (localhost:11434) + recherche web cloud. Gestion modèles, génération, chat, embeddings, recherche web.",
+    "description": "Interface avec Ollama local (localhost:11434) + recherche web cloud. Gestion modèles, génération, chat, embeddings, recherche web. IMPORTANT: Pour analyser des images, utiliser operation='generate' (pas 'chat').",
     "parameters": {
       "type": "object",
       "properties": {
@@ -15,15 +15,15 @@
             "pull_model", "push_model", "create_model", "copy_model", "delete_model",
             "generate", "chat", "embeddings", "web_search", "chat_with_web"
           ],
-          "description": "Opération à effectuer"
+          "description": "Opération à effectuer. Pour images: utiliser 'generate' (REQUIS pour vision). Pour chat sans images: utiliser 'chat'."
         },
         "model": {
           "type": "string", 
-          "description": "Nom du modèle (requis pour generate, chat, embeddings, show_model, pull_model, etc.)"
+          "description": "Nom du modèle (requis pour generate, chat, embeddings, show_model, pull_model, etc.). Pour vision: llava:13b, llava:7b, bakllava"
         },
         "prompt": {
           "type": "string",
-          "description": "Prompt de génération (requis pour generate)"
+          "description": "Prompt de génération (requis pour generate). Pour analyse d'images, décrire ce que vous voulez savoir sur l'image."
         },
         "messages": {
           "type": "array",
@@ -35,7 +35,7 @@
             },
             "required": ["role", "content"]
           },
-          "description": "Messages pour chat (requis pour chat, chat_with_web)"
+          "description": "Messages pour chat (requis pour chat, chat_with_web). NOTE: 'chat' ne supporte PAS les images, utiliser 'generate' à la place."
         },
         "text": {
           "type": "string", 
@@ -44,6 +44,16 @@
         "query": {
           "type": "string",
           "description": "Requête de recherche web (requis pour web_search, chat_with_web)"
+        },
+        "image_urls": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "URLs d'images HTTP(S) pour modèles vision (generate uniquement). Note: téléchargement pas encore implémenté, utiliser image_files"
+        },
+        "image_files": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Chemins images pour modèles vision (generate uniquement). Relatifs racine projet ou docs/. Formats: JPEG, PNG. Résolution: 336-672px recommandée. Ratios: carré 1:1 ou allongés jusqu'à 1:4 / 4:1. Taille max: 5 MB. Max: 4 images. Ex: 'docs/gemini_image_68dfaca1489e1.png'"
         },
         "stream": {
           "type": "boolean",
