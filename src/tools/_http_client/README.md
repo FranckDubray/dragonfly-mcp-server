@@ -1,330 +1,298 @@
-# HTTP Client Tool
+# HTTP Client Module
 
-Universal HTTP/REST client for interacting with any API.
+Universal HTTP/REST client with comprehensive features.
 
-## 🎯 Features
+## Features
 
 - **All HTTP methods**: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS
 - **Authentication**: Basic, Bearer, API Key
-- **Body formats**: JSON, form-data, raw text
-- **Retry logic**: Exponential backoff with configurable attempts
-- **Timeout**: Configurable (1-300s)
-- **Proxy**: HTTP/HTTPS/SOCKS5 support
-- **SSL**: Verification toggle
-- **Response parsing**: Auto-detect, JSON, text, raw
-- **Save responses**: Optional file storage
+- **Retry logic**: Exponential backoff (0-5 retries)
+- **Timeouts**: Configurable (1-600s, default: 30s)
+- **Response parsing**: Auto-detect JSON/text, or force format
+- **Proxy support**: HTTP/HTTPS/SOCKS5
+- **SSL verification**: Configurable (default: enabled)
+- **Response saving**: Optional file save (JSON format)
+- **Error handling**: Typed errors (connection, timeout, SSL, request)
+- **Logging**: INFO for requests, WARNING for errors/large bodies
 
----
+## Architecture
 
-## 📋 Parameters
-
-### Required
-- `method` (string): HTTP method (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS)
-- `url` (string): Target URL (http:// or https://)
-
-### Optional - Request
-- `headers` (object): Custom HTTP headers
-- `params` (object): Query string parameters
-- `body` (string): Raw body (text/xml/etc.)
-- `json` (object): JSON body (auto-serialized)
-- `form_data` (object): Form data (application/x-www-form-urlencoded)
-
-### Optional - Authentication
-- `auth_type` (string): none, basic, bearer, api_key
-- `auth_user` (string): Username for Basic Auth
-- `auth_password` (string): Password for Basic Auth
-- `auth_token` (string): Token for Bearer Auth
-- `auth_api_key_name` (string): API Key header name
-- `auth_api_key_value` (string): API Key value
-
-### Optional - Behavior
-- `timeout` (integer): Timeout in seconds (default: 30, min: 1, max: 300)
-- `follow_redirects` (boolean): Follow redirects (default: true)
-- `verify_ssl` (boolean): Verify SSL certificates (default: true)
-- `proxy` (string): Proxy URL (http://proxy:port)
-- `max_retries` (integer): Retry attempts (default: 0, max: 5)
-- `retry_delay` (number): Delay between retries in seconds (default: 1.0)
-- `response_format` (string): auto, json, text, raw (default: auto)
-- `save_response` (boolean): Save response to files/http_responses/ (default: false)
-
----
-
-## 📝 Examples
-
-### Simple GET request
-```json
-{
-  "method": "GET",
-  "url": "https://api.github.com/users/octocat"
-}
+```
+_http_client/
+├── __init__.py       # Spec loader
+├── api.py            # Request routing (636 B)
+├── core.py           # Main execution logic (6.9 KB)
+├── auth.py           # Authentication helpers (3 KB)
+├── validators.py     # Input validation (4.4 KB)
+├── utils.py          # Response parsing + saving (4 KB)
+├── retry.py          # Retry with backoff (1.8 KB)
+└── README.md         # This file
 ```
 
-### GET with headers and query params
+All files < 7KB ✅
+
+## Usage Examples
+
+### Basic GET
+
 ```json
 {
-  "method": "GET",
-  "url": "https://api.example.com/search",
-  "headers": {
-    "Accept": "application/json",
-    "User-Agent": "MyApp/1.0"
-  },
+  "tool": "http_client",
   "params": {
-    "q": "search term",
-    "limit": "10"
+    "method": "GET",
+    "url": "https://api.github.com/zen"
   }
 }
 ```
 
-### POST with JSON body
+### GET with query params
+
 ```json
 {
-  "method": "POST",
-  "url": "https://api.example.com/users",
-  "json": {
-    "name": "John Doe",
-    "email": "john@example.com"
+  "tool": "http_client",
+  "params": {
+    "method": "GET",
+    "url": "https://api.github.com/search/repositories",
+    "params": {"q": "fastapi", "per_page": "5"}
+  }
+}
+```
+
+### POST with JSON body + Bearer auth
+
+```json
+{
+  "tool": "http_client",
+  "params": {
+    "method": "POST",
+    "url": "https://api.example.com/data",
+    "json": {"name": "test", "value": 42},
+    "auth_type": "bearer",
+    "auth_token": "your_token_here"
+  }
+}
+```
+
+### GET with retry + timeout
+
+```json
+{
+  "tool": "http_client",
+  "params": {
+    "method": "GET",
+    "url": "https://unreliable-api.com/data",
+    "timeout": 10,
+    "max_retries": 3,
+    "retry_delay": 2.0
+  }
+}
+```
+
+### POST with Basic Auth
+
+```json
+{
+  "tool": "http_client",
+  "params": {
+    "method": "POST",
+    "url": "https://api.example.com/secure",
+    "auth_type": "basic",
+    "auth_user": "username",
+    "auth_password": "password"
+  }
+}
+```
+
+### GET with API Key header
+
+```json
+{
+  "tool": "http_client",
+  "params": {
+    "method": "GET",
+    "url": "https://api.example.com/data",
+    "auth_type": "api_key",
+    "auth_api_key_name": "X-API-Key",
+    "auth_api_key_value": "your_api_key"
+  }
+}
+```
+
+### GET with custom headers + proxy
+
+```json
+{
+  "tool": "http_client",
+  "params": {
+    "method": "GET",
+    "url": "https://api.example.com/data",
+    "headers": {"Accept": "application/json", "User-Agent": "MyApp/1.0"},
+    "proxy": "http://proxy.company.com:8080"
   }
 }
 ```
 
 ### POST with form data
+
 ```json
 {
-  "method": "POST",
-  "url": "https://api.example.com/login",
-  "form_data": {
-    "username": "user",
-    "password": "pass"
+  "tool": "http_client",
+  "params": {
+    "method": "POST",
+    "url": "https://example.com/login",
+    "form_data": {"username": "user", "password": "pass"}
   }
 }
 ```
 
-### Bearer Authentication
+### GET with response saving
+
 ```json
 {
-  "method": "GET",
-  "url": "https://api.example.com/protected",
-  "auth_type": "bearer",
-  "auth_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  "tool": "http_client",
+  "params": {
+    "method": "GET",
+    "url": "https://api.example.com/large-dataset",
+    "save_response": true
+  }
 }
 ```
 
-### Basic Authentication
+## Response Format
+
+**Success response:**
+
 ```json
 {
-  "method": "GET",
-  "url": "https://api.example.com/protected",
-  "auth_type": "basic",
-  "auth_user": "username",
-  "auth_password": "password"
-}
-```
-
-### API Key Authentication
-```json
-{
-  "method": "GET",
-  "url": "https://api.example.com/data",
-  "auth_type": "api_key",
-  "auth_api_key_name": "X-API-Key",
-  "auth_api_key_value": "your_api_key_here"
-}
-```
-
-### With retry logic
-```json
-{
-  "method": "GET",
-  "url": "https://api.example.com/unstable",
-  "max_retries": 3,
-  "retry_delay": 2.0,
-  "timeout": 10
-}
-```
-
-### With proxy
-```json
-{
-  "method": "GET",
-  "url": "https://api.example.com/data",
-  "proxy": "http://proxy.company.com:8080"
-}
-```
-
-### Save response to file
-```json
-{
-  "method": "GET",
-  "url": "https://api.example.com/large-data",
-  "save_response": true
-}
-```
-
-### Complex example (all options)
-```json
-{
-  "method": "POST",
-  "url": "https://api.example.com/orders",
-  "headers": {
-    "Content-Type": "application/json",
-    "X-Request-ID": "12345"
-  },
-  "json": {
-    "items": ["item1", "item2"],
-    "total": 99.99
-  },
-  "auth_type": "bearer",
-  "auth_token": "your_token",
-  "timeout": 60,
-  "max_retries": 2,
-  "retry_delay": 1.5,
-  "follow_redirects": true,
-  "verify_ssl": true,
-  "response_format": "json",
-  "save_response": false
-}
-```
-
----
-
-## 📊 Response Format
-
-### Success response
-```json
-{
-  "success": true,
   "status_code": 200,
-  "headers": {
-    "Content-Type": "application/json",
-    "Content-Length": "1234"
-  },
   "ok": true,
-  "body": {"key": "value"},
+  "headers": {"Content-Type": "application/json", ...},
+  "body": "...",
   "body_length": 1234,
   "request": {
     "method": "GET",
-    "url": "https://api.example.com/data"
+    "url": "https://...",
+    "timeout": 30
   }
 }
 ```
 
-### Error response
+**Error response:**
+
 ```json
 {
-  "error": "Request timed out after 30 seconds",
-  "error_type": "timeout"
+  "error": "Connection error: ...",
+  "error_type": "connection"
 }
 ```
 
 **Error types:**
-- `timeout`: Request exceeded timeout
-- `connection`: Connection failed
-- `ssl`: SSL certificate error
-- `request`: General request error
-- `unknown`: Unexpected error
+- `connection` — Network/DNS error
+- `timeout` — Request timed out
+- `ssl` — SSL certificate error
+- `request` — Other HTTP error
+- `unknown` — Unexpected error
 
----
+## Truncation Warnings
 
-## 🔒 Security
+**Large responses** (> 100 KB) trigger a warning:
 
-- **URL validation**: Only http:// and https:// allowed
-- **Timeout enforcement**: Prevents infinite hangs (1-300s)
-- **SSL verification**: Enabled by default
-- **Auth masking**: Credentials not logged
-- **Chroot saves**: Responses saved to `files/http_responses/`
-
----
-
-## 🚀 Common Use Cases
-
-### Testing an API
 ```json
 {
-  "method": "GET",
-  "url": "https://jsonplaceholder.typicode.com/posts/1"
+  "status_code": 200,
+  "ok": true,
+  "body": "...",
+  "body_length": 256789,
+  "truncation_warning": "Response body is large: 250.8 KB"
 }
 ```
 
-### Webhook callback
+## Validation
+
+**All inputs are validated:**
+
+- URL: must use `http://` or `https://`, valid domain
+- Timeout: 1-600 seconds
+- Max retries: 0-5
+- Retry delay: 0.1-10.0 seconds
+- Proxy: valid URL (http/https/socks5)
+- Auth: complete credentials for auth_type
+
+**Validation errors** return immediately:
+
 ```json
 {
-  "method": "POST",
-  "url": "https://webhook.site/unique-id",
-  "json": {
-    "event": "user.created",
-    "user_id": 123
-  }
+  "error": "Timeout must be at least 1 second"
 }
 ```
 
-### Health check with retry
-```json
-{
-  "method": "HEAD",
-  "url": "https://api.example.com/health",
-  "max_retries": 5,
-  "retry_delay": 1.0,
-  "timeout": 5
-}
+## Retry Logic
+
+**Exponential backoff** for retry:
+
+```python
+delay = retry_delay * (2 ** attempt)
 ```
 
-### Download data
-```json
-{
-  "method": "GET",
-  "url": "https://api.example.com/reports/daily.json",
-  "save_response": true,
-  "timeout": 120
-}
-```
+Example with `max_retries=3, retry_delay=1.0`:
+- Attempt 1: immediate
+- Attempt 2: wait 1s
+- Attempt 3: wait 2s
+- Attempt 4: wait 4s
 
----
+**Should retry on:**
+- 408 (Request Timeout)
+- 429 (Too Many Requests)
+- 500 (Internal Server Error)
+- 502 (Bad Gateway)
+- 503 (Service Unavailable)
+- 504 (Gateway Timeout)
 
-## 💡 Tips
+## Performance
 
-1. **Always set timeout**: Prevents infinite waits
-2. **Use retry for unreliable APIs**: `max_retries: 3` with exponential backoff
-3. **Save large responses**: Enable `save_response` for big payloads
-4. **Custom User-Agent**: Some APIs require it in headers
-5. **API Keys in headers**: Use `api_key` auth type instead of manual headers
-6. **SSL issues**: Disable `verify_ssl` only for trusted development endpoints
+- **No event loop blocking**: requests library is synchronous, but called in thread executor via `/execute` endpoint
+- **Configurable timeouts**: prevent hanging requests
+- **Retry with backoff**: avoid hammering failing endpoints
+- **Response size warning**: alerts for large payloads (> 100 KB)
 
----
+## Security
 
-## 🐛 Troubleshooting
+- **SSL verification** enabled by default (`verify_ssl: true`)
+- **Timeout enforcement**: prevents indefinite waiting
+- **URL validation**: only http/https schemes allowed
+- **No secret logging**: auth tokens not logged (warning: not yet masked in error messages)
 
-### Timeout errors
-- Increase `timeout` value
-- Check network connectivity
-- Verify API is responsive
+## Logging
 
-### Connection errors
-- Check URL is correct
-- Verify firewall/proxy settings
-- Test with `curl` outside the tool
+**INFO level:**
+- Request start: `🌐 GET https://... (timeout: 30s, retries: 0)`
+- Request success: `✅ GET https://... → 200 (1234 bytes)`
 
-### SSL errors
-- Verify certificate validity
-- Update CA certificates
-- Use `verify_ssl: false` for dev (not production!)
+**WARNING level:**
+- HTTP errors: `⚠️ GET https://... → 404 (HTTP error)`
+- Large responses: `⚠️ Large response body: 256789 bytes (250.8 KB)`
+- Network errors: `❌ Connection error: GET https://...`
+- Timeouts: `⏱️ Timeout: GET https://... after 30s`
+- SSL errors: `🔒 SSL error: GET https://...`
 
-### Auth failures
-- Double-check credentials
-- Verify auth type matches API requirements
-- Check token expiration
+**ERROR level:**
+- Unexpected exceptions: `💥 Unexpected error: GET https://... - ...`
 
----
+## Known Limitations
 
-## 📦 Dependencies
+1. **No secret masking in errors**: Auth tokens/passwords may appear in exception messages (to be fixed)
+2. **No streaming response support**: entire body loaded into memory
+3. **No file upload support**: only JSON/form/raw body
+4. **No async support**: uses synchronous requests library
 
-- `requests` library (already in project dependencies)
+## Dependencies
 
----
+- `requests` (2.32+) — HTTP library
 
-## 🎯 Next Steps
+## Maintainer Notes
 
-- Batch requests (multiple URLs in one call)
-- GraphQL support
-- File upload (multipart/form-data)
-- WebSocket connections
-- Rate limiting
+- **Keep files < 7KB**: split if needed
+- **No code duplication**: use shared helpers
+- **Validate everything**: fail fast with clear errors
+- **Log important events**: INFO for flow, WARNING for issues
+- **Test edge cases**: timeouts, retries, large responses, bad URLs
