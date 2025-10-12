@@ -39,10 +39,10 @@
         },
         "n": {
           "type": "integer",
-          "default": 4,
+          "default": 1,
           "minimum": 1,
           "maximum": 8,
-          "description": "Nombre de variations demandées (défaut 4, max 8)."
+          "description": "Nombre de variations demandées (défaut 1, max 8)."
         },
         "debug": {
           "type": "boolean",
