@@ -2,7 +2,7 @@
 
 Ce fichier est généré automatiquement par `scripts/generate_tools_catalog.py`. Ne pas éditer à la main.
 
-Total tools: 39
+Total tools: 40
 
 ## 📊 Intelligence & Orchestration (4)
 
@@ -140,7 +140,7 @@ Total tools: 39
   - Opérations: N/A
   - Tokens: aucun
 
-## 🔢 Utilities (5)
+## 🔢 Utilities (6)
 
 - Date/Time — Calculs de dates: jour de la semaine, différence entre 2 dates, maintenant/aujourd'hui, ajout de durées, formatage et parsing.
   - Opérations: now, today, day_of_week, diff, diff_days, add …
@@ -160,6 +160,10 @@ Total tools: 39
 
 - Open-Meteo — Complete weather data via Open-Meteo API (open source). Current weather, hourly/daily forecasts, air quality, geocoding. 100% free, no AP… · Tags: weather, forecast, air_quality, free
   - Opérations: current_weather, forecast_hourly, forecast_daily, air_quality, geocoding, reverse_geocoding
+  - Tokens: aucun
+
+- SSH Admin — Administration et audit de serveurs distants via SSH (authentification par clés SSH uniquement). Permet d'exécuter des commandes/scripts… · Tags: system, admin, ssh, devops
+  - Opérations: connect, exec, exec_file, upload, download
   - Tokens: aucun
 
 ## 🎮 Social & Entertainment (4)
