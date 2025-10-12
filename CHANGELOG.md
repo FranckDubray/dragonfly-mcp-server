@@ -6,6 +6,78 @@ Note: Older entries have been archived under changelogs/ (range-based files).
 
 ---
 
+## [1.22.0] - 2025-10-12
+
+### Added
+- **ssh_admin**: Nouveau tool administration serveurs SSH
+  - 4 opérations: connect, exec, upload, download
+  - **Authentification SSH keys UNIQUEMENT** (pas de passwords)
+  - Chroot sécurisé: clés dans `ssh_keys/` relatif à la racine projet
+  - Support multi-serveurs via profils JSON (.env)
+  - Audit logging complet dans `sqlite3/ssh_audit.db`
+  - Output truncation (10KB max) pour protection contexte LLM
+  - Path traversal protection stricte
+  - Support RSA, ED25519, ECDSA keys
+  - Passphrase optionnel pour clés protégées
+  - Transfert fichiers via SCP (upload/download)
+  - Execution commandes/scripts bash (1 ligne ou multi-lignes)
+  - Timeouts configurables (défaut: 30s connexion, 30s exec)
+
+### Technical Details
+- Nouveau package: `src/tools/_ssh_admin/`
+  - client.py: SSH client wrapper (paramiko)
+  - profiles.py: Gestion profils .env
+  - ops_basic.py: connect + exec
+  - ops_transfer.py: upload + download (SCP/SFTP)
+  - logger.py: Audit trail SQLite
+  - utils.py: Helpers (path resolution, truncation)
+  - operations.py: Router principal
+- Spec: src/tool_specs/ssh_admin.json
+- Bootstrap: src/tools/ssh_admin.py
+- Structure: `ssh_keys/` à la racine (comme sqlite3/)
+- Dépendance: paramiko>=3.4.0
+- Total: ~700 lignes de code
+- Category: utilities
+- Tags: system, admin, ssh, devops
+
+### Security
+- SSH keys exclusivement (passwords interdits)
+- Chroot strict: chemins relatifs uniquement
+- Path traversal validation
+- Permissions check (warning si trop permissif)
+- Audit complet: toutes connexions/commandes loguées
+- .gitignore: ssh_keys/* protégé (sauf .gitkeep et README)
+
+### Configuration (.env)
+```bash
+# Profils serveurs (chemins RELATIFS)
+SSH_PROFILES_JSON='{"prod": {"host": "server.com", "port": 22, "user": "admin", "key_path": "ssh_keys/id_rsa_prod"}}'
+
+# Timeouts (optionnel)
+SSH_CONNECT_TIMEOUT=10
+SSH_EXEC_TIMEOUT=30
+```
+
+### Usage Examples
+```python
+# Test connexion
+ssh_admin(operation="connect", profile="prod")
+
+# Commande simple
+ssh_admin(operation="exec", profile="prod", command="uptime")
+
+# Script multi-lignes
+ssh_admin(operation="exec", profile="prod", command="uptime\nfree -m\ndf -h")
+
+# Upload fichier
+ssh_admin(operation="upload", profile="prod", local_path="backup.tar.gz", remote_path="/tmp/backup.tar.gz")
+
+# Download log
+ssh_admin(operation="download", profile="prod", remote_path="/var/log/nginx/error.log", local_path="logs/nginx.log")
+```
+
+---
+
 ## [1.21.1] - 2025-10-12
 
 ### Improved
