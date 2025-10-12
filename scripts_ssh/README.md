@@ -1,4 +1,4 @@
-# Scripts Directory
+# SSH Scripts Directory
 
 Ce répertoire contient des scripts bash qui peuvent être exécutés sur des serveurs distants via le tool `ssh_admin`.
 
@@ -11,28 +11,28 @@ Ce répertoire contient des scripts bash qui peuvent être exécutés sur des se
 ssh_admin(
     operation="exec_file",
     profile="prod",
-    script_path="scripts/example_ssh_health_check.sh"
+    script_path="scripts_ssh/health_check.sh"
 )
 
 # Script avec arguments
 ssh_admin(
     operation="exec_file",
     profile="prod",
-    script_path="scripts/example_ssh_service_check.sh",
+    script_path="scripts_ssh/service_check.sh",
     args=["nginx", "postgresql", "docker"]
 )
 ```
 
 ## 📋 Scripts d'exemple
 
-### `example_ssh_health_check.sh`
+### `health_check.sh`
 Check santé système complet :
 - CPU load
 - Memory usage
 - Disk usage
 - Network interfaces
 
-### `example_ssh_service_check.sh`
+### `service_check.sh`
 Vérifie le statut de services systemd :
 - Accepte une liste de services en arguments
 - Affiche statut + uptime
@@ -75,10 +75,10 @@ echo "RESULT: success"
 - ⚠️ Éviter `rm -rf` sans validation
 - ⚠️ Pas de credentials hardcodés
 
-### Organisation
+### Organisation recommandée
 
 ```
-scripts/
+scripts_ssh/
 ├── deployment/
 │   ├── deploy_nginx.sh
 │   └── rollback_nginx.sh
@@ -96,13 +96,21 @@ scripts/
 Si un script échoue :
 
 ```python
-# Vérifier exit code
-result = ssh_admin(operation="exec_file", profile="prod", script_path="scripts/test.sh")
+# Vérifier exit code et stderr
+result = ssh_admin(
+    operation="exec_file", 
+    profile="prod", 
+    script_path="scripts_ssh/test.sh"
+)
 print(f"Exit code: {result['exit_code']}")
 print(f"Stderr: {result['stderr']}")
 
 # Tester localement d'abord
-ssh_admin(operation="exec", profile="prod", command="bash -x /path/to/script.sh")
+ssh_admin(
+    operation="exec", 
+    profile="prod", 
+    command="bash scripts_ssh/test.sh"
+)
 ```
 
 ## 📚 Ressources
