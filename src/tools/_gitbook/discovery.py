@@ -8,6 +8,9 @@ from urllib.parse import urlparse
 
 from .utils import clean_text
 
+# Constants
+DEFAULT_TIMEOUT = 10
+
 
 def guess_gitbook_urls(company_name: str) -> List[str]:
     """Generate possible GitBook URLs for a company/organization."""
@@ -33,7 +36,7 @@ def guess_gitbook_urls(company_name: str) -> List[str]:
     return possible_urls
 
 
-def test_gitbook_url(url: str) -> Dict[str, Any]:
+def test_gitbook_url(url: str, timeout: int = DEFAULT_TIMEOUT) -> Dict[str, Any]:
     """Test if a URL is a valid GitBook documentation."""
     try:
         headers = {
@@ -41,7 +44,7 @@ def test_gitbook_url(url: str) -> Dict[str, Any]:
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
         }
         
-        response = requests.get(url, headers=headers, timeout=5, allow_redirects=True)
+        response = requests.get(url, headers=headers, timeout=timeout, allow_redirects=True)
         
         if response.status_code == 200:
             # Check if it's actually GitBook
