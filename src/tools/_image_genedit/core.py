@@ -31,7 +31,9 @@ def _single_call(
     """
     # Try non-stream first (some backends reject streaming for images)
     try:
-        resp = post_json(endpoint, headers, payload, timeouts)
+        payload_no_stream = dict(payload)
+        payload_no_stream["stream"] = False
+        resp = post_json(endpoint, headers, payload_no_stream, timeouts)
         j = resp.json()
         http_urls: List[str] = []
         
