@@ -130,7 +130,7 @@ Total tools: 41
   - Opérations: track_ships, get_ship_details, get_port_traffic
   - Tokens: aucun
 
-- Vélib' Métropole — Gestionnaire de cache Vélib' Métropole (Paris). Rafraîchit les données statiques des stations (stockées en SQLite), récupère la disponibi…
+- Vélib' Métropole — Gestionnaire de cache Vélib' Métropole (Paris). Rafraîchit les données statiques des stations (stockées en SQLite), récupère la disponibi… · Tags: paris, bike_sharing, transport, realtime
   - Opérations: refresh_stations, get_availability, check_cache
   - Tokens: aucun
 
