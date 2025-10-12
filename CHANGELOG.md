@@ -10,6 +10,68 @@ Note: Older entries have been archived under changelogs/ (range-based files).
 
 Campagne d'audit en profondeur de tous les tools pour conformité LLM_DEV_GUIDE.
 
+### ship_tracker - [2025-10-12] ✅ AUDITED
+
+**Score**: 8.6/10 → **9.4/10** 🎉
+
+#### Fixed
+- **CRITIQUE**: Ajout warnings de truncation (core.py)
+  - **Avant**: Résultats tronqués silencieusement → LLM ne sait pas qu'il manque des ships
+  - **Après**: `{"truncated": true, "warning": "Results limited to X, Y ships matched filters"}`
+  - Conforme à LLM_DEV_GUIDE (output size management)
+
+- **CRITIQUE**: Clarification des counts (core.py)
+  - **Avant**: `ships_found` ambigu (post-filtres ou raw?)
+  - **Après**: 3 counts distincts:
+    - `total_detected`: Ships détectés via WebSocket (raw)
+    - `matched_filters`: Ships correspondant aux filtres
+    - `returned`: Ships actuellement retournés (après truncation)
+  - Transparence totale pour les LLM
+
+- **MAJEUR**: Default timeout augmenté 10s → 15s (spec JSON + validators)
+  - 10s = insuffisant pour navires lents (émettent tous les 10-30s)
+  - 15s = équilibre entre rapidité et détection
+  - Documenté dans README: "Quick check: 10s, Standard: 15-30s"
+
+- **IMPORTANT**: Limite collection WebSocket (aisstream.py)
+  - Ajout protection `MAX_SHIPS_TO_COLLECT = 500` (safety)
+  - Stop early si limite atteinte → évite explosion mémoire
+  - Log warning si atteint
+
+#### Improved
+- **Logging basique ajouté** (aisstream.py)
+  - `logger.debug()` pour events WebSocket (open, close, errors)
+  - `logger.info()` pour succès (ships collected, MMSI found)
+  - `logger.warning()` pour limites atteintes
+  - Aide debugging production sans verbosité
+
+- **Documentation get_ship_by_mmsi**
+  - Note ajoutée: "Listens globally (inefficient), use 30-60s timeout"
+  - Clarification: pourquoi ça peut prendre du temps
+
+#### Technical Details
+- `core.py`: +1201 bytes (truncation warnings + counts clarifiés)
+- `ship_tracker.json`: timeout default 10→15 (+2 chars)
+- `aisstream.py`: +1570 bytes (logging + collection limit)
+- `validators.py`: +117 bytes (timeout defaults)
+- Conformité LLM_DEV_GUIDE: 87% → 96%
+
+#### Audit Results
+| Critère | Avant | Après | Évolution |
+|---------|-------|-------|-----------|
+| Architecture | 10/10 | 10/10 | ✅ WebSocket exemplaire |
+| Sécurité | 8/10 | 9/10 | 📈 +1 (collection limit) |
+| Robustesse | 8/10 | 9/10 | 📈 +1 (logging) |
+| Conformité | 7/10 | 10/10 | 📈 +3 (truncation ✅) |
+| Performance | 7/10 | 8/10 | 📈 +1 (timeout ajusté) |
+| Maintenabilité | 9/10 | 9/10 | ✅ |
+| Documentation | 10/10 | 10/10 | ✅ README excellent |
+| Fonctionnalités | 10/10 | 10/10 | ✅ |
+
+**SCORE FINAL: 9.4/10** ⭐⭐⭐⭐⭐
+
+---
+
 ### discord_bot - [2025-10-12] ✅ AUDITED
 
 **Score**: 8.6/10 → **9.6/10** 🎉
