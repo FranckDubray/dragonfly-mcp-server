@@ -4,6 +4,7 @@
     "name": "youtube_download",
     "displayName": "YouTube Downloader",
     "category": "media",
+    "tags": ["youtube", "video", "audio", "download", "transcription"],
     "description": "Download videos or audio from YouTube URLs. Supports audio-only (for transcription), video, or both. Files saved to docs/video/ for integration with video_transcribe tool.",
     "parameters": {
       "type": "object",
@@ -11,7 +12,8 @@
         "operation": {
           "type": "string",
           "enum": ["download", "get_info"],
-          "description": "Operation to perform: 'download' downloads media, 'get_info' retrieves metadata only"
+          "description": "Operation to perform: 'download' downloads media, 'get_info' retrieves metadata only",
+          "default": "download"
         },
         "url": {
           "type": "string",
@@ -20,24 +22,33 @@
         "media_type": {
           "type": "string",
           "enum": ["audio", "video", "both"],
-          "description": "Type of media to download: 'audio' (MP3, best for transcription), 'video' (MP4), or 'both' (separate files). Default: 'audio'"
+          "description": "Type of media to download: 'audio' (MP3, best for transcription), 'video' (MP4), or 'both' (separate files). Default: 'audio'",
+          "default": "audio"
         },
         "quality": {
           "type": "string",
           "enum": ["best", "720p", "480p", "360p"],
-          "description": "Video quality (ignored for audio-only). 'best' selects highest available. Default: 'best'"
+          "description": "Video quality (ignored for audio-only). 'best' selects highest available. Default: 'best'",
+          "default": "best"
         },
         "filename": {
           "type": "string",
-          "description": "Custom filename (without extension). If omitted, uses sanitized video title. Unique suffix (_1, _2, etc.) added if file exists"
+          "description": "Custom filename (without extension). If omitted, uses sanitized video title. Unique suffix (_1, _2, etc.) added if file exists",
+          "maxLength": 200
         },
         "max_duration": {
           "type": "integer",
-          "description": "Maximum video duration in seconds. Rejects longer videos to avoid excessive downloads. Default: 7200 (2 hours)"
+          "description": "Maximum video duration in seconds. Rejects longer videos to avoid excessive downloads. Default: 7200 (2 hours), max: 14400 (4 hours)",
+          "minimum": 60,
+          "maximum": 14400,
+          "default": 7200
         },
         "timeout": {
           "type": "integer",
-          "description": "Download timeout in seconds (5-600). Default: 300"
+          "description": "Download timeout in seconds. Default: 300 (5 min), min: 5, max: 600 (10 min)",
+          "minimum": 5,
+          "maximum": 600,
+          "default": 300
         }
       },
       "required": ["url"],

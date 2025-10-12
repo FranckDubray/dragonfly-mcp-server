@@ -1,6 +1,7 @@
 """Core business logic for YouTube download operations."""
 from __future__ import annotations
 from typing import Dict, Any
+import logging
 
 from .validators import (
     validate_youtube_url,
@@ -19,6 +20,8 @@ from .utils import (
 )
 from .services.downloader import get_video_info, download_media
 
+logger = logging.getLogger(__name__)
+
 
 def handle_get_info(url: str, timeout: int = 30) -> Dict[str, Any]:
     """Get video metadata without downloading.
@@ -28,28 +31,32 @@ def handle_get_info(url: str, timeout: int = 30) -> Dict[str, Any]:
         timeout: Request timeout
         
     Returns:
-        Operation result with metadata or error
+        Video metadata or error dict
     """
     # Validate URL
     url_result = validate_youtube_url(url)
     if not url_result["valid"]:
+        logger.warning(f"Invalid YouTube URL: {url}")
         return {"error": url_result["error"]}
     
     # Validate timeout
     timeout_result = validate_timeout(timeout)
     if not timeout_result["valid"]:
+        logger.warning(f"Invalid timeout: {timeout}")
         return {"error": timeout_result["error"]}
+    
+    logger.info(f"Fetching video info: {url}")
     
     # Get info
     info_result = get_video_info(url, timeout_result["timeout"])
     if not info_result["success"]:
+        logger.error(f"Failed to get video info: {info_result['error']}")
         return {"error": info_result["error"]}
     
     info = info_result["info"]
     
-    # Format response
+    # Simplified output (no 'success' wrapping)
     return {
-        "success": True,
         "url": url,
         "video_id": info.get("video_id"),
         "title": info.get("title"),
@@ -85,36 +92,45 @@ def handle_download(
         timeout: Download timeout
         
     Returns:
-        Operation result with file info or error
+        Download result with file info or error
     """
     # Validate all inputs
     url_result = validate_youtube_url(url)
     if not url_result["valid"]:
+        logger.warning(f"Invalid YouTube URL: {url}")
         return {"error": url_result["error"]}
     
     media_type_result = validate_media_type(media_type)
     if not media_type_result["valid"]:
+        logger.warning(f"Invalid media_type: {media_type}")
         return {"error": media_type_result["error"]}
     
     quality_result = validate_quality(quality)
     if not quality_result["valid"]:
+        logger.warning(f"Invalid quality: {quality}")
         return {"error": quality_result["error"]}
     
     filename_result = validate_filename(filename)
     if not filename_result["valid"]:
+        logger.warning(f"Invalid filename: {filename}")
         return {"error": filename_result["error"]}
     
     timeout_result = validate_timeout(timeout)
     if not timeout_result["valid"]:
+        logger.warning(f"Invalid timeout: {timeout}")
         return {"error": timeout_result["error"]}
     
     max_duration_result = validate_max_duration(max_duration)
     if not max_duration_result["valid"]:
+        logger.warning(f"Invalid max_duration: {max_duration}")
         return {"error": max_duration_result["error"]}
+    
+    logger.info(f"Starting download: url={url}, media_type={media_type_result['media_type']}, quality={quality_result['quality']}")
     
     # Get video info first to check duration and get title
     info_result = get_video_info(url, 30)
     if not info_result["success"]:
+        logger.error(f"Failed to get video info: {info_result['error']}")
         return {"error": f"Failed to get video info: {info_result['error']}"}
     
     info = info_result["info"]
@@ -122,6 +138,7 @@ def handle_download(
     # Check duration
     video_duration = info.get("duration", 0)
     if video_duration > max_duration_result["max_duration"]:
+        logger.warning(f"Video too long: {format_duration(video_duration)} > {format_duration(max_duration_result['max_duration'])}")
         return {
             "error": f"Video is too long ({format_duration(video_duration)}). Maximum allowed: {format_duration(max_duration_result['max_duration'])}"
         }
@@ -133,12 +150,10 @@ def handle_download(
         # Use sanitized video title
         base_filename = sanitize_title(info.get("title", "youtube_video"))
     
+    logger.info(f"Using filename: {base_filename}")
+    
     # Ensure output directory exists
     docs_video = ensure_docs_video_directory()
-    
-    # Generate unique filename(s)
-    # Note: yt-dlp will add extensions, so we just pass the base name
-    # The unique naming will be handled per file type
     
     # Download
     download_result = download_media(
@@ -151,6 +166,7 @@ def handle_download(
     )
     
     if not download_result["success"]:
+        logger.error(f"Download failed: {download_result['error']}")
         return {"error": download_result["error"]}
     
     # Format response
@@ -161,8 +177,10 @@ def handle_download(
         file_info["size_formatted"] = format_filesize(file_info["size_bytes"])
         file_info["duration_formatted"] = format_duration(file_info.get("duration", 0))
     
+    logger.info(f"Download complete: {len(files)} file(s)")
+    
+    # Simplified output (no 'success' wrapping, direct data)
     response = {
-        "success": True,
         "url": url,
         "video_id": info.get("video_id"),
         "title": info.get("title"),
@@ -174,7 +192,7 @@ def handle_download(
         "files": files,
     }
     
-    # Add convenient shortcuts if only one file
+    # Add convenient shortcut if only one file
     if len(files) == 1:
         response["file"] = files[0]
     
