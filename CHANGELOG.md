@@ -1,3 +1,27 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
@@ -9,6 +33,33 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 - Planned: further audits and multi-language connectors for Dev Navigator (TS/JS, Go), args_shape normalization, and import graph enhancements.
+
+---
+
+## [1.25.1] - 2025-10-13
+
+### Dev Navigator (Q&A + Metrics + Sécurité + Builder)
+- feat(metrics): nouvelle opération `metrics` (anti-flood) retournant:
+  - total_files / total_bytes
+  - files_by_language (trié)
+  - sloc_estimate (python, javascript, html, markdown)
+  - functions_estimate (python)
+- fix(security): chroot FS strict — `path` doit être sous la racine projet (validators). Empêche tout accès hors repo.
+- fix(errors): mapping propre des erreurs de validation → `invalid_parameters` (au lieu de `internal_error`).
+- feat(spec): spec JSON enrichie (Q&A + metrics). Ajout de `file_path`+`line` pour `symbol_info`, inclusion de `metrics` dans l’enum, descriptions clarifiées. `additionalProperties=false` maintenu.
+- feat(endpoints): extractor FastAPI robuste (support `ast.Constant` pour strings).
+- feat(builder):
+  - scan “git-tracked only” (`git ls-files`) — pas de scan des libs/env/artefacts.
+  - exclusions élargies en fallback `os.walk`: `.venv`/`venv`/`env`/`.direnv`/`.tox`/`sqlite3`/`docs`/`static`/`changelogs`…
+  - overwrite propre de l’index (supprime `index.db`, `-wal`, `-shm`) avant rebuild.
+  - ne stocke pas le code source (métadonnées/anchors uniquement).
+- feat(reader): résolution de l’index plus robuste (priorité `git_root/sqlite3`, fallback `CWD/sqlite3`, puis `repo_path/sqlite3`).
+  - logs d’erreur enrichis (bases/variantes essayées, chemin exact attendu).
+- chore: code mort supprimé (snippetizer non utilisé).
+
+### Notes
+- Q&A nécessite `./sqlite3/<slug>/<tag>__<sha8>/index.db` (ou `./sqlite3/<slug>/latest/`).
+- L’index est désormais rapide à construire, compact et strictement limité au code versionné.
 
 ---
 

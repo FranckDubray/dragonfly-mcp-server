@@ -5,7 +5,7 @@
     "displayName": "Dev Navigator",
     "category": "development",
     "tags": ["knowledge"],
-    "description": "Couteau suisse LLM pour explorer un dépôt: overview, tree, search, outline, open, endpoints, tests, et Q&A index (callers/callees/refs). Anti-flood strict (cap 20KB), offline par défaut.",
+    "description": "Couteau suisse LLM pour explorer un dépôt: overview, tree, search, outline, open, endpoints, tests, metrics et Q&A index (callers/callees/refs). Anti-flood strict (cap 20KB), offline par défaut.",
     "parameters": {
       "type": "object",
       "properties": {
@@ -20,6 +20,7 @@
             "open",
             "endpoints",
             "tests",
+            "metrics",
             "symbol_info",
             "find_callers",
             "find_callees",
@@ -41,7 +42,7 @@
         "release_tag": {"type": "string"},
         "commit_hash": {"type": "string"},
         "consistency_mode": {"type": "string", "enum": ["best_effort", "require_same_release"], "default": "best_effort"},
-        
+
         "query": {"type": "string", "description": "Expression de recherche (regex) pour operation=search"},
         "case_sensitive": {"type": "boolean", "default": false},
         "max_hits_per_file": {"type": "integer", "minimum": 1, "maximum": 50, "default": 2},
@@ -50,7 +51,16 @@
         "depth_for_tree": {"type": "integer", "minimum": 1, "maximum": 10, "default": 3},
         "paths": {"type": "array", "items": {"type": "string"}, "description": "Liste de fichiers ciblés (outline/open)"},
         "max_files_scanned": {"type": "integer", "minimum": 100, "maximum": 200000, "default": 10000},
-        "max_bytes_per_file": {"type": "integer", "minimum": 1024, "maximum": 262144, "default": 65536}
+        "max_bytes_per_file": {"type": "integer", "minimum": 1024, "maximum": 262144, "default": 65536},
+
+        "fqname": {"type": "string", "description": "Q&A symbol_info: nom pleinement qualifié du symbole"},
+        "symbol_key": {"type": "string", "description": "Q&A: clé de symbole normalisée"},
+        "file_path": {"type": "string", "description": "Q&A symbol_info: fichier (relatif au repo) quand line est fourni"},
+        "line": {"type": "integer", "description": "Q&A symbol_info: ligne dans le fichier si file_path+line sont utilisés"},
+        "callee_key": {"type": "string", "description": "Q&A find_callers/call_patterns: clé du symbole appelé"},
+        "caller_symbol_id": {"type": "integer", "description": "Q&A find_callees: id du symbole appelant"},
+        "symbol_id": {"type": "integer", "description": "Q&A find_references: id du symbole"},
+        "kind": {"type": "string", "description": "Q&A find_references: type de référence (optionnel)"}
       },
       "required": ["operation", "path"],
       "additionalProperties": false

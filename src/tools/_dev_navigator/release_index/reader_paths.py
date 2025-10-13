@@ -1,6 +1,7 @@
 import os, re, sqlite3, hashlib, json
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, List
 
+# Keep legacy default based on process CWD (fallback)
 SQLITE_ROOT = os.path.abspath(os.path.join(os.getcwd(), "sqlite3"))
 
 
@@ -29,7 +30,6 @@ def _slug_from_git_remote(repo_path: str) -> Optional[str]:
             for line in f:
                 s = line.strip()
                 if s.startswith("[remote "):
-                    # [remote "origin"]
                     m = re.match(r"\[remote \"([^\"]+)\"\]", s)
                     current_remote = m.group(1) if m else None
                 elif current_remote == "origin" and s.lower().startswith("url = "):
@@ -37,11 +37,8 @@ def _slug_from_git_remote(repo_path: str) -> Optional[str]:
                     break
         if not url:
             return None
-        # Extract owner/repo from URL
-        # Supports https://github.com/Owner/Repo.git or git@github.com:Owner/Repo.git
         m = re.search(r"github\.com[/:]([^/]+)/([^/.]+)", url)
         if not m:
-            # Fallback: take last two path parts
             parts = re.split(r"[/:]", url)
             parts = [p for p in parts if p]
             if len(parts) >= 2:
@@ -69,41 +66,111 @@ def make_repo_slug(repo_path: str) -> str:
     return f"{_sanitize(base)}__{h}"
 
 
+def _git_root_from_path(start_path: str) -> Optional[str]:
+    """Walk upwards from start_path to find a directory containing .git."""
+    d = os.path.abspath(start_path)
+    while True:
+        if os.path.isdir(os.path.join(d, ".git")):
+            return d
+        parent = os.path.dirname(d)
+        if parent == d:
+            return None
+        d = parent
+
+
+def _sqlite_root_candidates(repo_path: str) -> List[str]:
+    """Return candidate sqlite roots in priority order: git_root/sqlite3, CWD/sqlite3, repo_path/sqlite3."""
+    candidates: List[str] = []
+    # 1) Git root/sqlite3
+    git_root = _git_root_from_path(repo_path)
+    if git_root:
+        candidates.append(os.path.join(git_root, "sqlite3"))
+    # 2) CWD/sqlite3 (legacy)
+    candidates.append(SQLITE_ROOT)
+    # 3) repo_path/sqlite3
+    base = os.path.abspath(repo_path if os.path.isabs(repo_path) else os.path.join(os.getcwd(), repo_path))
+    candidates.append(os.path.join(base, "sqlite3"))
+    # Deduplicate while preserving order
+    seen = set()
+    out: List[str] = []
+    for c in candidates:
+        if c not in seen:
+            out.append(c)
+            seen.add(c)
+    return out
+
+
 def resolve_index_db(repo_path: str, release_tag: Optional[str], commit_hash: Optional[str]) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
     repo_slug = make_repo_slug(repo_path)
-    repo_dir = os.path.join(SQLITE_ROOT, repo_slug)
-    if not os.path.isdir(repo_dir):
-        return None, {"code": "release_index_missing", "message": f"No index for repo_slug={repo_slug}", "scope": "tool", "recoverable": True}
+
+    # Build candidate bases and remember attempts for logging
+    bases = _sqlite_root_candidates(repo_path)
+    attempts: List[str] = [os.path.join(b, repo_slug) for b in bases]
+
+    repo_dir = None
+    for base in attempts:
+        if os.path.isdir(base):
+            repo_dir = base
+            break
+
+    if not repo_dir:
+        return None, {
+            "code": "release_index_missing",
+            "message": f"No index for repo_slug={repo_slug}; searched=[{', '.join(attempts)}]",
+            "scope": "tool",
+            "recoverable": True
+        }
 
     release_dir = None
+    searched_variants: List[str] = []
+
     if release_tag:
         for name in sorted(os.listdir(repo_dir)):
-            if name.startswith(f"{release_tag}__") and os.path.isdir(os.path.join(repo_dir, name)):
+            path = os.path.join(repo_dir, name)
+            if name.startswith(f"{release_tag}__") and os.path.isdir(path):
+                searched_variants.append(path)
                 if commit_hash:
                     short = commit_hash[:8]
                     if f"__{short}" in name:
-                        release_dir = os.path.join(repo_dir, name)
+                        release_dir = path
                         break
                 else:
-                    release_dir = os.path.join(repo_dir, name)
+                    release_dir = path
                     break
     elif commit_hash:
         short = commit_hash[:8]
         for name in sorted(os.listdir(repo_dir)):
-            if name.endswith(f"__{short}") and os.path.isdir(os.path.join(repo_dir, name)):
-                release_dir = os.path.join(repo_dir, name)
+            path = os.path.join(repo_dir, name)
+            if name.endswith(f"__{short}") and os.path.isdir(path):
+                searched_variants.append(path)
+                release_dir = path
                 break
     else:
         cand = os.path.join(repo_dir, "latest")
+        searched_variants.append(cand)
         if os.path.isdir(cand):
             release_dir = cand
 
     if not release_dir:
-        return None, {"code": "release_index_missing", "message": "No matching release (tag/commit/latest)", "scope": "tool", "recoverable": True}
+        return None, {
+            "code": "release_index_missing",
+            "message": (
+                f"No matching release for repo_slug={repo_slug}; base={repo_dir}; "
+                f"tag={release_tag or '-'}, commit={commit_hash or '-'}; "
+                f"tried=[{', '.join(searched_variants) or '-'}]"
+            ),
+            "scope": "tool",
+            "recoverable": True
+        }
 
     db_path = os.path.join(release_dir, "index.db")
     if not os.path.isfile(db_path):
-        return None, {"code": "release_index_missing", "message": "index.db not found in release dir", "scope": "tool", "recoverable": True}
+        return None, {
+            "code": "release_index_missing",
+            "message": f"index.db not found: {db_path}",
+            "scope": "tool",
+            "recoverable": True
+        }
     return db_path, None
 
 
