@@ -33,3 +33,7 @@ files/imap/
 ssh_keys/*
 !ssh_keys/.gitkeep
 !ssh_keys/README.md
+
+# Project-local SQLite DBs (safety)
+*.db
+!sqlite3/*.db
