@@ -6,12 +6,6 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [Unreleased]
-
-- Planned: further audits and multi-language connectors for Dev Navigator (TS/JS, Go), args_shape normalization, and import graph enhancements.
-
----
-
 ## [1.26.3] - 2025-10-13
 
 ### Host Audit (plans compacts OS/progiciels via SSH)
