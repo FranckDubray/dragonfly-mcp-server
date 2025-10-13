@@ -29,10 +29,9 @@ files/imap/
 *.bsp
 *.npy
 
-# SSH Keys (CRITICAL: never commit private keys)
-ssh_keys/*
-!ssh_keys/.gitkeep
-!ssh_keys/README.md
+# SSH Keys and local scripts (CRITICAL: never commit)
+ssh_keys/
+scripts_ssh/
 
 # Project-local SQLite DBs (safety)
 *.db
