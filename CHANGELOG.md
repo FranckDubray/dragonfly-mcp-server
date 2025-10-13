@@ -6,6 +6,32 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [Unreleased]
+
+- Planned: further audits and multi-language connectors for Dev Navigator (TS/JS, Go), args_shape normalization, and import graph enhancements.
+
+---
+
+## [1.25.0] - 2025-10-13
+
+### Dev Navigator (LLM-first, panorama + Q&A index)
+- feat: Dev Navigator prêt pour la prod côté exploration (compose/overview/tree/search/outline/open/endpoints/tests) — anti-flood 20 KB, anchors-only par défaut, pagination-first, fs_requests pour lecture via FS.
+- feat: .gitignore best‑effort dans le scanner (bruit réduit, réponses plus réalistes).
+- feat: doc_policy stricte dans open (README/CHANGELOG/docs bloqués par défaut; allow_docs + explicit_allowlist pour lever).
+- feat: Q&A index par release (symbol_info, find_callers, find_callees, find_references, call_patterns) — index‑first, cohérence `consistency_mode=require_same_release` via manifest (tag/commit).
+- feat(ci): workflow GitHub Actions “on: release” pour construire et publier l’Index Release Pack (`.github/workflows/devnav_index.yml`).
+- feat(scripts): `scripts/devnav_build_index.py` (build offline local, met à jour `latest/`).
+- feat(builder v1): extraction Python (AST itératif: symbols/methods/classes/UPPERCASE globals, calls/imports, endpoints FastAPI/Flask/Django, dir_stats). Parcours 100% itératif, safe contre RecursionError, assign.value non traversé.
+- fix(qna): lazy‑import du reader + split `reader_paths`/`reader_queries` (<7KB/fichier) + PRAGMA `query_only`.
+- fix(endpoints): détection FastAPI/Flask itérative (ast.walk), gardes RecursionError.
+- refactor(outputs): réponses encore plus concises (pas de `next_cursor` injecté s’il est absent; `stats` seulement si fournie par l’opération; overview compact sans redondance).
+- docs: `.env.example` ajoute `DEVNAV_REPO_SLUG` (slug stable, requis serveur/CI).
+
+### Server & Control Panel
+- docs(methodo): rappeler GET /tools?reload=1 après création/modif d’un tool avant tests.
+
+---
+
 ## [1.24.0] - 2025-10-13
 
 ### Server & Control Panel
@@ -13,15 +39,6 @@ All notable changes to this project will be documented in this file.
   - reload=1 & list=0 (default): returns only {reloaded, tool_count, errors}
   - reload=1 & list=1: returns full list (legacy)
   - no reload: returns list with ETag/304 as before
-- docs(methodo): LLM is now explicitly allowed and required to call GET /tools?reload=1 after creating/modifying a tool before running tests.
-
-### Dev Navigator (nouvel outil)
-- feat: ajout de l’outil “dev_navigator” (couteau suisse LLM-first, anti‑flood 20 KB, FS-first)
-  - operations: compose, overview, tree, search, outline, open, endpoints, tests
-  - Q&A index par release (symbol_info, find_callers, find_callees, find_references, call_patterns) — index-first, cohérence require_same_release
-  - .gitignore best‑effort, doc_policy stricte (README/CHANGELOG/docs bloqués par défaut), fs_requests pour lecture via FS
-- ci: workflow GitHub Actions “on: release” pour construire et publier l’Index Release Pack (index.db + manifest.json)
-- scripts: scripts/devnav_build_index.py (construction offline locale, latest/ mis à jour)
 
 ### astronomy
 - fix: enforce <7KB per file by splitting core/constants; no side-effects at import
@@ -30,25 +47,6 @@ All notable changes to this project will be documented in this file.
 - chore: move large constants to JSON under _astronomy/data and lazy-load
 - perf: ephemeris cache in <repo>/docs/astronomy
 - logs: add INFO/WARNING/ERROR in API
-
----
-
-## [Unreleased]
-
-- Upcoming audits and tools improvements.
-
-### methodology
-- clarify: selection is now by random draw using the random tool (pick_random) among “Tools restants”, unless only one tool remains (direct selection). This is mandatory.
-
-### astronomy (audit cleanup)
-- refactor: remove dead code and unused imports (_to_python, calculate_angular_separation import)
-- feat: visible_planets now uses `horizon` parameter to compute darkness context; adds `environment` block (sun_altitude_degrees, twilight_horizon_degrees, is_dark_enough)
-- feat: sun_moon_times now also returns moonrise/moonset events (in addition to sun and twilight)
-- fix: tighten outputs and keep modules <7KB; JSON-serializable formatting kept strict
-
-### pdf2text (audit)
-- spec: add `limit` parameter (default 50, max 500) + docs; enforce counts and truncation
-- code: ensure returned_count/total_count/truncated/pages_count; keep outputs minimal; robust page parsing; dependency check error message
 
 ---
 
