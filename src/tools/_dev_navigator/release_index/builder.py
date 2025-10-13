@@ -1,28 +1,20 @@
 """
-Dev Navigator Release Index Builder (squelette)
+Dev Navigator Release Index Builder (implémentation Python v1)
 - Mode offline, lecture seule du repo, aucune dépendance réseau
 - Produit: ./sqlite3/<repo_slug>/<tag>__<shortsha>/index.db + manifest.json
-- Schéma: tables (files, symbols, references_, calls, imports, endpoints, dir_stats, repo_metrics, errors)
-
-Entrées (exemples):
-- path: racine du repo
-- tag_name: str (optionnel)
-- commit_hash: str (obligatoire)
-- analyzer_version: str
-- config_fingerprint: str (hash des options/ignores/budgets)
-- budgets: {max_files_scanned, max_bytes_per_file, ...}
-
-Sorties:
-- index.db (VACUUM, read-only at runtime)
-- manifest.json {repo_slug, tag_name, commit_hash, created_at, schema_version, connector_api_version, counts, integrity_hash}
-
-Remarque: ce squelette expose la structure et les étapes; l'impl détaillée d'extraction (symbols/refs/calls) pourra réutiliser les connecteurs existants.
+- Parcours Python minimal: symbols, calls, imports, endpoints (FastAPI/Flask/Django) + dir_stats
 """
 from __future__ import annotations
 import os, json, time, sqlite3, hashlib
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, List
 
 from .reader_paths import make_repo_slug
+from .writer import insert_file, bulk_insert_symbols, bulk_link_container_symbols, bulk_insert_calls, bulk_insert_imports, bulk_insert_endpoints, upsert_dir_stats
+from .extract_python import extract_symbols_calls_imports
+from ..services.fs_scanner import is_binary_filename
+from ..connectors.python.endpoints_fastapi import extract_endpoints as fe_fastapi
+from ..connectors.python.endpoints_flask import extract_endpoints as fe_flask
+from ..connectors.python.endpoints_django import extract_endpoints as fe_django
 
 SCHEMA_VERSION = "1"
 CONNECTOR_API_VERSION = "1"
@@ -157,39 +149,82 @@ def _hash_file(path: str) -> str:
 
 def build_index(path: str, tag_name: str | None, commit_hash: str, analyzer_version: str,
                 config_fingerprint: str, budgets: Dict[str, Any]) -> Tuple[str, str]:
-    """Build index under ./sqlite3/<repo_slug>/<tag>__<shortsha>/ and return (db_path, manifest_path)."""
     repo_slug = make_repo_slug(path)
     shortsha = commit_hash[:8]
     release_dir = os.path.join("sqlite3", repo_slug, f"{tag_name or 'no-tag'}__{shortsha}")
-    _ensure_dir(release_dir)
+    os.makedirs(release_dir, exist_ok=True)
     db_path = os.path.join(release_dir, "index.db")
 
-    # Create DB and schema
     conn = sqlite3.connect(db_path)
     try:
         _ddl(conn)
-        # TODO: scan files with budgets, fill tables files/symbols/references_/calls/imports/endpoints/dir_stats/repo_metrics
-        # Minimal placeholder: inventory files relpath, size, mtime, content_hash
         cur = conn.cursor()
+
+        # Accumulate dir stats
+        dir_counters: Dict[str, Dict[str, int]] = {}
+
+        # Scan repo under budgets (simplifié: sans .gitignore ici, car offline builder; à aligner si besoin)
+        max_files = int(budgets.get("max_files_scanned", 10000))
+        scanned = 0
         for root, dirs, files in os.walk(path):
-            # Skip .git and large vendor dirs quickly
-            dirs[:] = [d for d in dirs if d not in {'.git', 'node_modules', 'vendor', 'dist', 'build', '.venv'}]
+            dirs[:] = [d for d in dirs if d not in {'.git', 'node_modules', 'vendor', 'dist', 'build', '.venv', '.mypy_cache', '.pytest_cache', '.cache', 'target', 'coverage', '__pycache__', 'snapshots'}]
             for fn in files:
                 full = os.path.join(root, fn)
                 rel = os.path.relpath(full, path)
+                if rel.startswith(".git/"):
+                    continue
+                if is_binary_filename(fn):
+                    continue
                 try:
                     st = os.stat(full)
                 except OSError:
                     continue
-                cur.execute(
-                    "INSERT INTO files(relpath, size, mtime, content_hash, is_binary, is_test) VALUES (?,?,?,?,?,?)",
-                    (rel, int(st.st_size), int(st.st_mtime), _hash_file(full), 0, 1 if '/tests/' in rel or rel.startswith('tests/') else 0)
-                )
+                file_id = insert_file(cur, rel, int(st.st_size), int(st.st_mtime), _hash_file(full), is_binary=0, is_test=1 if '/tests/' in rel or rel.startswith('tests/') else 0)
+
+                # Python extraction
+                if rel.endswith('.py'):
+                    try:
+                        with open(full, 'r', encoding='utf-8', errors='replace') as f:
+                            code = f.read(min(int(budgets.get('max_bytes_per_file', 65536)), 1_048_576))
+                    except Exception:
+                        code = ""
+                    facts = extract_symbols_calls_imports(code, rel)
+                    ids = bulk_insert_symbols(cur, file_id, facts['symbols'])
+                    bulk_link_container_symbols(cur, file_id, facts['symbols'], ids)
+                    bulk_insert_calls(cur, file_id, facts['calls'], facts['symbols'], ids)
+
+                    # Endpoints (FastAPI/Flask/Django)
+                    eps: List[Dict[str, Any]] = []
+                    eps.extend(fe_fastapi(code, rel))
+                    eps.extend(fe_flask(code, rel))
+                    if os.path.basename(rel) == 'urls.py':
+                        eps.extend(fe_django(code, rel))
+                    bulk_insert_endpoints(cur, file_id, eps)
+
+                # Imports (light)
+                # Reparse python code just once above; if non-py, skip imports
+                if rel.endswith('.py') and 'facts' in locals():
+                    bulk_insert_imports(cur, file_id, facts['imports'])
+
+                # dir_stats
+                parts = rel.split(os.sep)
+                for d in range(1, min(len(parts), 5) + 1):
+                    dpath = os.sep.join(parts[:d])
+                    st_d = dir_counters.setdefault(dpath, {'files': 0, 'bytes': 0})
+                    st_d['files'] += 1
+                    st_d['bytes'] += int(st.st_size)
+
+                scanned += 1
+                if scanned >= max_files:
+                    break
+            if scanned >= max_files:
+                break
+
+        upsert_dir_stats(cur, dir_counters)
         conn.commit()
     finally:
         conn.close()
 
-    # Compute integrity hash of db
     integrity_hash = _hash_file(db_path)
     manifest = {
         "repo_slug": repo_slug,

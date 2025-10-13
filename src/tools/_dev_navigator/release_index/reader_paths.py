@@ -10,7 +10,60 @@ def _sanitize(s: str) -> str:
     return s.strip("-")
 
 
+def _slug_from_env() -> Optional[str]:
+    v = os.getenv("DEVNAV_REPO_SLUG")
+    if v:
+        return _sanitize(v)
+    return None
+
+
+def _slug_from_git_remote(repo_path: str) -> Optional[str]:
+    # Parse .git/config to extract remote "origin" url and derive a stable slug
+    try:
+        cfg = os.path.join(repo_path, ".git", "config")
+        if not os.path.isfile(cfg):
+            return None
+        url = None
+        current_remote = None
+        with open(cfg, "r", encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                s = line.strip()
+                if s.startswith("[remote "):
+                    # [remote "origin"]
+                    m = re.match(r"\[remote \"([^\"]+)\"\]", s)
+                    current_remote = m.group(1) if m else None
+                elif current_remote == "origin" and s.lower().startswith("url = "):
+                    url = s.split("=", 1)[1].strip()
+                    break
+        if not url:
+            return None
+        # Extract owner/repo from URL
+        # Supports https://github.com/Owner/Repo.git or git@github.com:Owner/Repo.git
+        m = re.search(r"github\.com[/:]([^/]+)/([^/.]+)", url)
+        if not m:
+            # Fallback: take last two path parts
+            parts = re.split(r"[/:]", url)
+            parts = [p for p in parts if p]
+            if len(parts) >= 2:
+                owner, repo = parts[-2], parts[-1].split(".")[0]
+            else:
+                return None
+        else:
+            owner, repo = m.group(1), m.group(2)
+        slug = f"{owner}-{repo}"
+        return _sanitize(slug)
+    except Exception:
+        return None
+
+
 def make_repo_slug(repo_path: str) -> str:
+    # Priority: explicit env → git remote → local path hash
+    env_slug = _slug_from_env()
+    if env_slug:
+        return env_slug
+    git_slug = _slug_from_git_remote(os.path.abspath(repo_path))
+    if git_slug:
+        return git_slug
     base = os.path.basename(os.path.abspath(repo_path)) or "repo"
     h = hashlib.sha1(os.path.abspath(repo_path).encode("utf-8")).hexdigest()[:8]
     return f"{_sanitize(base)}__{h}"
@@ -66,7 +119,6 @@ def _open_ro(db_path: str) -> sqlite3.Connection:
 
 
 def fetch_manifest_for_db(db_path: str) -> Optional[Dict[str, Any]]:
-    """Return manifest JSON adjacent to db_path if present."""
     try:
         release_dir = os.path.dirname(os.path.abspath(db_path))
         manifest_path = os.path.join(release_dir, "manifest.json")
