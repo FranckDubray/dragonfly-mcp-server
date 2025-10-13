@@ -3,7 +3,6 @@ Positions-related operations (planets and stars)
 """
 from __future__ import annotations
 
-from math import radians
 from skyfield.api import Star
 
 from .services.skyfield_client import get_ephemeris, get_timescale, create_observer, get_body

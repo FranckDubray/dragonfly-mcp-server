@@ -3,11 +3,10 @@ Time-related operations: moon phase, sun/moon rise and set, twilight
 """
 from __future__ import annotations
 
-from skyfield.almanac import sunrise_sunset, dark_twilight_day
+from skyfield.almanac import sunrise_sunset, dark_twilight_day, risings_and_settings
 
 from .services.skyfield_client import get_ephemeris, get_timescale, create_observer
 from .services.skyfield_client import calculate_moon_phase
-from .utils import format_time
 
 
 def moon_phase_operation(params: dict) -> dict:
@@ -42,17 +41,26 @@ def sun_moon_times_operation(params: dict) -> dict:
     observer = create_observer(latitude, longitude, elevation)
 
     # Sunrise/sunset for Sun
-    f = sunrise_sunset(eph, eph['earth'] + observer)
-    times, events = almanac_find_discrete_safe(ts, t0, t1, f)
+    f_sun = sunrise_sunset(eph, eph['earth'] + observer)
+    times_sun, events_sun = almanac_find_discrete_safe(ts, t0, t1, f_sun)
 
-    # Twilight categories per time
+    # Moonrise/moonset for Moon
+    f_moon = risings_and_settings(eph, eph['moon'], eph['earth'] + observer)
+    times_moon, events_moon = almanac_find_discrete_safe(ts, t0, t1, f_moon)
+
+    # Twilight categories per time (for context)
     tw_f = dark_twilight_day(eph, eph['earth'] + observer)
     tw_times, tw_events = almanac_find_discrete_safe(ts, t0, t1, tw_f)
 
     sun_events = []
-    for ti, ev in zip(times, events):
+    for ti, ev in zip(times_sun, events_sun):
         kind = 'sunrise' if ev == 1 else 'sunset'
         sun_events.append({'type': kind, 'time_utc': ti.utc_iso()})
+
+    moon_events = []
+    for ti, ev in zip(times_moon, events_moon):
+        kind = 'moonrise' if ev == 1 else 'moonset'
+        moon_events.append({'type': kind, 'time_utc': ti.utc_iso()})
 
     twilight = []
     TW_NAMES = {
@@ -68,6 +76,9 @@ def sun_moon_times_operation(params: dict) -> dict:
         'date_utc': t0.utc_iso().split('T')[0],
         'sun': {
             'events': sun_events
+        },
+        'moon': {
+            'events': moon_events
         },
         'twilight_transitions': twilight
     }

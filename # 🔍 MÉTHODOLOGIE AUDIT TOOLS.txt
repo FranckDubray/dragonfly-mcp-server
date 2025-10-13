@@ -1,3 +1,16 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
 # 🔍 MÉTHODOLOGIE AUDIT TOOLS
 
 ## État: 23/40 audités ✅
@@ -59,3 +72,15 @@ Notes:
 5) Changelog: dernière entrée en premier dans Unreleased (puis déplacer en release lors de la coupe)
 6) Unload seulement le tool; garder les docs chargés
 
+---
+
+## Mises à jour (v2 – 2025-10-13)
+
+- Clarification SÉLECTION: aucun tirage au sort. Ne jamais utiliser le tool « random » pour choisir un tool à auditer. On audite:
+  - soit le tool qui vient d’être créé/modifié,
+  - soit le « prochain » dans la liste Tools restants (ordre affiché dans ce fichier).
+- Reload outillé: GET /tools?reload=1 est obligatoire juste avant les tests; par défaut, réponse compacte {reloaded, tool_count, errors}. n’utiliser &list=1 que si nécessaire.
+- Pré-tests: 3 à 5 cas nominaux max via POST /execute pour détecter crashs immédiats; ABORT documenté si le serveur n’est pas disponible.
+- Invariants outputs: pour les opérations listant des éléments, un paramètre limit (défaut raisonnable), total_count et truncated doivent être présents. Éviter toute sortie verbeuse.
+- Taille fichiers: respecter <7KB ou 250 lignes; découper par responsabilités.
+- Dead code: supprimer imports/fonctions non utilisés; commit dédié recommandé (refactor: remove dead code (... bytes saved)).

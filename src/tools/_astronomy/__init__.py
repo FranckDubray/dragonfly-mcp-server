@@ -1,8 +1,3 @@
-"""
-Astronomy tool package
-"""
+from .api import route_operation
 
-# Re-export spec from parent
-from ..astronomy import spec
-
-__all__ = ['spec']
+__all__ = ["route_operation"]

@@ -6,7 +6,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 from .services.skyfield_client import get_ephemeris, get_timescale, create_observer, get_body
-from .utils import calculate_angular_separation, degrees_to_cardinal
+from .utils import degrees_to_cardinal
 
 
 DEFAULT_HOUR_UTC = 21  # 21:00 UTC snapshot used for visibility checks
@@ -53,6 +53,7 @@ def visible_planets_operation(params: dict) -> dict:
     longitude = params['longitude']
     elevation = params['elevation']
     date = params['date']
+    horizon = float(params.get('horizon', -6))
 
     eph = get_ephemeris()
     ts = get_timescale()
@@ -64,6 +65,13 @@ def visible_planets_operation(params: dict) -> dict:
     results = []
 
     earth = eph['earth']
+
+    # Sun altitude at snapshot time (to evaluate twilight state vs `horizon`)
+    sun = get_body('sun')
+    sun_alt, sun_az, _ = (earth + observer).at(t).observe(sun).apparent().altaz()
+    sun_alt_deg = float(sun_alt.degrees)
+    twilight_ok = bool(sun_alt_deg <= horizon)
+
     for name in planets:
         body = get_body(name)
         astrometric = (earth + observer).at(t).observe(body).apparent()
@@ -89,9 +97,14 @@ def visible_planets_operation(params: dict) -> dict:
             'elevation_m': elevation,
             'time_utc': t.utc_iso(),
         },
+        'environment': {
+            'sun_altitude_degrees': sun_alt_deg,
+            'twilight_horizon_degrees': horizon,
+            'is_dark_enough': twilight_ok
+        },
         'count': len(visible),
         'planets': visible,
-        'note': 'Visibility snapshot at 21:00 UTC'
+        'note': 'Visibility snapshot at 21:00 UTC; darkness based on sun altitude vs horizon threshold.'
     }
 
 
