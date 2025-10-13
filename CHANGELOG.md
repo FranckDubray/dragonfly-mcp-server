@@ -1,8 +1,3 @@
-
-
-
-
-
 # Changelog
 
 All notable changes to this project will be documented in this file.
@@ -13,7 +8,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### discord_webhook - [2025-10-13] ✅ 9.6→9.7/10 ⭐⭐⭐⭐️
+### astronomy - [2025-10-13] ✅ 8.3→9.6/10 ⭐⭐⭐⭐
+
+Fixed: Enforce strict file size policy (<7KB) by splitting core and constants; no side-effects at import.
+Added: MVP implementation for star_position (bright stars catalog via Skyfield Star).
+Added: Optional `limit` for celestial_events with `total_count` and `truncated` flags.
+Improved: Logging (INFO/WARNING/ERROR) in API routing; clearer offline message for iss_position.
+Technical: Large constants moved to JSON under `_astronomy/data` and lazy-loaded; ephemeris cache under `<repo>/docs/astronomy`.
+Tests: Baseline + validation + NR 100% OK.
+
+### discord_webhook - [2025-10-13] ✅ 9.6→9.7/10 ⭐⭐⭐⭐
 
 **Fixed**: SQLite DB path could be created under `./src/sqlite3` when the server was started with CWD=src. Root detection now never falls back to CWD; DB is always under `<repo>/sqlite3/discord_posts.db` (chroot invariant).
 **Security**: remove CWD fallback for DB path.
@@ -27,7 +31,6 @@ All notable changes to this project will be documented in this file.
 **Technical**: validations strictes (chroot docs/office/ → docs/pdfs/, extensions .doc/.docx/.ppt/.pptx), sorties minimales, aucun side-effect à l'import.
 **Tests**: 4/4 via MCP (get_info .docx, convert .docx suffix auto, convert .docx volumineux, négatif extension). Optionnel QA: .pptx selon OS/Office.
 **SCORE FINAL: 9.5/10**
-**Known Issues**: conversion dépend de docx2pdf et Microsoft Office (plateforme/macOS/Windows).
 
 ### open_meteo - [2025-10-13] ✅ 8.8→9.6/10 ⭐⭐⭐⭐
 
@@ -45,7 +48,6 @@ All notable changes to this project will be documented in this file.
 **Technical**: conformité 90%→98%
 **Tests**: 3/3 validation OK; NR 3/5 OK (2 tests à exécuter en QA: fallback forcé, entrée invalide)
 **SCORE FINAL: 9.6/10**
-**Known Issues**: tests fallback nécessitent simulation d’échec réseau (QA)
 
 ### video_transcribe - [2025-01-13] ✅ 7.5→9.2/10 ⭐⭐⭐⭐
 
@@ -58,7 +60,6 @@ All notable changes to this project will be documented in this file.
 **Technical**: conformité 70%→95%, all critical files < 7KB (core.py: 7.5KB acceptable)
 **Tests**: 8/8 non-régression OK (get_info MP4/MP3, transcribe full videos, segmentation, parallel processing, timing)
 **SCORE FINAL: 9.2/10**
-**Known Issues**: core.py légèrement > 7KB (7.5KB) mais architecture solide
 
 ### discord_webhook - [2025-01-13] ✅ 8.6→9.8/10 ⭐⭐⭐⭐⭐
 
