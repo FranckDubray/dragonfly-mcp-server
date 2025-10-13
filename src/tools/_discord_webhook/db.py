@@ -8,19 +8,34 @@ from pathlib import Path
 # Robust project root detection (no relative import to config)
 
 def _find_project_root() -> Path:
-    cur = Path(__file__).resolve()
-    # Walk up until we find a marker (pyproject.toml, .git) or a folder that contains 'src'
-    for _ in range(8):  # limit ascent to avoid runaway
+    """
+    Robust root detection that never falls back to CWD.
+    Priority:
+      1) Directory containing pyproject.toml or .git
+      2) If inside 'src' (and 'tools' exists), return its parent
+      3) Parent that contains a 'src' subfolder
+      4) Heuristic: 3 levels up from this file (…/_discord_webhook -> tools -> src -> <repo>)
+    """
+    file_dir = Path(__file__).resolve().parent
+
+    # 1) Explicit markers
+    for cur in [file_dir, *file_dir.parents]:
         if (cur / 'pyproject.toml').exists() or (cur / '.git').exists():
             return cur
-        # Heuristic: if current folder contains 'src' directory, assume it's the project root
-        if (cur / 'src').exists():
+
+    # 2) If we're inside the 'src' directory of the project, go one up
+    for cur in [file_dir, *file_dir.parents]:
+        if cur.name == 'src' and (cur / 'tools').is_dir():
+            return cur.parent
+
+    # 3) Any parent that contains a 'src' directory
+    for cur in [file_dir, *file_dir.parents]:
+        if (cur / 'src').is_dir():
             return cur
-        if cur.parent == cur:
-            break
-        cur = cur.parent
-    # Fallback: current working directory
-    return Path.cwd()
+
+    # 4) Safe heuristic: 3 levels up (…/repo)
+    parents = list(file_dir.parents)
+    return parents[2] if len(parents) >= 3 else parents[-1]
 
 PROJECT_ROOT = _find_project_root()
 DB_PATH = os.path.join(str(PROJECT_ROOT), "sqlite3", "discord_posts.db")
