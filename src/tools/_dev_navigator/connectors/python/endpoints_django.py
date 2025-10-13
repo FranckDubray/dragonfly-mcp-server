@@ -7,6 +7,14 @@ from ...services.anchors import make_anchor
 SUPPORTED = {"path", "re_path"}
 
 
+def _get_str(node: ast.AST):
+    if isinstance(node, ast.Str):
+        return node.s
+    if hasattr(ast, "Constant") and isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    return None
+
+
 def extract_endpoints(py_code: str, relpath: str) -> List[Dict]:
     items: List[Dict] = []
     try:
@@ -16,17 +24,18 @@ def extract_endpoints(py_code: str, relpath: str) -> List[Dict]:
 
     class Visitor(ast.NodeVisitor):
         def visit_Call(self, node: ast.Call):
-            func_name = getattr(node.func, 'id', None) or getattr(getattr(node.func, 'attr', None), 'id', None)
             # Simplified: only match direct calls to path()/re_path()
             name = getattr(node.func, 'id', None) or getattr(node.func, 'attr', None)
             if name in SUPPORTED:
                 route_path = None
-                if node.args and isinstance(node.args[0], ast.Str):
-                    route_path = node.args[0].s
+                if node.args:
+                    p = _get_str(node.args[0])
+                    if p is not None:
+                        route_path = p
                 if route_path:
                     items.append({
                         "kind": "http",
-                        "method": "GET",
+                        "method": "ANY",  # method cannot be inferred from urls.py alone
                         "path_or_name": route_path,
                         "source_anchor": make_anchor(relpath, node.lineno, 0),
                         "framework_hint": "django"

@@ -2,7 +2,7 @@
 
 Ce fichier est généré automatiquement par `scripts/generate_tools_catalog.py`. Ne pas éditer à la main.
 
-Total tools: 43
+Total tools: 44
 
 ## 📊 Intelligence & Orchestration (4)
 
@@ -148,7 +148,7 @@ Total tools: 43
   - Opérations: N/A
   - Tokens: aucun
 
-## 🔢 Utilities (7)
+## 🔢 Utilities (8)
 
 - Date/Time — Common date/time operations: weekday name, difference between dates, now/today, add duration, format, parse, week number. Supports timezo… · Tags: datetime, calendar, timezone
   - Opérations: now, today, day_of_week, diff, diff_days, add …
@@ -160,6 +160,10 @@ Total tools: 43
 
 - Google Maps — Complete Google Maps API access. Geocoding, directions, places search, distance matrix, timezone, elevation. Free tier: $200 credit/month… · Tags: maps, geocoding, directions, places, navigation
   - Opérations: geocode, reverse_geocode, directions, distance_matrix, places_search, place_details …
+  - Tokens: aucun
+
+- Host Audit — Plans d'audit compacts pour macOS (local) et hôtes distants via SSH: Ubuntu (OS/services/packages), MySQL (conf/logs), Symfony (routes/co… · Tags: system, audit, ssh, os, mysql, symfony
+  - Opérations: macos_local, ubuntu_ssh_plan, mysql_ssh_plan, symfony_ssh_plan
   - Tokens: aucun
 
 - Math — Maths: arithmétique (précision arbitr.), expressions (SymPy), symbolique, complexes, probas (suppl.), algèbre linéaire (+ext), solveurs,…

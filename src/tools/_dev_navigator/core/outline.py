@@ -7,7 +7,10 @@ from ..services.fs_scanner import iter_files, read_text_head
 from ..services.globber import allowed_by_globs
 from ..services.budget_broker import compute_effective_budgets
 from ..services.anchors import make_anchor
-from ..connectors.python.outline_ast import outline_file
+from ..services.lang_detect import language_from_path
+from ..connectors.python.outline_ast import outline_file as outline_py
+from ..connectors.javascript.outline_js import outline_file_js
+from ..connectors.go.outline_go import outline_file_go
 
 
 def run(p: Dict[str, Any]) -> Dict[str, Any]:
@@ -20,7 +23,7 @@ def run(p: Dict[str, Any]) -> Dict[str, Any]:
     root = p["path"]
     scope_path = p.get("scope_path")
 
-    # Collect outlines minimalistes (anchors-only)
+    # Collect minimal outlines (anchors-only) across supported languages
     items: List[Dict[str, Any]] = []
     scanned = 0
     for rel, _size in iter_files(root, scope_path, eff["max_files_scanned"]):
@@ -28,7 +31,15 @@ def run(p: Dict[str, Any]) -> Dict[str, Any]:
             continue
         base, abs_path = resolve_root_and_abs(root, rel)
         text = read_text_head(abs_path, eff["max_bytes_per_file"])
-        outlines = outline_file(text, rel)
+        lang = language_from_path(rel)
+        outlines: List[Dict[str, Any]] = []
+        if lang == "python":
+            outlines = outline_py(text, rel)
+        elif lang in {"javascript", "typescript"}:
+            outlines = outline_file_js(text, rel)
+        elif lang == "go":
+            outlines = outline_file_go(text, rel)
+        # else: unsupported -> no outlines
         if outlines:
             items.append({"path": rel, "symbols": outlines})
         scanned += 1
