@@ -26,6 +26,7 @@ Tools restants (17): astronomy, coingecko, excel_to_sqlite, ffmpeg_frames, fligh
 ## WORKSPACE (règles fermes)
 - LLM_DEV_GUIDE.md et ce fichier DOIVENT rester chargés.
 - UN SEUL tool à la fois.
+- 🎲 Sélection du prochain tool: si plusieurs tools restants, utiliser le MCP tool « random » (operation: pick_random) avec la liste « Tools restants ». Si un seul tool reste, le sélectionner directement (sans tirage).
 - 🔄 RELOAD OBLIGATOIRE: après toute création/modification d’un tool, le LLM DOIT appeler GET /tools?reload=1 (réponse compacte par défaut: {reloaded, tool_count, errors}). N’utiliser list=1 qu’en cas de besoin explicite de la liste complète.
 - Unload du tool à la fin seulement.
 
@@ -35,7 +36,7 @@ Tools restants (17): astronomy, coingecko, excel_to_sqlite, ffmpeg_frames, fligh
 
 ```mermaid
 flowchart TD
-  A[Start] --> B[Select_tool]
+  A[Start] --> B[Select_tool (random if many)]
   B --> C[Load_tool_files]
   C --> C2[Tools_reload]
   C2 --> D[Pre_tests_3]
@@ -60,6 +61,7 @@ flowchart TD
 ```
 
 Notes:
+- Étape B: choisir le prochain tool par tirage via « random » (pick_random) quand il en reste plusieurs; sinon sélectionner l’unique restant.
 - Étape C2 obligatoire: GET /tools?reload=1 juste avant les tests (compact, sans liste par défaut). Si besoin de la liste, utiliser /tools?reload=1&list=1.
 
 ---
@@ -76,10 +78,8 @@ Notes:
 
 ## Mises à jour (v2 – 2025-10-13)
 
-- Clarification SÉLECTION: aucun tirage au sort. Ne jamais utiliser le tool « random » pour choisir un tool à auditer. On audite:
-  - soit le tool qui vient d’être créé/modifié,
-  - soit le « prochain » dans la liste Tools restants (ordre affiché dans ce fichier).
-- Reload outillé: GET /tools?reload=1 est obligatoire juste avant les tests; par défaut, réponse compacte {reloaded, tool_count, errors}. n’utiliser &list=1 que si nécessaire.
+- Sélection du tool: le tirage au sort est OBLIGATOIRE avec le tool « random » (operation: pick_random) parmi la liste « Tools restants », sauf s’il ne reste qu’un seul tool (alors sélection directe sans tirage).
+- Reload outillé: GET /tools?reload=1 est obligatoire juste avant les tests; par défaut, réponse compacte {reloaded, tool_count, errors}. N’utiliser &list=1 que si nécessaire.
 - Pré-tests: 3 à 5 cas nominaux max via POST /execute pour détecter crashs immédiats; ABORT documenté si le serveur n’est pas disponible.
 - Invariants outputs: pour les opérations listant des éléments, un paramètre limit (défaut raisonnable), total_count et truncated doivent être présents. Éviter toute sortie verbeuse.
 - Taille fichiers: respecter <7KB ou 250 lignes; découper par responsabilités.

@@ -29,6 +29,9 @@ All notable changes to this project will be documented in this file.
 
 - Upcoming audits and tools improvements.
 
+### methodology
+- clarify: selection is now by random draw using the random tool (pick_random) among “Tools restants”, unless only one tool remains (direct selection). This is mandatory.
+
 ### astronomy (audit cleanup)
 - refactor: remove dead code and unused imports (_to_python, calculate_angular_separation import)
 - feat: visible_planets now uses `horizon` parameter to compute darkness context; adds `environment` block (sun_altitude_degrees, twilight_horizon_degrees, is_dark_enough)
