@@ -44,16 +44,14 @@ def transcribe_audio_file(audio_path: Path, api_token: str = None) -> Dict[str, 
     }
     
     try:
-        # Open file and send multipart request
+        # Open file and send multipart request (uses 'audioFile' for custom API)
         with open(audio_path, 'rb') as f:
             files = {'audioFile': (audio_path.name, f, 'audio/mpeg')}
-            data = {'model': 'whisper-large-v3'}  # Specify Whisper model
             
             response = requests.post(
                 url,
                 headers=headers,
                 files=files,
-                data=data,
                 timeout=300,  # 5 minutes timeout
                 verify=False  # Disable SSL verification for dev environment
             )
@@ -76,6 +74,9 @@ def transcribe_audio_file(audio_path: Path, api_token: str = None) -> Dict[str, 
         # Parse JSON response
         try:
             data = response.json()
+            # DEBUG: Log the full API response to understand structure
+            logger.info(f"Whisper API response keys: {list(data.keys()) if isinstance(data, dict) else type(data)}")
+            logger.info(f"Whisper API full response: {data}")
         except Exception as e:
             logger.error(f"Failed to parse Whisper API JSON response: {e}")
             return {
@@ -83,12 +84,12 @@ def transcribe_audio_file(audio_path: Path, api_token: str = None) -> Dict[str, 
                 "error": f"Invalid JSON response from Whisper API: {str(e)}"
             }
         
-        # Safely extract transcription (handle None, missing key, etc.)
-        transcription = data.get('transcription') if isinstance(data, dict) else None
+        # Extract transcription - try 'text' first (OpenAI standard), then 'transcription' (custom API)
+        transcription = data.get('text') or data.get('transcription') if isinstance(data, dict) else None
         
         if transcription is None:
             # API returned success but no transcription (silence/music/error)
-            logger.warning(f"Whisper API returned no transcription for {audio_path.name}")
+            logger.warning(f"Whisper API returned no text/transcription for {audio_path.name}. Response: {data}")
             return {
                 "success": True,
                 "transcription": "",

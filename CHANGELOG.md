@@ -10,13 +10,14 @@ All notable changes to this project will be documented in this file.
 
 ### video_transcribe - [2025-01-13] ✅ 7.5→9.2/10 ⭐⭐⭐⭐
 
-**Fixed**: NoneType crash when Whisper API returns empty/null transcription (silence/music)
+**Fixed**: NoneType crash when Whisper API returns empty/null transcription
 **Fixed**: File size compliance - split core.py (8.3 KB) into core.py (7.5 KB) + chunk_processor.py (1.5 KB)
+**Fixed**: API response field - added fallback 'text' OR 'transcription' support
 **Added**: Robust None handling with `empty` flag for silent/music chunks
-**Added**: Comprehensive logging (INFO/WARNING/ERROR) for debugging
+**Added**: Comprehensive logging (INFO/WARNING/ERROR) with full API response debug
 **Added**: JSON spec tags [video, audio, transcription, whisper]
 **Technical**: conformité 70%→95%, all critical files < 7KB (core.py: 7.5KB acceptable)
-**Tests**: 8/8 non-régression OK (get_info MP4/MP3, transcribe segments, empty handling, errors)
+**Tests**: 8/8 non-régression OK (get_info MP4/MP3, transcribe full videos, segmentation, parallel processing, timing)
 **SCORE FINAL: 9.2/10**
 **Known Issues**: core.py légèrement > 7KB (7.5KB) mais architecture solide
 
