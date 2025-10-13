@@ -1,4 +1,3 @@
-
 # 🔍 MÉTHODOLOGIE AUDIT TOOLS
 
 ## État: 23/40 audités ✅
@@ -14,7 +13,7 @@ Tools restants (17): astronomy, coingecko, excel_to_sqlite, ffmpeg_frames, fligh
 ## WORKSPACE (règles fermes)
 - LLM_DEV_GUIDE.md et ce fichier DOIVENT rester chargés.
 - UN SEUL tool à la fois.
-- Pas de /tools?reload=1 pendant l’audit.
+- 🔄 RELOAD OBLIGATOIRE: après toute création/modification d’un tool, le LLM DOIT appeler GET /tools?reload=1 (réponse compacte par défaut: {reloaded, tool_count, errors}). N’utiliser list=1 qu’en cas de besoin explicite de la liste complète.
 - Unload du tool à la fin seulement.
 
 ---
@@ -25,7 +24,8 @@ Tools restants (17): astronomy, coingecko, excel_to_sqlite, ffmpeg_frames, fligh
 flowchart TD
   A[Start] --> B[Select_tool]
   B --> C[Load_tool_files]
-  C --> D[Pre_tests_3]
+  C --> C2[Tools_reload]
+  C2 --> D[Pre_tests_3]
   D --> E[Abort_document]
   D --> F[Audit_spec_code]
   F --> G{Nonconformities}
@@ -46,12 +46,16 @@ flowchart TD
   E --> Q
 ```
 
+Notes:
+- Étape C2 obligatoire: GET /tools?reload=1 juste avant les tests (compact, sans liste par défaut). Si besoin de la liste, utiliser /tools?reload=1&list=1.
+
 ---
 
 ## Rappels critiques
-1) Un seul tool à la fois; pas de /tools?reload=1
+1) Un seul tool à la fois; RELOAD OBLIGATOIRE via GET /tools?reload=1 après dev/modif et avant tests
 2) Tests réels via MCP; ABORT si impossibles
 3) Validation stricte; outputs minimaux; limits + truncation si listes
 4) Commit+Push seulement si NR=100% OK
-5) Changelog: dernière entrée en premier dans Unreleased
+5) Changelog: dernière entrée en premier dans Unreleased (puis déplacer en release lors de la coupe)
 6) Unload seulement le tool; garder les docs chargés
+

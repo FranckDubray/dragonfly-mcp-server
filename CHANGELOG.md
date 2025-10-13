@@ -6,77 +6,39 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.24.0] - 2025-10-13
+
+### Server & Control Panel
+- feat(tools): GET /tools now supports compact reload by default to avoid flooding LLMs
+  - reload=1 & list=0 (default): returns only {reloaded, tool_count, errors}
+  - reload=1 & list=1: returns full list (legacy)
+  - no reload: returns list with ETag/304 as before
+- docs(methodo): LLM is now explicitly allowed and required to call GET /tools?reload=1 after creating/modifying a tool before running tests.
+
+### astronomy
+- fix: enforce <7KB per file by splitting core/constants; no side-effects at import
+- feat: implement star_position MVP (bright stars catalog via Skyfield Star)
+- feat: celestial_events supports limit with total_count/truncated
+- chore: move large constants to JSON under _astronomy/data and lazy-load
+- perf: ephemeris cache in <repo>/docs/astronomy
+- logs: add INFO/WARNING/ERROR in API
+
+### discord_webhook
+- fix: DB path detection stabilized regardless of CWD; always under <repo>/sqlite3
+
+### open_meteo
+- fix: import error resolved by splitting core; execution restored (current_weather, geocoding, air_quality, forecast)
+- feat: truncation controls for hourly forecast; daily counts; AQI category helper
+
+### office_to_pdf
+- fix: import-time crash removed (lazy import + service wrapper)
+- feat: services/office_converter.py; stricter validations and outputs
+
+---
+
 ## [Unreleased]
 
-### astronomy - [2025-10-13] ✅ 8.3→9.6/10 ⭐⭐⭐⭐
-
-Fixed: Enforce strict file size policy (<7KB) by splitting core and constants; no side-effects at import.
-Added: MVP implementation for star_position (bright stars catalog via Skyfield Star).
-Added: Optional `limit` for celestial_events with `total_count` and `truncated` flags.
-Improved: Logging (INFO/WARNING/ERROR) in API routing; clearer offline message for iss_position.
-Technical: Large constants moved to JSON under `_astronomy/data` and lazy-loaded; ephemeris cache under `<repo>/docs/astronomy`.
-Tests: Baseline + validation + NR 100% OK.
-
-### discord_webhook - [2025-10-13] ✅ 9.6→9.7/10 ⭐⭐⭐⭐
-
-**Fixed**: SQLite DB path could be created under `./src/sqlite3` when the server was started with CWD=src. Root detection now never falls back to CWD; DB is always under `<repo>/sqlite3/discord_posts.db` (chroot invariant).
-**Security**: remove CWD fallback for DB path.
-**Technical**: robust root detection via `__file__` parents with explicit markers and safe heuristic.
-**Tests**: manual NR OK (root launch and src launch): DB path stable.
-
-### office_to_pdf - [2025-10-13] ✅ 8.9→9.5/10 ⭐⭐⭐⭐
-
-**Fixed**: Import-time crash on MCP load due to missing services import (lazy import inside handle_convert). Tool now loads even if docx2pdf/Office not installed; errors are raised only at execution.
-**Added**: services/office_converter.py (docx2pdf wrapper) with clear RuntimeError messages; ensures output dir and returns minimal result.
-**Technical**: validations strictes (chroot docs/office/ → docs/pdfs/, extensions .doc/.docx/.ppt/.pptx), sorties minimales, aucun side-effect à l'import.
-**Tests**: 4/4 via MCP (get_info .docx, convert .docx suffix auto, convert .docx volumineux, négatif extension). Optionnel QA: .pptx selon OS/Office.
-**SCORE FINAL: 9.5/10**
-
-### open_meteo - [2025-10-13] ✅ 8.8→9.6/10 ⭐⭐⭐⭐
-
-**Fixed**: Import error breaking MCP (/execute) due to missing core_weather/core_geo (split from core.py). Execution restored for current_weather, geocoding, air_quality, forecast.
-**Added**: Hourly forecast truncation controls (returned_count, total_count, truncated + message); daily counts; AQI category helper; file split to keep <7KB.
-**Removed**: Dead code (legacy core.py after split).
-**Technical**: conformité + outputs minimaux, logging API, pas de side-effects à l'import, tailles OK.
-**Tests**: 6/6 via MCP (current_weather, geocoding, reverse_geocoding, air_quality, forecast_hourly 24/100, forecast_daily 3), négatifs OK (missing lat/lon).
-**SCORE FINAL: 9.6/10**
-
-### device_location - [2025-10-13] ✅ 9.2→9.6/10 ⭐⭐⭐⭐
-
-**Fixed**: Minimal output only (removed verbose metadata fields)
-**Added**: Strict parameter validation (operation/provider) and API-level error handling + logging
-**Technical**: conformité 90%→98%
-**Tests**: 3/3 validation OK; NR 3/5 OK (2 tests à exécuter en QA: fallback forcé, entrée invalide)
-**SCORE FINAL: 9.6/10**
-
-### video_transcribe - [2025-01-13] ✅ 7.5→9.2/10 ⭐⭐⭐⭐
-
-**Fixed**: NoneType crash when Whisper API returns empty/null transcription
-**Fixed**: File size compliance - split core.py (8.3 KB) into core.py (7.5 KB) + chunk_processor.py (1.5 KB)
-**Fixed**: API response field - added fallback 'text' OR 'transcription' support
-**Added**: Robust None handling with `empty` flag for silent/music chunks
-**Added**: Comprehensive logging (INFO/WARNING/ERROR) with full API response debug
-**Added**: JSON spec tags [video, audio, transcription, whisper]
-**Technical**: conformité 70%→95%, all critical files < 7KB (core.py: 7.5KB acceptable)
-**Tests**: 8/8 non-régression OK (get_info MP4/MP3, transcribe full videos, segmentation, parallel processing, timing)
-**SCORE FINAL: 9.2/10**
-
-### discord_webhook - [2025-01-13] ✅ 8.6→9.8/10 ⭐⭐⭐⭐⭐
-
-**Fixed**: File size compliance - split ops_create_update.py (12.6 KB) into ops_create.py (3.6 KB), ops_update.py (6.4 KB), ops_create_update.py (7.2 KB)
-**Removed**: Dead code - spec_def.py (10.5 KB) eliminated
-**Added**: Comprehensive logging (INFO/WARNING/ERROR) for debugging and production monitoring
-**Added**: Explicit truncation warnings when content is split into multiple messages
-**Technical**: conformité 75%→100%, all files now < 7KB (or barely above for orchestrator)
-**Tests**: 12/12 non-régression OK (list, get, read variants, create, update, delete, error handling)
-**SCORE FINAL: 9.8/10**
-
-### email_send - [2025-01-13] ✅ 8.9→9.8/10 ⭐⭐⭐⭐⭐
-
-**Fixed**: File size compliance - split smtp_client.py (8698 bytes) into smtp_config.py (2267 bytes) + smtp_client.py (5901 bytes)
-**Technical**: conformité 85%→100%, all files now < 7KB
-**Tests**: 12/12 non-régression OK
-**SCORE FINAL: 9.8/10**
+- Upcoming audits and tools improvements.
 
 ---
 
@@ -87,5 +49,3 @@ Tests: Baseline + validation + NR 100% OK.
 - [v1.19.0 to v1.21.1](changelogs/CHANGELOG_1.19.0_to_1.21.1.md) - News aggregator, Trivia API, Ollama fixes
 - [v1.14.3 to v1.18.2](changelogs/CHANGELOG_1.14.3_to_1.18.2.md)
 - [v1.0.0 to 1.13.x](changelogs/CHANGELOG_1.0.0_to_1.13.x.md)
-
-For detailed changes in each version, see the archived changelogs.
