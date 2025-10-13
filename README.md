@@ -4,7 +4,7 @@
 
 # 🐉 Dragonfly MCP Server
 
-Serveur MCP multi‑outils, rapide et extensible, propulsé par FastAPI. **39 tools** prêts à l'emploi, orchestrateur LLM avancé, panneau de contrôle web moderne.
+Serveur MCP multi‑outils, rapide et extensible, propulsé par FastAPI. **42 tools** prêts à l'emploi, orchestrateur LLM avancé, panneau de contrôle web moderne.
 
 [![License: MIT](./LICENSE)](./LICENSE)
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB)
@@ -29,141 +29,50 @@ Par défaut: http://127.0.0.1:8000
 
 ---
 
-## 🧰 Outils inclus (39)
+## 🧠 Nouveauté majeure: Dev Navigator (couteau suisse LLM)
 
-Les outils sont groupés par 10 catégories canoniques (invariantes). L'UI affiche "Social & Entertainment" pour la clé `entertainment`.
+Un seul outil pour explorer un dépôt de code de manière ultra-efficace et sans flood: compose, overview, tree, search, outline, open (plans FS), endpoints, tests, et Q&A index par release (symbol_info/find_callers/...)
 
-### 📊 Intelligence & Orchestration
-- call_llm — Orchestrateur LLM 2 phases avec streaming
-- academic_research_super — Recherche académique multi-sources
-- ollama_local — Interface Ollama local + recherche web
-- news_aggregator — Agrégation actualités multi-sources (NewsAPI, NYT, Guardian)
+- Anti-flood dur: cap 20 KB par réponse, anchors‑only par défaut, pagination‑first, fs_requests pour lecture via FS.
+- .gitignore respecté (best‑effort), docs volumineux bloqués par défaut (README/CHANGELOG/docs).
+- Index par release (SQLite) prioritaire: réponses Q&A instantanées quand ./sqlite3/<slug>/<tag>__<sha>/index.db est présent.
+- Slug stable: DEVNAV_REPO_SLUG (CI + serveur) pour résoudre ./sqlite3/<slug>/...
 
-### 🔧 Développement
-- git — GitHub API + Git local
-- gitbook — GitBook discovery/search
-- script_executor — Sandbox Python sécurisé
+Voir les specs et l’API: src/tool_specs/dev_navigator.json et src/tools/_dev_navigator.
 
-### 📧 Communication
-- email_send — Envoi SMTP (Gmail/Infomaniak)
-- imap — Réception emails multi-comptes
-- discord_webhook — Publication Discord (webhook)
-- discord_bot — Bot Discord complet (29 opérations, multi-channel)
-- telegram_bot — Bot Telegram complet (messages, médias, polls)
+---
 
-### 🗄️ Data & Storage
-- sqlite_db — SQLite avec chroot
-- excel_to_sqlite — Import Excel (.xlsx) → SQLite
-- coingecko — Données crypto (prix, market, trending)
+## 🧰 Outils inclus (42)
 
-### 📄 Documents
-- office_to_pdf — Conversion Office → PDF
-- pdf_download — Téléchargement PDF
-- pdf_search — Recherche PDF
-- pdf2text — PDF → texte
-- universal_doc_scraper — Scraping documentation
-
-### 🎬 Media
-- youtube_search — Recherche YouTube API v3
-- youtube_download — Téléchargement YouTube
-- video_transcribe — Transcription Whisper
-- ffmpeg_frames — Extraction de frames vidéo
-- generate_edit_image — Génération/édition d'images (Gemini)
-
-### ✈️ Transportation
-- ship_tracker — Navires temps réel (AIS)
-- flight_tracker — Avions temps réel
-- aviation_weather — Météo en altitude
-- velib — Vélos Paris temps réel
-
-### 🌐 Networking
-- http_client — Client HTTP/REST universel
-
-### 🔢 Utilities
-- math — Calcul avancé (numérique/symbolique/stats)
-- date — Utilitaires date/heure
-- device_location — Localisation device (IP geolocation)
-- open_meteo — Météo complète (100% gratuit, open source)
-- google_maps — Geocoding, directions, places, distance matrix
-
-### 🎮 Social & Entertainment
-- chess_com — Chess.com API
-- reddit_intelligence — Reddit scraping/analysis
-- astronomy — Calculs astronomiques (planètes, lune, éphémérides)
-- trivia_api — Questions trivia multi-catégories (quiz, jeux)
-
+[Liste groupée par catégories...]  
 > Détails complets : [src/tools/README.md](./src/tools/README.md)
 
 ---
 
 ## ⚙️ Configuration
 
-### Via le panneau web (recommandé)
-http://127.0.0.1:8000/control → 🔐 Configuration
-
-### Variables principales
-```bash
-# LLM
-AI_PORTAL_TOKEN=your_token
-LLM_ENDPOINT=https://ai.dragonflygroup.fr
-
-# Emails (Gmail/Infomaniak) - partagées imap + email_send
-IMAP_GMAIL_EMAIL=user@gmail.com
-IMAP_GMAIL_PASSWORD=app_password
-IMAP_INFOMANIAK_EMAIL=contact@domain.com
-IMAP_INFOMANIAK_PASSWORD=password
-
-# Google Services (YouTube, Maps) - fallback logique
-GOOGLE_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  # Fallback générique
-YOUTUBE_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  # Spécifique (prioritaire)
-GOOGLE_MAPS_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  # Spécifique (prioritaire)
-
-# News Aggregator
-NEWS_API_KEY=your_newsapi_key
-NYT_API_KEY=your_nyt_key
-GUARDIAN_API_KEY=your_guardian_key
-
-# Communication
-DISCORD_BOT_TOKEN=your_discord_bot_token
-DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
-TELEGRAM_BOT_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
-
-# Ship tracking
-AISSTREAM_API_KEY=your_key
-
-# Git
-GITHUB_TOKEN=ghp_xxxxx
-
-# Chess.com (optionnel)
-CHESS_COM_RATE_LIMIT_DELAY=0.1
-```
-
-**Note**: Les tools Google (YouTube, Maps) supportent un fallback automatique vers `GOOGLE_API_KEY` si leur token spécifique n'est pas défini. Pratique si vous avez une seule clé Google API.
-
-Toutes les variables : `.env.example`
+Variables clés (.env):
+- DEVNAV_REPO_SLUG=dragonfly-mcp-server (slug stable pour l’index Dev Navigator)
+- AI_PORTAL_TOKEN, LLM_ENDPOINT, … (voir .env.example)
 
 ---
 
-## 🎨 Panneau de contrôle (UX pro)
+## 🧩 CI “on: release” (index automatique)
 
-http://127.0.0.1:8000/control
+Le workflow GitHub Actions construit et publie l’Index Release Pack à chaque release:
+- .github/workflows/devnav_index.yml
+- Génère: ./sqlite3/<slug>/<tag>__<sha>/index.db + manifest.json et les attache aux releases.
 
-- ✅ Groupement clair par catégories avec compte et emoji (catégories fermées par défaut)
-- ✅ Badges: catégorie visible dans l'en-tête du tool détaillé
-- ✅ Favoris (★/☆) avec persistance locale
-- ✅ Raccourcis clavier: `/` (focus recherche), `Ctrl/Cmd+Enter` (exécuter)
-- ✅ Reprise du dernier outil sélectionné
-- ✅ Configuration live (hot‑reload) avec secrets masqués
-- ✅ Design aligné avec le portail (vert #10b981, moderne et épuré)
+Côté serveur MCP: déposer ces 2 fichiers sous ./sqlite3/<slug>/<tag>__<sha>/ (et latest/ si souhaité), définir DEVNAV_REPO_SLUG, et redémarrer le process.
 
 ---
 
 ## 📚 Documentation
 
-- Guide développeurs LLM : [LLM_DEV_GUIDE.md](./LLM_DEV_GUIDE.md)
-- Catalog tools : [src/tools/README.md](./src/tools/README.md)
-- Changelog : [CHANGELOG.md](./CHANGELOG.md)
-- API détails : [src/README.md](./src/README.md)
+- Guide LLM: [LLM_DEV_GUIDE.md](./LLM_DEV_GUIDE.md)
+- Catalog tools: [src/tools/README.md](./src/tools/README.md)
+- Changelog: [CHANGELOG.md](./CHANGELOG.md)
+- API: [src/README.md](./src/README.md)
 
 ---
 
