@@ -1,0 +1,14 @@
+api_health:
+  path: /api/health
+  methods: [GET]
+
+api_user:
+  path: "/api/users/{id}"
+  methods:
+    - GET
+    - POST
+
+api_root_with_prefix:
+  prefix: /api
+  path: "/"
+  methods: [GET]

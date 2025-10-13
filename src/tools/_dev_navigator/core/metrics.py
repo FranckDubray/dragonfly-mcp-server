@@ -13,7 +13,7 @@ def run(p: Dict[str, Any]) -> Dict[str, Any]:
     Return compact repository metrics under strict budgets:
     - total_files, total_bytes (best-effort)
     - files_by_language [{name, files}]
-    - sloc_estimate per language (python/js/html/md; others = None)
+    - sloc_estimate per language (python/js/ts/html/md/go; others = None)
     - functions_estimate: total functions (python only for now)
     Notes:
       * Uses head-limited reads (max_bytes_per_file)
@@ -42,7 +42,7 @@ def run(p: Dict[str, Any]) -> Dict[str, Any]:
         except Exception:
             text = ""
         # SLOC estimation for supported languages
-        if lang in {"python", "javascript", "html", "markdown"}:
+        if lang in {"python", "javascript", "typescript", "html", "markdown", "go"}:
             sloc_by_lang[lang] = sloc_by_lang.get(lang, 0) + estimate_sloc(lang, text)
         # Functions count (python only, via outline)
         if lang == "python":
