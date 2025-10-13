@@ -1,0 +1,18 @@
+{
+  "bright_stars": {
+    "sirius": {"name": "Sirius", "constellation": "Canis Major", "magnitude": -1.46, "ra_hours": 6.7525, "dec_degrees": -16.7161},
+    "vega": {"name": "Vega", "constellation": "Lyra", "magnitude": 0.03, "ra_hours": 18.6156, "dec_degrees": 38.7837},
+    "betelgeuse": {"name": "Betelgeuse", "constellation": "Orion", "magnitude": 0.50, "ra_hours": 5.9195, "dec_degrees": 7.4070},
+    "polaris": {"name": "Polaris", "constellation": "Ursa Minor", "magnitude": 1.98, "ra_hours": 2.5303, "dec_degrees": 89.2641},
+    "rigel": {"name": "Rigel", "constellation": "Orion", "magnitude": 0.13, "ra_hours": 5.2423, "dec_degrees": -8.2016},
+    "arcturus": {"name": "Arcturus", "constellation": "Boötes", "magnitude": -0.05, "ra_hours": 14.2610, "dec_degrees": 19.1825},
+    "altair": {"name": "Altair", "constellation": "Aquila", "magnitude": 0.77, "ra_hours": 19.8464, "dec_degrees": 8.8683},
+    "aldebaran": {"name": "Aldebaran", "constellation": "Taurus", "magnitude": 0.85, "ra_hours": 4.5987, "dec_degrees": 16.5093},
+    "capella": {"name": "Capella", "constellation": "Auriga", "magnitude": 0.08, "ra_hours": 5.2782, "dec_degrees": 45.9981},
+    "deneb": {"name": "Deneb", "constellation": "Cygnus", "magnitude": 1.25, "ra_hours": 20.6905, "dec_degrees": 45.2803},
+    "spica": {"name": "Spica", "constellation": "Virgo", "magnitude": 1.04, "ra_hours": 13.4199, "dec_degrees": -11.1613},
+    "antares": {"name": "Antares", "constellation": "Scorpius", "magnitude": 1.09, "ra_hours": 16.4901, "dec_degrees": -26.4319},
+    "pollux": {"name": "Pollux", "constellation": "Gemini", "magnitude": 1.14, "ra_hours": 7.7553, "dec_degrees": 28.0262},
+    "fomalhaut": {"name": "Fomalhaut", "constellation": "Piscis Austrinus", "magnitude": 1.16, "ra_hours": 22.9608, "dec_degrees": -29.6222}
+  }
+}

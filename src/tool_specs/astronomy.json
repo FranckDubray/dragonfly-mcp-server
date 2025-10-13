@@ -79,6 +79,13 @@
           "maximum": 0,
           "default": -6,
           "description": "Horizon angle in degrees for twilight calculations (0=geometric, -6=civil, -12=nautical, -18=astronomical). Default: -6 (civil twilight)"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50,
+          "default": 20,
+          "description": "Max number of items for listings (celestial_events). Default 20, max 50."
         }
       },
       "required": ["operation"],
