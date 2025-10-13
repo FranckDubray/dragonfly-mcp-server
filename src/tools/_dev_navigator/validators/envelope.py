@@ -1,9 +1,10 @@
 from typing import Any, Dict
 
 from ..services.constants import DEFAULT_LIMIT, MAX_LIMIT
+from ..services.root_guard import ensure_under_project_root
 
 ALLOWED_OPS = {
-    "compose","overview","tree","search","outline","open","endpoints","tests",
+    "compose","overview","tree","search","outline","open","endpoints","tests","metrics",
     "symbol_info","find_callers","find_callees","find_references","call_patterns"
 }
 
@@ -32,6 +33,13 @@ def validate_envelope(p: Dict[str, Any]) -> Dict[str, Any]:
         raise ValueError("Invalid operation")
     _ensure_type(p, "path", str)
 
+    # SECURITY: ensure path is under project root (chroot-like) and normalize to absolute
+    try:
+        abs_ok = ensure_under_project_root(p["path"])  # raises if invalid
+        p["path"] = abs_ok
+    except ValueError as e:
+        raise ValueError("Invalid path: not under project root") from e
+
     # Optionals with defaults (20KB policy)
     p.setdefault("limit", DEFAULT_LIMIT)
     p.setdefault("fields", "anchors_only")
@@ -58,5 +66,25 @@ def validate_envelope(p: Dict[str, Any]) -> Dict[str, Any]:
         raise ValueError("pins must be array of strings")
     if "explicit_allowlist" in p and (not isinstance(p["explicit_allowlist"], list) or not all(isinstance(x, str) for x in p["explicit_allowlist"])):
         raise ValueError("explicit_allowlist must be array of strings")
+
+    # Q&A optional parameters sanity (types only; semantic checks occur in qna)
+    # symbol_info
+    if "fqname" in p and not isinstance(p["fqname"], str):
+        raise ValueError("fqname must be string")
+    if "symbol_key" in p and not isinstance(p["symbol_key"], str):
+        raise ValueError("symbol_key must be string")
+    if "line" in p and not isinstance(p["line"], int):
+        raise ValueError("line must be integer")
+    # find_callers / call_patterns
+    if "callee_key" in p and not isinstance(p["callee_key"], str):
+        raise ValueError("callee_key must be string")
+    # find_callees
+    if "caller_symbol_id" in p and not isinstance(p["caller_symbol_id"], int):
+        raise ValueError("caller_symbol_id must be integer")
+    # find_references
+    if "symbol_id" in p and not isinstance(p["symbol_id"], int):
+        raise ValueError("symbol_id must be integer")
+    if "kind" in p and not isinstance(p["kind"], str):
+        raise ValueError("kind must be string")
 
     return p
