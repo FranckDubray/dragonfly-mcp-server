@@ -1,27 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # Changelog
 
 All notable changes to this project will be documented in this file.
@@ -33,6 +9,19 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 - Planned: further audits and multi-language connectors for Dev Navigator (TS/JS, Go), args_shape normalization, and import graph enhancements.
+
+---
+
+## [1.26.0] - 2025-10-13
+
+### Tool Audit (worker-like, multi-LLM)
+- feat(tool_audit): nouveau tool d’audit lecture-seule d’un tool MCP unique (perf/quality/maintain/invariants), exécution multi-modèles en parallèle (bornée), fusion algorithmique + fuser LLM, anti-flood strict (caps contexte/tokens), sortie paginée (limit, truncated, counts).
+- feat(git_sensitive): détection des fichiers suivis sensibles et marqueurs de secrets (masqués), best-effort.
+- perf(scheduler): parallélisme borné (global=8, par modèle=2), retry 3× avec jitter sur erreurs transitoires, agrégation d’usage cumulée (tasks + fuser).
+- docs/specs: spec canonique `src/tool_specs/tool_audit.json`, implémentation `src/tools/_tool_audit/*`, catégorie `development` (UI), aucune side-effect à l’import, fichiers < 7KB par unité.
+- quality: sorties compactes, anchors-only par défaut (option snippets), `fs_requests` pour lectures ultérieures, respect strict des invariants LLM DEV GUIDE.
+
+Notes: dépend de l’outil interne `call_llm` pour les appels modèles. Périmètre strict au tool audité (spec/boot/api/core/validators/utils/services/README).
 
 ---
 

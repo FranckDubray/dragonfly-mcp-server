@@ -1,0 +1,37 @@
+{
+  "type": "function",
+  "function": {
+    "name": "tool_audit",
+    "displayName": "Tool Audit",
+    "category": "development",
+    "tags": ["quality", "performance", "maintainability"],
+    "description": "Audit lecture-seule d’un tool MCP: périmètre strict au tool, contexte complet pour LLM, multi-profils (perf, quality, maintain, invariants), fusion et scoring multi-axes.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": { "type": "string", "enum": ["audit_tool"] },
+        "tool_name": { "type": "string", "description": "Nom du tool (ex: dev_navigator)" },
+
+        "models": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [
+            "gpt-5",
+            "claude-sonnet-4-5-20250929",
+            "gpt-5-mini",
+            "gemini-2.5-pro"
+          ]
+        },
+        "fuser_model": { "type": "string", "default": "gpt-5" },
+        "profile_mode": { "type": "string", "enum": ["auto", "combined", "per_profile"], "default": "auto" },
+
+        "limit": { "type": "integer", "minimum": 1, "maximum": 200, "default": 50 },
+        "cursor": { "type": "string" },
+        "fields": { "type": "string", "enum": ["anchors_only", "anchors+snippets"], "default": "anchors_only" },
+        "debug": { "type": "boolean", "default": false }
+      },
+      "required": ["operation", "tool_name"],
+      "additionalProperties": false
+    }
+  }
+}
