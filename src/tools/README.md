@@ -118,7 +118,7 @@ Total tools: 41
 
 ## ✈️ Transportation (4)
 
-- Aviation Weather — Get upper air weather data (winds, temperature) at specific altitude and coordinates using Open-Meteo API. Useful for flight planning and…
+- Aviation Weather — Get upper air weather data (winds, temperature) at specific altitude and coordinates using Open-Meteo API. Useful for flight planning and… · Tags: weather, aviation, flight
   - Opérations: get_winds_aloft, calculate_tas
   - Tokens: aucun
 
