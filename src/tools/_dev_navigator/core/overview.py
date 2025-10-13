@@ -1,6 +1,7 @@
 from typing import Any, Dict
 
 def run(p: Dict[str, Any]) -> Dict[str, Any]:
+    # Compact summary only; no heavy lists to respect 20KB policy
     return {
         "operation": "overview",
         "data": {
