@@ -1,47 +1,47 @@
-
-
+"""Orchestration for create/update/upsert operations."""
 from __future__ import annotations
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from fastapi import HTTPException
+import logging
 
-# Robust imports (package or absolute)
 try:
-    from .util import get_discord_webhook_url, parse_webhook, webhook_hash, API_BASE  # type: ignore
-    from .embeds import make_embeds_from_article, batch_embeds, CONTENT_MAX  # type: ignore
-    from .http_client import http_request  # type: ignore
-    from . import db as DB  # type: ignore
-    from .attachments import (  # type: ignore
+    from .util import get_discord_webhook_url, parse_webhook, webhook_hash
+    from .embeds import make_embeds_from_article, batch_embeds, CONTENT_MAX
+    from . import db as DB
+    from .attachments import (
         maybe_download_to_attachments,
         build_files_from_attachments,
         inject_attachment_into_embeds,
     )
-    from .sender import (  # type: ignore
-        send_create_batches,
-        send_update_batches,
-    )
+    from .ops_create import op_create
+    from .ops_update import op_update
 except Exception:
-    from src.tools._discord_webhook.util import get_discord_webhook_url, parse_webhook, webhook_hash, API_BASE  # type: ignore
-    from src.tools._discord_webhook.embeds import make_embeds_from_article, batch_embeds, CONTENT_MAX  # type: ignore
-    from src.tools._discord_webhook.http_client import http_request  # type: ignore
-    from src.tools._discord_webhook import db as DB  # type: ignore
-    from src.tools._discord_webhook.attachments import (  # type: ignore
+    from src.tools._discord_webhook.util import get_discord_webhook_url, parse_webhook, webhook_hash
+    from src.tools._discord_webhook.embeds import make_embeds_from_article, batch_embeds, CONTENT_MAX
+    from src.tools._discord_webhook import db as DB
+    from src.tools._discord_webhook.attachments import (
         maybe_download_to_attachments,
         build_files_from_attachments,
         inject_attachment_into_embeds,
     )
-    from src.tools._discord_webhook.sender import (  # type: ignore
-        send_create_batches,
-        send_update_batches,
-    )
+    from src.tools._discord_webhook.ops_create import op_create
+    from src.tools._discord_webhook.ops_update import op_update
+
+logger = logging.getLogger(__name__)
 
 
 def _dry_run_response(mode: str, article_key: str, batches: List[List[Dict[str, Any]]]) -> Dict[str, Any]:
+    """Generate dry-run response without posting."""
     previews = []
     for b in batches:
         concat = "".join([(e.get("description") or "") for e in b])
         previews.append({"embeds_count": len(b), "preview": concat[:200]})
     total_embeds = sum(len(b) for b in batches)
     split_applied = total_embeds > 1
+    
+    if split_applied:
+        logger.info(f"[DRY-RUN] Article '{article_key}' would be split into {len(batches)} message(s)")
+    
     return {
         "status": "dry_run",
         "operation": mode,
@@ -53,6 +53,7 @@ def _dry_run_response(mode: str, article_key: str, batches: List[List[Dict[str, 
 
 
 def _build_batches(params: Dict[str, Any]) -> Tuple[str, List[List[Dict[str, Any]]], List[int]]:
+    """Build embed batches from article or embeds parameter."""
     article_key = params.get("article_key")
     if not article_key:
         raise HTTPException(status_code=400, detail="article_key requis pour cette opération")
@@ -71,10 +72,14 @@ def _build_batches(params: Dict[str, Any]) -> Tuple[str, List[List[Dict[str, Any
 
     batches = batch_embeds(embeds_built)
     counts = [len(b) for b in batches]
+    
+    logger.info(f"Built {len(batches)} batch(es) with {sum(counts)} total embeds for '{article_key}'")
+    
     return article_key, batches, counts
 
 
 def _apply_attachments(params: Dict[str, Any], batches: List[List[Dict[str, Any]]]) -> Optional[List[Tuple[str, str, bytes, str]]]:
+    """Process attachments (download if needed) and return files_data."""
     attachments_param: List[Dict[str, Any]] = params.get("attachments") or []
     upload_image_url: Optional[str] = params.get("upload_image_url")
 
@@ -87,15 +92,16 @@ def _apply_attachments(params: Dict[str, Any], batches: List[List[Dict[str, Any]
     if attachments_list:
         try:
             files_data = build_files_from_attachments(attachments_list)
+            logger.info(f"Prepared {len(files_data)} attachment(s)")
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
-        # Inject attachment into first embed of first batch (override any existing image)
         if batches and batches[0]:
             inject_attachment_into_embeds(batches[0], attachments_list, override=True)
     return files_data
 
 
 def _base_payload_builder(batches: List[List[Dict[str, Any]]], params: Dict[str, Any]):
+    """Build payload builder function for batches."""
     content = params.get("content")
     username = params.get("username")
     avatar_url = params.get("avatar_url")
@@ -119,149 +125,13 @@ def _base_payload_builder(batches: List[List[Dict[str, Any]]], params: Dict[str,
     return build_payload_for_batch
 
 
-def _build_url_with_thread(base_url: str, thread_id: Optional[str]) -> str:
-    """Append thread_id query param if provided."""
-    if thread_id:
-        separator = "&" if "?" in base_url else "?"
-        return f"{base_url}{separator}thread_id={thread_id}"
-    return base_url
-
-
-def _create(article_key: str, batches: List[List[Dict[str, Any]]], counts: List[int], files_data, wait: bool, payload_builder, wh_hash: str, thread_id: Optional[str]) -> Dict[str, Any]:
-    url = get_discord_webhook_url()
-    # Add thread_id to URL if provided
-    url = _build_url_with_thread(url, thread_id)
-    
-    posted_batches = 0
-    new_message_ids: List[str] = []
-
-    if files_data:
-        posted_batches, new_message_ids = send_create_batches(
-            url=url,
-            batches=batches,
-            wait=wait,
-            build_payload_for_batch=payload_builder,
-            files_data=files_data,
-        )
-    else:
-        for i in range(len(batches)):
-            payload = payload_builder(i)
-            res = http_request("POST", f"{url}?wait={'true' if wait else 'false'}", json_body=payload)
-            posted_batches += 1
-            if wait:
-                if res.status_code >= 300 or not res.json:
-                    raise HTTPException(status_code=502, detail=f"Discord POST a échoué (statut {res.status_code}).")
-                msg_id = str(res.json.get("id")) if res.json else None
-                if not msg_id:
-                    raise HTTPException(status_code=502, detail="Discord n'a pas renvoyé d'id de message.")
-                new_message_ids.append(msg_id)
-
-    with DB.db_conn() as conn:
-        DB.db_create(conn, article_key, wh_hash, new_message_ids, counts)
-
-    base: Dict[str, Any] = {
-        "status": "ok",
-        "operation": "create",
-        "posted_batches": posted_batches,
-        "total_embeds": sum(counts),
-        "split_applied": sum(counts) > 1,
-        "article_key": article_key,
-    }
-    if wait:
-        base["messages"] = [
-            {"id": mid, "embeds_count": counts[i], "batch_index": i} for i, mid in enumerate(new_message_ids)
-        ]
-    return base
-
-
-def _update(article_key: str, batches: List[List[Dict[str, Any]]], counts: List[int], files_data, wait: bool, payload_builder, wh_id: str, token: str, existing_ids: List[str], wh_hash: str, thread_id: Optional[str]) -> Dict[str, Any]:
-    posted_batches = 0
-    new_message_ids: List[str] = []
-
-    if not wait and len(batches) != len(existing_ids):
-        raise HTTPException(status_code=400, detail="update avec wait=false requiert que le nombre de messages ne change pas (sinon impossible de maintenir l'état)")
-
-    url = get_discord_webhook_url()
-    # Add thread_id to URL if provided
-    url = _build_url_with_thread(url, thread_id)
-
-    if files_data:
-        posted_batches, maybe_new_ids = send_update_batches(
-            wh_id=wh_id,
-            token=token,
-            url=url,
-            messages_ids_existing=existing_ids,
-            batches=batches,
-            wait=wait,
-            build_payload_for_batch=payload_builder,
-            files_data=files_data,
-        )
-        new_message_ids = maybe_new_ids or existing_ids
-    else:
-        min_len = min(len(existing_ids), len(batches))
-        for i in range(min_len):
-            msg_id = existing_ids[i]
-            payload = payload_builder(i)
-            res = http_request("PATCH", f"{API_BASE}/webhooks/{wh_id}/{token}/messages/{msg_id}", json_body=payload)
-            posted_batches += 1
-            if res.status_code >= 300:
-                raise HTTPException(status_code=502, detail=f"Discord PATCH a échoué (statut {res.status_code}).")
-            new_message_ids.append(msg_id)
-        if len(batches) > len(existing_ids):
-            for i in range(len(existing_ids), len(batches)):
-                payload = payload_builder(i)
-                res = http_request("POST", f"{url}?wait={'true' if wait else 'false'}", json_body=payload)
-                posted_batches += 1
-                if wait:
-                    if res.status_code >= 300 or not res.json:
-                        raise HTTPException(status_code=502, detail=f"Discord POST a échoué (statut {res.status_code}).")
-                    msg_id = str(res.json.get("id")) if res.json else None
-                    if not msg_id:
-                        raise HTTPException(status_code=502, detail="Discord n'a pas renvoyé d'id de message.")
-                    new_message_ids.append(msg_id)
-        elif len(batches) < len(existing_ids):
-            for i in range(len(existing_ids) - 1, len(batches) - 1, -1):
-                msg_id = existing_ids[i]
-                res = http_request("DELETE", f"{API_BASE}/webhooks/{wh_id}/{token}/messages/{msg_id}")
-                posted_batches += 1
-                if not (200 <= res.status_code < 300 or res.status_code == 404):
-                    raise HTTPException(status_code=502, detail=f"Discord DELETE a échoué (statut {res.status_code}).")
-
-    # Persist mapping
-    try:
-        with DB.db_conn() as conn:
-            if len(new_message_ids) < len(batches):
-                new_message_ids = existing_ids[:len(batches)]
-            DB.db_update(conn, article_key, wh_hash, new_message_ids or existing_ids, counts)
-    except Exception as e:
-        if "missing" in str(e).lower():
-            with DB.db_conn() as conn:
-                DB.db_create(conn, article_key, wh_hash, new_message_ids or existing_ids, counts)
-        else:
-            raise
-
-    base: Dict[str, Any] = {
-        "status": "ok",
-        "operation": "update",
-        "posted_batches": posted_batches,
-        "total_embeds": sum(counts),
-        "split_applied": sum(counts) > 1,
-        "article_key": article_key,
-    }
-    if wait:
-        base["messages"] = [
-            {"id": mid, "embeds_count": counts[i], "batch_index": i}
-            for i, mid in enumerate(new_message_ids or existing_ids)
-        ]
-    return base
-
-
 def op_create_or_update(params: Dict[str, Any], mode: str) -> Dict[str, Any]:
+    """Main orchestration for create/update/upsert operations."""
     assert mode in ("create", "update", "upsert")
 
     wait = bool(params.get("wait", True))
     dry_run = bool(params.get("dry_run", False))
-    thread_id = params.get("thread_id")  # NEW: thread support
+    thread_id = params.get("thread_id")
 
     # Enforce wait=true on create/upsert to persist message ids
     if mode in ("create", "upsert") and not wait:
@@ -285,12 +155,13 @@ def op_create_or_update(params: Dict[str, Any], mode: str) -> Dict[str, Any]:
     effective_mode = mode
     if mode == "upsert":
         effective_mode = "update" if existing_row else "create"
+        logger.info(f"Upsert resolved to: {effective_mode}")
 
     if effective_mode == "create":
         if existing_row:
             raise HTTPException(status_code=405, detail="create: article_key déjà existant. Utilisez 'update' ou 'upsert'.")
         payload_builder = _base_payload_builder(batches, params)
-        return _create(article_key, batches, counts, files_data, wait, payload_builder, wh_hash, thread_id)
+        return op_create(article_key, batches, counts, files_data, wait, payload_builder, wh_hash, thread_id)
 
     if effective_mode == "update":
         if existing_row and existing_row.get("webhook_hash") != wh_hash:
@@ -299,12 +170,8 @@ def op_create_or_update(params: Dict[str, Any], mode: str) -> Dict[str, Any]:
         target_message_ids_param: List[str] = params.get("target_message_ids") or []
         if target_message_ids_param:
             existing_ids = list(map(str, target_message_ids_param))
+            logger.info(f"Using manual target_message_ids: {len(existing_ids)} message(s)")
         payload_builder = _base_payload_builder(batches, params)
-        return _update(article_key, batches, counts, files_data, wait, payload_builder, wh_id, token, existing_ids, wh_hash, thread_id)
+        return op_update(article_key, batches, counts, files_data, wait, payload_builder, wh_id, token, existing_ids, wh_hash, thread_id)
 
     raise HTTPException(status_code=400, detail="operation invalide")
-
- 
- 
- 
- 
