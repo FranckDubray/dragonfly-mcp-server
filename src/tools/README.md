@@ -104,7 +104,7 @@ Total tools: 41
   - Opérations: generate, edit
   - Tokens: aucun
 
-- Video Transcription — Extract audio from video and transcribe using Whisper API. Supports time-based segmentation for large videos. Parallel processing (3 chun…
+- Video Transcription — Extract audio from video and transcribe using Whisper API. Supports time-based segmentation for large videos. Parallel processing (3 chun… · Tags: video, audio, transcription, whisper
   - Opérations: transcribe, get_info
   - Tokens: aucun
 
