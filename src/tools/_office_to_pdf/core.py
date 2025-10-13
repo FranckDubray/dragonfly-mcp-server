@@ -1,9 +1,9 @@
-"""Core logic for office_to_pdf operations."""
-
+"""
+Core logic for office_to_pdf operations.
+"""
 from typing import Dict, Any
 from .validators import validate_convert_params, validate_get_info_params
 from .utils import get_unique_output_path, get_file_info
-from .services.office_converter import convert_to_pdf
 
 
 def handle_convert(**params) -> Dict[str, Any]:
@@ -21,6 +21,9 @@ def handle_convert(**params) -> Dict[str, Any]:
     try:
         # Validate parameters
         validated = validate_convert_params(params)
+
+        # Import service lazily to avoid import-time failure when docx2pdf/Office not installed
+        from .services.office_converter import convert_to_pdf  # noqa: WPS433 (local import by design)
         
         # Get unique output path (add suffix if file exists and not overwrite)
         output_path = get_unique_output_path(
@@ -36,6 +39,7 @@ def handle_convert(**params) -> Dict[str, Any]:
     except ValueError as e:
         return {"error": f"Validation error: {str(e)}"}
     except Exception as e:
+        # Minimal error, no verbose metadata
         return {"error": f"Unexpected error: {str(e)}"}
 
 
@@ -57,7 +61,6 @@ def handle_get_info(**params) -> Dict[str, Any]:
         info = get_file_info(validated["input_path"])
         
         return {
-            "success": True,
             **info
         }
         
