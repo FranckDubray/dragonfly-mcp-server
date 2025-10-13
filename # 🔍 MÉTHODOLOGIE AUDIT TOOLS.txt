@@ -13,13 +13,14 @@
 
 # 🔍 MÉTHODOLOGIE AUDIT TOOLS
 
-## État: 23/40 audités ✅
+## État: 24/40 audités ✅
 
-Tools restants (17): astronomy, coingecko, excel_to_sqlite, ffmpeg_frames, flight_tracker, git, imap, math, news_aggregator, ollama_local, pdf2text, pdf_download, reddit_intelligence, script_executor, ssh_admin, universal_doc_scraper, youtube_search
+Tools restants (16): coingecko, excel_to_sqlite, ffmpeg_frames, flight_tracker, git, imap, math, news_aggregator, ollama_local, pdf2text, pdf_download, reddit_intelligence, script_executor, ssh_admin, universal_doc_scraper, youtube_search
 
 ✅ Derniers audits:
 - open_meteo (22/40) — 8.8→9.6/10 — validation + NR 100% OK — split core_weather/core_geo, truncation counts
 - office_to_pdf (23/40) — 8.9→9.5/10 — validation + NR 100% OK — lazy import + service office_converter
+- astronomy (24/40) — audit cleanup: horizon-aware visible_planets (environment), moonrise/moonset, dead code removal
 
 ---
 
