@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 from typing import Any, Dict
 
@@ -16,6 +17,22 @@ MAX_BYTES_PER_FILE = 65536
 MAX_TOTAL_CONTEXT_BYTES = 200000
 LLM_TOP_N = 10
 DEFAULT_PROFILE_MODE = "auto"  # hybride: 4x combined + 4x profils
+DEFAULT_MODELS = [
+    "gpt-5",
+    "claude-sonnet-4-5-20250929",
+    "gpt-5-mini",
+    "gemini-2.5-pro",
+]
+
+
+def _unique_preserve_order(seq: list[str]) -> list[str]:
+    seen = set()
+    out: list[str] = []
+    for x in seq:
+        if x not in seen:
+            seen.add(x)
+            out.append(x)
+    return out
 
 
 def validate_params(p: Dict[str, Any]) -> Dict[str, Any]:
@@ -27,19 +44,24 @@ def validate_params(p: Dict[str, Any]) -> Dict[str, Any]:
     if not tool_name or not isinstance(tool_name, str):
         raise ValueError("invalid_parameters: missing tool_name")
 
-    models = p.get("models") or [
-        "gpt-5",
-        "claude-sonnet-4-5-20250929",
-        "gpt-5-mini",
-        "gemini-2.5-pro",
-    ]
-    if not isinstance(models, list) or not all(isinstance(m, str) for m in models):
-        raise ValueError("invalid_parameters: models must be an array of strings")
+    # models: allow 1..4, unique, known models only
+    raw_models = p.get("models")
+    if raw_models is None:
+        models = DEFAULT_MODELS
+    else:
+        if not isinstance(raw_models, list) or not all(isinstance(m, str) for m in raw_models):
+            raise ValueError("invalid_parameters: models must be an array of strings")
+        models = _unique_preserve_order(raw_models)
+        if len(models) < 1:
+            raise ValueError("invalid_parameters: at least 1 model is required")
+        if len(models) > 4:
+            raise ValueError("invalid_parameters: at most 4 models are allowed")
     for m in models:
         if m not in VALID_MODELS:
             raise ValueError(f"invalid_parameters: unknown model '{m}'")
 
-    fuser_model = p.get("fuser_model") or "gpt-5"
+    # fuser_model: default = first provided model, fallback to 'gpt-5'
+    fuser_model = p.get("fuser_model") or (models[0] if models else "gpt-5")
     if fuser_model not in VALID_MODELS:
         raise ValueError("invalid_parameters: fuser_model must be one of known models")
 
