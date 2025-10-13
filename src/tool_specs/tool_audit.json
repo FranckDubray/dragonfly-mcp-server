@@ -14,7 +14,10 @@
 
         "models": {
           "type": "array",
+          "description": "Liste des modèles LLM à utiliser (1 à 4). L’ordre est respecté; si 'fuser_model' est absent, il prend par défaut le premier modèle de cette liste.",
           "items": { "type": "string" },
+          "minItems": 1,
+          "maxItems": 4,
           "default": [
             "gpt-5",
             "claude-sonnet-4-5-20250929",
@@ -22,7 +25,7 @@
             "gemini-2.5-pro"
           ]
         },
-        "fuser_model": { "type": "string", "default": "gpt-5" },
+        "fuser_model": { "type": "string", "description": "Modèle utilisé pour la fusion finale. Par défaut: premier élément de 'models' (ou 'gpt-5' si non spécifié).", "default": "gpt-5" },
         "profile_mode": { "type": "string", "enum": ["auto", "combined", "per_profile"], "default": "auto" },
 
         "limit": { "type": "integer", "minimum": 1, "maximum": 200, "default": 50 },
