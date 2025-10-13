@@ -1,5 +1,6 @@
 import os
 from typing import Dict, Iterator, List, Tuple
+from fnmatch import fnmatch
 
 DEFAULT_EXCLUDE_DIRS = {
     ".git", "node_modules", "vendor", "dist", "build", ".venv", ".mypy_cache",
@@ -20,11 +21,44 @@ def is_binary_filename(name: str) -> bool:
     return ext in BINARY_EXTS
 
 
+def _load_gitignore_patterns(root: str) -> List[str]:
+    path = os.path.join(root, ".gitignore")
+    patterns: List[str] = []
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                s = line.strip()
+                if not s or s.startswith("#"):
+                    continue
+                patterns.append(s)
+    except Exception:
+        pass
+    return patterns
+
+
+def _ignored_by_gitignore(relpath: str, patterns: List[str]) -> bool:
+    # Minimal fnmatch-based handling; does not implement all gitignore semantics
+    # Treat directory patterns ending with '/' as prefix
+    norm = relpath.replace("\\", "/")
+    for pat in patterns:
+        if pat.endswith("/"):
+            if norm.startswith(pat[:-1]):
+                return True
+        else:
+            try:
+                if fnmatch(norm, pat):
+                    return True
+            except Exception:
+                continue
+    return False
+
+
 def iter_files(root: str, scope_path: str | None = None,
                max_files_scanned: int = 10000) -> Iterator[Tuple[str, int]]:
     base = os.path.abspath(root)
     start = os.path.join(base, scope_path) if scope_path else base
     scanned = 0
+    gi_patterns = _load_gitignore_patterns(base)
     for dirpath, dirnames, filenames in os.walk(start):
         # Exclude directories
         dirnames[:] = [d for d in dirnames if d not in DEFAULT_EXCLUDE_DIRS and not d.startswith(".")]
@@ -44,6 +78,9 @@ def iter_files(root: str, scope_path: str | None = None,
             except OSError:
                 continue
             rel = os.path.relpath(full, base)
+            # Respect .gitignore (best-effort)
+            if _ignored_by_gitignore(rel, gi_patterns):
+                continue
             scanned += 1
             yield rel, st.st_size
 
