@@ -4,7 +4,7 @@ Handles ephemeris loading and caching
 """
 
 from skyfield.api import Loader, wgs84
-from skyfield.almanac import moon_phase, sunrise_sunset, dark_twilight_day
+from skyfield.almanac import moon_phase
 import os
 import math
 

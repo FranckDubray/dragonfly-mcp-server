@@ -23,22 +23,17 @@ All notable changes to this project will be documented in this file.
 - perf: ephemeris cache in <repo>/docs/astronomy
 - logs: add INFO/WARNING/ERROR in API
 
-### discord_webhook
-- fix: DB path detection stabilized regardless of CWD; always under <repo>/sqlite3
-
-### open_meteo
-- fix: import error resolved by splitting core; execution restored (current_weather, geocoding, air_quality, forecast)
-- feat: truncation controls for hourly forecast; daily counts; AQI category helper
-
-### office_to_pdf
-- fix: import-time crash removed (lazy import + service wrapper)
-- feat: services/office_converter.py; stricter validations and outputs
-
 ---
 
 ## [Unreleased]
 
 - Upcoming audits and tools improvements.
+
+### astronomy (audit cleanup)
+- refactor: remove dead code and unused imports (_to_python, calculate_angular_separation import)
+- feat: visible_planets now uses `horizon` parameter to compute darkness context; adds `environment` block (sun_altitude_degrees, twilight_horizon_degrees, is_dark_enough)
+- feat: sun_moon_times now also returns moonrise/moonset events (in addition to sun and twilight)
+- fix: tighten outputs and keep modules <7KB; JSON-serializable formatting kept strict
 
 ---
 

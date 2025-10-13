@@ -122,12 +122,14 @@ def handle_visible_planets(params):
     lat, lon = validators.validate_coordinates(params, required=True)
     elevation = validators.validate_elevation(params)
     date = validators.validate_date(params)
+    horizon = validators.validate_horizon(params)
     
     return core.visible_planets_operation({
         'latitude': lat,
         'longitude': lon,
         'elevation': elevation,
-        'date': date
+        'date': date,
+        'horizon': horizon,
     })
 
 
