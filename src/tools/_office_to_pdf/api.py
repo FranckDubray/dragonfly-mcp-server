@@ -1,28 +1,23 @@
-"""API routing for office_to_pdf operations."""
-
+"""API routing for office_to_pdf operations (minimal outputs, logging)."""
 from typing import Dict, Any
+import logging
 from .core import handle_convert, handle_get_info
+
+LOG = logging.getLogger(__name__)
 
 
 def route_operation(operation: str, **params) -> Dict[str, Any]:
     """Route operation to appropriate handler.
-    
-    Args:
-        operation: Operation name (convert, get_info)
-        **params: Operation parameters
-        
-    Returns:
-        Operation result
+
+    Raises exceptions on error (no verbose metadata here).
     """
-    handlers = {
-        "convert": handle_convert,
-        "get_info": handle_get_info
-    }
-    
-    handler = handlers.get(operation)
-    if not handler:
-        return {
-            "error": f"Unknown operation '{operation}'. Valid operations: {', '.join(handlers.keys())}"
-        }
-    
-    return handler(**params)
+    try:
+        op = (operation or '').strip().lower()
+        if op == 'convert':
+            return handle_convert(**params)
+        if op == 'get_info':
+            return handle_get_info(**params)
+        raise ValueError(f"Unknown operation '{operation}'. Valid operations: convert, get_info")
+    except Exception as e:
+        LOG.error(f"office_to_pdf operation failed: {e}")
+        raise
