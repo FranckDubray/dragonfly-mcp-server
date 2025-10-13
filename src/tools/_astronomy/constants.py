@@ -1,228 +1,15 @@
 """
-Physical characteristics of solar system bodies (static data)
-Source: NASA Planetary Fact Sheets
+Constants and lightweight accessors for astronomy tool
+- Loads large static datasets (planet data, stars) from JSON files on demand
+- Keeps Python files <7KB as per project policy
 """
+from __future__ import annotations
 
-PLANET_DATA = {
-    "sun": {
-        "name": "Sun",
-        "type": "Star",
-        "mass_kg": 1.989e30,
-        "diameter_km": 1392700,
-        "equatorial_radius_km": 696340,
-        "mean_density_kg_m3": 1408,
-        "surface_gravity_m_s2": 274.0,
-        "escape_velocity_km_s": 617.6,
-        "rotation_period_days": 25.05,
-        "surface_temperature_k": 5778,
-        "age_billion_years": 4.603
-    },
-    "mercury": {
-        "name": "Mercury",
-        "type": "Terrestrial Planet",
-        "mass_kg": 3.3011e23,
-        "diameter_km": 4879,
-        "equatorial_radius_km": 2439.7,
-        "mean_density_kg_m3": 5427,
-        "surface_gravity_m_s2": 3.7,
-        "escape_velocity_km_s": 4.3,
-        "rotation_period_days": 58.646,
-        "orbital_period_days": 87.969,
-        "distance_from_sun_au": 0.387,
-        "distance_from_sun_million_km": 57.9,
-        "eccentricity": 0.2056,
-        "inclination_degrees": 7.0,
-        "surface_temperature_k": {"min": 100, "max": 700, "mean": 440},
-        "moons": 0,
-        "atmosphere": "Trace (mostly sodium, potassium)"
-    },
-    "venus": {
-        "name": "Venus",
-        "type": "Terrestrial Planet",
-        "mass_kg": 4.8675e24,
-        "diameter_km": 12104,
-        "equatorial_radius_km": 6051.8,
-        "mean_density_kg_m3": 5243,
-        "surface_gravity_m_s2": 8.87,
-        "escape_velocity_km_s": 10.36,
-        "rotation_period_days": -243.018,
-        "orbital_period_days": 224.701,
-        "distance_from_sun_au": 0.723,
-        "distance_from_sun_million_km": 108.2,
-        "eccentricity": 0.0067,
-        "inclination_degrees": 3.39,
-        "surface_temperature_k": 737,
-        "surface_pressure_bars": 92,
-        "moons": 0,
-        "atmosphere": "CO2 (96.5%), N2 (3.5%)"
-    },
-    "moon": {
-        "name": "Moon",
-        "type": "Natural Satellite",
-        "parent": "Earth",
-        "mass_kg": 7.342e22,
-        "diameter_km": 3475,
-        "equatorial_radius_km": 1737.4,
-        "mean_density_kg_m3": 3344,
-        "surface_gravity_m_s2": 1.62,
-        "escape_velocity_km_s": 2.38,
-        "rotation_period_days": 27.322,
-        "orbital_period_days": 27.322,
-        "distance_from_earth_km": 384400,
-        "eccentricity": 0.0549,
-        "inclination_degrees": 5.145,
-        "surface_temperature_k": {"min": 100, "max": 390, "mean": 250},
-        "atmosphere": "None (exosphere only)"
-    },
-    "mars": {
-        "name": "Mars",
-        "type": "Terrestrial Planet",
-        "mass_kg": 6.4171e23,
-        "diameter_km": 6779,
-        "equatorial_radius_km": 3389.5,
-        "mean_density_kg_m3": 3933,
-        "surface_gravity_m_s2": 3.71,
-        "escape_velocity_km_s": 5.03,
-        "rotation_period_days": 1.026,
-        "orbital_period_days": 686.980,
-        "distance_from_sun_au": 1.524,
-        "distance_from_sun_million_km": 227.9,
-        "eccentricity": 0.0934,
-        "inclination_degrees": 1.85,
-        "surface_temperature_k": {"min": 130, "max": 308, "mean": 210},
-        "surface_pressure_bars": 0.00636,
-        "moons": 2,
-        "moon_names": ["Phobos", "Deimos"],
-        "atmosphere": "CO2 (95.3%), N2 (2.7%), Ar (1.6%)"
-    },
-    "jupiter": {
-        "name": "Jupiter",
-        "type": "Gas Giant",
-        "mass_kg": 1.8982e27,
-        "diameter_km": 139820,
-        "equatorial_radius_km": 69911,
-        "mean_density_kg_m3": 1326,
-        "surface_gravity_m_s2": 24.79,
-        "escape_velocity_km_s": 59.5,
-        "rotation_period_days": 0.414,
-        "orbital_period_days": 4332.589,
-        "distance_from_sun_au": 5.203,
-        "distance_from_sun_million_km": 778.5,
-        "eccentricity": 0.0489,
-        "inclination_degrees": 1.304,
-        "cloud_top_temperature_k": 165,
-        "moons": 95,
-        "major_moons": ["Io", "Europa", "Ganymede", "Callisto"],
-        "atmosphere": "H2 (90%), He (10%)",
-        "rings": "Yes (faint)"
-    },
-    "saturn": {
-        "name": "Saturn",
-        "type": "Gas Giant",
-        "mass_kg": 5.6834e26,
-        "diameter_km": 116460,
-        "equatorial_radius_km": 58232,
-        "mean_density_kg_m3": 687,
-        "surface_gravity_m_s2": 10.44,
-        "escape_velocity_km_s": 35.5,
-        "rotation_period_days": 0.444,
-        "orbital_period_days": 10759.22,
-        "distance_from_sun_au": 9.537,
-        "distance_from_sun_million_km": 1427.0,
-        "eccentricity": 0.0565,
-        "inclination_degrees": 2.485,
-        "cloud_top_temperature_k": 134,
-        "moons": 146,
-        "major_moons": ["Titan", "Rhea", "Iapetus", "Dione", "Tethys", "Enceladus"],
-        "atmosphere": "H2 (96%), He (3%)",
-        "rings": "Yes (prominent)"
-    },
-    "uranus": {
-        "name": "Uranus",
-        "type": "Ice Giant",
-        "mass_kg": 8.6810e25,
-        "diameter_km": 50724,
-        "equatorial_radius_km": 25362,
-        "mean_density_kg_m3": 1270,
-        "surface_gravity_m_s2": 8.87,
-        "escape_velocity_km_s": 21.3,
-        "rotation_period_days": -0.718,
-        "orbital_period_days": 30685.4,
-        "distance_from_sun_au": 19.191,
-        "distance_from_sun_million_km": 2871.0,
-        "eccentricity": 0.0463,
-        "inclination_degrees": 0.773,
-        "cloud_top_temperature_k": 76,
-        "moons": 27,
-        "major_moons": ["Titania", "Oberon", "Umbriel", "Ariel", "Miranda"],
-        "atmosphere": "H2 (83%), He (15%), CH4 (2%)",
-        "rings": "Yes (13 known)"
-    },
-    "neptune": {
-        "name": "Neptune",
-        "type": "Ice Giant",
-        "mass_kg": 1.02413e26,
-        "diameter_km": 49244,
-        "equatorial_radius_km": 24622,
-        "mean_density_kg_m3": 1638,
-        "surface_gravity_m_s2": 11.15,
-        "escape_velocity_km_s": 23.5,
-        "rotation_period_days": 0.671,
-        "orbital_period_days": 60189.0,
-        "distance_from_sun_au": 30.070,
-        "distance_from_sun_million_km": 4495.1,
-        "eccentricity": 0.0113,
-        "inclination_degrees": 1.767,
-        "cloud_top_temperature_k": 72,
-        "moons": 14,
-        "major_moons": ["Triton", "Proteus", "Nereid"],
-        "atmosphere": "H2 (80%), He (19%), CH4 (1%)",
-        "rings": "Yes (5 known)"
-    },
-    "pluto": {
-        "name": "Pluto",
-        "type": "Dwarf Planet",
-        "mass_kg": 1.303e22,
-        "diameter_km": 2376,
-        "equatorial_radius_km": 1188,
-        "mean_density_kg_m3": 1854,
-        "surface_gravity_m_s2": 0.62,
-        "escape_velocity_km_s": 1.21,
-        "rotation_period_days": -6.387,
-        "orbital_period_days": 90560.0,
-        "distance_from_sun_au": 39.482,
-        "distance_from_sun_million_km": 5906.4,
-        "eccentricity": 0.2488,
-        "inclination_degrees": 17.16,
-        "surface_temperature_k": 44,
-        "moons": 5,
-        "major_moons": ["Charon", "Styx", "Nix", "Kerberos", "Hydra"],
-        "atmosphere": "N2, CH4, CO (tenuous, collapses when far from Sun)"
-    }
-}
+import json
+import os
+from functools import lru_cache
 
-# Bright stars catalog (for star_position operation)
-BRIGHT_STARS = {
-    "sirius": {"name": "Sirius", "constellation": "Canis Major", "magnitude": -1.46},
-    "canopus": {"name": "Canopus", "constellation": "Carina", "magnitude": -0.74},
-    "arcturus": {"name": "Arcturus", "constellation": "Boötes", "magnitude": -0.05},
-    "vega": {"name": "Vega", "constellation": "Lyra", "magnitude": 0.03},
-    "capella": {"name": "Capella", "constellation": "Auriga", "magnitude": 0.08},
-    "rigel": {"name": "Rigel", "constellation": "Orion", "magnitude": 0.13},
-    "procyon": {"name": "Procyon", "constellation": "Canis Minor", "magnitude": 0.34},
-    "betelgeuse": {"name": "Betelgeuse", "constellation": "Orion", "magnitude": 0.50},
-    "altair": {"name": "Altair", "constellation": "Aquila", "magnitude": 0.77},
-    "aldebaran": {"name": "Aldebaran", "constellation": "Taurus", "magnitude": 0.85},
-    "antares": {"name": "Antares", "constellation": "Scorpius", "magnitude": 1.09},
-    "spica": {"name": "Spica", "constellation": "Virgo", "magnitude": 1.04},
-    "pollux": {"name": "Pollux", "constellation": "Gemini", "magnitude": 1.14},
-    "fomalhaut": {"name": "Fomalhaut", "constellation": "Piscis Austrinus", "magnitude": 1.16},
-    "deneb": {"name": "Deneb", "constellation": "Cygnus", "magnitude": 1.25},
-    "regulus": {"name": "Regulus", "constellation": "Leo", "magnitude": 1.35},
-    "polaris": {"name": "Polaris", "constellation": "Ursa Minor", "magnitude": 1.98}
-}
-
-# Moon phase names
+# Small, safe list kept inline
 MOON_PHASES = [
     "New Moon",
     "Waxing Crescent",
@@ -231,5 +18,32 @@ MOON_PHASES = [
     "Full Moon",
     "Waning Gibbous",
     "Last Quarter",
-    "Waning Crescent"
+    "Waning Crescent",
 ]
+
+
+def _data_dir() -> str:
+    here = os.path.dirname(__file__)
+    return os.path.join(here, "data")
+
+
+@lru_cache(maxsize=1)
+def get_planet_data() -> dict:
+    """Load planet data JSON once (cached)."""
+    path = os.path.join(_data_dir(), "planet_data.json")
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+@lru_cache(maxsize=1)
+def get_stars_catalog() -> dict:
+    """Load stars catalog JSON once (cached)."""
+    path = os.path.join(_data_dir(), "stars_catalog.json")
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def get_star_entry(name: str) -> dict | None:
+    """Get a star entry by lowercase key from catalog."""
+    catalog = get_stars_catalog().get("bright_stars", {})
+    return catalog.get(name.lower().strip())
