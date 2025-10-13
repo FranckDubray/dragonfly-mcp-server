@@ -7,7 +7,6 @@ from ..services.budget_broker import compute_effective_budgets
 from ..connectors.python.sloc_estimator import estimate_sloc
 from ..connectors.python.outline_ast import outline_file
 
-
 DOC_CANDIDATES = ("README", "CHANGELOG", "LICENSE")
 
 
@@ -25,7 +24,6 @@ def _detect_top_docs(root: str) -> List[Dict]:
                     continue
     except Exception:
         pass
-    # keep at most 3
     docs.sort(key=lambda x: x["path"])  # deterministic
     return docs[:3]
 
@@ -34,7 +32,6 @@ def run(p: Dict[str, Any]) -> Dict[str, Any]:
     root = p["path"]
     eff = compute_effective_budgets(p)
 
-    # Languages and SLOC estimation (head-only, sampled by scan limits)
     lang_counts: Dict[str, int] = {}
     sloc_total = 0
     outlines_sample: List[Dict] = []
@@ -43,8 +40,7 @@ def run(p: Dict[str, Any]) -> Dict[str, Any]:
     for rel, _size in iter_files(root, p.get("scope_path"), eff["max_files_scanned"]):
         lang = language_from_path(rel) or "other"
         lang_counts[lang] = lang_counts.get(lang, 0) + 1
-        # very light SLOC estimation on head-only (python only for now)
-        if lang == "python" and len(outlines_sample) < 5:  # small sample for representative outlines
+        if lang == "python" and len(outlines_sample) < 5:
             try:
                 text = read_text_head(os.path.join(root, rel), eff["max_bytes_per_file"])  # head only
             except Exception:
@@ -60,14 +56,11 @@ def run(p: Dict[str, Any]) -> Dict[str, Any]:
     languages = [{"name": k, "files": v} for k, v in lang_counts.items()]
     languages.sort(key=lambda x: (-x["files"], x["name"]))
 
-    # Key docs (top of repo only, no content)
     key_files = _detect_top_docs(root)
 
     data = {
         "languages": languages[:5],
         "key_files": key_files,
-        "endpoints_summary": {},  # kept minimal in overview (ask endpoints for details)
-        "tests_summary": {},      # idem (ask tests for details)
         "representative_outlines": outlines_sample[:3]
     }
 
@@ -77,5 +70,5 @@ def run(p: Dict[str, Any]) -> Dict[str, Any]:
         "returned_count": 0,
         "total_count": 0,
         "truncated": False,
-        "stats": {"scanned_files": scanned, "sloc_total_sample": sloc_total}
+        "stats": {"scanned_files": scanned}
     }
