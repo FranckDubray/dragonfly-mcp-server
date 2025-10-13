@@ -2,7 +2,6 @@ from typing import Any, Dict
 
 from ..services.errors import error_response
 from ..services.pagination import paginate_list
-from . import reader as R
 
 SUPPORTED = {"symbol_info", "find_callers", "find_callees", "find_references", "call_patterns"}
 
@@ -10,6 +9,18 @@ def run(p: Dict[str, Any]) -> Dict[str, Any]:
     op = p["operation"]
     if op not in SUPPORTED:
         return error_response(op, "invalid_parameters", f"Unsupported index op: {op}")
+
+    # Lazy import to avoid hard dependency at module import time
+    try:
+        from . import reader as R
+    except Exception as e:
+        return {
+            "operation": op,
+            "errors": [{"code": "release_index_missing", "message": str(e), "scope": "tool", "recoverable": True}],
+            "returned_count": 0,
+            "total_count": 0,
+            "truncated": False,
+        }
 
     db_path, err = R.resolve_index_db(p["path"], p.get("release_tag"), p.get("commit_hash"))
     if not db_path:
