@@ -36,6 +36,17 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.25.2] - 2025-10-13
+
+### Dev Navigator (open multi-fichiers + spec clarifiée)
+- feat(open): plan multi-fichiers en un seul appel (batch) — `paths` + `limit` (cap dur 50) + `head_lines` (10..200, défaut 80).
+- fix(open): rejet explicite de `fields=full` (invalid_parameters) + notice claire "plan only (fs_requests)".
+- feat(spec): JSON enrichi (notes explicites sur open=plan uniquement, ajout `head_lines`, description `limit` précisant le mode batch pour open).
+
+Notes: toujours aucun contenu de fichier renvoyé par le tool; utiliser ensuite un outil FS côté client pour lire les ranges proposés.
+
+---
+
 ## [1.25.1] - 2025-10-13
 
 ### Dev Navigator (Q&A + Metrics + Sécurité + Builder)

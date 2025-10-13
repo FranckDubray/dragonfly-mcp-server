@@ -5,7 +5,12 @@
     "displayName": "Dev Navigator",
     "category": "development",
     "tags": ["knowledge"],
-    "description": "Couteau suisse LLM pour explorer un dépôt: overview, tree, search, outline, open, endpoints, tests, metrics et Q&A index (callers/callees/refs). Anti-flood strict (cap 20KB), offline par défaut.",
+    "description": "Couteau suisse LLM pour explorer un dépôt: overview, tree, search, outline, open (plan fs_requests uniquement — pas de contenu), endpoints, tests, metrics et Q&A index (callers/callees/refs). Anti-flood strict (cap 20KB), offline par défaut.",
+    "notes": [
+      "open ne retourne PAS de contenu de fichiers: seulement un plan fs_requests (path + ranges). Utiliser ensuite votre outil FS pour lire les contenus.",
+      "fields=full n'est pas supporté pour operation=open (sera rejeté avec invalid_parameters).",
+      "doc_policy=outline_only bloque README/CHANGELOG/docs/* par défaut (lever avec allow_docs + explicit_allowlist)."
+    ],
     "parameters": {
       "type": "object",
       "properties": {
@@ -33,10 +38,10 @@
         "pins": {"type": "array", "items": {"type": "string"}},
         "limit": {"type": "integer", "minimum": 1, "maximum": 200, "default": 20},
         "cursor": {"type": "string"},
-        "fields": {"type": "string", "enum": ["anchors_only", "anchors+snippets", "full"], "default": "anchors_only"},
+        "fields": {"type": "string", "enum": ["anchors_only", "anchors+snippets", "full"], "default": "anchors_only", "description": "Niveau de détails. NOTE: pour operation=open, 'full' n'est pas supporté (plan uniquement)."},
         "mode": {"type": "string", "enum": ["fast", "balanced", "thorough"], "default": "fast"},
         "verbose": {"type": "boolean", "default": false},
-        "doc_policy": {"type": "string", "enum": ["outline_only", "allow_docs"], "default": "outline_only"},
+        "doc_policy": {"type": "string", "enum": ["outline_only", "allow_docs"], "default": "outline_only", "description": "Politique d'accès docs volumineux (README/CHANGELOG/docs/*)."},
         "explicit_allowlist": {"type": "array", "items": {"type": "string"}},
         "use_release_index": {"type": "boolean", "default": true},
         "release_tag": {"type": "string"},
@@ -49,7 +54,7 @@
         "glob_include": {"type": "array", "items": {"type": "string"}},
         "glob_exclude": {"type": "array", "items": {"type": "string"}},
         "depth_for_tree": {"type": "integer", "minimum": 1, "maximum": 10, "default": 3},
-        "paths": {"type": "array", "items": {"type": "string"}, "description": "Liste de fichiers ciblés (outline/open)"},
+        "paths": {"type": "array", "items": {"type": "string"}, "description": "Liste de fichiers ciblés (outline/open). open retourne fs_requests UNIQUEMENT."},
         "max_files_scanned": {"type": "integer", "minimum": 100, "maximum": 200000, "default": 10000},
         "max_bytes_per_file": {"type": "integer", "minimum": 1024, "maximum": 262144, "default": 65536},
 
