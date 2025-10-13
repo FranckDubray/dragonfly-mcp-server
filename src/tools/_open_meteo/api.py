@@ -1,43 +1,46 @@
 """
-Open-Meteo API routing
+Open-Meteo API routing (minimal outputs, strict errors)
 """
+import logging
 from .validators import validate_params
-from .core import (
+from .core_weather import (
     get_current_weather,
     get_forecast_hourly,
     get_forecast_daily,
     get_air_quality,
-    geocode_location,
-    reverse_geocode
 )
+from .core_geo import (
+    geocode_location,
+    reverse_geocode,
+)
+
+LOG = logging.getLogger(__name__)
 
 
 def route_operation(**params):
-    """Route to appropriate handler based on operation"""
+    """Route to appropriate handler based on validated operation.
+
+    Raises exceptions on error (no verbose metadata in outputs).
+    """
     try:
-        # Validate and normalize params
         validated = validate_params(params)
         operation = validated['operation']
-        
-        # Route to handlers
+
         if operation == 'current_weather':
             return get_current_weather(validated)
-        elif operation == 'forecast_hourly':
+        if operation == 'forecast_hourly':
             return get_forecast_hourly(validated)
-        elif operation == 'forecast_daily':
+        if operation == 'forecast_daily':
             return get_forecast_daily(validated)
-        elif operation == 'air_quality':
+        if operation == 'air_quality':
             return get_air_quality(validated)
-        elif operation == 'geocoding':
+        if operation == 'geocoding':
             return geocode_location(validated)
-        elif operation == 'reverse_geocoding':
+        if operation == 'reverse_geocoding':
             return reverse_geocode(validated)
-        else:
-            raise ValueError(f"Unknown operation: {operation}")
-            
+
+        raise ValueError(f"Unknown operation: {operation}")
     except Exception as e:
-        return {
-            'success': False,
-            'error': str(e),
-            'error_type': type(e).__name__
-        }
+        LOG.error(f"open_meteo operation failed: {e}")
+        # Re-raise to let upstream format the error minimally
+        raise
