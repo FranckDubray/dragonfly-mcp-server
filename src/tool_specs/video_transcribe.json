@@ -4,6 +4,7 @@
     "name": "video_transcribe",
     "displayName": "Video Transcription",
     "category": "media",
+    "tags": ["video", "audio", "transcription", "whisper"],
     "description": "Extract audio from video and transcribe using Whisper API. Supports time-based segmentation for large videos. Parallel processing (3 chunks at a time). Returns transcript as JSON with timestamps and execution timing.",
     "parameters": {
       "type": "object",

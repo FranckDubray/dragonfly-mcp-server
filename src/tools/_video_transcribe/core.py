@@ -1,16 +1,17 @@
 """Core transcription logic."""
 from __future__ import annotations
-import os
 import math
 import time
+import logging
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from .validators import validate_video_path, validate_time_range, validate_chunk_duration
 from .utils import abs_from_project, probe_video_info, format_time
-from .audio_extractor import extract_audio_segment
-from .whisper_client import transcribe_audio_file
+from .chunk_processor import process_chunk
+
+logger = logging.getLogger(__name__)
 
 
 def handle_get_info(path: str) -> Dict[str, Any]:
@@ -30,6 +31,8 @@ def handle_get_info(path: str) -> Dict[str, Any]:
     if not info.get("success"):
         return {"error": info.get("error", "Unknown probe error")}
     
+    logger.info(f"Video info retrieved: {path} ({format_time(info['duration'])})")
+    
     return {
         "success": True,
         "path": path,
@@ -37,66 +40,6 @@ def handle_get_info(path: str) -> Dict[str, Any]:
         "duration_formatted": format_time(info["duration"]),
         "audio_codec": info["audio_codec"],
         "has_audio": info["has_audio"]
-    }
-
-
-def _process_chunk(video_path: Path, start: float, end: float, index: int) -> Dict[str, Any]:
-    """
-    Process a single chunk (extract audio + transcribe).
-    
-    Args:
-        video_path: Path to video
-        start: Start time in seconds
-        end: End time in seconds
-        index: Chunk index (for ordering)
-        
-    Returns:
-        Dict with index, start, end, text, or error (or empty flag)
-    """
-    chunk_dur = end - start
-    
-    # Extract audio segment (temp file)
-    extract_result = extract_audio_segment(video_path, start, chunk_dur)
-    
-    if not extract_result.get("success"):
-        return {
-            "index": index,
-            "error": f"Audio extraction failed at {format_time(start)}: {extract_result.get('error')}"
-        }
-    
-    audio_path = Path(extract_result["audio_path"])
-    
-    # Transcribe with Whisper API
-    transcribe_result = transcribe_audio_file(audio_path)
-    
-    # Cleanup temp audio file immediately
-    try:
-        audio_path.unlink()
-    except Exception:
-        pass  # Best effort cleanup
-    
-    if not transcribe_result.get("success"):
-        return {
-            "index": index,
-            "error": f"Transcription failed at {format_time(start)}: {transcribe_result.get('error')}"
-        }
-    
-    # Check if transcription is empty (silence/music)
-    if transcribe_result.get("empty", False):
-        return {
-            "index": index,
-            "start": start,
-            "end": end,
-            "text": "",
-            "empty": True  # Flag to indicate this chunk was empty
-        }
-    
-    # Return segment
-    return {
-        "index": index,
-        "start": start,
-        "end": end,
-        "text": transcribe_result["transcription"]
     }
 
 
@@ -161,6 +104,8 @@ def handle_transcribe(
     if duration_to_process <= 0:
         return {"error": "No duration to process (time_start >= time_end)"}
     
+    logger.info(f"Transcribing: {path} ({format_time(time_start)} → {format_time(actual_end)}, chunk: {chunk_duration}s)")
+    
     # 6. Build chunk list
     chunks = []
     current = time_start
@@ -176,6 +121,8 @@ def handle_transcribe(
         current = chunk_end
         chunk_index += 1
     
+    logger.info(f"Processing {len(chunks)} chunks in parallel (max 3 workers)")
+    
     # 7. Process chunks in parallel (batch of 3)
     segments = []
     max_workers = 3  # Process 3 chunks in parallel
@@ -184,7 +131,7 @@ def handle_transcribe(
         # Submit all chunks
         future_to_chunk = {
             executor.submit(
-                _process_chunk,
+                process_chunk,
                 video_path,
                 chunk["start"],
                 chunk["end"],
@@ -202,6 +149,7 @@ def handle_transcribe(
                 # Cancel remaining futures
                 for f in future_to_chunk:
                     f.cancel()
+                logger.error(f"Chunk processing failed: {result['error']}")
                 return {"error": result["error"]}
             
             results.append(result)
@@ -232,8 +180,16 @@ def handle_transcribe(
     end_timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(end_time))
     processing_time = end_time - start_time
     
-    # 12. Return result (WITHOUT segments to reduce payload size)
-    return {
+    logger.info(f"Transcription complete: {len(full_text)} chars in {format_time(processing_time)}")
+    
+    # 12. Truncation warning if text is very long
+    truncation_warning = None
+    if len(full_text) > 50000:
+        logger.warning(f"Large transcription: {len(full_text)} chars (may exceed LLM context)")
+        truncation_warning = f"⚠️ Large transcription ({len(full_text)} chars) - consider splitting video"
+    
+    # 13. Return result (WITHOUT segments to reduce payload size)
+    result = {
         "success": True,
         "video_path": path,
         "time_start": time_start,
@@ -247,7 +203,8 @@ def handle_transcribe(
             "audio_codec": info["audio_codec"],
             "chunk_duration": chunk_duration,
             "parallel_processing": True,
-            "max_workers": max_workers
+            "max_workers": max_workers,
+            "text_length": len(full_text)
         },
         "timing": {
             "processing_time_seconds": round(processing_time, 2),
@@ -257,3 +214,8 @@ def handle_transcribe(
             "average_time_per_second": round(processing_time / duration_to_process, 2) if duration_to_process > 0 else 0
         }
     }
+    
+    if truncation_warning:
+        result["warning"] = truncation_warning
+    
+    return result
