@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 import os
 import sys
@@ -29,6 +30,7 @@ from app_core.tool_discovery import (
     get_registry,
     discover_tools,
     should_reload as should_reload_tools,
+    get_last_errors,
 )
 
 logger = logging.getLogger(__name__)
@@ -88,7 +90,7 @@ def create_app() -> FastAPI:
             status_code=422,
         )
 
-    # ----- Tools listing -----
+    # ----- Tools listing & reload semantics -----
     @app.options("/tools")
     async def tools_options():
         return Response(status_code=204)
@@ -112,11 +114,29 @@ def create_app() -> FastAPI:
 
     @app.get("/tools")
     async def get_tools(request: Request):
+        """List tools. New semantics with reload/list control:
+        - If reload=1 and list=0 (default): perform reload and return only counts + errors (no tool list)
+        - If reload=1 and list=1: perform reload and return full list (legacy behavior)
+        - If reload not requested: return list with ETag caching as before
+        """
         registry = get_registry()
-        if should_reload_tools(request, AUTO_RELOAD_TOOLS, RELOAD_ENV, len(registry)):
-            logger.info("🔄 Auto-reloading tools...")
+        reload_flag = request.query_params.get('reload') == '1'
+        list_flag = request.query_params.get('list') == '1'  # explicit opt-in when reloading
+
+        if should_reload_tools(request, AUTO_RELOAD_TOOLS, RELOAD_ENV, len(registry)) or reload_flag:
+            logger.info("🔄 Reloading tools (explicit or auto)")
             discover_tools()
             registry = get_registry()
+
+            # If reloading and list not requested -> compact payload
+            if reload_flag and not list_flag:
+                errors = get_last_errors()
+                return SafeJSONResponse(content={
+                    "reloaded": True,
+                    "tool_count": len(registry),
+                    "errors": errors,
+                })
+
         # Build public items (without callables)
         items = []
         for tool in registry.values():
@@ -230,7 +250,8 @@ def create_app() -> FastAPI:
 
     # ----- UI -----
     @app.get("/control", response_class=HTMLResponse)
-    async def control_dashboard():
+    async def control_dashboard(request: Request):
+        """Serve control panel. Supports reload/list compact behavior via XHR to /tools."""
         from ui_html import CONTROL_HTML
         return HTMLResponse(content=CONTROL_HTML)
 

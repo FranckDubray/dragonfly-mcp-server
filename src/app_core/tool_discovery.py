@@ -20,10 +20,16 @@ _tool_id_counter = 10000
 _last_scan_time = 0.0
 _tools_dir_mtime = 0.0
 _tools_file_set: Set[str] = set()
+_last_errors: List[Dict[str, Any]] = []
 
 
 def get_registry() -> Dict[str, Dict[str, Any]]:
     return registry
+
+
+def get_last_errors() -> List[Dict[str, Any]]:
+    """Return the list of errors from last discovery run (read-only)."""
+    return list(_last_errors)
 
 
 def get_tools_directory_info() -> Dict[str, Any]:
@@ -52,8 +58,9 @@ def get_tools_directory_info() -> Dict[str, Any]:
 
 
 def discover_tools():
-    global registry, _last_scan_time, _tools_dir_mtime, _tool_id_counter, _tools_file_set
+    global registry, _last_scan_time, _tools_dir_mtime, _tool_id_counter, _tools_file_set, _last_errors
     _last_scan_time = time.time()
+    _last_errors = []  # reset errors for this run
     tools_info = get_tools_directory_info()
     _tools_dir_mtime = tools_info["mtime"]
     current_file_set = tools_info["file_set"]
@@ -86,6 +93,8 @@ def discover_tools():
                     module = importlib.import_module(module_name)
                 modules.append((name, module, ispkg))
             except Exception as e:
+                msg = str(e)
+                _last_errors.append({"module": name, "stage": "import", "error": msg})
                 LOG.error(f"❌ Failed to import {'package' if ispkg else 'module'} {name}: {e}")
         LOG.info(f"🔍 Found {len(modules)} potential tool modules/packages")
         for module_name, module, ispkg in modules:
@@ -107,6 +116,8 @@ def discover_tools():
                     pkg_info = " (package)" if ispkg else ""
                     LOG.info(f"✅ Registered tool: {tool_name} (ID: {tool_id}) (from {module_name}{pkg_info}) as '{display_name}'")
                 except Exception as e:
+                    msg = str(e)
+                    _last_errors.append({"module": module_name, "stage": "register", "error": msg})
                     LOG.error(f"❌ Failed to register tool from {module_name}: {e}")
             else:
                 missing = []
@@ -117,8 +128,10 @@ def discover_tools():
                 LOG.warning(f"⚠️ {'Package' if ispkg else 'Module'} {module_name} missing {', '.join(missing)} functions")
     except ImportError as e:
         LOG.error(f"❌ Failed to import tools package: {e}")
+        _last_errors.append({"module": "tools", "stage": "package", "error": str(e)})
     except Exception as e:
         LOG.error(f"❌ Unexpected error during tool discovery: {e}")
+        _last_errors.append({"module": "tools", "stage": "unexpected", "error": str(e)})
     new_count = len(registry)
     if new_count != old_count:
         LOG.info(f"🔄 Tool count changed: {old_count} → {new_count}")
