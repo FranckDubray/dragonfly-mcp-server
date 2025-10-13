@@ -16,8 +16,33 @@ def _is_blocked_doc(path: str) -> bool:
     return False
 
 
+def _clamp_head_lines(n: int) -> int:
+    try:
+        n = int(n)
+    except Exception:
+        return 80
+    if n < 10:
+        return 10
+    if n > 200:
+        return 200
+    return n
+
+
 def run(p: Dict[str, Any]) -> Dict[str, Any]:
     # FS-first: we do not return file contents, only a plan for the client FS tool
+    # Guard against misuses requesting "full" fields
+    if p.get("fields") == "full":
+        return {
+            "operation": "open",
+            "errors": [{
+                "code": "invalid_parameters",
+                "message": "open returns a plan only (fs_requests). No file contents are returned.",
+                "scope": "tool",
+                "recoverable": True
+            }],
+            "returned_count": 0, "total_count": 0, "truncated": False
+        }
+
     paths: List[str] = p.get("paths") or p.get("pins") or []
     if not isinstance(paths, list):
         return {
@@ -46,16 +71,29 @@ def run(p: Dict[str, Any]) -> Dict[str, Any]:
             "returned_count": 0, "total_count": len(paths), "truncated": False
         }
 
-    # Head ranges proposal (client can adjust): first 80 lines for up to 5 files
-    max_files = min(len(paths), max(1, min(p.get("limit", 20), 5)))
-    plan = [{"path": paths[i], "ranges": [{"start_line": 1, "end_line": 80}]} for i in range(max_files)]
+    # Batch planning: up to 'limit' files (hard-cap 50 to keep plan compact)
+    req_limit = p.get("limit", 20)
+    try:
+        req_limit = int(req_limit)
+    except Exception:
+        req_limit = 20
+    if req_limit < 1:
+        req_limit = 1
+    if req_limit > 50:
+        req_limit = 50
+
+    head_lines = _clamp_head_lines(p.get("head_lines", 80))
+
+    max_files = min(len(paths), req_limit)
+    plan = [{"path": paths[i], "ranges": [{"start_line": 1, "end_line": head_lines}]} for i in range(max_files)]
     return {
         "operation": "open",
         "data": [],
         "fs_requests": plan,
+        "notice": "This operation returns a plan (fs_requests) only. Use your FS tool to read file contents.",
         "returned_count": 0,
         "total_count": len(paths),
         "truncated": len(paths) > max_files,
         "next_cursor": None,
-        "stats": {"requested_files": len(paths), "planned_files": max_files}
+        "stats": {"requested_files": len(paths), "planned_files": max_files, "head_lines": head_lines}
     }
