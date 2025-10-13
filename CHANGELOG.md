@@ -6,25 +6,6 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [1.24.0] - 2025-10-13
-
-### Server & Control Panel
-- feat(tools): GET /tools now supports compact reload by default to avoid flooding LLMs
-  - reload=1 & list=0 (default): returns only {reloaded, tool_count, errors}
-  - reload=1 & list=1: returns full list (legacy)
-  - no reload: returns list with ETag/304 as before
-- docs(methodo): LLM is now explicitly allowed and required to call GET /tools?reload=1 after creating/modifying a tool before running tests.
-
-### astronomy
-- fix: enforce <7KB per file by splitting core/constants; no side-effects at import
-- feat: implement star_position MVP (bright stars catalog via Skyfield Star)
-- feat: celestial_events supports limit with total_count/truncated
-- chore: move large constants to JSON under _astronomy/data and lazy-load
-- perf: ephemeris cache in <repo>/docs/astronomy
-- logs: add INFO/WARNING/ERROR in API
-
----
-
 ## [Unreleased]
 
 - Upcoming audits and tools improvements.
@@ -41,6 +22,25 @@ All notable changes to this project will be documented in this file.
 ### pdf2text (audit)
 - spec: add `limit` parameter (default 50, max 500) + docs; enforce counts and truncation
 - code: ensure returned_count/total_count/truncated/pages_count; keep outputs minimal; robust page parsing; dependency check error message
+
+---
+
+## [1.24.0] - 2025-10-13
+
+### Server & Control Panel
+- feat(tools): GET /tools now supports compact reload by default to avoid flooding LLMs
+  - reload=1 & list=0 (default): returns only {reloaded, tool_count, errors}
+  - reload=1 & list=1: returns full list (legacy)
+  - no reload: returns list with ETag/304 as before
+- docs(methodo): LLM is now explicitly allowed and required to call GET /tools?reload=1 after creating/modifying a tool before running tests.
+
+### astronomy
+- fix: enforce <7KB per file by splitting core/constants; no side-effects at import
+- feat: implement star_position MVP (bright stars catalog via Skyfield Star)
+- feat: celestial_events supports limit with total_count/truncated
+- chore: move large constants to JSON under _astronomy/data and lazy-load
+- perf: ephemeris cache in <repo>/docs/astronomy
+- logs: add INFO/WARNING/ERROR in API
 
 ---
 
