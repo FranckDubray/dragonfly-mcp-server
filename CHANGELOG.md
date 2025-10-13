@@ -8,6 +8,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### open_meteo - [2025-10-13] ✅ 8.8→9.6/10 ⭐⭐⭐⭐
+
+**Fixed**: Import error breaking MCP (/execute) due to missing core_weather/core_geo (split from core.py). Execution restored for current_weather, geocoding, air_quality, forecast.
+**Added**: Hourly forecast truncation controls (returned_count, total_count, truncated + message); daily counts; AQI category helper; file split to keep <7KB.
+**Removed**: Dead code (legacy core.py after split).
+**Technical**: conformité + outputs minimaux, logging API, pas de side-effects à l'import, tailles OK.
+**Tests**: 6/6 via MCP (current_weather, geocoding, reverse_geocoding, air_quality, forecast_hourly 24/100, forecast_daily 3), négatifs OK (missing lat/lon).
+**SCORE FINAL: 9.6/10**
+
 ### device_location - [2025-10-13] ✅ 9.2→9.6/10 ⭐⭐⭐⭐
 
 **Fixed**: Minimal output only (removed verbose metadata fields)

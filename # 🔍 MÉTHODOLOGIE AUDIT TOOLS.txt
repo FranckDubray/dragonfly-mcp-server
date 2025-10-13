@@ -1,146 +1,185 @@
 
 # 🔍 MÉTHODOLOGIE AUDIT TOOLS
 
-## État: 21/40 audités ✅
+## État: 21/40 audités
 
-**Tools restants (19)**: astronomy, coingecko, excel_to_sqlite, ffmpeg_frames, flight_tracker, git, imap, math, news_aggregator, office_to_pdf, ollama_local, open_meteo, pdf2text, pdf_download, reddit_intelligence, script_executor, ssh_admin, universal_doc_scraper, youtube_search
+Tools restants (19): astronomy, coingecko, excel_to_sqlite, ffmpeg_frames, flight_tracker, git, imap, math, news_aggregator, office_to_pdf, ollama_local, open_meteo, pdf2text, pdf_download, reddit_intelligence, script_executor, ssh_admin, universal_doc_scraper, youtube_search
 
-**✅ DERNIER AUDIT: device_location** (21/40)
-- Score: 9.6/10 ⭐⭐⭐⭐
+Dernier audit: device_location (21/40)
+- Score: 9.6/10
 - Tests: 3/3 validation OK ; NR 3/5 OK (2 à faire en QA)
 - Status: COMPLET et validé (commit local), push après QA NR
 
 ---
 
-## WORKSPACE
-
-⚠️ Auto-sync: writeFile/deleteFile mettent à jour le workspace automatiquement (pas de reload)
-⚠️ Pas de double-load: vérifier qu'un fichier n'est pas déjà chargé
-💡 Limite: 500 KB total, unload systématiquement à la fin
+## WORKSPACE (règles fermes)
+- Toujours garder chargés: LLM_DEV_GUIDE.md et ce fichier de méthodo (références)
+- UN SEUL tool à la fois dans le workspace (pas de parallèle)
+- Auto-sync: writeFile et deleteFile mettent à jour automatiquement (pas de reload)
+- Limite: 500 KB total → unload systématique des fichiers du tool à la fin
+- Jamais /tools?reload=1 pendant l’audit
 
 ---
 
-## PROCESS (10 étapes)
+## PROCESS (10 étapes) + Mermaid
 
-### 1. SÉLECTION
-`random pick_random` sur la liste des tools restants
-
-### 2. CHARGEMENT
-```
-load_file: ["src/tools/{tool}.py", "src/tool_specs/{tool}.json", "src/tools/_{tool}/*.py"]
-```
-
-### 3. TESTS PRÉLIMINAIRES
-
-**⚠️ OBLIGATOIRE - UN PAR UN (jamais parallèle)**
-**⚠️ PAS DE `/tools?reload=1` (119KB, floods LLM)**
-
-A. Charger JSON spec localement (si pas déjà chargé)
-B. 🔴 TESTS RÉELS OBLIGATOIRES (minimum 3 tests baseline):
-   - Test 1: Opération la plus simple
-   - Test 2: Opération avec params
-   - Test 3: Vérification résultat (si applicable)
-C. 🚨 SI TESTS IMPOSSIBLES (pas de credentials/accès):
-   - ABORT AUDIT immédiatement
-   - Ne PAS continuer l'audit sans tests
-   - Documenter la raison dans procédure
-   - Passer au tool suivant
-D. Observations: outputs, erreurs, validation, truncation, counts, timeouts
-
-### 4. AUDIT
-
-**JSON Spec**:
-- [x] category, displayName, additionalProperties:false
-- [x] Arrays avec items, enums complets
-- [x] required corrects, defaults explicites
-- [x] Descriptions claires (1 ligne max)
-
-**Code**:
-- [x] Output size: limits + truncation warnings (N/A listes)
-- [x] Validation stricte (ajoutée)
-- [x] Try-catch global (ajouté en API)
-- [x] Timeouts cohérents
-- [x] Logging (INFO/WARNING/ERROR)
-- [x] Pas side-effects import
-- [x] Fichiers < 7KB
-
-**Notation** (/10):
-JSON Spec | Architecture | Sécurité | Robustesse | Conformité | Performance | Maintenabilité | Documentation
-
-### 5. CORRECTIFS
-
-Format commit:
-```
-fix({tool}): critical audit fixes (X.X→Y.Y/10)
-
-🔴 CRITICAL: [bugs tests]
-🟠 MAJOR: [outputs, validation]
-🟢 IMPROVEMENTS: [truncation, logging]
-
-TECHNICAL: conformité XX%→YY%
-TESTS: X/X non-régression OK
-SCORE: X.X→Y.Y/10
+```mermaid
+flowchart TD
+  A[Start] --> B[Select_tool]
+  B --> C[Load_tool_files]
+  C --> D[Pre_tests_3]
+  D --> E[Abort_document]
+  D --> F[Audit_spec_code]
+  F --> G{Nonconformities}
+  G --> H[Fixes]
+  G --> I[Validation_tests]
+  H --> I
+  I --> J{Validation_OK}
+  J --> H
+  J --> K[NR_tests_5]
+  K --> L{NR_100_OK}
+  L --> H
+  L --> M[Changelog_update]
+  M --> N{Gate_commit_push}
+  N --> O[Commit_push]
+  N --> P[Commit_local_only]
+  O --> Q[Unload_update_procedure]
+  P --> Q
+  E --> Q
 ```
 
-### 6. TESTS VALIDATION
+---
 
-🔴 OBLIGATOIRE APRÈS CORRECTIFS
+## Étapes détaillées et garde-fous
 
-Re-tester TOUS les tests préliminaires + nouveaux cas si nécessaire
+### 1) SÉLECTION
+- Tirage aléatoire parmi Tools restants
+- Un seul tool jusqu’à fin de procédure
 
-### 7. TESTS NON-RÉGRESSION
+### 2) CHARGEMENT
+- Fichiers à charger:
+  - src/tools/{tool}.py
+  - src/tool_specs/{tool}.json
+  - src/tools/_{tool}/*.py
+- Ne rien charger d’un autre tool
 
-⚠️ OBLIGATOIRE - UN PAR UN
+### 3) TESTS PRÉLIMINAIRES (réels, un par un)
+- A. Charger la spec JSON localement (si pas déjà chargée)
+- B. Minimum 3 tests baseline:
+  - Test 1: opération la plus simple
+  - Test 2: opération avec paramètres
+  - Test 3: vérification du résultat (structure et contenu)
+- C. Si tests impossibles (pas d’accès ou credentials): ABORT immédiat, documenter, passer au tool suivant
+- D. Noter: outputs, erreurs, validation, truncation, counts, timeouts
 
-A. Identifier toutes fonctionnalités
-B. Tester exhaustivement (minimum 5 tests)
-C. Tableau synthèse OBLIGATOIRE
-D. Si régression: STOP → corriger → reprendre étape 6
-E. Validation finale: tous tests ✅
+### 4) AUDIT (spec et code)
+- JSON Spec:
+  - category valide (une des 10 clés), displayName
+  - parameters.type=object, arrays avec items, enums complets
+  - required corrects, defaults explicites, additionalProperties:false
+  - descriptions claires (1 ligne max)
+- Code:
+  - Output minimal (pas de metadata verbeuse type success ou method)
+  - Lists: limit par défaut et truncation warnings et counts
+  - Validation stricte des params (validators)
+  - Try catch global (api), logging INFO WARNING ERROR
+  - Timeouts cohérents; pas de side effects à l’import
+  - Fichiers < 7KB (sinon découpage), code mort supprimé
 
-**🚨 ABORT SI:**
-- Régression détectée après correctif
-- Impossible de tester (pas de credentials)
-- Tests échouent de manière irrémédiable
+### 5) CORRECTIFS
+- Prioriser: CRITICAL puis MAJOR puis IMPROVEMENTS
+- Découper fichiers > 7KB
+- Ajouter renforcement validation, logging, warnings de truncation
 
-### 8. CHANGELOG
+### 6) TESTS DE VALIDATION (obligatoires)
+- Rejouer tous les tests préliminaires et nouveaux cas
+- Tout doit passer avant NR
 
-Ajouter dans `[Unreleased]`:
-```markdown
-### {tool} - [DATE] ✅ X.X→Y.Y/10 ⭐
+### 7) TESTS NON RÉGRESSION (obligatoires)
+- Identifier toutes les fonctionnalités du tool
+- Tester exhaustivement (minimum 5 cas, inclure négatifs et fallback)
+- Tableau synthèse obligatoire
+- Si régression: STOP puis corriger puis reprendre étape 6
 
-**Fixed**: [bugs]
-**Added**: [features]
-**Technical**: conformité XX%→YY%
-**Tests**: X/X OK
+### 8) CHANGELOG (Unreleased)
+- Ajouter entrée concise, la plus récente en premier
+- Template:
+  - {tool} - [DATE] X.X->Y.Y/10
+  - Fixed / Added / Technical / Tests / SCORE FINAL / Known Issues
+
+### 9) COMMIT ET PUSH (gate)
+- Autorisé seulement si:
+  - Tests validation OK
+  - NR 100 OK (incluant cas négatifs et fallback)
+  - Aucune régression détectée
+- Sinon: commit local uniquement, push après QA complétée
+
+### 10) UNLOAD ET MISE A JOUR PROCÉDURE
+- Unload: tous les fichiers du tool uniquement (garder LLM_DEV_GUIDE et méthodo chargés)
+- Mise à jour de ce fichier: incrémenter compteur, retirer tool de restants
+- Commit doc: docs(audit): update methodology - {tool} audited (X/40)
+
+---
+
+## Checklists par étape
+
+### Pré commit (obligatoire)
+- [ ] Spec conforme (catégorie, enums, required, defaults, additionalProperties:false)
+- [ ] Validation stricte params (validators)
+- [ ] Try catch global en API et logging
+- [ ] Output minimal (aucune metadata superflue)
+- [ ] Limits et truncation warnings si listes
+- [ ] Fichiers < 7KB, code mort supprimé
+- [ ] Tests validation 100 OK
+- [ ] NR au moins 5 cas, 100 OK (incl. négatifs et fallback)
+- [ ] Changelog Unreleased mis à jour, entrée en tête
+
+### Post commit
+- [ ] Push si NR 100 OK; sinon attendre QA
+- [ ] Pas d’autres tools chargés
+- [ ] Procédure mise à jour (compteur, liste)
+
+---
+
+## Gabarits utiles
+
+### Tableau NR (exemple)
+| ID | Fonctionnalité | Cas | Attendu | Résultat | Statut |
+|----|-----------------|-----|---------|----------|--------|
+| NR1 | Opération A | défaut | 200 et champs clés | OK | OK |
+| NR2 | Opération B | param X | 200 et champs | OK | OK |
+| NR3 | Fallback | provider down | bascule | A QA | EN ATTENTE |
+| NR4 | Entrée invalide | provider=bad | ValueError | A QA | EN ATTENTE |
+| NR5 | None cleanup | champs absents | absents sortie | OK | OK |
+
+### Entrée CHANGELOG (copier coller)
+```
+### {tool} - [YYYY-MM-DD] X.X->Y.Y/10
+
+**Fixed**: ...
+**Added**: ...
+**Technical**: conformité XX->YY
+**Tests**: validation OK; NR N/N OK
 **SCORE FINAL: Y.Y/10**
-**Known Issues**: [si applicable]
+**Known Issues**: ...
 ```
 
-### 9. COMMIT + PUSH
+---
 
-🚨 COMMIT SEULEMENT SI:
-- ✅ Tous tests validation OK
-- ✅ Tests non-régression OK
-- ✅ Pas de régression détectée
+## Améliorations apportées à la méthodo
+- Diagramme Mermaid corrigé sans caractères spéciaux dans les labels
+- Règle explicite: garder LLM_DEV_GUIDE.md et la méthodo chargés en permanence
+- Gate commit et push clarifié: pas de push avant NR 100 OK (sinon commit local uniquement)
+- Ordre CHANGELOG standardisé: dernière entrée en premier dans Unreleased
+- Checklists Pré commit et Post commit plus opérationnelles
+- Gabarits NR et Changelog prêts à l’emploi
 
-```
-git commit_all -m "fix({tool}): critical audit fixes (X.X→Y.Y/10) ..."
-git push main
-```
+---
 
-🚨 EN CAS D'ERREUR APRÈS COMMIT:
-- Rollback si possible
-- Sinon: commit correctif immédiat
-- MAJ changelog avec correction
-
-### 10. UNLOAD + MAJ PROCÉDURE
-
-```
-unload_file: ["src/tools/{tool}.py", ...]
-```
-
-**MAJ procédure**:
-- Incrémenter compteur (20→21/40)
-- Retirer de liste tools restants
-- Commit: `docs(audit): update methodology - {tool} audited (X/40)`
+## Rappels critiques
+1) Un seul tool à la fois; pas de /tools?reload=1
+2) Tests réels obligatoires avant audit; ABORT si impossibles
+3) Validation stricte, logging, outputs minimaux, limits et truncation
+4) Pas de push tant que NR < 100 (inclure négatifs et fallback)
+5) Changelog: entrée la plus récente en premier dans Unreleased
+6) Unload seulement les fichiers du tool, pas les documents de référence
