@@ -6,6 +6,14 @@ from ...services.anchors import make_anchor
 HTTP_METHODS = {"get","post","put","delete","patch","options","head"}
 
 
+def _get_str(node: ast.AST):
+    if isinstance(node, ast.Str):
+        return node.s
+    if hasattr(ast, "Constant") and isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    return None
+
+
 def extract_endpoints(py_code: str, relpath: str) -> List[Dict]:
     items: List[Dict] = []
     try:
@@ -22,8 +30,10 @@ def extract_endpoints(py_code: str, relpath: str) -> List[Dict]:
                         func = dec.func
                         if isinstance(func, ast.Attribute) and func.attr in HTTP_METHODS:
                             method = func.attr.upper()
-                            if dec.args and isinstance(dec.args[0], ast.Str):
-                                path = dec.args[0].s
+                            if dec.args:
+                                p = _get_str(dec.args[0])
+                                if p is not None:
+                                    path = p
                     if method and path:
                         items.append({
                             "kind": "http",

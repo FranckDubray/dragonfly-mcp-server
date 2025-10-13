@@ -11,6 +11,7 @@ from . import outline as op_outline
 from . import open_files as op_open
 from . import endpoints as op_endpoints
 from . import tests as op_tests
+from . import metrics as op_metrics
 from ..release_index import qna as op_qna
 
 
@@ -33,6 +34,8 @@ def route_operation(p: Dict[str, Any]) -> Dict[str, Any]:
         res = op_endpoints.run(p)
     elif op == "tests":
         res = op_tests.run(p)
+    elif op == "metrics":
+        res = op_metrics.run(p)
     elif op in ("symbol_info", "find_callers", "find_callees", "find_references", "call_patterns"):
         res = op_qna.run(p)
     else:

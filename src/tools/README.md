@@ -24,7 +24,7 @@ Total tools: 42
 
 ## 🔧 Development (4)
 
-- Dev Navigator — Couteau suisse LLM pour explorer un dépôt: overview, tree, search, outline, open, endpoints, tests, et Q&A index (callers/callees/refs).… · Tags: knowledge
+- Dev Navigator — Couteau suisse LLM pour explorer un dépôt: overview, tree, search, outline, open, endpoints, tests, metrics et Q&A index (callers/callees… · Tags: knowledge
   - Opérations: compose, overview, tree, search, outline, open …
   - Tokens: aucun
 

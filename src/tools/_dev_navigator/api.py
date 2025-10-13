@@ -14,6 +14,19 @@ def execute(**params: Dict[str, Any]) -> Dict[str, Any]:
         clean = validate_envelope(params)
         result = route_operation(clean)
         return result
+    except ValueError as e:
+        return {
+            "operation": params.get("operation", "unknown"),
+            "errors": [{
+                "code": "invalid_parameters",
+                "message": str(e),
+                "scope": "tool",
+                "recoverable": True
+            }],
+            "returned_count": 0,
+            "total_count": 0,
+            "truncated": False
+        }
     except Exception as e:  # Final safeguard; core and validators should raise controlled errors
         # Minimal error envelope to respect outputs compactness
         return {
