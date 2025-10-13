@@ -16,11 +16,9 @@ def get_device_location(provider='ipapi'):
     """
     location = get_ip_location(provider)
     
-    # Format response
+    # Format response (minimal, no verbose metadata)
     result = {
-        'success': True,
         'provider': location['provider'],
-        'method': 'ip_geolocation',
         'coordinates': {
             'latitude': location['latitude'],
             'longitude': location['longitude'],
