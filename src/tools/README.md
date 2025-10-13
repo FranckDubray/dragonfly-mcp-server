@@ -2,7 +2,7 @@
 
 Ce fichier est généré automatiquement par `scripts/generate_tools_catalog.py`. Ne pas éditer à la main.
 
-Total tools: 41
+Total tools: 42
 
 ## 📊 Intelligence & Orchestration (4)
 
@@ -22,7 +22,11 @@ Total tools: 41
   - Opérations: search_papers, get_paper_details, search_authors, get_citations
   - Tokens: aucun
 
-## 🔧 Development (3)
+## 🔧 Development (4)
+
+- Dev Navigator — Couteau suisse LLM pour explorer un dépôt: overview, tree, search, outline, open, endpoints, tests, et Q&A index (callers/callees/refs).… · Tags: knowledge
+  - Opérations: compose, overview, tree, search, outline, open …
+  - Tokens: aucun
 
 - Git — Git et GitHub unifiés. Opérations locales (commit, push, pull, rebase) et GitHub API (repos, branches, releases).
   - Opérations: ensure_repo, config_user, set_remote, sync_repo, status, fetch …

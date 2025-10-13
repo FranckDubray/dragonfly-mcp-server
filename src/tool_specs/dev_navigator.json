@@ -1,0 +1,59 @@
+{
+  "type": "function",
+  "function": {
+    "name": "dev_navigator",
+    "displayName": "Dev Navigator",
+    "category": "development",
+    "tags": ["knowledge"],
+    "description": "Couteau suisse LLM pour explorer un dépôt: overview, tree, search, outline, open, endpoints, tests, et Q&A index (callers/callees/refs). Anti-flood strict (cap 20KB), offline par défaut.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": [
+            "compose",
+            "overview",
+            "tree",
+            "search",
+            "outline",
+            "open",
+            "endpoints",
+            "tests",
+            "symbol_info",
+            "find_callers",
+            "find_callees",
+            "find_references",
+            "call_patterns"
+          ]
+        },
+        "path": {"type": "string", "description": "Chemin racine du repo"},
+        "scope_path": {"type": "string", "description": "Sous-arbre à analyser (optionnel)"},
+        "pins": {"type": "array", "items": {"type": "string"}},
+        "limit": {"type": "integer", "minimum": 1, "maximum": 200, "default": 20},
+        "cursor": {"type": "string"},
+        "fields": {"type": "string", "enum": ["anchors_only", "anchors+snippets", "full"], "default": "anchors_only"},
+        "mode": {"type": "string", "enum": ["fast", "balanced", "thorough"], "default": "fast"},
+        "verbose": {"type": "boolean", "default": false},
+        "doc_policy": {"type": "string", "enum": ["outline_only", "allow_docs"], "default": "outline_only"},
+        "explicit_allowlist": {"type": "array", "items": {"type": "string"}},
+        "use_release_index": {"type": "boolean", "default": true},
+        "release_tag": {"type": "string"},
+        "commit_hash": {"type": "string"},
+        "consistency_mode": {"type": "string", "enum": ["best_effort", "require_same_release"], "default": "best_effort"},
+        
+        "query": {"type": "string", "description": "Expression de recherche (regex) pour operation=search"},
+        "case_sensitive": {"type": "boolean", "default": false},
+        "max_hits_per_file": {"type": "integer", "minimum": 1, "maximum": 50, "default": 2},
+        "glob_include": {"type": "array", "items": {"type": "string"}},
+        "glob_exclude": {"type": "array", "items": {"type": "string"}},
+        "depth_for_tree": {"type": "integer", "minimum": 1, "maximum": 10, "default": 3},
+        "paths": {"type": "array", "items": {"type": "string"}, "description": "Liste de fichiers ciblés (outline/open)"},
+        "max_files_scanned": {"type": "integer", "minimum": 100, "maximum": 200000, "default": 10000},
+        "max_bytes_per_file": {"type": "integer", "minimum": 1024, "maximum": 262144, "default": 65536}
+      },
+      "required": ["operation", "path"],
+      "additionalProperties": false
+    }
+  }
+}
