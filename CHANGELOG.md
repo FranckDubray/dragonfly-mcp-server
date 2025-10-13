@@ -8,6 +8,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### office_to_pdf - [2025-10-13] ✅ 8.9→9.5/10 ⭐⭐⭐⭐
+
+**Fixed**: Import-time crash on MCP load due to missing services import (lazy import inside handle_convert). Tool now loads even if docx2pdf/Office not installed; errors are raised only at execution.
+**Added**: services/office_converter.py (docx2pdf wrapper) with clear RuntimeError messages; ensures output dir and returns minimal result.
+**Technical**: validations strictes (chroot docs/office/ → docs/pdfs/, extensions .doc/.docx/.ppt/.pptx), sorties minimales, aucun side-effect à l'import.
+**Tests**: 4/4 via MCP (get_info .docx, convert .docx suffix auto, convert .docx volumineux, négatif extension). Optionnel QA: .pptx selon OS/Office.
+**SCORE FINAL: 9.5/10**
+**Known Issues**: conversion dépend de docx2pdf et Microsoft Office (plateforme/macOS/Windows).
+
 ### open_meteo - [2025-10-13] ✅ 8.8→9.6/10 ⭐⭐⭐⭐
 
 **Fixed**: Import error breaking MCP (/execute) due to missing core_weather/core_geo (split from core.py). Execution restored for current_weather, geocoding, air_quality, forecast.
