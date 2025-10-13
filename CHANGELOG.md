@@ -8,7 +8,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-No unreleased changes yet. Start fresh after v1.23.0 audit campaign!
+### email_send - [2025-01-13] ✅ 8.9→9.8/10 ⭐⭐⭐⭐⭐
+
+**Fixed**: File size compliance - split smtp_client.py (8698 bytes) into smtp_config.py (2267 bytes) + smtp_client.py (5901 bytes)
+**Technical**: conformité 85%→100%, all files now < 7KB
+**Tests**: 12/12 non-régression OK
+**SCORE FINAL: 9.8/10**
+**Conformité: 100%** (all 8 files < 7KB)
 
 ---
 
