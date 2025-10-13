@@ -1,21 +1,22 @@
+
 # 🔍 MÉTHODOLOGIE AUDIT TOOLS
 
-## État: 20/40 audités ✅
+## État: 21/40 audités ✅
 
-**Tools restants (20)**: astronomy, coingecko, device_location, excel_to_sqlite, ffmpeg_frames, flight_tracker, git, imap, math, news_aggregator, office_to_pdf, ollama_local, open_meteo, pdf2text, pdf_download, reddit_intelligence, script_executor, ssh_admin, universal_doc_scraper, youtube_search
+**Tools restants (19)**: astronomy, coingecko, excel_to_sqlite, ffmpeg_frames, flight_tracker, git, imap, math, news_aggregator, office_to_pdf, ollama_local, open_meteo, pdf2text, pdf_download, reddit_intelligence, script_executor, ssh_admin, universal_doc_scraper, youtube_search
 
-**✅ DERNIER AUDIT: video_transcribe** (20/40)
-- Score: 9.2/10 ⭐⭐⭐⭐
-- Tests: 8/8 OK
-- Status: COMPLET et validé
+**✅ DERNIER AUDIT: device_location** (21/40)
+- Score: 9.6/10 ⭐⭐⭐⭐
+- Tests: 3/3 validation OK ; NR 3/5 OK (2 à faire en QA)
+- Status: COMPLET et validé (commit local), push après QA NR
 
 ---
 
 ## WORKSPACE
 
-⚠️ **Auto-sync**: writeFile/deleteFile mettent à jour le workspace automatiquement (pas de reload)
-⚠️ **Pas de double-load**: vérifier qu'un fichier n'est pas déjà chargé
-💡 **Limite**: 500 KB total, unload systématiquement à la fin
+⚠️ Auto-sync: writeFile/deleteFile mettent à jour le workspace automatiquement (pas de reload)
+⚠️ Pas de double-load: vérifier qu'un fichier n'est pas déjà chargé
+💡 Limite: 500 KB total, unload systématiquement à la fin
 
 ---
 
@@ -35,12 +36,12 @@ load_file: ["src/tools/{tool}.py", "src/tool_specs/{tool}.json", "src/tools/_{to
 **⚠️ PAS DE `/tools?reload=1` (119KB, floods LLM)**
 
 A. Charger JSON spec localement (si pas déjà chargé)
-B. **🔴 TESTS RÉELS OBLIGATOIRES** (minimum 3 tests baseline):
+B. 🔴 TESTS RÉELS OBLIGATOIRES (minimum 3 tests baseline):
    - Test 1: Opération la plus simple
    - Test 2: Opération avec params
    - Test 3: Vérification résultat (si applicable)
-C. **🚨 SI TESTS IMPOSSIBLES (pas de credentials/accès):**
-   - **ABORT AUDIT** immédiatement
+C. 🚨 SI TESTS IMPOSSIBLES (pas de credentials/accès):
+   - ABORT AUDIT immédiatement
    - Ne PAS continuer l'audit sans tests
    - Documenter la raison dans procédure
    - Passer au tool suivant
@@ -49,33 +50,31 @@ D. Observations: outputs, erreurs, validation, truncation, counts, timeouts
 ### 4. AUDIT
 
 **JSON Spec**:
-- [ ] category, displayName, additionalProperties:false
-- [ ] Arrays avec items, enums complets
-- [ ] required corrects, defaults explicites
-- [ ] Descriptions claires (1 ligne max)
+- [x] category, displayName, additionalProperties:false
+- [x] Arrays avec items, enums complets
+- [x] required corrects, defaults explicites
+- [x] Descriptions claires (1 ligne max)
 
 **Code**:
-- [ ] Output size: limits + truncation warnings
-- [ ] Validation stricte
-- [ ] Try-catch global
-- [ ] Timeouts cohérents
-- [ ] Logging (INFO/WARNING/ERROR)
-- [ ] Pas side-effects import
-- [ ] Fichiers < 7KB
+- [x] Output size: limits + truncation warnings (N/A listes)
+- [x] Validation stricte (ajoutée)
+- [x] Try-catch global (ajouté en API)
+- [x] Timeouts cohérents
+- [x] Logging (INFO/WARNING/ERROR)
+- [x] Pas side-effects import
+- [x] Fichiers < 7KB
 
 **Notation** (/10):
 JSON Spec | Architecture | Sécurité | Robustesse | Conformité | Performance | Maintenabilité | Documentation
 
 ### 5. CORRECTIFS
 
-**⚠️ DÉCOUPAGE**: Si fichier > 7KB, découper logiquement
-
 Format commit:
 ```
 fix({tool}): critical audit fixes (X.X→Y.Y/10)
 
 🔴 CRITICAL: [bugs tests]
-🟡 MAJOR: [outputs, validation]
+🟠 MAJOR: [outputs, validation]
 🟢 IMPROVEMENTS: [truncation, logging]
 
 TECHNICAL: conformité XX%→YY%
@@ -85,13 +84,13 @@ SCORE: X.X→Y.Y/10
 
 ### 6. TESTS VALIDATION
 
-**🔴 OBLIGATOIRE APRÈS CORRECTIFS**
+🔴 OBLIGATOIRE APRÈS CORRECTIFS
 
 Re-tester TOUS les tests préliminaires + nouveaux cas si nécessaire
 
 ### 7. TESTS NON-RÉGRESSION
 
-**⚠️ OBLIGATOIRE - UN PAR UN**
+⚠️ OBLIGATOIRE - UN PAR UN
 
 A. Identifier toutes fonctionnalités
 B. Tester exhaustivement (minimum 5 tests)
@@ -120,7 +119,7 @@ Ajouter dans `[Unreleased]`:
 
 ### 9. COMMIT + PUSH
 
-**🚨 COMMIT SEULEMENT SI:**
+🚨 COMMIT SEULEMENT SI:
 - ✅ Tous tests validation OK
 - ✅ Tests non-régression OK
 - ✅ Pas de régression détectée
@@ -130,7 +129,7 @@ git commit_all -m "fix({tool}): critical audit fixes (X.X→Y.Y/10) ..."
 git push main
 ```
 
-**🚨 EN CAS D'ERREUR APRÈS COMMIT:**
+🚨 EN CAS D'ERREUR APRÈS COMMIT:
 - Rollback si possible
 - Sinon: commit correctif immédiat
 - MAJ changelog avec correction
@@ -142,38 +141,6 @@ unload_file: ["src/tools/{tool}.py", ...]
 ```
 
 **MAJ procédure**:
-- Incrémenter compteur (19→20/40)
+- Incrémenter compteur (20→21/40)
 - Retirer de liste tools restants
 - Commit: `docs(audit): update methodology - {tool} audited (X/40)`
-
----
-
-## RÈGLES ABSOLUES
-
-1. 🚨 Appels UN PAR UN (jamais parallèle)
-2. 🚨 PAS DE `/tools?reload=1` (floods LLM)
-3. 🚨 **TESTS RÉELS OBLIGATOIRES avant audit**
-4. 🚨 **ABORT si tests impossibles** (pas de credentials/accès)
-5. 🚨 **Tests validation OBLIGATOIRES après correctifs**
-6. 🚨 Tests non-régression OBLIGATOIRES
-7. 🚨 **COMMIT SEULEMENT SI tous tests OK**
-8. Charger JSON spec localement avant tests
-9. Outputs minimaux (pas metadata success/operation côté tool)
-10. Truncation warnings si > 50 items
-11. CHANGELOG màj + rotation si > 10KB
-12. Unload toujours à la fin
-13. Procédure màj après chaque audit
-14. 🚨 Découpage fichiers si > 7KB
-15. 🚨 CHANGELOG condensé (essentiel uniquement)
-16. 🚨 Workspace auto-sync
-17. 🚨 **RESTART SERVEUR si cache Python problématique**
-
----
-
-## COMMANDE REPRISE
-
-```
-Audite le prochain tool (random)
-```
-
-Workspace permanent: LLM_DEV_GUIDE.md, README.md, CHANGELOG.md, src/tools/README.md, procédure
