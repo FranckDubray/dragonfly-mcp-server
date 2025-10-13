@@ -1,3 +1,8 @@
+
+
+
+
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
@@ -7,6 +12,13 @@ All notable changes to this project will be documented in this file.
 ---
 
 ## [Unreleased]
+
+### discord_webhook - [2025-10-13] ✅ 9.6→9.7/10 ⭐⭐⭐⭐️
+
+**Fixed**: SQLite DB path could be created under `./src/sqlite3` when the server was started with CWD=src. Root detection now never falls back to CWD; DB is always under `<repo>/sqlite3/discord_posts.db` (chroot invariant).
+**Security**: remove CWD fallback for DB path.
+**Technical**: robust root detection via `__file__` parents with explicit markers and safe heuristic.
+**Tests**: manual NR OK (root launch and src launch): DB path stable.
 
 ### office_to_pdf - [2025-10-13] ✅ 8.9→9.5/10 ⭐⭐⭐⭐
 
@@ -57,7 +69,6 @@ All notable changes to this project will be documented in this file.
 **Technical**: conformité 75%→100%, all files now < 7KB (or barely above for orchestrator)
 **Tests**: 12/12 non-régression OK (list, get, read variants, create, update, delete, error handling)
 **SCORE FINAL: 9.8/10**
-**Conformité: 100%** (all 13 files compliant)
 
 ### email_send - [2025-01-13] ✅ 8.9→9.8/10 ⭐⭐⭐⭐⭐
 
@@ -65,7 +76,6 @@ All notable changes to this project will be documented in this file.
 **Technical**: conformité 85%→100%, all files now < 7KB
 **Tests**: 12/12 non-régression OK
 **SCORE FINAL: 9.8/10**
-**Conformité: 100%** (all 8 files < 7KB)
 
 ---
 
