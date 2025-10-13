@@ -166,3 +166,42 @@ def query_call_patterns(conn: sqlite3.Connection, callee_key: str, limit: int) -
         return [{"args_shape": row[0], "freq": int(row[1])} for row in cur.fetchall()]
     finally:
         cur.close()
+
+
+def query_endpoints_all(conn: sqlite3.Connection, limit: int) -> List[Dict[str, Any]]:
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            SELECT e.kind, e.method, e.path_or_name, f.relpath, e.source_line, e.framework_hint
+            FROM endpoints e JOIN files f ON e.source_file_id=f.id
+            ORDER BY e.path_or_name, e.method
+            LIMIT ?
+            """,
+            (limit * 2,),
+        )
+        rows = cur.fetchall()
+        return [
+            {"kind": r[0], "method": r[1], "path_or_name": r[2], "source_path": r[3], "source_line": r[4], "framework_hint": r[5]}
+            for r in rows
+        ]
+    finally:
+        cur.close()
+
+
+def query_tests_files(conn: sqlite3.Connection, limit: int) -> List[str]:
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT relpath FROM files WHERE is_test=1 ORDER BY relpath LIMIT ?", (limit * 10,))
+        return [r[0] for r in cur.fetchall()]
+    finally:
+        cur.close()
+
+
+def query_dir_stats_all(conn: sqlite3.Connection) -> List[Dict[str, Any]]:
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT dir_path, files, bytes FROM dir_stats ORDER BY dir_path")
+        return [{"path": r[0], "files": int(r[1]), "bytes": int(r[2])} for r in cur.fetchall()]
+    finally:
+        cur.close()
