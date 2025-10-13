@@ -8,6 +8,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### device_location - [2025-10-13] ✅ 9.2→9.6/10 ⭐⭐⭐⭐
+
+**Fixed**: Minimal output only (removed verbose metadata fields)
+**Added**: Strict parameter validation (operation/provider) and API-level error handling + logging
+**Technical**: conformité 90%→98%
+**Tests**: 3/3 validation OK; NR 3/5 OK (2 tests à exécuter en QA: fallback forcé, entrée invalide)
+**SCORE FINAL: 9.6/10**
+**Known Issues**: tests fallback nécessitent simulation d’échec réseau (QA)
+
 ### video_transcribe - [2025-01-13] ✅ 7.5→9.2/10 ⭐⭐⭐⭐
 
 **Fixed**: NoneType crash when Whisper API returns empty/null transcription
@@ -39,15 +48,6 @@ All notable changes to this project will be documented in this file.
 **Tests**: 12/12 non-régression OK
 **SCORE FINAL: 9.8/10**
 **Conformité: 100%** (all 8 files < 7KB)
-
-### device_location - [2025-10-13] ✅ 9.2→9.6/10 ⭐⭐⭐⭐
-
-**Fixed**: Minimal output only (removed verbose metadata fields)
-**Added**: Strict parameter validation (operation/provider) and API-level error handling + logging
-**Technical**: conformité 90%→98%
-**Tests**: 3/3 validation OK; NR 3/5 OK (2 tests à exécuter en QA: fallback forcé, entrée invalide)
-**SCORE FINAL: 9.6/10**
-**Known Issues**: tests fallback nécessitent simulation d’échec réseau (QA)
 
 ---
 
