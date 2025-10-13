@@ -6,6 +6,7 @@ Handles ephemeris loading and caching
 from skyfield.api import Loader, wgs84
 from skyfield.almanac import moon_phase, sunrise_sunset, dark_twilight_day
 import os
+import math
 
 # Global cache for ephemeris and timescale
 _ephemeris = None
@@ -120,19 +121,21 @@ def calculate_moon_phase(time):
     """
     eph = get_ephemeris()
     
-    # Calculate phase angle
+    # Phase/elongation angle (degrees)
     phase_angle = moon_phase(eph, time)
+
+    # Correct illumination percentage using cosine of phase angle
+    # Illumination fraction = (1 + cos(phase_angle)) / 2
+    illum_fraction = (1 + math.cos(math.radians(float(phase_angle.degrees)))) / 2.0
+    illumination = max(0.0, min(1.0, illum_fraction)) * 100.0
     
-    # Calculate illumination percentage
-    illumination = 100 * (1 + phase_angle.degrees / 180) / 2
-    
-    # Determine phase name
+    # Determine phase name (8 buckets over 360°)
     phase_idx = int((phase_angle.degrees + 22.5) / 45) % 8
     from ..constants import MOON_PHASES
     phase_name = MOON_PHASES[phase_idx]
     
     return {
-        'phase_angle_degrees': round(phase_angle.degrees, 2),
+        'phase_angle_degrees': round(float(phase_angle.degrees), 2),
         'illumination_percent': round(illumination, 1),
         'phase_name': phase_name
     }
