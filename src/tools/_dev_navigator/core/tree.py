@@ -1,5 +1,7 @@
 from typing import Any, Dict
 
+# Placeholder BFS-paged tree; a compact implementation will follow
+
 def run(p: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "operation": "tree",
