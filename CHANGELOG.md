@@ -12,6 +12,23 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.26.2] - 2025-10-13
+
+### Tool Audit (models 1..4 + fuser par défaut)
+- feat(spec): `models` accepte désormais 1 à 4 modèles (minItems=1, maxItems=4), ordre préservé. Le `fuser_model` par défaut est le premier modèle de la liste.
+- feat(validators): validation stricte 1..4, dédoublonnage en conservant l’ordre, et `fuser_model=models[0]` si omis.
+- docs: clarifications d’usage (1 modèle possible; comportement identique côté scheduler en mode `auto`).
+
+---
+
+## [1.26.1] - 2025-10-13
+
+### Documentation
+- docs(readme): README racine synchronisé avec le catalogue auto‑généré (liste complète des outils, par catégories canoniques). Ajout de Tool Audit dans "Development".
+- docs(changelog): mise en avant de Tool Audit comme composant quasi‑worker (multi‑LLM, parallèle borné, fusion LLM, anti‑flood, pagination).
+
+---
+
 ## [1.26.0] - 2025-10-13
 
 ### Tool Audit (worker-like, multi-LLM)
