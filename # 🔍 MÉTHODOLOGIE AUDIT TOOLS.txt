@@ -26,12 +26,20 @@ load_file: ["src/tools/{tool}.py", "src/tool_specs/{tool}.json", "src/tools/_{to
 
 ### 3. TESTS PRÉLIMINAIRES
 
-**⚠️ UN PAR UN (jamais parallèle)**
+**⚠️ OBLIGATOIRE - UN PAR UN (jamais parallèle)**
 **⚠️ PAS DE `/tools?reload=1` (119KB, floods LLM)**
 
 A. Charger JSON spec localement (si pas déjà chargé)
-B. 5 tests baseline: simple, params, validation, edge case, complexe
-C. Observations: outputs, erreurs, validation, truncation, counts, timeouts
+B. **🔴 TESTS RÉELS OBLIGATOIRES** (minimum 3 tests baseline):
+   - Test 1: Opération la plus simple
+   - Test 2: Opération avec params
+   - Test 3: Vérification résultat (si applicable)
+C. **🚨 SI TESTS IMPOSSIBLES (pas de credentials/accès):**
+   - **ABORT AUDIT** immédiatement
+   - Ne PAS continuer l'audit sans tests
+   - Documenter la raison dans procédure
+   - Passer au tool suivant
+D. Observations: outputs, erreurs, validation, truncation, counts, timeouts
 
 ### 4. AUDIT
 
@@ -72,17 +80,24 @@ SCORE: X.X→Y.Y/10
 
 ### 6. TESTS VALIDATION
 
-Re-tester uniquement ce qui posait problème
+**🔴 OBLIGATOIRE APRÈS CORRECTIFS**
+
+Re-tester TOUS les tests préliminaires + nouveaux cas si nécessaire
 
 ### 7. TESTS NON-RÉGRESSION
 
 **⚠️ OBLIGATOIRE - UN PAR UN**
 
 A. Identifier toutes fonctionnalités
-B. Tester exhaustivement
+B. Tester exhaustivement (minimum 5 tests)
 C. Tableau synthèse OBLIGATOIRE
-D. Si régression: STOP → corriger → reprendre
+D. Si régression: STOP → corriger → reprendre étape 6
 E. Validation finale: tous tests ✅
+
+**🚨 ABORT SI:**
+- Régression détectée après correctif
+- Impossible de tester (pas de credentials)
+- Tests échouent de manière irrémédiable
 
 ### 8. CHANGELOG
 
@@ -100,10 +115,20 @@ Ajouter dans `[Unreleased]`:
 
 ### 9. COMMIT + PUSH
 
+**🚨 COMMIT SEULEMENT SI:**
+- ✅ Tous tests validation OK
+- ✅ Tests non-régression OK
+- ✅ Pas de régression détectée
+
 ```
 git commit_all -m "fix({tool}): critical audit fixes (X.X→Y.Y/10) ..."
 git push main
 ```
+
+**🚨 EN CAS D'ERREUR APRÈS COMMIT:**
+- Rollback si possible
+- Sinon: commit correctif immédiat
+- MAJ changelog avec correction
 
 ### 10. UNLOAD + MAJ PROCÉDURE
 
@@ -122,19 +147,20 @@ unload_file: ["src/tools/{tool}.py", ...]
 
 1. 🚨 Appels UN PAR UN (jamais parallèle)
 2. 🚨 PAS DE `/tools?reload=1` (floods LLM)
-3. Charger JSON spec localement avant tests
-4. Tests avant audit (étape 3)
-5. Outputs minimaux (pas metadata success/operation côté tool)
-6. Truncation warnings si > 50 items
-7. Tests validation après correctifs
-8. 🚨 Tests non-régression OBLIGATOIRES
-9. CHANGELOG màj + rotation si > 10KB
-10. Unload toujours à la fin
-11. Procédure màj après chaque audit
-12. 🚨 Découpage fichiers si > 7KB
-13. 🚨 CHANGELOG condensé (essentiel uniquement)
-14. 🚨 Workspace auto-sync
-15. 🚨 Tester les correctifs avant commit
+3. 🚨 **TESTS RÉELS OBLIGATOIRES avant audit**
+4. 🚨 **ABORT si tests impossibles** (pas de credentials/accès)
+5. 🚨 **Tests validation OBLIGATOIRES après correctifs**
+6. 🚨 Tests non-régression OBLIGATOIRES
+7. 🚨 **COMMIT SEULEMENT SI tous tests OK**
+8. Charger JSON spec localement avant tests
+9. Outputs minimaux (pas metadata success/operation côté tool)
+10. Truncation warnings si > 50 items
+11. CHANGELOG màj + rotation si > 10KB
+12. Unload toujours à la fin
+13. Procédure màj après chaque audit
+14. 🚨 Découpage fichiers si > 7KB
+15. 🚨 CHANGELOG condensé (essentiel uniquement)
+16. 🚨 Workspace auto-sync
 
 ---
 
