@@ -1,11 +1,53 @@
-from typing import Any, Dict
+from typing import Any, Dict, List
+import os
+
+from ..services.pagination import paginate_list
+from ..services.pathing import resolve_root_and_abs
+from ..services.fs_scanner import iter_files, read_text_head
+from ..services.globber import allowed_by_globs
+from ..services.budget_broker import compute_effective_budgets
+from ..services.anchors import make_anchor
+from ..connectors.python.outline_ast import outline_file
+
 
 def run(p: Dict[str, Any]) -> Dict[str, Any]:
+    includes = p.get("glob_include") or []
+    excludes = p.get("glob_exclude") or []
+
+    eff = compute_effective_budgets(p)
+    limit = eff["limit"]
+
+    root = p["path"]
+    scope_path = p.get("scope_path")
+
+    # Collect outlines minimalistes (anchors-only)
+    items: List[Dict[str, Any]] = []
+    scanned = 0
+    for rel, _size in iter_files(root, scope_path, eff["max_files_scanned"]):
+        if not allowed_by_globs(rel, includes, excludes):
+            continue
+        base, abs_path = resolve_root_and_abs(root, rel)
+        text = read_text_head(abs_path, eff["max_bytes_per_file"])
+        outlines = outline_file(text, rel)
+        if outlines:
+            items.append({"path": rel, "symbols": outlines})
+        scanned += 1
+        if len(items) >= limit * 2:
+            break
+
+    # Deterministic ordering
+    items.sort(key=lambda x: x["path"]) 
+
+    page, total, next_c = paginate_list(items, limit, p.get("cursor"))
+    # fs_requests hint: heads of current page files
+    fs_requests = [{"path": it["path"], "ranges": [{"start_line": 1, "end_line": 80}]} for it in page[:5]]
     return {
         "operation": "outline",
-        "data": [],
-        "returned_count": 0,
-        "total_count": 0,
-        "truncated": False,
-        "stats": {}
+        "data": page,
+        "returned_count": len(page),
+        "total_count": total,
+        "truncated": next_c is not None,
+        "next_cursor": next_c,
+        "fs_requests": fs_requests,
+        "stats": {"scanned_files": scanned}
     }
