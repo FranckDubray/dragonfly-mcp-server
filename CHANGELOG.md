@@ -38,6 +38,10 @@ All notable changes to this project will be documented in this file.
 - feat: sun_moon_times now also returns moonrise/moonset events (in addition to sun and twilight)
 - fix: tighten outputs and keep modules <7KB; JSON-serializable formatting kept strict
 
+### pdf2text (audit)
+- spec: add `limit` parameter (default 50, max 500) + docs; enforce counts and truncation
+- code: ensure returned_count/total_count/truncated/pages_count; keep outputs minimal; robust page parsing; dependency check error message
+
 ---
 
 ## Archives
