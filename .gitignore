@@ -37,3 +37,7 @@ ssh_keys/*
 # Project-local SQLite DBs (safety)
 *.db
 !sqlite3/*.db
+
+# Additional hardening (src-local secrets/scripts)
+src/ssh_keys/
+src/scripts_ssh/
