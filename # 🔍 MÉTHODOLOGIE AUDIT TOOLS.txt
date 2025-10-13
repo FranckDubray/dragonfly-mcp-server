@@ -1,8 +1,8 @@
 # 🔍 MÉTHODOLOGIE AUDIT TOOLS
 
-## État: 17/40 audités
+## État: 18/40 audités
 
-**Tools restants (23)**: astronomy, coingecko, device_location, discord_webhook, email_send, excel_to_sqlite, ffmpeg_frames, flight_tracker, git, imap, math, news_aggregator, office_to_pdf, ollama_local, open_meteo, pdf2text, pdf_download, reddit_intelligence, script_executor, ssh_admin, universal_doc_scraper, video_transcribe, youtube_search
+**Tools restants (22)**: astronomy, coingecko, device_location, discord_webhook, excel_to_sqlite, ffmpeg_frames, flight_tracker, git, imap, math, news_aggregator, office_to_pdf, ollama_local, open_meteo, pdf2text, pdf_download, reddit_intelligence, script_executor, ssh_admin, universal_doc_scraper, video_transcribe, youtube_search
 
 ---
 
@@ -112,7 +112,7 @@ unload_file: ["src/tools/{tool}.py", ...]
 ```
 
 **MAJ procédure**:
-- Incrémenter compteur (16→17/40)
+- Incrémenter compteur (17→18/40)
 - Retirer de liste tools restants
 - Commit: `docs(audit): update methodology - {tool} audited (X/40)`
 
