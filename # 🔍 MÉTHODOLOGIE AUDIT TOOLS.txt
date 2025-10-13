@@ -1,8 +1,13 @@
 # 🔍 MÉTHODOLOGIE AUDIT TOOLS
 
-## État: 19/40 audités
+## État: 19/40 audités ⚠️
 
-**Tools restants (21)**: astronomy, coingecko, device_location, excel_to_sqlite, ffmpeg_frames, flight_tracker, git, imap, math, news_aggregator, office_to_pdf, ollama_local, open_meteo, pdf2text, pdf_download, reddit_intelligence, script_executor, ssh_admin, universal_doc_scraper, video_transcribe, youtube_search
+**Tools restants (21)**: astronomy, coingecko, device_location, excel_to_sqlite, ffmpeg_frames, flight_tracker, git, imap, math, news_aggregator, office_to_pdf, ollama_local, open_meteo, pdf2text, pdf_download, reddit_intelligence, script_executor, ssh_admin, universal_doc_scraper, ~~video_transcribe~~, youtube_search
+
+**⚠️ AUDIT INCOMPLET: video_transcribe** (19.5/40)
+- Correctifs appliqués mais non testés (cache Python serveur)
+- REQUIRES: redémarrage serveur (`./scripts/dev.sh`)
+- Score: 7.5/10 (estimé, pending verification)
 
 ---
 
@@ -161,6 +166,7 @@ unload_file: ["src/tools/{tool}.py", ...]
 14. 🚨 Découpage fichiers si > 7KB
 15. 🚨 CHANGELOG condensé (essentiel uniquement)
 16. 🚨 Workspace auto-sync
+17. 🚨 **RESTART SERVEUR si cache Python problématique**
 
 ---
 
