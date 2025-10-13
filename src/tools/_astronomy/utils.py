@@ -6,19 +6,6 @@ import math
 import json
 
 
-def _to_python(obj):
-    """Convert numpy/Skyfield types to Python native types for JSON serialization"""
-    if hasattr(obj, 'item'):  # numpy types
-        return obj.item()
-    elif hasattr(obj, '__float__'):
-        return float(obj)
-    elif hasattr(obj, '__int__'):
-        return int(obj)
-    elif hasattr(obj, '__bool__'):
-        return bool(obj)
-    return obj
-
-
 def format_position(astrometric, observer_time):
     """Format celestial position data
     
@@ -72,7 +59,7 @@ def format_position(astrometric, observer_time):
     # Force JSON serialization test to catch any remaining issues
     try:
         json.dumps(result)
-    except TypeError as e:
+    except TypeError:
         # If serialization fails, recursively convert all values
         result = _deep_convert(result)
     
@@ -97,13 +84,6 @@ def _deep_convert(obj):
         return obj
     else:
         return str(obj)
-
-
-def format_time(skyfield_time):
-    """Format Skyfield time to ISO string"""
-    if skyfield_time is None:
-        return None
-    return skyfield_time.utc_iso()
 
 
 def calculate_visibility(altitude_degrees):
@@ -133,29 +113,6 @@ def calculate_visibility(altitude_degrees):
         return "Visible (medium height)"
     else:
         return "Visible (high in sky)"
-
-
-def calculate_angular_separation(pos1, pos2):
-    """Calculate angular separation between two positions
-    
-    Args:
-        pos1: (ra1_deg, dec1_deg)
-        pos2: (ra2_deg, dec2_deg)
-        
-    Returns:
-        float: Angular separation in degrees
-    """
-    ra1, dec1 = math.radians(pos1[0]), math.radians(pos1[1])
-    ra2, dec2 = math.radians(pos2[0]), math.radians(pos2[1])
-    
-    # Haversine formula
-    dra = ra2 - ra1
-    ddec = dec2 - dec1
-    
-    a = math.sin(ddec/2)**2 + math.cos(dec1) * math.cos(dec2) * math.sin(dra/2)**2
-    c = 2 * math.asin(math.sqrt(a))
-    
-    return math.degrees(c)
 
 
 def format_physical_data(data):
