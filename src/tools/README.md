@@ -2,7 +2,7 @@
 
 Ce fichier est généré automatiquement par `scripts/generate_tools_catalog.py`. Ne pas éditer à la main.
 
-Total tools: 42
+Total tools: 43
 
 ## 📊 Intelligence & Orchestration (4)
 
@@ -22,7 +22,7 @@ Total tools: 42
   - Opérations: search_papers, get_paper_details, search_authors, get_citations
   - Tokens: aucun
 
-## 🔧 Development (4)
+## 🔧 Development (5)
 
 - Dev Navigator — Couteau suisse LLM pour explorer un dépôt: overview, tree, search, outline, open (plan fs_requests uniquement — pas de contenu), endpoint… · Tags: knowledge
   - Opérations: compose, overview, tree, search, outline, open …
@@ -38,6 +38,10 @@ Total tools: 42
 
 - Python Sandbox — Exécute du code Python dans un sandbox sécurisé avec accès à des tools MCP. Pas d'imports, API limitée, timeout configurable.
   - Opérations: N/A
+  - Tokens: aucun
+
+- Tool Audit — Audit lecture-seule d’un tool MCP: périmètre strict au tool, contexte complet pour LLM, multi-profils (perf, quality, maintain, invariant… · Tags: quality, performance, maintainability
+  - Opérations: audit_tool
   - Tokens: aucun
 
 ## 📧 Communication (5)
