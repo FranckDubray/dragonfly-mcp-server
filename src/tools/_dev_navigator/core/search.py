@@ -8,7 +8,7 @@ from ..services.globber import allowed_by_globs
 from ..services.budget_broker import compute_effective_budgets
 from ..services.constants import DEFAULT_MAX_HITS_PER_FILE
 from ..services.anchors import make_anchor
-from ..connectors.python.search_regex import search_in_file
+from ..services.search_text import search_in_file
 
 
 def run(p: Dict[str, Any]) -> Dict[str, Any]:

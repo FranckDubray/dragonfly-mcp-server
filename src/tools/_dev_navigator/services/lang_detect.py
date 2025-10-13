@@ -4,15 +4,16 @@ EXT_TO_LANG: Dict[str, str] = {
     # Python
     "py": "python",
     "pyi": "python",
-    # JavaScript/TypeScript (future connectors)
+    # JavaScript/TypeScript (now supported connectors)
     "js": "javascript",
     "mjs": "javascript",
     "cjs": "javascript",
     "jsx": "javascript",
     "ts": "typescript",
     "tsx": "typescript",
-    # Others (placeholders)
+    # Go
     "go": "go",
+    # Others (placeholders)
     "java": "java",
     "kt": "kotlin",
     "kts": "kotlin",

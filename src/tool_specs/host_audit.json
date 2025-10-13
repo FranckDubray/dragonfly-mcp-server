@@ -1,0 +1,35 @@
+{
+  "type": "function",
+  "function": {
+    "name": "host_audit",
+    "displayName": "Host Audit",
+    "category": "utilities",
+    "tags": ["system", "audit", "ssh", "os", "mysql", "symfony"],
+    "description": "Plans d'audit compacts pour macOS (local) et hôtes distants via SSH: Ubuntu, Nginx, Apache, PHP-FPM, Node.js, MySQL, Symfony. Ne lance pas de commandes: retourne un plan (ssh_requests/local_commands) limité et safe.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": [
+            "macos_local",
+            "ubuntu_ssh_plan",
+            "mysql_ssh_plan",
+            "symfony_ssh_plan",
+            "nginx_ssh_plan",
+            "apache_ssh_plan",
+            "phpfpm_ssh_plan",
+            "nodejs_ssh_plan"
+          ],
+          "description": "Type d'audit: macOS local (plan), Ubuntu via SSH, MySQL via SSH, Symfony via SSH, Nginx/Apache/PHP-FPM/Node via SSH"
+        },
+        "profile": {"type": "string", "description": "Profil SSH (outil ssh_admin) pour les opérations *_ssh_plan"},
+        "limit": {"type": "integer", "minimum": 1, "maximum": 200, "default": 50},
+        "logs_lines": {"type": "integer", "minimum": 10, "maximum": 2000, "default": 200, "description": "Lignes max pour logs (plan)"},
+        "paths_hint": {"type": "array", "items": {"type": "string"}, "description": "Indices de chemins (ex: /var/www/app)"}
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}
