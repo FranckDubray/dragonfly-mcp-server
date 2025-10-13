@@ -1,4 +1,4 @@
-import os, re, sqlite3, hashlib
+import os, re, sqlite3, hashlib, json
 from typing import Any, Dict, Optional, Tuple
 
 SQLITE_ROOT = os.path.abspath(os.path.join(os.getcwd(), "sqlite3"))
@@ -63,3 +63,16 @@ def _open_ro(db_path: str) -> sqlite3.Connection:
     except Exception:
         pass
     return conn
+
+
+def fetch_manifest_for_db(db_path: str) -> Optional[Dict[str, Any]]:
+    """Return manifest JSON adjacent to db_path if present."""
+    try:
+        release_dir = os.path.dirname(os.path.abspath(db_path))
+        manifest_path = os.path.join(release_dir, "manifest.json")
+        if os.path.isfile(manifest_path):
+            with open(manifest_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        return None
+    return None
