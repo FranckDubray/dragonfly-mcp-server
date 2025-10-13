@@ -46,7 +46,7 @@ Guide technique pour développeurs LLM. Architecture, invariants, checklist, et 
 **Tools :**
 - Python ≥ 3.11
 - Fournir `run(**params) -> Any` et `spec() -> dict`
-- `spec()` doit charger le JSON canonique (src/tool_specs/<tool_name>.json). Ne pas dupliquer le schéma en Python.
+- `spec()` doit charger le JSON canonique (`src/tool_specs/<tool_name>.json`). Ne pas dupliquer le schéma en Python.
 - Pas de side-effects à l'import
 
 **Sécurité :**
@@ -181,7 +181,10 @@ def spec():
 
 **Après avoir développé un nouveau tool OU modifié un tool existant, vous DEVEZ suivre la méthodologie d'audit complète (voir `# 🔍 MÉTHODOLOGIE AUDIT TOOLS.txt`)**
 
-**Pas de tirage au sort** : appliquez la procédure d'audit directement sur le tool développé/modifié.
+**Sélection du tool à auditer**
+- Priorité: si un tool vient d'être développé ou modifié, il est audité en priorité (audit direct de ce tool).
+- Sinon: sélectionner aléatoirement parmi les « Tools restants » via l'outil `random` (opération `pick_random`).
+- Cas trivial: s'il ne reste qu'un tool, la sélection est directe (pas de tirage).
 
 Cela inclut:
 1. Tests préliminaires (5 tests baseline)
@@ -331,7 +334,7 @@ TESTS: 10/10 non-régression OK
 
 ## Résumé des règles absolues
 
-1. **Audit obligatoire** après tout dev/modif de tool (pas de tirage au sort)
+1. **Audit obligatoire** après tout dev/modif de tool. Sélection: audit prioritaire du tool modifié; sinon tirage aléatoire parmi les tools restants; s'il n'en reste qu'un, sélection directe.
 2. **Fichiers < 7KB** (découper si nécessaire)
 3. **Code mort supprimé** (avec prudence)
 4. **Specs JSON** = source de vérité (ne jamais dupliquer en Python)
