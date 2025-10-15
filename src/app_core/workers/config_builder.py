@@ -1,4 +1,3 @@
-
 """
 Config Builder : construit la config Realtime pour un worker
 DB-first avec fallback .env (hybride, robuste)
@@ -210,9 +209,8 @@ def _load_worker_query_tool_spec() -> dict:
 def _build_instructions(worker_id: str, meta: dict) -> str:
     """Fallback: construit des instructions système FR enrichies depuis la DB si 'instructions' absent.
 
-    Combine: persona, identité du worker (nom, métier), employeur, disponibilité, email, tags, client_info.
+    Combine: persona, identité du worker (nom, métier), employeur.
     """
-    # Champs de base
     worker_name = meta.get('worker_name', worker_id.capitalize()).strip()
     persona = (meta.get('persona') or f"Je suis {worker_name}.").strip()
     job = (meta.get('job') or '').strip()
@@ -220,7 +218,6 @@ def _build_instructions(worker_id: str, meta: dict) -> str:
     employe_depuis = (meta.get('employe_depuis') or '').strip()
     email = (meta.get('email') or '').strip()
     timezone_s = (meta.get('timezone') or '').strip()
-    working_hours = (meta.get('working_hours') or '').strip()
     bio = (meta.get('bio') or '').strip()
     tags = _get_meta_json(meta, 'tags_json', default=None)
     client_info = meta.get('client_info')
@@ -243,19 +240,12 @@ def _build_instructions(worker_id: str, meta: dict) -> str:
     for en, fr in mois.items():
         date_str = date_str.replace(en, fr)
 
-    # Sections optionnelles
-    employeur_section = ""
-    if employeur:
-        if employe_depuis:
-            employeur_section = f"Employeur : {employeur} (depuis {employe_depuis}).\n"
-        else:
-            employeur_section = f"Employeur : {employeur}.\n"
+    identite_section = f"""
+IDENTITÉ DU WORKER
+Tu t'appelles {worker_name}.
+{('Métier : ' + job + '\n') if job else ''}{('Employeur : ' + employeur + (' (depuis ' + employe_depuis + ')') if employe_depuis else '') + '\n' if employeur else ''}
+"""
 
-    dispo_section = ""
-    if timezone_s or working_hours:
-        dispo_section = "Disponibilité : " + (working_hours or "") + (f" ({timezone_s})" if timezone_s else "") + "\n"
-
-    contact_section = f"Contact : {email}\n" if email else ""
     bio_section = f"Bio : {bio}\n" if bio else ""
     tags_section = f"Tags : {', '.join(tags)}\n" if isinstance(tags, list) and tags else ""
 
@@ -267,12 +257,6 @@ Je travaille pour : {client_info}
 Relation client :
 - Ton professionnel et accessible
 - Adapter les réponses au contexte (âge/localisation)
-"""
-
-    identite_section = f"""
-IDENTITÉ DU WORKER
-Tu t'appelles {worker_name}.
-{('Métier : ' + job + '\n') if job else ''}{employeur_section}{dispo_section}{contact_section}{bio_section}{tags_section}
 """
 
     return f"""

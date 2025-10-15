@@ -1,13 +1,33 @@
+
+
+
 /**
  * Workers Status - stats & derniers événements (5s)
  */
 
 async function refreshWorkerStats(workerId){
   try {
+    // Tâches totales (succeeded + failed)
     const tasksRes = await fetch(`/workers/${workerId}/query`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ query: "SELECT COUNT(*) as count FROM job_steps WHERE status IN ('succeeded', 'failed')", limit: 1 }) });
     if (tasksRes.ok){ const data = await tasksRes.json(); const count = data.rows[0]?.count || 0; const el = document.getElementById(`stat-${workerId}-tasks`); if (el) el.textContent = count; }
+
+    // Erreurs (failed)
     const errorsRes = await fetch(`/workers/${workerId}/query`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ query: "SELECT COUNT(*) as count FROM job_steps WHERE status='failed'", limit: 1 }) });
     if (errorsRes.ok){ const data = await errorsRes.json(); const count = data.rows[0]?.count || 0; const el = document.getElementById(`stat-${workerId}-errors`); if (el) el.textContent = count; }
+
+    // Activité (nb de lignes job_steps dernière heure)
+    const actRes = await fetch(`/workers/${workerId}/query`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ query: "SELECT COUNT(*) AS c FROM job_steps WHERE (strftime('%s','now') - strftime('%s', COALESCE(finished_at, started_at))) <= 3600", limit: 1 }) });
+    if (actRes.ok){
+      const data = await actRes.json();
+      const c = data.rows[0]?.c || 0;
+      const card = document.getElementById(`card-${workerId}`);
+      if (card){
+        card.classList.remove('activity-green','activity-orange','activity-red');
+        if (c <= 15) card.classList.add('activity-green');
+        else if (c <= 40) card.classList.add('activity-orange');
+        else card.classList.add('activity-red');
+      }
+    }
   } catch (_) {
     const elTasks = document.getElementById(`stat-${workerId}-tasks`);
     const elErrors = document.getElementById(`stat-${workerId}-errors`);
