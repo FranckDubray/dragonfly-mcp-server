@@ -1,5 +1,6 @@
+
 /**
- * Workers Session - Audio & VAD client minimal
+ * Workers Session - Audio & VAD client minimal (immediate cut on user speech)
  */
 
 let audioContext = null;
@@ -7,8 +8,8 @@ let sourceNode = null;
 let processorNode = null;
 let isSpeaking = false;
 let silenceFrames = 0;
-const SILENCE_THRESHOLD = 0.01;
-const SILENCE_FRAMES_NEEDED = 10;
+const SILENCE_THRESHOLD = 0.01; // RMS threshold
+const SILENCE_FRAMES_NEEDED = 4; // ~4*128/24k ≈ 21ms to release speaking
 
 async function startRecording(){
   if (!ws || ws.readyState!==WebSocket.OPEN) return;
@@ -16,20 +17,41 @@ async function startRecording(){
   const Ctx = window.AudioContext || window.webkitAudioContext;
   audioContext = new Ctx({sampleRate:24000});
   sourceNode = audioContext.createMediaStreamSource(localStream);
-  const bufferSize = 4096; processorNode = audioContext.createScriptProcessor(bufferSize,1,1);
+  const bufferSize = 2048; // smaller buffer for faster detection
+  processorNode = audioContext.createScriptProcessor(bufferSize,1,1);
+
   let pcmByteBuffer = [];
   processorNode.onaudioprocess = (e)=>{
     if (micMuted) return;
     const input = e.inputBuffer.getChannelData(0);
     let sum=0; for(let i=0;i<input.length;i++){ sum += input[i]*input[i]; }
     const rms = Math.sqrt(sum/input.length);
-    if (rms>SILENCE_THRESHOLD){ isSpeaking=true; silenceFrames=0; window.isUserSpeaking=true; }
-    else { silenceFrames++; if (silenceFrames> SILENCE_FRAMES_NEEDED){ isSpeaking=false; window.isUserSpeaking=false; } }
+
+    // Fast attack: as soon as RMS crosses threshold => user speaking
+    if (rms>SILENCE_THRESHOLD){
+      if (!isSpeaking){
+        isSpeaking=true; window.isUserSpeaking=true;
+        // HARD CUT: stop all AI audio immediately & cancel active response
+        try{ audioPlayer?.stopAll?.(); }catch(_){ }
+        try{ if (currentResponseId && ws?.readyState===WebSocket.OPEN){ ws.send(JSON.stringify({type:'response.cancel', response_id: currentResponseId})); } }catch(_){ }
+      }
+      silenceFrames=0;
+    } else {
+      silenceFrames++;
+      if (silenceFrames> SILENCE_FRAMES_NEEDED){ isSpeaking=false; window.isUserSpeaking=false; }
+    }
+
+    // Skip sending if not speaking (and stabilized silence)
     if (!isSpeaking && silenceFrames> SILENCE_FRAMES_NEEDED) return;
+
+    // Downsample to 24kHz PCM16 in small chunks for low latency
     const inRate = audioContext.sampleRate||48000; const down = downsampleBuffer(input, inRate, 24000);
     const pcm = floatToPCM16(down); pcmByteBuffer.push(pcm);
     const total = pcmByteBuffer.reduce((a,b)=>a+b.length,0);
-    if (total>=4800){ const merged = mergeUint8(pcmByteBuffer); pcmByteBuffer=[]; ws?.send(JSON.stringify({type:'input_audio_buffer.append', audio: base64FromBytes(merged)})); }
+    if (total>=2400){ // ~50ms at 24k mono
+      const merged = mergeUint8(pcmByteBuffer); pcmByteBuffer=[];
+      ws?.send(JSON.stringify({type:'input_audio_buffer.append', audio: base64FromBytes(merged)}));
+    }
   };
   sourceNode.connect(processorNode); processorNode.connect(audioContext.destination);
 }

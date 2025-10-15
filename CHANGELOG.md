@@ -1,75 +1,51 @@
+
+
+
 # Changelog
 
-## [1.27.3] - 2025-10-15
+## [1.27.4] - 2025-10-15
 
-### ♟️ Nouveaux tools: Lichess (public) et Stockfish (Auto‑75)
-- feat(lichess): tool public (sans token) avec endpoints clés:
-  - Utilisateurs: profil, perfs, équipes, partie en cours, dernières parties (JSON, pgnInJson)
-  - Équipes: détails, membres (limit + truncated)
-  - Tournois: détails, résultats (limit + truncated)
-  - Leaderboards: top par perfType (count ≤ 50)
-  - Puzzles: quotidien, par id
-- feat(stockfish_auto): évaluation/analyse avec auto‑profil (~75% CPU/RAM)
-  - Auto Threads/Hash, presets quality (fast/balanced/deep), MultiPV=limit
-  - Respect invariants (limit, counts, truncated). Implémentation moteur initiale branchée (UCI local requis)
-- docs: specs JSON canoniques créées (src/tool_specs/lichess.json, src/tool_specs/stockfish_auto.json)
+### 🛠 Workers Realtime — Correctifs UI/UX & Mermaid (compléments)
+- Time Machine:
+  - Contrôles “magnétophone” (⏮ ⏪ ▶︎/⏸ ⏩ ⏭) pour rejouer pas‑à‑pas ou en auto.
+  - Surlignage synchronisé: clic nœud Mermaid → sélection/scroll de l’étape dans la timeline; nœud courant surligné.
+  - Timeline chargée jusqu’à 200 événements, ~15 lignes visibles (scroll dédié), horodatage FR (date+heure).
+  - Alerte claire si incohérence logs ↔ schéma (nœuds inconnus) avec détails (id + date/heure), échantillons limités.
+  - Cache du code Mermaid pendant le replay (perf): plus de requêtes DB par step.
+- Galerie/Lightbox:
+  - Galerie fermée par défaut; ouverture/fermeture via l’icône seulement.
+  - Scroll horizontal accéléré dans la galerie; lightbox uniquement pour vignettes/data‑full (jamais l’avatar).
+- VU Ring:
+  - Anneau vert/jaune/rouge plus visible, lissage EMA + boost non linéaire, compat APIs legacy.
+- CSS/Thème:
+  - Thème clair confirmé; avatar 64×64 rond, recadrage; timeline ~15 lignes visibles.
+- Prompt système / Contexte:
+  - DB complétée (timezone, working_hours, bio) puis nettoyage (email/tags retirés) conformément aux demandes.
 
-### ♟️ Mise à jour Stockfish (Auto‑75)
-- BEHAVIOR: le moteur UCI local est désormais branché (plus un « stub »). Le binaire Stockfish doit être installé localement (ou `STOCKFISH_PATH` défini), sinon une erreur claire est retournée.
-- FIX: timeout plancher ≥ 120s pour `go` (avec marge dynamique basée sur `movetime` et fenêtre de grâce 5s après `stop`) afin d’éviter les erreurs « Search did not finish before timeout » sur les presets balanced/deep et lors de l’usage de `searchmoves`.
+### 🔔 Sonnerie & Audio
+- Sonnerie “Skype-like” par défaut (≈400/450 Hz), cadence tu‑tu‑tuu tu‑tu‑tu, agréable et familière pour 2–10 s.
+- Volume par défaut 50% et curseur unique pilotant à la fois la sonnerie et la voix IA (setVolume partagé).
+- Préchargement de Mermaid au chargement de page (/workers) pour supprimer la latence (fallback + retry garantis côté JS si CDN lent).
 
-### 🔒 Sécu & Perf
-- Clients HTTP rate‑limited (Lichess: 200 ms défaut), pas de token exposé
-- Orchestrations API/validators/core conformes au guide (parameters=object, additionalProperties=false)
+### 🧠 VAD & Interruption IA
+- Détection rapide: dès que l’utilisateur parle, arrêt immédiat du haut-parleur IA et cancel de la réponse courante.
+- Reprise rapide au silence stable; option d’accentuation (<200ms) possible.
 
----
+### 📊 KPIs Process (overlay)
+- Nouveau panneau “Activité (dernière heure)” dans l’overlay Process: 
+  - Tâches (succeeded/failed), Appels call_llm, Cycles (sleep_interval ou fallback finish_mailbox_db)
+  - Recalcul à chaque refresh (10 s) pendant l’overlay.
 
-## [1.27.2] - 2025-10-15
+### 🎨 Couleur cartes selon activité (1h)
+- 0–15 → vert, 16–40 → orange, >40 → rouge (classes activity-*)
 
-### 🧩 Workers Realtime — correctifs critiques, split <7KB, Mermaid durci, VU boost
-- FIX Prompt & Tools
-  - System prompt DB-first: worker_name, job, employeur, employe_depuis, persona, bio, tags, client_info, email, timezone, working_hours.
-  - Envoi immédiat via `session.update` (+ fallback si `session.created` absent) → assistant contextuel fiable.
-  - `session.update` inclut désormais `session.type: 'realtime'` (corrige l’erreur « Missing required parameter: 'session.type' »).
-  - Tool `worker_query` réactivé par défaut (DB-first) et proxy sécurisé `/workers/{id}/tool/query`.
-- FIX Mermaid
-  - Sanitize des labels (quotes, backslashes, backticks, multi-formes) + rendu isolé dans `workers-process-render.js`.
-  - Plus d’icône « bombe »; si erreur, fallback plain-text propre et log console explicite.
-- UI/UX
-  - VU ring nettement plus visible (échelle non‑linéaire, halo élargi, couleurs) + logs `[VU] amp`.
-  - Transcript retiré des cartes (mini-widget unique). Transcript utilisateur non affiché.
-  - `closeSession()` ferme proprement WS/micro/audio/ringback + reset VU.
-- REFACTOR
-  - Split `workers-session.js` en modules <7KB: `workers-session-state/core/ws/tools/audio`.
-  - Suppression code mort: `workers-tools.js`.
-  - Dédupe des fonctions d’appel (grid ↔ calls) et délégation claire.
-- SEC & Robustesse
-  - `/workers` n’expose plus `db_path` / `db_size`.
-  - SQL LIMIT cap forcé (même si LIMIT présent) + indicateur `truncated`.
+### 🐛 Corrections Mermaid
+- Chargeur Mermaid robuste (retry) + fallback “Diagramme indisponible” avec message explicite.
+- Normalisation du source Mermaid (quotes, backslashes) + surlignage du nœud courant.
+
+### 🗄 Données & Seeds de test
+- Injection de cycles cohérents (nomail + mail occasionnels), durées réalistes: sleep 10 min, LLM 1 min, enchaînement strict des nœuds.
+- Lot par ~50 lignes, répété pour couvrir une plage temporelle jusqu’à atteindre des tests denses.
 
 ---
 
-## [1.27.1] - 2025-10-15
-
-### 🎙️ Workers Realtime — UI pro, process dynamique, VU ring réactif
-- Split JS en modules maintenables (<7 Ko par feature):
-  - workers-grid.js (cartes), workers-calls.js (appels), workers-status.js (stats & events), workers-gallery.js (galerie), workers-process.js (process Mermaid + replay), workers-vu.js (anneau VU)
-- Process overlay (🧭) 100% DB-driven (zéro simulation):
-  - Schéma Mermaid (job_state_kv.graph_mermaid), nœud courant surligné, arguments, historique (job_steps), replay ▶︎/⏸ 1x
-  - Auto-refresh 10s du graph/état/historique pendant l’overlay
-- Carte: « Derniers événements » (3 lignes, sans flood), stats, icônes premium et hover subtil
-- Anneau VU réactif (couleur/scale) basé sur l’amplitude PCM16 des audios IA
-  - Smoothing léger (EMA), scale 1→3, couleurs vert/jaune/rouge
-- Polling:
-  - Carte (stats + events): 5s (au lieu de 30s) pour un ressenti live
-  - Overlay Process: refresh 10s
-- Sécurité & robustesse:
-  - Jamais de token renvoyé au frontend
-  - Transcripts mini échappés (anti-XSS)
-  - SQL corrigé (COALESCE finished_at, started_at)
-  - Reset d’appel fiable (pas de faux « appel en cours »)
-
----
-
-## [1.27.0] - 2025-10-14
-- … (voir version précédente)

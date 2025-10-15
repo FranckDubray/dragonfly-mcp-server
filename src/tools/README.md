@@ -204,7 +204,7 @@ Total tools: 47
   - Opérations: search_subreddit, get_comments, analyze_sentiment, find_trending, find_experts, multi_search
   - Tokens: aucun
 
-- Stockfish (Auto-75) — Évalue une position ou analyse une partie avec Stockfish en autoconfigurant ~75% des ressources (Threads/Hash). Paramètres de contrôle po… · Tags: chess, uci, auto-tune
+- Stockfish (Auto-75) — Évalue une position ou analyse une partie avec Stockfish en autoconfigurant ~75% des ressources (Threads/Hash). Pour analyze_game, un bud… · Tags: chess, uci, auto-tune
   - Opérations: evaluate_position, analyze_game
   - Tokens: aucun
 

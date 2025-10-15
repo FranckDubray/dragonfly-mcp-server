@@ -1,6 +1,6 @@
 # 🐉 Dragonfly MCP Server
 
-**Serveur MCP (Model Context Protocol) moderne avec 45+ tools pour LLM, interface vocale temps réel et orchestration workers asynchrones.**
+Serveur MCP (Model Context Protocol) moderne avec 45+ tools pour LLM, interface vocale temps réel et orchestration workers asynchrones.
 
 ---
 
@@ -21,58 +21,44 @@ python src/server.py      # Direct
 
 # Interfaces web (même serveur, port 8000)
 http://localhost:8000/control     # Control Panel (tools)
-http://localhost:8000/workers     # Workers Vocaux (NEW) ✨
+http://localhost:8000/workers     # Workers Vocaux (Realtime)
 ```
 
 ---
 
-## ✨ Fonctionnalités
+## ✨ Nouveautés (1.27.4)
 
-### 🎙️ Workers Realtime (NEW v1.27.1)
-Interface vocale temps réel pour interagir avec vos workers asynchrones :
-- Session Realtime WebRTC: audio bidirectionnel, ringback, VAD et gating strict
-- Processus dynamique (Mermaid): schéma, nœud courant, arguments, historique depuis la DB
-- Replay ▶︎/⏸ du process (1x) — zéro simulation, 100% DB-driven
-- Carte soignée: nom/métier/employeur, dispo locale, stats, “Derniers événements” (3 lignes), icônes premium (🧭, 📷, ✉️), galerie lightbox large
-- Anneau VU réactif autour de l’avatar (amplitude PCM16): smoothing EMA, scale 1→3, vert/jaune/rouge
+### 🔔 Sonnerie & Volume unifié
+- Sonnerie “Skype-like” par défaut (≈400/450 Hz), cadence tu‑tu‑tuu tu‑tu‑tu, agréable et familière pendant 2–10 s d’init.
+- Volume par défaut 50% et curseur unique pilotant à la fois la sonnerie et la voix IA (setVolume partagé).
 
-**Data requise (DB):**
-- `job_state_kv.graph_mermaid`, `job_state_kv.current_node`, `job_state_kv.current_args` (optionnel)
-- `job_steps` (name, status, started_at, finished_at)
-- Carte: `avatar_url`, `job`, `employeur`, `employe_depuis`, `email` (optionnel), `tags_json` (optionnel), `gallery_json` (optionnel)
+### 🧠 VAD & coupure IA instantanée
+- Dès que l’utilisateur parle, arrêt immédiat de la sortie IA et annulation de la réponse en cours; reprise rapide au silence stable.
 
-```sql
--- Mermaid
-SELECT svalue FROM job_state_kv WHERE skey='graph_mermaid';
--- Nœud courant
-SELECT svalue FROM job_state_kv WHERE skey IN ('current_node','current_step','current_stage');
--- Historique
-SELECT name, status, COALESCE(finished_at, started_at) AS ts FROM job_steps ORDER BY id DESC LIMIT 3;
-```
+### 📈 Overlay Process (Mermaid) enrichi
+- Préchargement Mermaid au chargement de page (/workers) pour supprimer la latence.
+- KPIs “Activité (dernière heure)” (Tâches, Appels call_llm, Cycles) mis à jour à chaque refresh.
+- Replay “magnétophone” (⏮ ⏪ ▶︎/⏸ ⏩ ⏭), suivi live si on est “au bout”, pas d’auto‑avance si on explore le passé.
+- Alerte d’incohérence logs ↔ schéma avec détails: id + nom de nœud + date/heure (échantillons limités).
 
-### 🔒 Sécurité
-- Aucun token renvoyé au frontend (proxy backend → Portal)
-- Transcripts mini échappés (HTML safe)
-- Tool worker_query (SELECT only) via proxy backend
-
-### 🧩 Modules JS découpés
-- `workers-grid.js` (cartes), `workers-calls.js` (appels), `workers-status.js` (stats & events), `workers-gallery.js` (galerie), `workers-process.js` (process + replay), `workers-vu.js` (anneau VU), `workers-session.js` (orchestrateur)
+### 🟩🟧🟥 Cartes colorées par activité (1h)
+- 0–15 → vert | 16–40 → orange | >40 → rouge
 
 ---
 
-## 📦 Architecture
+## 🧩 Architecture
 - FastAPI (routes workers) + SafeJSON + tool registry
-- SQLite local (`sqlite3/worker_*.db`), scan automatique
-- Config Realtime hybride (DB-first, fallback .env)
+- SQLite local (sqlite3/worker_*.db), scan automatique
+- Config Realtime hybride (DB‑first, fallback .env)
 
 ---
 
 ## 🧪 Démo rapide
-1. Ouvrez `http://localhost:8000/workers`.
-2. Cliquez 📞 “Appeler” sur Alain → ringback → session.
-3. Parlez: l’IA se coupe aussitôt; reprend après 1,4 s de silence.
-4. Cliquez 🧭 “Processus” → schéma Mermaid réel, nœud courant, arguments, historique, replay.
-5. Cliquez 📷 “Galerie” → lightbox large, navigation clavier.
+1. Ouvrir `http://localhost:8000/workers`.
+2. Cliquer 📞 “Appeler” → sonnerie → session.
+3. Parler: l’IA se coupe aussitôt; reprend après ~silence stable.
+4. Cliquer 🧭 “Processus” → schéma Mermaid réel, nœud courant, arguments, historique, replay.
+5. Le curseur Volume contrôle sonnerie + voix IA.
 
 ---
 
