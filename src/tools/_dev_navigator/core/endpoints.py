@@ -4,8 +4,11 @@ import os
 from ..services.pagination import paginate_list
 from ..services.pathing import resolve_root_and_abs
 from ..services.fs_scanner import iter_files, read_text_head
+from ..services.anchors import make_anchor
 from ..services.globber import allowed_by_globs
 from ..services.budget_broker import compute_effective_budgets
+from ..release_index import reader_paths as P
+from ..release_index import reader_queries as Q
 from ..connectors.python.endpoints_fastapi import extract_endpoints as fe_fastapi
 from ..connectors.python.endpoints_flask import extract_endpoints as fe_flask
 from ..connectors.python.endpoints_django import extract_endpoints as fe_django
@@ -64,6 +67,37 @@ def run(p: Dict[str, Any]) -> Dict[str, Any]:
     limit = eff["limit"]
 
     root = p["path"]
+
+    # INDEX-FIRST: try reading endpoints from the release index if available
+    if p.get("use_release_index", True):
+        db_path, err = P.resolve_index_db(root, p.get("release_tag"), p.get("commit_hash"))
+        if db_path:
+            conn = P._open_ro(db_path)
+            try:
+                items_idx = Q.query_endpoints_all(conn, limit)
+            finally:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+            items_idx = [{
+                "kind": it["kind"],
+                "method": it["method"],
+                "path_or_name": it["path_or_name"],
+                "source_anchor": make_anchor(it["source_path"], it["source_line"], 0),
+                "framework_hint": it.get("framework_hint")
+            } for it in items_idx]
+            page, total, next_c = paginate_list(items_idx, limit, p.get("cursor"))
+            return {
+                "operation": "endpoints",
+                "data": page,
+                "returned_count": len(page),
+                "total_count": total,
+                "truncated": next_c is not None,
+                "next_cursor": next_c,
+                "stats": {"source": "release_index"}
+            }
+
     scope_path = p.get("scope_path")
 
     items: List[Dict[str, Any]] = []

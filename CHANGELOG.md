@@ -1,63 +1,75 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+## [1.27.3] - 2025-10-15
 
-**Note**: Older entries have been archived under `changelogs/` (range-based files).
+### ♟️ Nouveaux tools: Lichess (public) et Stockfish (Auto‑75)
+- feat(lichess): tool public (sans token) avec endpoints clés:
+  - Utilisateurs: profil, perfs, équipes, partie en cours, dernières parties (JSON, pgnInJson)
+  - Équipes: détails, membres (limit + truncated)
+  - Tournois: détails, résultats (limit + truncated)
+  - Leaderboards: top par perfType (count ≤ 50)
+  - Puzzles: quotidien, par id
+- feat(stockfish_auto): évaluation/analyse avec auto‑profil (~75% CPU/RAM)
+  - Auto Threads/Hash, presets quality (fast/balanced/deep), MultiPV=limit
+  - Respect invariants (limit, counts, truncated). Implémentation moteur initiale branchée (UCI local requis)
+- docs: specs JSON canoniques créées (src/tool_specs/lichess.json, src/tool_specs/stockfish_auto.json)
 
----
+### ♟️ Mise à jour Stockfish (Auto‑75)
+- BEHAVIOR: le moteur UCI local est désormais branché (plus un « stub »). Le binaire Stockfish doit être installé localement (ou `STOCKFISH_PATH` défini), sinon une erreur claire est retournée.
+- FIX: timeout plancher ≥ 120s pour `go` (avec marge dynamique basée sur `movetime` et fenêtre de grâce 5s après `stop`) afin d’éviter les erreurs « Search did not finish before timeout » sur les presets balanced/deep et lors de l’usage de `searchmoves`.
 
-## [1.26.3] - 2025-10-13
-
-### Host Audit (plans compacts OS/progiciels via SSH)
-- feat(host_audit): nouveau tool générant des PLANS d’audit (pas d’exécution) pour macOS (local), Ubuntu, MySQL, Symfony, Nginx, Apache, PHP‑FPM, Node.js.
-- feat(connectors):
-  - ubuntu_ssh_plan: OS résumé (os-release, uname, uptime), ressources (df/free/top/ps), réseau/ports (ss/netstat), pare‑feu (ufw, nft/iptables), SSH (systemctl), logs critiques (journalctl), packages (échantillon), ls sur paths_hint.
-  - mysql_ssh_plan: version, variables clés (log_error/slow/general/max_connections), Threads_connected, tail limité log erreur.
-  - symfony_ssh_plan: php/composer, bin/console about + debug:router (tronqués), grep routes YAML.
-  - nginx_ssh_plan: version, conf head (nginx -T ou nginx.conf), tails logs access/error (limités).
-  - apache_ssh_plan: version, vhosts (apachectl/httpd -S tronqué), head conf principale, tail logs error (limités).
-  - phpfpm_ssh_plan: version, test conf (-tt tronqué), head pools *.conf, tails logs fpm (limités).
-  - nodejs_ssh_plan: node -v, npm -v, pm2 ls si présent.
-- safety: aucun rapatriement massif, tout est tronqué/échantillonné; une seule commande SSH concaténée par plan.
-
-### Dev Navigator (endpoints YAML étendus)
-- feat(endpoints): YAML Symfony étendu (path/methods inline/bloc/scalaire, prefix global/local, includes/imports/resources suivis). Fallback générique gateways (uri/url/basePath/rule + methods).
-- refactor: extracteurs YAML dédiés (connecteur Symfony + extracteur gateway générique), intégrés dans core/endpoints avec suivi d’includes.
+### 🔒 Sécu & Perf
+- Clients HTTP rate‑limited (Lichess: 200 ms défaut), pas de token exposé
+- Orchestrations API/validators/core conformes au guide (parameters=object, additionalProperties=false)
 
 ---
 
-## [1.26.2] - 2025-10-13
+## [1.27.2] - 2025-10-15
 
-### Tool Audit (models 1..4 + fuser par défaut)
-- feat(spec): `models` accepte désormais 1 à 4 modèles (minItems=1, maxItems=4), ordre préservé. Le `fuser_model` par défaut est le premier modèle de la liste.
-- feat(validators): validation stricte 1..4, dédoublonnage en conservant l’ordre, et `fuser_model=models[0]` si omis.
-- docs: clarifications d’usage (1 modèle possible; comportement identique côté scheduler en mode `auto`).
-
----
-
-## [1.26.1] - 2025-10-13
-
-### Documentation
-- docs(readme): README racine synchronisé avec le catalogue auto‑généré (liste complète des outils, par catégories canoniques). Ajout de Tool Audit dans "Development".
-- docs(changelog): mise en avant de Tool Audit comme composant quasi‑worker (multi‑LLM, parallèle borné, fusion LLM, anti‑flood, pagination).
-
----
-
-## [1.26.0] - 2025-10-13
-
-### Tool Audit (worker-like, multi-LLM)
-- feat(tool_audit): nouveau tool d’audit lecture-seule d’un tool MCP unique (perf/quality/maintain/invariants), exécution multi-modèles en parallèle (bornée), fusion algorithmique + fuser LLM, anti-flood strict (caps contexte/tokens), sortie paginée (limit, truncated, counts).
-- feat(git_sensitive): détection des fichiers suivis sensibles et marqueurs de secrets (masqués), best-effort.
-- perf(scheduler): parallélisme borné (global=8, par modèle=2), retry 3× avec jitter sur erreurs transitoires, agrégation d’usage cumulée (tasks + fuser).
-- docs/specs: spec canonique `src/tool_specs/tool_audit.json`, implémentation `src/tools/_tool_audit/*`, catégorie `development` (UI), aucune side-effect à l’import, fichiers < 7KB par unité.
-- quality: sorties compactes, anchors-only par défaut (option snippets), `fs_requests` pour lectures ultérieures, respect strict des invariants LLM DEV GUIDE.
+### 🧩 Workers Realtime — correctifs critiques, split <7KB, Mermaid durci, VU boost
+- FIX Prompt & Tools
+  - System prompt DB-first: worker_name, job, employeur, employe_depuis, persona, bio, tags, client_info, email, timezone, working_hours.
+  - Envoi immédiat via `session.update` (+ fallback si `session.created` absent) → assistant contextuel fiable.
+  - `session.update` inclut désormais `session.type: 'realtime'` (corrige l’erreur « Missing required parameter: 'session.type' »).
+  - Tool `worker_query` réactivé par défaut (DB-first) et proxy sécurisé `/workers/{id}/tool/query`.
+- FIX Mermaid
+  - Sanitize des labels (quotes, backslashes, backticks, multi-formes) + rendu isolé dans `workers-process-render.js`.
+  - Plus d’icône « bombe »; si erreur, fallback plain-text propre et log console explicite.
+- UI/UX
+  - VU ring nettement plus visible (échelle non‑linéaire, halo élargi, couleurs) + logs `[VU] amp`.
+  - Transcript retiré des cartes (mini-widget unique). Transcript utilisateur non affiché.
+  - `closeSession()` ferme proprement WS/micro/audio/ringback + reset VU.
+- REFACTOR
+  - Split `workers-session.js` en modules <7KB: `workers-session-state/core/ws/tools/audio`.
+  - Suppression code mort: `workers-tools.js`.
+  - Dédupe des fonctions d’appel (grid ↔ calls) et délégation claire.
+- SEC & Robustesse
+  - `/workers` n’expose plus `db_path` / `db_size`.
+  - SQL LIMIT cap forcé (même si LIMIT présent) + indicateur `truncated`.
 
 ---
 
-## Archives
+## [1.27.1] - 2025-10-15
 
-- [v1.23.0 Audit Campaign](changelogs/CHANGELOG_1.23.0_audit_campaign.md) - 17 tools audited
-- [v1.22.0 to v1.22.2](changelogs/CHANGELOG_1.22.0_to_1.22.2.md)
-- [v1.19.0 to v1.21.1](changelogs/CHANGELOG_1.19.0_to_1.21.1.md) - News aggregator, Trivia API, Ollama fixes
-- [v1.14.3 to v1.18.2](changelogs/CHANGELOG_1.14.3_to_1.18.2.md)
-- [v1.0.0 to 1.13.x](changelogs/CHANGELOG_1.0.0_to_1.13.x.md)
+### 🎙️ Workers Realtime — UI pro, process dynamique, VU ring réactif
+- Split JS en modules maintenables (<7 Ko par feature):
+  - workers-grid.js (cartes), workers-calls.js (appels), workers-status.js (stats & events), workers-gallery.js (galerie), workers-process.js (process Mermaid + replay), workers-vu.js (anneau VU)
+- Process overlay (🧭) 100% DB-driven (zéro simulation):
+  - Schéma Mermaid (job_state_kv.graph_mermaid), nœud courant surligné, arguments, historique (job_steps), replay ▶︎/⏸ 1x
+  - Auto-refresh 10s du graph/état/historique pendant l’overlay
+- Carte: « Derniers événements » (3 lignes, sans flood), stats, icônes premium et hover subtil
+- Anneau VU réactif (couleur/scale) basé sur l’amplitude PCM16 des audios IA
+  - Smoothing léger (EMA), scale 1→3, couleurs vert/jaune/rouge
+- Polling:
+  - Carte (stats + events): 5s (au lieu de 30s) pour un ressenti live
+  - Overlay Process: refresh 10s
+- Sécurité & robustesse:
+  - Jamais de token renvoyé au frontend
+  - Transcripts mini échappés (anti-XSS)
+  - SQL corrigé (COALESCE finished_at, started_at)
+  - Reset d’appel fiable (pas de faux « appel en cours »)
+
+---
+
+## [1.27.0] - 2025-10-14
+- … (voir version précédente)

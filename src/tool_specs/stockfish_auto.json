@@ -1,0 +1,70 @@
+{
+  "type": "function",
+  "function": {
+    "name": "stockfish_auto",
+    "displayName": "Stockfish (Auto-75)",
+    "category": "entertainment",
+    "tags": ["chess", "uci", "auto-tune"],
+    "description": "Évalue une position ou analyse une partie avec Stockfish en autoconfigurant ~75% des ressources (Threads/Hash). Pour analyze_game, un budget-temps global (par défaut 30 s) est appliqué afin de garantir un retour dans les délais en ajustant automatiquement profondeur et portée (sans timeout).",
+    "parameters": {
+      "type": "object",
+      "required": ["operation"],
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["evaluate_position", "analyze_game"],
+          "description": "Action à exécuter."
+        },
+        "position": {
+          "type": "object",
+          "description": "Position à analyser. Fournir soit startpos=true + moves[], soit un FEN (et moves[] optionnel).",
+          "properties": {
+            "startpos": { "type": "boolean", "default": true },
+            "fen": { "type": "string" },
+            "moves": { "type": "array", "items": { "type": "string" } }
+          },
+          "additionalProperties": false
+        },
+        "quality": {
+          "type": "string",
+          "enum": ["fast", "balanced", "deep"],
+          "default": "balanced",
+          "description": "Préréglage temps/profondeur (fast≈1s, balanced≈2s, deep≈5s par sonde)."
+        },
+        "resource_target_percent": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 100,
+          "default": 75,
+          "description": "Cible d’utilisation des ressources CPU/RAM en % (auto Threads/Hash)."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "default": 3,
+          "description": "Nombre de meilleures variantes (MultiPV) à retourner (evaluate_position)."
+        },
+        "searchmoves": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Limiter la recherche aux coups UCI fournis (optionnel, evaluate_position)."
+        },
+        "analyze": {
+          "type": "object",
+          "description": "Paramètres pour analyze_game (annotation coup-par-coup, budget-temps global appliqué).",
+          "properties": {
+            "pgn": { "type": "string" },
+            "max_moves": { "type": "integer", "minimum": 1, "maximum": 5000, "default": 200 },
+            "blunder_threshold_cp": { "type": "integer", "minimum": 50, "maximum": 1000, "default": 150 },
+            "inaccuracy_threshold_cp": { "type": "integer", "minimum": 20, "maximum": 300, "default": 50 },
+            "limit": { "type": "integer", "minimum": 1, "maximum": 200, "default": 100 },
+            "max_time_sec": { "type": "integer", "minimum": 1, "maximum": 600, "default": 30, "description": "Budget de temps global pour l’analyse (en secondes). L’outil ajuste automatiquement profondeur et portée pour terminer dans cette fenêtre (sans timeout)." }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

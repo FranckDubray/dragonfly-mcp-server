@@ -1,7 +1,7 @@
 from typing import Any, Dict
 
 from ..services.constants import DEFAULT_LIMIT, MAX_LIMIT
-from ..services.root_guard import ensure_under_project_root
+from ..services.root_guard import ensure_under_allowed_roots
 
 ALLOWED_OPS = {
     "compose","overview","tree","search","outline","open","endpoints","tests","metrics",
@@ -33,12 +33,12 @@ def validate_envelope(p: Dict[str, Any]) -> Dict[str, Any]:
         raise ValueError("Invalid operation")
     _ensure_type(p, "path", str)
 
-    # SECURITY: ensure path is under project root (chroot-like) and normalize to absolute
+    # SECURITY: ensure path is under allowed roots (project root ./ OR clones root ../)
     try:
-        abs_ok = ensure_under_project_root(p["path"])  # raises if invalid
+        abs_ok = ensure_under_allowed_roots(p["path"])  # raises if invalid
         p["path"] = abs_ok
     except ValueError as e:
-        raise ValueError("Invalid path: not under project root") from e
+        raise ValueError("Invalid path: not under allowed roots (./ or ../)") from e
 
     # Optionals with defaults (20KB policy)
     p.setdefault("limit", DEFAULT_LIMIT)

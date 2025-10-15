@@ -9,6 +9,8 @@ from ..services.budget_broker import compute_effective_budgets
 from ..services.constants import DEFAULT_MAX_HITS_PER_FILE
 from ..services.anchors import make_anchor
 from ..services.search_text import search_in_file
+from ..release_index import reader_paths as P
+from ..release_index import reader_queries as Q
 
 
 def run(p: Dict[str, Any]) -> Dict[str, Any]:
@@ -30,7 +32,30 @@ def run(p: Dict[str, Any]) -> Dict[str, Any]:
     root = p["path"]
     scope_path = p.get("scope_path")
 
-    # Collect raw hits (anchors-only, FS-first)
+    # INDEX-FIRST: try index lookup for symbols and paths (LIKE-based)
+    if p.get("use_release_index", True):
+        db_path, err = P.resolve_index_db(root, p.get("release_tag"), p.get("commit_hash"))
+        if db_path:
+            conn = P._open_ro(db_path)
+            try:
+                items = Q.query_search_symbols_paths(conn, pattern, limit)
+            finally:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+            page, total, next_c = paginate_list(items, limit, p.get("cursor"))
+            return {
+                "operation": "search",
+                "data": page,
+                "returned_count": len(page),
+                "total_count": total,
+                "truncated": next_c is not None,
+                "next_cursor": next_c,
+                "stats": {"source": "release_index", "notice": "Index LIKE search on symbols and paths (no file content)."}
+            }
+
+    # FS fallback (anchors-only, head-limited)
     hits: List[Dict[str, Any]] = []
     scanned = 0
     for rel, _size in iter_files(root, scope_path, eff["max_files_scanned"]):

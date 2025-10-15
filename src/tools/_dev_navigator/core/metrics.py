@@ -6,6 +6,8 @@ from ..services.lang_detect import language_from_path
 from ..services.budget_broker import compute_effective_budgets
 from ..connectors.python.sloc_estimator import estimate_sloc
 from ..connectors.python.outline_ast import outline_file
+from ..release_index import reader_paths as P
+from ..release_index import reader_queries as Q
 
 
 def run(p: Dict[str, Any]) -> Dict[str, Any]:
@@ -22,6 +24,40 @@ def run(p: Dict[str, Any]) -> Dict[str, Any]:
     eff = compute_effective_budgets(p)
     root = p["path"]
     scope_path = p.get("scope_path")
+
+    # INDEX-FIRST fast path
+    if p.get("use_release_index", True):
+        db_path, err = P.resolve_index_db(root, p.get("release_tag"), p.get("commit_hash"))
+        if db_path:
+            conn = P._open_ro(db_path)
+            try:
+                dir_stats = Q.query_dir_stats_all(conn)
+                try:
+                    func_count = Q.query_functions_count(conn)
+                except Exception:
+                    func_count = 0
+            finally:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+            total_files = sum(int(r["files"]) for r in dir_stats)
+            total_bytes = sum(int(r["bytes"]) for r in dir_stats)
+            data = {
+                "total_files": int(total_files),
+                "total_bytes": int(total_bytes),
+                "files_by_language": [],
+                "sloc_estimate": [],
+                "functions_estimate": {"python": int(func_count), "total": int(func_count)}
+            }
+            return {
+                "operation": "metrics",
+                "data": data,
+                "returned_count": 0,
+                "total_count": 0,
+                "truncated": False,
+                "stats": {"source": "release_index"}
+            }
 
     files_by_lang: Dict[str, int] = {}
     sloc_by_lang: Dict[str, int] = {}

@@ -114,6 +114,14 @@ else
   echo -e "${GREEN}🎞️  PyAV available${NC}"
 fi
 
+# Ensure python-chess for Stockfish analyze_game
+if ! python -c "import chess" >/dev/null 2>&1; then
+  echo -e "${YELLOW}♟️  Installing python-chess (PGN parsing for Stockfish)...${NC}"
+  pip install -q "python-chess>=1.999"
+else
+  echo -e "${GREEN}♟️  python-chess available${NC}"
+fi
+
 # Generate tools catalog (auto)
 echo -e "${YELLOW}🧰 Generating tools catalog (src/tools/README.md)...${NC}"
 python3 scripts/generate_tools_catalog.py || echo -e "${YELLOW}⚠️  Warning: failed to generate tools catalog${NC}"
@@ -124,6 +132,12 @@ export MCP_PORT="${MCP_PORT:-8000}"
 export LOG_LEVEL="${LOG_LEVEL:-INFO}"
 export AUTO_RELOAD_TOOLS="${AUTO_RELOAD_TOOLS:-1}"
 export EXECUTE_TIMEOUT_SEC="${EXECUTE_TIMEOUT_SEC:-300}"
+
+# Hint about Stockfish presence
+if ! command -v stockfish >/dev/null 2>&1 && [ -z "${STOCKFISH_PATH}" ]; then
+  echo -e "${YELLOW}⚠️  Stockfish binary not found on PATH and STOCKFISH_PATH not set.${NC}"
+  echo -e "${YELLOW}   Install it: brew install stockfish (macOS) or set STOCKFISH_PATH.${NC}"
+fi
 
 echo -e "${GREEN}🌐 Server Configuration:${NC}"
 echo -e "  Host: ${MCP_HOST}"
