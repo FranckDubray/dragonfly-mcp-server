@@ -1,7 +1,16 @@
-
-
-
 # Changelog
+
+## [1.27.5] - 2025-10-15
+
+### 🧩 Nouveaux tools
+- Lichess (Public API, read‑only): profils, perfs, équipes, parties, tournois, leaderboards, puzzles (sans authentification).
+- Stockfish (Auto‑75): évaluation de position et analyse de partie avec auto‑configuration (~75% des ressources), MultiPV, budget‑temps global (LLM 1 min par sonde typique).
+
+### 📦 Divers
+- Catalog/tools: specs chargées dans le registre (JSON canoniques disponibles sous src/tool_specs/).
+- Docs: README racine mis à jour.
+
+---
 
 ## [1.27.4] - 2025-10-15
 
@@ -48,4 +57,3 @@
 - Lot par ~50 lignes, répété pour couvrir une plage temporelle jusqu’à atteindre des tests denses.
 
 ---
-
