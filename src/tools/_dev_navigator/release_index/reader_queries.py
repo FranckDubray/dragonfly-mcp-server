@@ -205,3 +205,99 @@ def query_dir_stats_all(conn: sqlite3.Connection) -> List[Dict[str, Any]]:
         return [{"path": r[0], "files": int(r[1]), "bytes": int(r[2])} for r in cur.fetchall()]
     finally:
         cur.close()
+
+# New helpers for index-first ops
+
+def query_files_all(conn: sqlite3.Connection, limit: int = 100000) -> List[Dict[str, Any]]:
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT relpath, size FROM files ORDER BY relpath LIMIT ?", (int(limit),))
+        return [{"relpath": r[0], "size": int(r[1])} for r in cur.fetchall()]
+    finally:
+        cur.close()
+
+
+def query_outlines(conn: sqlite3.Connection, limit: int) -> List[Dict[str, Any]]:
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            SELECT f.relpath, s.name, s.kind, s.start_line
+            FROM symbols s JOIN files f ON s.file_id=f.id
+            ORDER BY f.relpath, s.start_line
+            LIMIT ?
+            """,
+            (limit * 50,),
+        )
+        rows = cur.fetchall()
+    finally:
+        cur.close()
+    items: Dict[str, List[Dict[str, Any]]] = {}
+    for rel, name, kind, sl in rows:
+        items.setdefault(rel, []).append({"name": name, "kind": kind, "anchor": {"path": rel, "start_line": int(sl), "start_col": 0}})
+    out = [{"path": rel, "symbols": syms} for rel, syms in items.items()]
+    out.sort(key=lambda x: x["path"])
+    return out
+
+
+def query_outline_samples(conn: sqlite3.Connection, per_file: int = 5, max_files: int = 3) -> List[Dict[str, Any]]:
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            SELECT f.relpath, s.name, s.kind, s.start_line
+            FROM symbols s JOIN files f ON s.file_id=f.id
+            ORDER BY f.relpath, s.start_line
+            LIMIT ?
+            """,
+            (per_file * max_files * 10,),
+        )
+        rows = cur.fetchall()
+    finally:
+        cur.close()
+    data: Dict[str, List[Dict[str, Any]]] = {}
+    for rel, name, kind, sl in rows:
+        if len(data.setdefault(rel, [])) < per_file:
+            data[rel].append({"name": name, "kind": kind, "anchor": {"path": rel, "start_line": int(sl), "start_col": 0}})
+        if len(data) >= max_files:
+            break
+    out = [{"path": rel, "symbols": syms} for rel, syms in data.items()]
+    out.sort(key=lambda x: x["path"])
+    return out
+
+
+def query_functions_count(conn: sqlite3.Connection) -> int:
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT COUNT(1) FROM symbols WHERE kind IN ('function','method')")
+        r = cur.fetchone()
+        return int(r[0] or 0)
+    finally:
+        cur.close()
+
+
+def query_search_symbols_paths(conn: sqlite3.Connection, pattern: str, limit: int) -> List[Dict[str, Any]]:
+    cur = conn.cursor()
+    like = f"%{pattern}%"
+    try:
+        cur.execute(
+            """
+            SELECT f.relpath, s.start_line
+            FROM symbols s JOIN files f ON s.file_id=f.id
+            WHERE s.name LIKE ?
+            ORDER BY f.relpath, s.start_line
+            LIMIT ?
+            """,
+            (like, limit * 2),
+        )
+        sym_hits = [
+            {"anchor": {"path": r[0], "start_line": int(r[1]), "start_col": 0}}
+            for r in cur.fetchall()
+        ]
+        cur.execute("SELECT relpath FROM files WHERE relpath LIKE ? ORDER BY relpath LIMIT ?", (like, limit * 2))
+        path_hits = [{"anchor": {"path": r[0], "start_line": 1, "start_col": 0}} for r in cur.fetchall()]
+        items = sym_hits + path_hits
+        items.sort(key=lambda x: (x["anchor"]["path"], x["anchor"]["start_line"]))
+        return items[: limit * 2]
+    finally:
+        cur.close()

@@ -54,13 +54,34 @@ def _slug_from_git_remote(repo_path: str) -> Optional[str]:
 
 
 def make_repo_slug(repo_path: str) -> str:
-    # Priority: explicit env → git remote → local path hash
+    """
+    Determine target repo slug (used under ./sqlite3/<slug>/...):
+    1) Name hint from provided repo_path basename (e.g. path="backend" -> "backend")
+    2) Explicit env DEVNAV_REPO_SLUG
+    3) Git remote of repo_path (origin)
+    4) Fallback: local path basename + short hash
+    """
+    # 1) Prefer the caller-provided path hint (basename), even if the directory doesn't exist locally
+    try:
+        base_name = os.path.basename(os.path.abspath(repo_path)) or "repo"
+        if base_name not in {"", "."}:
+            hint = _sanitize(base_name)
+            if hint:
+                return hint
+    except Exception:
+        pass
+
+    # 2) Env override
     env_slug = _slug_from_env()
     if env_slug:
         return env_slug
+
+    # 3) Git remote slug (if repo_path is an actual repo)
     git_slug = _slug_from_git_remote(os.path.abspath(repo_path))
     if git_slug:
         return git_slug
+
+    # 4) Fallback: local path basename + short hash
     base = os.path.basename(os.path.abspath(repo_path)) or "repo"
     h = hashlib.sha1(os.path.abspath(repo_path).encode("utf-8")).hexdigest()[:8]
     return f"{_sanitize(base)}__{h}"

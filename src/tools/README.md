@@ -2,7 +2,7 @@
 
 Ce fichier est généré automatiquement par `scripts/generate_tools_catalog.py`. Ne pas éditer à la main.
 
-Total tools: 44
+Total tools: 47
 
 ## 📊 Intelligence & Orchestration (4)
 
@@ -44,7 +44,7 @@ Total tools: 44
   - Opérations: audit_tool
   - Tokens: aucun
 
-## 📧 Communication (5)
+## 📧 Communication (6)
 
 - Discord Bot — Client Discord Bot complet (REST API). Gestion messages, channels, threads, reactions, search. Requiert DISCORD_BOT_TOKEN. 29 opérations… · Tags: discord, bot, messaging, api
   - Opérations: list_guilds, list_messages, get_message, send_message, edit_message, delete_message …
@@ -60,6 +60,10 @@ Total tools: 44
 
 - IMAP Email — Accès emails via IMAP (Gmail, Outlook, Yahoo, iCloud, Infomaniak, serveurs custom). Recherche, lecture, téléchargement pièces jointes, ma…
   - Opérations: connect, list_folders, search_messages, get_message, download_attachments, mark_read …
+  - Tokens: aucun
+
+- Mail Manager Background — Surveille des boites IMAP en tâche de fond, lit le mail entier (cap 30ko), sanitize, classifie via call_llm (modèle paramétrable), déplac… · Tags: async, background, graph, imap, email
+  - Opérations: start, stop, status
   - Tokens: aucun
 
 - Telegram Bot — Complete Telegram Bot API access. Send messages (text, photos, documents, videos, locations), read updates, edit/delete messages, polls.… · Tags: telegram, messaging, bot, notifications
@@ -162,8 +166,8 @@ Total tools: 44
   - Opérations: geocode, reverse_geocode, directions, distance_matrix, places_search, place_details …
   - Tokens: aucun
 
-- Host Audit — Plans d'audit compacts pour macOS (local) et hôtes distants via SSH: Ubuntu (OS/services/packages), MySQL (conf/logs), Symfony (routes/co… · Tags: system, audit, ssh, os, mysql, symfony
-  - Opérations: macos_local, ubuntu_ssh_plan, mysql_ssh_plan, symfony_ssh_plan
+- Host Audit — Plans d'audit compacts pour macOS (local) et hôtes distants via SSH: Ubuntu, Nginx, Apache, PHP-FPM, Node.js, MySQL, Symfony. Ne lance pa… · Tags: system, audit, ssh, os, mysql, symfony
+  - Opérations: macos_local, ubuntu_ssh_plan, mysql_ssh_plan, symfony_ssh_plan, nginx_ssh_plan, apache_ssh_plan …
   - Tokens: aucun
 
 - Math — Maths: arithmétique (précision arbitr.), expressions (SymPy), symbolique, complexes, probas (suppl.), algèbre linéaire (+ext), solveurs,…
@@ -182,7 +186,7 @@ Total tools: 44
   - Opérations: connect, exec, exec_file, upload, download
   - Tokens: aucun
 
-## 🎮 Social & Entertainment (4)
+## 🎮 Social & Entertainment (6)
 
 - Astronomy & Space — Complete astronomy calculations using Skyfield (100% local, no API key required). Planet positions, moon phases, ephemeris, celestial eve… · Tags: space, astronomy, science, educational, planets, stars
   - Opérations: planet_position, moon_phase, sun_moon_times, celestial_events, planet_info, visible_planets …
@@ -192,8 +196,16 @@ Total tools: 44
   - Opérations: get_player_profile, get_player_stats, get_player_games_current, get_player_games_archives_list, get_player_games_archives, get_player_clubs …
   - Tokens: aucun
 
+- Lichess (Public API) — Accès en lecture seule aux endpoints publics de Lichess: profils, perfs, équipes, parties, tournois, leaderboards, puzzles. Sans authenti… · Tags: chess, lichess, public_api
+  - Opérations: get_user_profile, get_user_perfs, get_user_teams, get_user_current_game, get_user_games, get_team_details …
+  - Tokens: aucun
+
 - Reddit — Advanced Reddit analysis tool. Search subreddits, analyze sentiment, find experts, track trends, get post comments. Discover insights fro… · Tags: social, knowledge, scraping, external_sources
   - Opérations: search_subreddit, get_comments, analyze_sentiment, find_trending, find_experts, multi_search
+  - Tokens: aucun
+
+- Stockfish (Auto-75) — Évalue une position ou analyse une partie avec Stockfish en autoconfigurant ~75% des ressources (Threads/Hash). Paramètres de contrôle po… · Tags: chess, uci, auto-tune
+  - Opérations: evaluate_position, analyze_game
   - Tokens: aucun
 
 - Trivia API — Complete Open Trivia Database API access. Get trivia questions, manage categories, session tokens. 100% free, no API key required. Suppor… · Tags: quiz, games, educational, trivia

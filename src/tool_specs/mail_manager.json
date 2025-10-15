@@ -1,0 +1,35 @@
+{
+  "type": "function",
+  "function": {
+    "name": "mail_manager",
+    "displayName": "Mail Manager Background",
+    "category": "communication",
+    "tags": ["async", "background", "graph", "imap", "email"],
+    "description": "Surveille des boites IMAP en tâche de fond, lit le mail entier (cap 30ko), sanitize, classifie via call_llm (modèle paramétrable), déplace en Spam si SPAM, marque lu si HAM. Journalisation complète en base dédiée par worker.",
+    "x-dragonfly": { "background": true, "requires_graph": true, "recurring": true },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": { "type": "string", "enum": ["start", "stop", "status"], "default": "start" },
+        "worker_name": { "type": "string", "description": "Prénom du worker (nom logique unique)", "minLength": 1 },
+        "persona": { "type": "string", "description": "Texte persona du worker (contexte/ton/consignes)", "minLength": 0 },
+        "mailboxes": {
+          "type": "array",
+          "description": "Profils IMAP (.env) à surveiller (ex: gmail, infomaniak)",
+          "items": { "type": "string" },
+          "minItems": 1
+        },
+        "folders": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["INBOX"]
+        },
+        "poll_interval_minutes": { "type": "integer", "minimum": 1, "maximum": 120, "default": 10 },
+        "mark_read": { "type": "boolean", "default": true },
+        "llm_model": { "type": "string", "default": "gpt-5-mini", "description": "Modèle à utiliser pour call_llm" }
+      },
+      "required": ["worker_name", "mailboxes"],
+      "additionalProperties": false
+    }
+  }
+}

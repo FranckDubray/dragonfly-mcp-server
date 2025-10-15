@@ -1,158 +1,309 @@
-# Dragonfly MCP Server — Dossier `src/`
+# 📁 src/ - Code Source Dragonfly MCP Server
 
-Ce répertoire contient le code du serveur MCP (FastAPI) et des outils.
-Vous trouverez ci‑dessous:
-- les endpoints HTTP exposés par l'API
-- le rôle des fichiers principaux
-- un bref guide d'exécution et de configuration
+Organisation modulaire du serveur MCP.
 
 ---
 
-## Endpoints HTTP
+## 🏗️ Structure
 
-- GET /tools
-  - Retourne la liste des tools découverts, avec un identifiant, un nom, un displayName, une description et la spec JSON (format OpenAI tools). Côté serveur, les fonctions Python ne sont pas retournées.
-  - Auto‑reload: si AUTO_RELOAD_TOOLS=1, le serveur redétecte automatiquement les nouveaux fichiers dans `src/tools/`.
-  - Caching: ETag sur la charge utile; support du 304 lorsqu'If-None-Match correspond.
-
-- POST /execute
-  - Exécute un tool. Corps JSON: { tool: string | tool_reg, params: object }.
-  - Timeout par défaut: EXECUTE_TIMEOUT_SEC.
-  - Paramètres invalides → 400; tool inconnu → 404; timeout → 504.
-  - La réponse est sérialisée via SafeJSONResponse (voir ci‑dessous), incluant la sanitation des grands entiers et des valeurs non‑finies.
-
-- POST /debug
-  - Écho/debug: journalise le body brut, le JSON parsé et tente de construire un ExecuteRequest. Pratique pour diagnostiquer la forme des requêtes envoyées par un client.
-
-- GET /config
-  - Retourne l'état des principales variables (masquées si sensibles): GITHUB_TOKEN, AI_PORTAL_TOKEN, LLM_ENDPOINT, chemin du fichier .env.
-
-- POST /config
-  - Met à jour/sauvegarde des variables d'environnement dans `.env` (persistées; `.gitignore` est mis à jour côté projet).
-
-- GET /control
-  - Sert un panneau de contrôle HTML pour interagir avec le serveur (configurer les tokens, tester les tools, etc.).
-
-- GET /control.js
-  - Sert le JavaScript utilisé par le panneau de contrôle.
-
----
-
-## Comportements et mécanismes clefs
-
-- Découverte automatique des tools
-  - Le package `tools` est parcouru (sous‑modules et sous‑packages, hors noms commençant par `_`).
-  - Un module est enregistré comme tool s'il expose deux callables: `run()` et `spec()`.
-  - Le `spec()` retourne une spec conforme au format "function" d'OpenAI tools (ou fallback minimal si la spec JSON dédiée n'est pas disponible).
-
-- Auto‑reload des tools
-  - Si `AUTO_RELOAD_TOOLS=1`, le serveur compare l'mtime/ensemble des fichiers de `src/tools/` et relance la découverte quand une modification est détectée.
-  - Forçage manuel: ajouter `?reload=1` à l'URL (GET /tools) ou activer `RELOAD=1`.
-
-- Safe JSON / grands entiers
-  - `SafeJSONResponse` + `sanitize_for_json()` convertissent automatiquement:
-    - grands entiers en chaînes si leur nombre de chiffres dépasse `BIGINT_STR_THRESHOLD` (activable via `BIGINT_AS_STRING`)
-    - `NaN`, `Infinity`, `-Infinity` en chaînes littérales
-  - `PY_INT_MAX_STR_DIGITS` peut être levé pour supporter la conversion en chaîne d'entiers très grands (factoriels, etc.).
-
-- Timeout et exécution des tools
-  - `asyncio.wait_for()` avec pool d'exécuteur (thread). Timeout réglé par `EXECUTE_TIMEOUT_SEC`.
-
----
-
-## Fichiers principaux
-
-- server.py
-  - Point d'entrée (module exécutable). Lit MCP_HOST/MCP_PORT et démarre Uvicorn avec l'app FastAPI créée par `create_app()`.
-
-- app_factory.py
-  - Fabrique l'application FastAPI: endpoints, middleware CORS, handlers d'erreurs, découverte des tools, auto‑reload, SafeJSONResponse.
-  - Composants notables:
-    - `discover_tools()` : scan du package `tools`, import/reload des modules, enregistrement dans le registre interne.
-    - `should_reload()` : logique d'auto‑reload basée sur mtime et set de fichiers.
-    - `sanitize_for_json()` / `SafeJSONResponse` : sérialisation robuste.
-
-- config.py
-  - Chargement/sauvegarde des variables d'environnement (.env), masquage des secrets, localisation de la racine du projet.
-
-- ui_html.py / ui_js.py
-  - HTML/JS du panneau de contrôle (/control et /control.js).
-
-- tools/ (package)
-  - Contient les implémentations des tools. Chaque tool expose:
-    - `run(**params) -> Any`
-    - `spec() -> dict` (spécification OpenAI tools)
-  - Exemples inclus: `call_llm`, `math`, `date`, `git`, `gitbook`, `sqlite_db`, `pdf_search`, `pdf2text`, `reddit_intelligence`, `script_executor`, `universal_doc_scraper`, `imap`, `discord_webhook`, `pdf_download`.
-  - Sous‑packages spécialisés:
-    - `_call_llm/` : orchestrateur LLM en deux phases (stream). Fichiers clés:
-      - `core.py` : logique principale (depuis 2025‑09, agrégation de l'usage cumulative à travers les phases et appels imbriqués)
-      - `payloads.py`, `http_client.py`, `streaming.py`, `tools_exec.py`, `debug_utils.py`
-    - `_math/` : sous‑modules pour arithmétique, symbolique, proba, algèbre linéaire, HP, etc.
-    - `_ffmpeg/` : détection de plans (native PyAV), extraction d'images; debug par frame (similarité%), exec_time_sec
-    - `_script/` : exécution sandbox (ScriptExecutor)
-    - `_imap/` : accès IMAP multi-comptes (Gmail, Outlook, Yahoo, iCloud, Infomaniak, custom): presets, connection, operations, parsers, utils
-    - `_discord_webhook/` : publication Discord avec persistance SQLite et gestion CRUD
-    - `_pdf_download/` : téléchargement PDF depuis URLs avec validation, métadonnées, noms uniques
-
-- tool_specs/
-  - Spécifications JSON canoniques pour certains tools (ex: `call_llm.json`, `script_executor.json`, `ffmpeg_frames.json`, `imap.json`, `pdf_download.json`). Le code Python peut utiliser un fallback minimal si le JSON n'est pas disponible.
+```
+src/
+├── app_factory.py          # FastAPI app factory
+├── server.py               # Entry point (uvicorn)
+├── config.py               # Gestion .env
+│
+├── app_core/               # Modules core
+│   ├── safe_json.py        # JSON sanitization
+│   ├── tool_discovery.py   # Scan tools dynamique
+│   └── workers/            # Module workers realtime (NEW v1.27.0)
+│       ├── __init__.py
+│       ├── scanner.py      # Scan worker_*.db (2KB)
+│       ├── config_builder.py  # Build config Realtime (5.7KB)
+│       └── db_query.py     # Query SQL read-only + validation (3.6KB)
+│
+├── routes/                 # Routes FastAPI (NEW v1.27.0)
+│   └── workers.py          # /workers, /workers/{name}/realtime/config, /workers/{name}/query
+│
+├── tools/                  # 45+ tools MCP
+│   ├── call_llm.py         # Appels LLM (local/distant)
+│   ├── sqlite_db.py        # Base SQLite
+│   ├── _mail_manager/      # Worker mail asynchrone (génère worker_*.db)
+│   └── ...                 # Voir tools/README.md (auto-généré)
+│
+├── tool_specs/             # Specs JSON canoniques (source de vérité)
+│   ├── call_llm.json
+│   ├── sqlite_db.json
+│   └── ...
+│
+├── templates/              # Templates HTML (NEW v1.27.0)
+│   └── workers_page.py     # Page /workers/ui
+│
+├── static/                 # Assets frontend
+│   ├── css/
+│   │   └── workers.css     # Style workers (10KB, design moderne)
+│   └── js/
+│       ├── main.js         # Control panel existant
+│       ├── tools.js
+│       ├── config.js
+│       ├── workers-grid.js      # Grid workers (NEW)
+│       ├── workers-vad.js       # VAD (NEW)
+│       ├── workers-tools.js     # Tool execution (NEW)
+│       ├── workers-session.js   # WebRTC session (NEW)
+│       └── workers-graph.js     # Graph latence (NEW)
+│
+├── ui_html.py              # HTML control panel
+└── ui_js.py                # JS control panel
+```
 
 ---
 
-## Variables d'environnement utiles
+## 🎤 Module Workers (NEW v1.27.0)
 
-- Réseau/serveur: MCP_HOST, MCP_PORT, LOG_LEVEL
-- Exécution: EXECUTE_TIMEOUT_SEC, AUTO_RELOAD_TOOLS, RELOAD
-- JSON/entiers: BIGINT_AS_STRING, BIGINT_STR_THRESHOLD, PY_INT_MAX_STR_DIGITS
-- LLM: AI_PORTAL_TOKEN, LLM_ENDPOINT, LLM_REQUEST_TIMEOUT_SEC, LLM_RETURN_DEBUG, LLM_STREAM_TRACE, LLM_STREAM_DUMP
-- IMAP multi-comptes: 
-  - `IMAP_GMAIL_EMAIL`, `IMAP_GMAIL_PASSWORD`
-  - `IMAP_INFOMANIAK_EMAIL`, `IMAP_INFOMANIAK_PASSWORD`
-  - `IMAP_OUTLOOK_EMAIL`, `IMAP_OUTLOOK_PASSWORD`
-  - `IMAP_YAHOO_EMAIL`, `IMAP_YAHOO_PASSWORD`
-  - `IMAP_ICLOUD_EMAIL`, `IMAP_ICLOUD_PASSWORD`
-  - Custom: `IMAP_CUSTOM_EMAIL`, `IMAP_CUSTOM_PASSWORD`, `IMAP_CUSTOM_SERVER`, `IMAP_CUSTOM_PORT`, `IMAP_CUSTOM_USE_SSL`
-- Divers: GITHUB_TOKEN
+### `app_core/workers/`
+
+Module dédié à l'interface vocale temps réel pour les workers asynchrones.
+
+#### **scanner.py** (2KB)
+- Scan `sqlite3/worker_*.db`
+- Extrait metadata (worker_name, voice, persona)
+- Retourne liste workers pour UI
+
+```python
+from app_core.workers import scan_workers
+
+workers = scan_workers()  # [{"id": "alain", "name": "Alain", "voice": "ash", ...}]
+```
+
+#### **config_builder.py** (5.7KB)
+- Charge persona + voice depuis `job_meta`
+- Charge spec `sqlite_db` depuis `tool_specs/`
+- Build instructions système (1ère personne, exemples requêtes)
+- Retourne config complète pour session Realtime (wss_url, token, tools, turn_detection)
+
+```python
+from app_core.workers import build_realtime_config
+
+config = build_realtime_config("alain")
+# {
+#   "worker_id": "alain",
+#   "wss_url": "wss://...",
+#   "token": "...",
+#   "persona": "Je suis Alain...",
+#   "instructions": "...",
+#   "tools": [sqlite_tool],
+#   "voice": "ash",
+#   "turn_detection": {...}
+# }
+```
+
+#### **db_query.py** (3.6KB)
+- Exécution SQL read-only (`SELECT` uniquement)
+- Validation stricte (whitelist/blacklist keywords)
+- Formatting résultat pour TTS (texte court, prononçable)
+- Timeout 5s, limit 200 rows max
+
+```python
+from app_core.workers import query_worker_db
+
+result = query_worker_db("alain", "SELECT COUNT(*) FROM mail_classifications", limit=50)
+# {
+#   "success": True,
+#   "rows": [{"COUNT(*)": 42}],
+#   "count": 1,
+#   "summary": "Résultat : 42"
+# }
+```
 
 ---
 
-## Exemples d'appels
+## 🛣️ Routes Workers
 
-- Lister les tools
-  - curl "http://127.0.0.1:8000/tools"
+### `routes/workers.py` (3.3KB)
 
-- Exécuter un tool
-  - curl -X POST "http://127.0.0.1:8000/execute" \
-    -H "Content-Type: application/json" \
-    -d '{"tool":"date","params":{"operation":"today"}}'
+Endpoints FastAPI pour l'interface workers :
 
-- Télécharger un PDF depuis arXiv
-  - curl -X POST "http://127.0.0.1:8000/execute" \
-    -H "Content-Type: application/json" \
-    -d '{"tool":"pdf_download","params":{"operation":"download","url":"https://arxiv.org/pdf/2301.00001.pdf","filename":"paper"}}'
+```python
+from routes.workers import router
 
-- Lire les emails non lus (IMAP Infomaniak)
-  - curl -X POST "http://127.0.0.1:8000/execute" \
-    -H "Content-Type: application/json" \
-    -d '{"tool":"imap","params":{"provider":"infomaniak","operation":"search_messages","folder":"inbox","query":{"unseen":true},"max_results":20}}'
+app.include_router(router)  # Prefix /workers
+```
 
-- Déboguer une requête
-  - curl -X POST "http://127.0.0.1:8000/debug" \
-    -H "Content-Type: application/json" \
-    -d '{"tool":"math","params":{"operation":"factorial","n":10}}'
+**Endpoints** :
+- `GET /workers` : liste workers (scan sqlite3/)
+- `GET /workers/{name}/realtime/config` : config session Realtime
+- `POST /workers/{name}/query` : query SQL read-only
+- `GET /workers/ui` : page HTML (template)
 
 ---
 
-## Développement rapide
+## 🎨 Frontend Workers
 
-- Lancer en local
-  - `python -m server` (ou via scripts fournis)
+### **workers-grid.js** (4.9KB)
+- Fetch `/workers` au chargement
+- Render cards (avatar, nom, voix, stats)
+- Rafraîchissement stats toutes les 30s
+- Clic card → `openWorkerSession()`
 
-- Ajouter un tool
-  - Créez `src/tools/<tool_name>.py` avec `run()` et `spec()`.
-  - Optionnel: ajoutez `src/tool_specs/<tool_name>.json`.
-  - Si `AUTO_RELOAD_TOOLS=1`, le nouveau tool sera détecté automatiquement.
+### **workers-vad.js** (4.2KB)
+- AudioContext + Analysers (user + AI)
+- RMS computation (Uint8Array)
+- Détection interruption (user parle pendant AI parle)
+- Push activity timeline pour graph
+
+### **workers-tools.js** (5.2KB)
+- Buffering `function_call_arguments.delta` (streaming)
+- Anti-duplicate (Set processedToolCalls)
+- Exécution via `POST /execute` (tool sqlite_db)
+- Formatting résultat pour TTS
+- Indicator visuel (spinner)
+
+### **workers-session.js** (10.4KB)
+- WebRTC RTCPeerConnection + DataChannel
+- Signaling vers AI Portal (wss://)
+- `session.update` (voice, tools, turn_detection)
+- Transcriptions (user + assistant)
+- Latency tracking
+- Controls (mute, hangup, enable audio)
+
+### **workers-graph.js** (2.6KB)
+- Canvas 2D graph latence
+- Window glissante 60s
+- Axes + grid + labels
+- Plot points latence (ligne bleue)
+
+### **workers.css** (10KB)
+- Variables CSS (--primary, --success, --danger...)
+- Grid workers (2 colonnes max, responsive)
+- Cards hover effect
+- Modal session (overlay + panel)
+- Transcripts scrollable
+- Responsive mobile (1 colonne)
 
 ---
 
-Pour plus de détails, voir aussi le README racine du projet.
+## 🔧 Tool Discovery
+
+### `app_core/tool_discovery.py`
+
+Scan dynamique des tools :
+- Pattern : `src/tools/<name>.py` (sans underscore)
+- Chargement `spec()` depuis chaque tool
+- Registry en mémoire (cache)
+- Auto-reload optionnel (`AUTO_RELOAD_TOOLS=1` dans .env)
+
+**Usage** :
+```python
+from app_core.tool_discovery import get_registry, discover_tools
+
+discover_tools()  # Scan src/tools/
+registry = get_registry()  # {tool_name: {name, spec, func, ...}}
+```
+
+---
+
+## 📦 Tools
+
+Voir `tools/README.md` (auto-généré depuis specs JSON).
+
+**Règles** :
+- Un fichier = un tool : `<tool_name>.py`
+- Package implémentation : `_<tool_name>/` (avec underscore)
+- Spec JSON canonique : `tool_specs/<tool_name>.json`
+- Exports : `spec()` (charge JSON) + `run(**params)` (exécution)
+
+**Exemple** :
+```python
+# src/tools/sqlite_db.py
+import json, os
+
+def spec():
+    here = os.path.dirname(__file__)
+    spec_path = os.path.join(here, '..', 'tool_specs', 'sqlite_db.json')
+    with open(spec_path, 'r') as f:
+        return json.load(f)
+
+def run(**params):
+    from _sqlite_db.api import route_operation
+    return route_operation(params)
+```
+
+---
+
+## 🔒 Sécurité
+
+### SQL Validation (`db_query.py`)
+```python
+FORBIDDEN_KEYWORDS = [
+    'DROP', 'DELETE', 'INSERT', 'UPDATE', 'ALTER', 'CREATE',
+    'PRAGMA', 'ATTACH', 'DETACH', 'VACUUM', 'REPLACE'
+]
+
+def _validate_query(query):
+    if not query.upper().startswith('SELECT'):
+        raise ValueError("Only SELECT queries allowed")
+    for kw in FORBIDDEN_KEYWORDS:
+        if kw in query.upper():
+            raise ValueError(f"Forbidden keyword: {kw}")
+```
+
+### Read-only DB
+```python
+conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=5.0)
+```
+
+---
+
+## 📊 Monitoring
+
+### Logging
+```python
+import logging
+logger = logging.getLogger(__name__)
+
+logger.info("✅ Operation completed")
+logger.warning("⚠️ Fallback used")
+logger.error("❌ Execution failed")
+```
+
+### Metrics (Workers)
+- Latency tracking (performance.now())
+- VAD sampling (120ms interval)
+- Graph window (60s glissant)
+- Tool execution timing
+
+---
+
+## 🧪 Tests
+
+```bash
+# Test discovery
+python -c "from app_core.tool_discovery import discover_tools; discover_tools()"
+
+# Test worker scan
+python -c "from app_core.workers import scan_workers; print(scan_workers())"
+
+# Test config builder
+python -c "from app_core.workers import build_realtime_config; print(build_realtime_config('alain'))"
+
+# Test DB query
+python -c "from app_core.workers import query_worker_db; print(query_worker_db('alain', 'SELECT COUNT(*) FROM mail_classifications'))"
+```
+
+---
+
+## 📝 Contribution
+
+**Audit obligatoire** après modif (voir `../LLM_DEV_GUIDE.md`) :
+1. Tests préliminaires
+2. Audit JSON spec + code
+3. Correctifs
+4. Tests validation
+5. Tests non-régression
+6. CHANGELOG
+7. Commit + push
+
+**Fichiers < 7KB** : découper si nécessaire (voir guide).
+
+---
+
+**Made with 🐉 by Dragonfly**

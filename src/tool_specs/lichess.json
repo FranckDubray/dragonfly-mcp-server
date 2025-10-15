@@ -1,0 +1,85 @@
+{
+  "type": "function",
+  "function": {
+    "name": "lichess",
+    "displayName": "Lichess (Public API)",
+    "category": "entertainment",
+    "tags": ["chess", "lichess", "public_api"],
+    "description": "Accès en lecture seule aux endpoints publics de Lichess: profils, perfs, équipes, parties, tournois, leaderboards, puzzles. Sans authentification.",
+    "parameters": {
+      "type": "object",
+      "required": ["operation"],
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": [
+            "get_user_profile",
+            "get_user_perfs",
+            "get_user_teams",
+            "get_user_current_game",
+            "get_user_games",
+            "get_team_details",
+            "get_team_members",
+            "get_tournament_details",
+            "get_tournament_results",
+            "get_top_players",
+            "get_daily_puzzle",
+            "get_puzzle"
+          ],
+          "description": "Opération à exécuter."
+        },
+        "username": {
+          "type": "string",
+          "description": "Nom d'utilisateur Lichess (id). Requis pour les opérations utilisateur.",
+          "pattern": "^[a-z0-9_-]{2,30}$"
+        },
+        "team_id": {
+          "type": "string",
+          "description": "Identifiant d'équipe Lichess. Requis pour opérations équipe."
+        },
+        "tournament_id": {
+          "type": "string",
+          "description": "Identifiant de tournoi Lichess. Requis pour opérations tournoi."
+        },
+        "puzzle_id": {
+          "type": "string",
+          "description": "Identifiant puzzle Lichess. Requis pour get_puzzle."
+        },
+        "perf_type": {
+          "type": "string",
+          "description": "Type de performance (bullet, blitz, rapid, classical, correspondence, variants).",
+          "enum": [
+            "ultraBullet", "bullet", "blitz", "rapid", "classical", "correspondence",
+            "chess960", "kingOfTheHill", "threeCheck", "antichess", "atomic", "horde", "racingKings"
+          ]
+        },
+        "rated": {
+          "type": "boolean",
+          "description": "Filtrer les parties classées (get_user_games)."
+        },
+        "max": {
+          "type": "integer",
+          "description": "Nombre maximum d'éléments à retourner (selon l'endpoint). Par défaut 50, max 500.",
+          "minimum": 1,
+          "maximum": 500,
+          "default": 50
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Limite de sortie pour listes renvoyées (team members, tournament results). Par défaut 50, max 500.",
+          "minimum": 1,
+          "maximum": 500,
+          "default": 50
+        },
+        "count": {
+          "type": "integer",
+          "description": "Nombre de joueurs à retourner pour get_top_players (1..50).",
+          "minimum": 1,
+          "maximum": 50,
+          "default": 10
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
