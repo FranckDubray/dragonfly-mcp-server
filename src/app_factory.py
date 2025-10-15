@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 import os
 import sys
@@ -32,6 +31,9 @@ from app_core.tool_discovery import (
     should_reload as should_reload_tools,
     get_last_errors,
 )
+
+# Workers routes
+from routes.workers import router as workers_router
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +78,10 @@ def create_app() -> FastAPI:
         logger.info(f"📁 Mounted /static from {static_dir}")
     else:
         logger.warning(f"⚠️ Static directory not found: {static_dir}")
+
+    # ----- Include workers router -----
+    app.include_router(workers_router)
+    logger.info("🎤 Workers Realtime routes included")
 
     # ----- Validation error handler -----
     from fastapi.exceptions import RequestValidationError
@@ -276,5 +282,6 @@ def create_app() -> FastAPI:
             logger.info("🔄 Auto-reload enabled - New tools will be detected automatically")
         else:
             logger.info("📌 Auto-reload disabled - Use ?reload=1 or restart server for new tools")
+        logger.info("🎤 Workers Realtime module loaded")
 
     return app

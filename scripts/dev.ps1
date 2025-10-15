@@ -124,6 +124,15 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host "🎞️  PyAV available" -ForegroundColor Green
 }
 
+# Ensure python-chess for Stockfish analyze_game
+python -c "import chess" 2>$null
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "♟️  Installing python-chess (PGN parsing for Stockfish)..." -ForegroundColor Yellow
+    pip install --quiet "python-chess>=1.999"
+} else {
+    Write-Host "♟️  python-chess available" -ForegroundColor Green
+}
+
 # Generate tools catalog (auto)
 Write-Host "🧰 Generating tools catalog (src/tools/README.md)..." -ForegroundColor Yellow
 python scripts/generate_tools_catalog.py

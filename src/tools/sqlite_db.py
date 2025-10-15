@@ -1,4 +1,3 @@
-
 """
 SQLite3 Tool - Manage lightweight databases under a dedicated project folder.
 
@@ -19,6 +18,7 @@ Notes:
 - DB files are created in <PROJECT_ROOT>/sqlite3 and paths are sanitized (alnum, _ and -).
 - LIMIT parameter (default: 100, max: 1000): For SELECT queries, automatically truncates results
   to avoid massive outputs. Add explicit LIMIT clause in your query for precise control.
+- Case-insensitive matching: "alain" will match both "worker_alain.db" and "worker_Alain.db"
 """
 from __future__ import annotations
 
@@ -64,9 +64,53 @@ def _normalize_name(name: str) -> str:
     return name
 
 
-def _db_path(name: str) -> Path:
+def _db_path(name: str, must_exist: bool = False) -> Path:
+    """
+    Resolve database path with case-insensitive matching.
+    
+    Args:
+        name: Database name (with or without .db, with or without worker_ prefix)
+        must_exist: If True, raises FileNotFoundError if not found
+        
+    Returns:
+        Path to the database file
+        
+    Raises:
+        FileNotFoundError: If must_exist=True and no matching file found
+        ValueError: If name is invalid
+    """
     norm = _normalize_name(name)
-    return (BASE_DIR / norm).resolve()
+    
+    # Try exact match first
+    exact_path = (BASE_DIR / norm).resolve()
+    if exact_path.exists():
+        return exact_path
+    
+    # If name starts with "worker_", try case variations
+    if norm.startswith("worker_"):
+        # Extract the worker name part (after "worker_")
+        worker_part = norm[7:-3]  # Remove "worker_" prefix and ".db" suffix
+        
+        # Try variations: original, lowercase, capitalize
+        variations = [
+            f"worker_{worker_part}.db",
+            f"worker_{worker_part.lower()}.db",
+            f"worker_{worker_part.capitalize()}.db",
+            f"worker_{worker_part.upper()}.db"
+        ]
+        
+        for variant in variations:
+            test_path = (BASE_DIR / variant).resolve()
+            if test_path.exists():
+                logger.info(f"📁 Matched '{name}' → '{variant}' (case-insensitive)")
+                return test_path
+    
+    # If not found and must_exist, raise error
+    if must_exist:
+        raise FileNotFoundError(f"Database '{name}' not found in {BASE_DIR}")
+    
+    # Otherwise return the normalized path (for create operations)
+    return exact_path
 
 
 def _row_factory(cursor: sqlite3.Cursor, row: Tuple[Any, ...]) -> Dict[str, Any]:
@@ -101,7 +145,7 @@ def run(operation: str, **params) -> Dict[str, Any]:
             logger.warning("create_db: missing or invalid 'name' parameter")
             return {"error": "name is required (string)"}
         try:
-            path = _db_path(name)
+            path = _db_path(name, must_exist=False)
         except Exception as e:
             logger.warning(f"create_db: invalid name '{name}': {e}")
             return {"error": str(e)}
@@ -130,13 +174,13 @@ def run(operation: str, **params) -> Dict[str, Any]:
             logger.warning("delete_db: missing or invalid 'name' parameter")
             return {"error": "name is required (string)"}
         try:
-            path = _db_path(name)
+            path = _db_path(name, must_exist=True)
+        except FileNotFoundError as e:
+            logger.warning(f"delete_db: {e}")
+            return {"error": str(e)}
         except Exception as e:
             logger.warning(f"delete_db: invalid name '{name}': {e}")
             return {"error": str(e)}
-        if not path.exists():
-            logger.warning(f"delete_db: database not found: {path.name}")
-            return {"error": f"database not found: {path.name}"}
         try:
             path.unlink()
             logger.info(f"delete_db: deleted {path.name}")
@@ -151,13 +195,13 @@ def run(operation: str, **params) -> Dict[str, Any]:
             logger.warning("get_tables: missing or invalid 'db' parameter")
             return {"error": "db is required (string)"}
         try:
-            path = _db_path(db)
+            path = _db_path(db, must_exist=True)
+        except FileNotFoundError as e:
+            logger.warning(f"get_tables: {e}")
+            return {"error": str(e)}
         except Exception as e:
             logger.warning(f"get_tables: invalid db '{db}': {e}")
             return {"error": str(e)}
-        if not path.exists():
-            logger.warning(f"get_tables: database not found: {path.name}")
-            return {"error": f"database not found: {path.name}"}
         try:
             conn = sqlite3.connect(str(path))
             conn.row_factory = _row_factory
@@ -181,13 +225,13 @@ def run(operation: str, **params) -> Dict[str, Any]:
             logger.warning("describe: missing or invalid 'table' parameter")
             return {"error": "table is required (string)"}
         try:
-            path = _db_path(db)
+            path = _db_path(db, must_exist=True)
+        except FileNotFoundError as e:
+            logger.warning(f"describe: {e}")
+            return {"error": str(e)}
         except Exception as e:
             logger.warning(f"describe: invalid db '{db}': {e}")
             return {"error": str(e)}
-        if not path.exists():
-            logger.warning(f"describe: database not found: {path.name}")
-            return {"error": f"database not found: {path.name}"}
         try:
             conn = sqlite3.connect(str(path))
             conn.row_factory = _row_factory
@@ -222,13 +266,13 @@ def run(operation: str, **params) -> Dict[str, Any]:
             return {"error": "query exceeds 50KB limit"}
 
         try:
-            path = _db_path(db)
+            path = _db_path(db, must_exist=True)
+        except FileNotFoundError as e:
+            logger.warning(f"execute: {e}")
+            return {"error": str(e)}
         except Exception as e:
             logger.warning(f"execute: invalid db '{db}': {e}")
             return {"error": str(e)}
-        if not path.exists():
-            logger.warning(f"execute: database not found: {path.name}")
-            return {"error": f"database not found: {path.name}"}
 
         try:
             conn = sqlite3.connect(str(path))
@@ -305,13 +349,13 @@ def run(operation: str, **params) -> Dict[str, Any]:
             return {"error": "script exceeds 50KB limit"}
         
         try:
-            path = _db_path(db)
+            path = _db_path(db, must_exist=True)
+        except FileNotFoundError as e:
+            logger.warning(f"executescript: {e}")
+            return {"error": str(e)}
         except Exception as e:
             logger.warning(f"executescript: invalid db '{db}': {e}")
             return {"error": str(e)}
-        if not path.exists():
-            logger.warning(f"executescript: database not found: {path.name}")
-            return {"error": f"database not found: {path.name}"}
         try:
             conn = sqlite3.connect(str(path))
             cur = conn.cursor()
@@ -333,4 +377,3 @@ def run(operation: str, **params) -> Dict[str, Any]:
 def spec() -> Dict[str, Any]:
     # Load the canonical JSON spec (source of truth)
     return _load_spec_json("sqlite_db")
-
