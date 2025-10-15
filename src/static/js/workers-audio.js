@@ -1,3 +1,6 @@
+
+
+
 /**
  * Workers Audio - lecteur PCM16 avec contrôle de volume et arrêt immédiat
  */
@@ -78,8 +81,15 @@
   // Helpers globaux
   window.setVolume = function(v){
     try { window.audioPlayer.setVolume(v); } catch(_){}
+    try { window.ringbackTone?.setVolume?.(v); } catch(_){}
   }
   window.unlockAudio = function(){
     try { ensureContext(); } catch(_){}
   }
 })();
+
+ 
+ 
+ 
+ 
+ 

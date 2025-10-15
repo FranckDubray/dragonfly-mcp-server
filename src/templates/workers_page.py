@@ -1,3 +1,5 @@
+
+
 """
 HTML page Workers Realtime
 Mode téléphone simple : click et allo
@@ -9,7 +11,28 @@ WORKERS_HTML = '''<!DOCTYPE html>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Workers Vocaux - Dragonfly MCP</title>
-    <link rel="stylesheet" href="/static/css/workers.css">
+    <link rel="stylesheet" href="/static/css/workers.css?v=20251015-3">
+    <style>
+      /* Inline fallback (minimal) to guarantee avatar sizing even if external CSS fails */
+      .worker-card .avatar-wrap { position: relative; display: inline-grid; place-items: center; }
+      .worker-card img.worker-photo,
+      .worker-card img.worker-avatar-img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; display: block; }
+      .worker-card .avatar-ring { position: absolute; inset: -6px; border-radius: 50%; pointer-events: none; --level: 0; }
+    </style>
+    <!-- Preload Mermaid early to avoid first-render delay -->
+    <script>
+      (function(){
+        try{
+          if (!document.querySelector('script[data-mermaid]')){
+            var s=document.createElement('script');
+            s.src='https://unpkg.com/mermaid@10/dist/mermaid.min.js';
+            s.async=true; s.defer=true; s.setAttribute('data-mermaid','1');
+            s.onload=function(){ try{ window.mermaid.initialize({ startOnLoad:false, theme:'neutral', securityLevel:'loose' }); }catch(e){} };
+            document.head.appendChild(s);
+          }
+        }catch(_){ }
+      })();
+    </script>
 </head>
 <body>
     <div class="app-container">
@@ -50,33 +73,77 @@ WORKERS_HTML = '''<!DOCTYPE html>
         <!-- Volume slider (call only) -->
         <div id="volumeSlider" style="display:none">
             <label>Volume</label>
-            <input type="range" min="0" max="1" step="0.01" value="1" oninput="setVolume(this.value)" />
+            <input type="range" min="0" max="1" step="0.01" value="0.5" oninput="setVolume(this.value)" />
         </div>
     </div>
 
+    <!-- Photo Lightbox (overlay) -->
+    <div id="photoLightbox" class="df-lightbox hidden" aria-hidden="true">
+      <div class="df-lightbox-bg"></div>
+      <figure class="df-lightbox-figure">
+        <img class="df-lightbox-img" alt="">
+        <figcaption class="df-lightbox-caption"></figcaption>
+        <button class="df-lightbox-close" aria-label="Fermer">×</button>
+      </figure>
+    </div>
+
     <!-- Scripts (ordre important) -->
-    <script src="/static/js/workers-ringback.js"></script>
-    <script src="/static/js/workers-status.js"></script>
-    <script src="/static/js/workers-gallery.js"></script>
-    <script src="/static/js/workers-cards.js"></script>
-    <script src="/static/js/workers-grid.js"></script>
-    <script src="/static/js/workers-calls.js"></script>
-    <script src="/static/js/workers-vu.js"></script>
-    <script src="/static/js/workers-audio.js"></script>
-    <!-- Session split (nouveau) -->
-    <script src="/static/js/workers-session-state.js"></script>
-    <script src="/static/js/workers-session-core.js"></script>
-    <script src="/static/js/workers-session-ws.js"></script>
-    <script src="/static/js/workers-session-tools.js"></script>
-    <script src="/static/js/workers-session-audio.js"></script>
-    <!-- Process split (mermaid render sanitize) -->
-    <script src="/static/js/workers-process-render.js"></script>
-    <script src="/static/js/workers-process.js"></script>
+    <script src="/static/js/workers-ringback.js?v=20251015-3"></script>
+    <script src="/static/js/workers-status.js?v=20251015-3"></script>
+    <script src="/static/js/workers-gallery.js?v=20251015-3"></script>
+    <script src="/static/js/workers-cards.js?v=20251015-3"></script>
+    <script src="/static/js/workers-grid.js?v=20251015-3"></script>
+    <script src="/static/js/workers-calls.js?v=20251015-3"></script>
+    <script src="/static/js/workers-vu.js?v=20251015-3"></script>
+    <script src="/static/js/workers-audio.js?v=20251015-3"></script>
+    <!-- Session split -->
+    <script src="/static/js/workers-session-state.js?v=20251015-3"></script>
+    <script src="/static/js/workers-session-core.js?v=20251015-3"></script>
+    <script src="/static/js/workers-session-ws.js?v=20251015-3"></script>
+    <script src="/static/js/workers-session-tools.js?v=20251015-3"></script>
+    <script src="/static/js/workers-session-audio.js?v=20251015-3"></script>
+    <!-- Process split (mermaid render sanitize + modules) -->
+    <script src="/static/js/workers-process-render.js?v=20251015-3"></script>
+    <script src="/static/js/workers-process-state.js?v=20251015-3"></script>
+    <script src="/static/js/workers-process-overlay.js?v=20251015-3"></script>
+    <script src="/static/js/workers-process-data.js?v=20251015-3"></script>
+    <script src="/static/js/workers-process-consistency.js?v=20251015-3"></script>
+    <script src="/static/js/workers-process-ui-side.js?v=20251015-3"></script>
+    <script src="/static/js/workers-process-ui-core.js?v=20251015-3"></script>
+    <script src="/static/js/workers-process-ui-replay.js?v=20251015-3"></script>
+    <script src="/static/js/workers-process.js?v=20251015-3"></script>
 
     <script>
         // Init au chargement
         window.addEventListener('DOMContentLoaded', () => {
-            loadWorkers();
+            // Progressive enhancement: ensure avatars have ring wrapper
+            document.querySelectorAll('.worker-card img.worker-photo, .worker-card img.worker-avatar-img').forEach((img) => {
+              const wrap = img.closest('.avatar-wrap');
+              if (!wrap) {
+                const w = document.createElement('div');
+                w.className = 'avatar-wrap';
+                const ring = document.createElement('div');
+                ring.className = 'avatar-ring';
+                const parent = img.parentElement;
+                parent.insertBefore(w, img);
+                w.appendChild(img);
+                w.appendChild(ring);
+              } else if (!wrap.querySelector('.avatar-ring')) {
+                const ring = document.createElement('div');
+                ring.className = 'avatar-ring';
+                wrap.appendChild(ring);
+              }
+              // S'assure des dimensions même sans CSS externe
+              img.style.width = '64px'; img.style.height = '64px'; img.style.borderRadius = '50%'; img.style.objectFit = 'cover';
+            });
+
+            // Gallery init if available (n'ouvre pas sur l'avatar sans data-full)
+            if (window.initWorkersLightbox) window.initWorkersLightbox();
+
+            // Charger les workers
+            if (typeof loadWorkers === 'function') {
+              loadWorkers();
+            }
         });
     </script>
 </body>
