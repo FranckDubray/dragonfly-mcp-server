@@ -1,3 +1,5 @@
+
+
 /**
  * Workers Session - Tools bridge
  */
@@ -13,9 +15,20 @@ async function executeTool(name, args, callId){
   try{
     const workerId = currentWorkerConfig?.worker_id; if (!workerId) throw new Error('Worker config missing');
     const res = await fetch(`/workers/${workerId}/tool/query`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(args) });
-    if (!res.ok){ const txt = await res.text(); throw new Error(`HTTP ${res.status}: ${txt}`); }
-    const data = await res.json();
-    const output = data.summary || (Array.isArray(data.rows)? formatSQLResultForTTS(data): JSON.stringify(data));
+    let output = '';
+    if (res.ok){
+      const data = await res.json();
+      if (data && data.success === false && data.error){
+        // Expose SQL error verbatim so LLM can correct the query
+        output = `SQL error: ${data.error}\nQuery: ${args.query||''}`;
+      } else {
+        output = data.summary || (Array.isArray(data.rows)? formatSQLResultForTTS(data): JSON.stringify(data));
+      }
+    } else {
+      // Include full error body as-is for LLM debugging
+      const txt = await res.text();
+      output = `HTTP ${res.status}: ${txt}\nQuery: ${args.query||''}`;
+    }
     ws.send(JSON.stringify({ type:'conversation.item.create', item:{ type:'function_call_output', call_id: callId, output: String(output||'') } }));
     sendResponseCreateSafe('tool-output');
   }catch(e){

@@ -1,6 +1,5 @@
 
 
-
 // Workers Process - UI Core (mermaid ensure, refresh, side panel)
 (function(){
   var MERMAID_CACHE = '';
@@ -16,6 +15,13 @@
     document.head.appendChild(s);
   }
 
+  function pickLatestCompleted(history){
+    if (!Array.isArray(history) || history.length===0) return null;
+    for (var i=0;i<history.length;i++){ if (String(history[i].status||'').toLowerCase()==='succeeded') return history[i]; }
+    for (var j=0;j<history.length;j++){ if (String(history[j].status||'').toLowerCase()==='failed') return history[j]; }
+    return history[0];
+  }
+
   async function refreshProcessView(){
     var graphEl = document.getElementById('processGraph');
     var sideEl = document.getElementById('processSide');
@@ -23,28 +29,46 @@
     if (!graphEl || !sideEl || !rangeSelect) return;
     try {
       MERMAID_CACHE = await WPData.fetchMermaid();
-      var current = await WPData.fetchCurrentState();
-      if (MERMAID_CACHE){ await renderMermaid(MERMAID_CACHE, graphEl, current.node); }
-      else { graphEl.innerHTML = '<p style="padding:10px;">Graph non disponible</p>'; }
-      await updateProcessSide(rangeSelect.value, current.args);
+      // Expose cache globally for other modules (overlay click)
+      window.MERMAID_CACHE = MERMAID_CACHE;
 
-      // Rebuild replaySeq and maintain tail/auto-advance semantics
-      var prevLen = Array.isArray(WP.replaySeq) ? WP.replaySeq.length : 0;
+      var current = await WPData.fetchCurrentState();
+      var historyOpen = await WPData.fetchHistory(rangeSelect.value);
+      var latestCompleted = pickLatestCompleted(historyOpen);
+
+      // Node à afficher/mettre en évidence
+      var openNode = '';
+      if (WP.atTail === true || !WP.currentNodeSelected){
+        openNode = latestCompleted ? (latestCompleted.node||'') : (current.node||'');
+        WP.currentNodeSelected = openNode || WP.currentNodeSelected || '';
+      } else {
+        openNode = WP.currentNodeSelected || (latestCompleted ? (latestCompleted.node||'') : (current.node||''));
+      }
+
+      // Render graph (no-op inside if nothing changed)
+      if (MERMAID_CACHE){ await renderMermaid(MERMAID_CACHE, graphEl, openNode); }
+      else { graphEl.innerHTML = '<p style="padding:10px;">Graph non disponible</p>'; }
+
+      // Update side panel only if data changed
+      await updateProcessSide(rangeSelect.value, current.args, historyOpen);
+
+      // Rebuild replaySeq (based on visible window) and maintain tail semantics
       var wasAtTail = (WP.atTail === true);
       WP.replaySeq = await buildReplaySequence(rangeSelect.value);
-      if (wasAtTail) {
-        WP.replayIx = Math.max(0, WP.replaySeq.length - 1);
-        // si on était en bout (temps réel), on "suit" les nouveaux steps
-      } else {
-        // si on est dans le passé, on ne bouge pas l'index (autant que possible)
-        WP.replayIx = Math.min(WP.replayIx || 0, Math.max(0, WP.replaySeq.length - 1));
-      }
+      if (wasAtTail) { WP.replayIx = Math.max(0, WP.replaySeq.length - 1); }
+      else { WP.replayIx = Math.min(WP.replayIx || 0, Math.max(0, WP.replaySeq.length - 1)); }
       WP.atTail = (WP.replayIx >= (WP.replaySeq.length - 1));
 
-      // KPIs
+      // KPIs (only update if changed) + Consistency + Highlight timeline (no smooth at init)
       await renderKpis(sideEl);
-      await WPConsistency.checkConsistency(MERMAID_CACHE, current.node);
-      if (current.node) highlightTimelineNode(current.node);
+      await WPConsistency.checkConsistency(MERMAID_CACHE, openNode);
+
+      // Synchronize highlight BOTH: timeline + mermaid already rendered with openNode
+      var initialSmooth = false;
+      // If we know the exact latestCompleted id and we are at tail, use id highlight; else fallback node
+      if (latestCompleted && (WP.atTail === true)) highlightTimelineById(String(latestCompleted.id), /*smooth=*/initialSmooth);
+      else if (openNode) highlightTimelineNode(openNode, /*smooth=*/initialSmooth);
+
     } catch (e) {
       console.error('[Mermaid] render error:', e);
       graphEl.innerHTML = '<p style="padding:10px;color:var(--danger);">Erreur Mermaid: '+escapeHtml(e.message||e)+'</p>';
@@ -54,16 +78,19 @@
   async function renderKpis(sideEl){
     try{
       var k = await WPData.fetchStatsLastHour();
+      var sig = [k.tasks||0, k.llm_calls||0, k.cycles||0].join('|');
+      if (WP.kpisSig === sig) return; // no change
+      WP.kpisSig = sig;
+
       var panel = document.createElement('div');
       panel.className = 'panel';
       panel.innerHTML = ''+
         '<div class="panel-title">Activité (dernière heure)</div>'+
         '<div class="kpis" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px;">'+
-          '<div class="kpi"><div class="stat-value">'+(k.tasks||0)+'</div><div class="stat-label">Tâches</div></div>'+
-          '<div class="kpi"><div class="stat-value">'+(k.llm_calls||0)+'</div><div class="stat-label">Appels call_llm</div></div>'+
-          '<div class="kpi"><div class="stat-value">'+(k.cycles||0)+'</div><div class="stat-label">Cycles</div></div>'+
+          '<div class="kpi"><div class="stat-value">'+(Number(k.tasks)||0)+'</div><div class="stat-label">Tâches</div></div>'+
+          '<div class="kpi"><div class="stat-value">'+(Number(k.llm_calls)||0)+'</div><div class="stat-label">Appels call_llm</div></div>'+
+          '<div class="kpi"><div class="stat-value">'+(Number(k.cycles)||0)+'</div><div class="stat-label">Cycles</div></div>'+
         '</div>';
-      // Insère en tête du côté droit (et remplace l'ancien panneau s'il existe)
       var old = sideEl.querySelector('.panel .panel-title')?.textContent?.includes('Activité (dernière heure)') ? sideEl.querySelector('.panel') : null;
       if (old && old.parentElement === sideEl) {
         sideEl.replaceChild(panel, old.closest('.panel'));
@@ -80,21 +107,58 @@
     return nodes;
   }
 
-  function highlightTimelineNode(node){
+  function highlightTimelineNode(node, smooth){
     try{
       var box = document.getElementById('timelineBox'); if (!box) return;
       var items = box.querySelectorAll('.tl-item');
       var target = null; var needle = String(node||'').trim().toLowerCase();
       items.forEach(function(it){ it.classList.remove('selected'); if (!target){ var n = (it.getAttribute('data-node')||'').toLowerCase(); if (n === needle) target = it; } });
-      if (target){ target.classList.add('selected'); target.scrollIntoView({ block:'center', behavior:'smooth' }); }
+      if (target){
+        target.classList.add('selected');
+        try { target.scrollIntoView({ block:'center', behavior: smooth? 'smooth':'auto' }); } catch(_) { target.scrollIntoView(true); }
+      }
+      // Persist selected node
+      WP.currentNodeSelected = String(node||'');
+    }catch(_){ }
+  }
+
+  function highlightTimelineById(id, smooth){
+    try{
+      var box = document.getElementById('timelineBox'); if (!box) return;
+      var items = box.querySelectorAll('.tl-item');
+      items.forEach(function(it){ it.classList.remove('selected'); });
+      var target = box.querySelector('.tl-item[data-id="'+CSS.escape(String(id))+'"]');
+      if (target){
+        target.classList.add('selected');
+        try { target.scrollIntoView({ block:'center', behavior: smooth? 'smooth':'auto' }); } catch(_) { target.scrollIntoView(true); }
+        // Persist node from element
+        var node = target.getAttribute('data-node')||'';
+        WP.currentNodeSelected = node;
+      }
     }catch(_){ }
   }
 
   function safePreviewText(s, max){ var t = String(s||''); if (t.length>max) return t.slice(0,max)+'…'; return t; }
 
-  async function updateProcessSide(rangeKey, currentArgs){
+  async function updateProcessSide(rangeKey, currentArgs, preloadedHistory){
     var sideEl = document.getElementById('processSide');
     var argsStr = String(currentArgs||'');
+    // Compute signatures to avoid needless redraws
+    var history = preloadedHistory || await WPData.fetchHistory(rangeKey);
+    var len = history.length;
+    var firstId = len? history[0].id: 0;
+    var lastId = len? history[len-1].id: 0;
+    var histSig = [len, firstId, lastId].join(':');
+    var argsSig = String(argsStr).length + ':' + (argsStr? argsStr.charCodeAt(0): 0);
+    var globalSig = histSig + '|' + argsSig;
+
+    if (WP.timelineSig === globalSig){
+      // Nothing changed → ensure selection highlight stays consistent
+      if (WP.currentNodeSelected){ highlightTimelineNode(WP.currentNodeSelected, /*smooth=*/false); }
+      return;
+    }
+    WP.timelineSig = globalSig;
+
     var preview = safePreviewText(argsStr, 240);
     var argsPanel = '';
     if (argsStr){
@@ -110,7 +174,7 @@
         '  </div>'+
         '</div>';
     }
-    var history = await WPData.fetchHistory(rangeKey);
+
     var histItems = (history||[]).map(function(h){
       var ts = fmtTs(h.ts||'');
       var node = escapeHtml(h.node||'');
@@ -139,9 +203,3 @@
   window.highlightTimelineNode = highlightTimelineNode;
   window.updateProcessSide = updateProcessSide;
 })();
-
- 
- 
- 
- 
- 

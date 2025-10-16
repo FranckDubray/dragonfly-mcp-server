@@ -1,4 +1,5 @@
 
+
 /**
  * Workers Session - Audio & VAD client minimal (immediate cut on user speech)
  */
@@ -8,8 +9,13 @@ let sourceNode = null;
 let processorNode = null;
 let isSpeaking = false;
 let silenceFrames = 0;
-const SILENCE_THRESHOLD = 0.01; // RMS threshold
-const SILENCE_FRAMES_NEEDED = 4; // ~4*128/24k ≈ 21ms to release speaking
+// Hysteresis & noise gate améliorés
+const SILENCE_THRESHOLD_ON = 0.02;   // seuil pour entrer en état "parle"
+const SILENCE_THRESHOLD_OFF = 0.012; // seuil plus bas pour sortir de l'état "parle" (hystérèse)
+const MIN_SPEAK_FRAMES = 3;          // anti-gigue: nombre mini de frames > ON pour confirmer la parole
+const SILENCE_FRAMES_NEEDED = 8;     // frames de silence avant de relâcher (≈ 8*2048/24k ≈ 0.68s)
+let speakFrames = 0;
+let speechStartTs = 0;               // NEW: horodatage début de parole utilisateur
 
 async function startRecording(){
   if (!ws || ws.readyState!==WebSocket.OPEN) return;
@@ -17,7 +23,7 @@ async function startRecording(){
   const Ctx = window.AudioContext || window.webkitAudioContext;
   audioContext = new Ctx({sampleRate:24000});
   sourceNode = audioContext.createMediaStreamSource(localStream);
-  const bufferSize = 2048; // smaller buffer for faster detection
+  const bufferSize = 2048; // latence raisonnable
   processorNode = audioContext.createScriptProcessor(bufferSize,1,1);
 
   let pcmByteBuffer = [];
@@ -27,21 +33,33 @@ async function startRecording(){
     let sum=0; for(let i=0;i<input.length;i++){ sum += input[i]*input[i]; }
     const rms = Math.sqrt(sum/input.length);
 
-    // Fast attack: as soon as RMS crosses threshold => user speaking
-    if (rms>SILENCE_THRESHOLD){
-      if (!isSpeaking){
-        isSpeaking=true; window.isUserSpeaking=true;
-        // HARD CUT: stop all AI audio immediately & cancel active response
-        try{ audioPlayer?.stopAll?.(); }catch(_){ }
-        try{ if (currentResponseId && ws?.readyState===WebSocket.OPEN){ ws.send(JSON.stringify({type:'response.cancel', response_id: currentResponseId})); } }catch(_){ }
-      }
-      silenceFrames=0;
+    // Hysteresis + anti-gigue + mesure durée de parole
+    if (!isSpeaking){
+      if (rms > SILENCE_THRESHOLD_ON){
+        speakFrames++;
+        if (speakFrames >= MIN_SPEAK_FRAMES){
+          isSpeaking = true; window.isUserSpeaking = true; speakFrames=0;
+          speechStartTs = performance.now(); // start measure
+          // HARD CUT de l'IA si nécessaire
+          try{ audioPlayer?.stopAll?.(); }catch(_){ }
+          try{ if (currentResponseId && ws?.readyState===WebSocket.OPEN){ ws.send(JSON.stringify({type:'response.cancel', response_id: currentResponseId})); } }catch(_){ }
+        }
+      } else { speakFrames = 0; }
     } else {
-      silenceFrames++;
-      if (silenceFrames> SILENCE_FRAMES_NEEDED){ isSpeaking=false; window.isUserSpeaking=false; }
+      if (rms < SILENCE_THRESHOLD_OFF){
+        silenceFrames++;
+        if (silenceFrames > SILENCE_FRAMES_NEEDED){
+          isSpeaking=false; window.isUserSpeaking=false; silenceFrames=0;
+          // NEW: calcule la durée de la dernière prise de parole
+          try{
+            if (speechStartTs){ window.userLastSpeechMs = Math.max(0, performance.now() - speechStartTs); }
+          }catch(_){ }
+          speechStartTs = 0;
+        }
+      } else { silenceFrames=0; }
     }
 
-    // Skip sending if not speaking (and stabilized silence)
+    // N'envoie l'audio que si on est en train de parler (ou tout juste sorti)
     if (!isSpeaking && silenceFrames> SILENCE_FRAMES_NEEDED) return;
 
     // Downsample to 24kHz PCM16 in small chunks for low latency
