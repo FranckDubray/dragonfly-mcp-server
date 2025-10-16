@@ -1,15 +1,22 @@
 
-
-
 // Workers Process - Consistency checks (logs <-> Mermaid graph)
 (function(){
   function extractNodeIds(mermaidSrc){
     var set = new Set();
     try{
       var lines = String(mermaidSrc||'').split(/\n/);
+      // Match ANY node id occurring anywhere in the line, not only at start
+      // Supports Mermaid node syntaxes: id(text), id[text], id{decision}
+      // Regex groups: 1 = boundary, 2 = node id, 3 = opening bracket/brace/paren
+      var re = /(^|[^A-Za-z0-9_])([A-Za-z0-9_]+)\s*(\(|\[|\{)/g;
       for (var i=0;i<lines.length;i++){
-        var m = lines[i].match(/^\s*([A-Za-z0-9_]+)\s*(\(|\[|\{)/);
-        if (m && m[1]) set.add(m[1]);
+        var line = lines[i];
+        var m;
+        while ((m = re.exec(line)) !== null){
+          // Avoid empty/invalid ids just in case
+          var id = (m[2]||'').trim();
+          if (id) set.add(id);
+        }
       }
     }catch(_){ }
     return set;
@@ -50,7 +57,7 @@
         // Build human message: cap to 5 samples
         var samples = unique.slice(0,5).map(function(x){
           var when = x.ts ? (new Date(x.ts).toLocaleString('fr-FR') || x.ts) : '';
-          return (x.id!=="-"? ("id="+x.id+" ") : "") + x.name + (when? (" ("+when+")") : "");
+          return (x.id!="-"? ("id="+x.id+" ") : "") + x.name + (when? (" ("+when+")") : "");
         });
         var more = unique.length>5 ? (" … +"+(unique.length-5)+" autres") : '';
         showProcessAlert('Incohérence logs ↔ schéma: '+unique.length+' nœud(s) inconnu(s). Exemples: '+samples.join(', ')+more);
@@ -62,9 +69,3 @@
 
   window.WPConsistency = { extractNodeIds, checkConsistency };
 })();
-
- 
- 
- 
- 
- 

@@ -1,8 +1,6 @@
 
-
-
 /**
- * Workers Status - stats & derniers événements (5s)
+ * Workers Status - stats & derniers événements (5s) + runtime status (running/idle)
  */
 
 async function refreshWorkerStats(workerId){
@@ -23,8 +21,8 @@ async function refreshWorkerStats(workerId){
       const card = document.getElementById(`card-${workerId}`);
       if (card){
         card.classList.remove('activity-green','activity-orange','activity-red');
-        if (c <= 15) card.classList.add('activity-green');
-        else if (c <= 40) card.classList.add('activity-orange');
+        if (c <= 20) card.classList.add('activity-green');
+        else if (c <= 50) card.classList.add('activity-orange');
         else card.classList.add('activity-red');
       }
     }
@@ -49,7 +47,7 @@ async function refreshWorkerEvents(workerId, limit=3){
       if (f?.rows?.length){ lines = f.rows.map(x=>({ when: '', node: String(x.skey||''), sev: 'normal' })); }
     }
     if (!lines.length){ el.innerHTML = '—'; return; }
-    el.innerHTML = lines.map(item=> `<div class=\"ev-line\"><div class=\"ev-when\">${escapeHtml(item.when)}</div><div class=\"ev-node ${escapeHtml(item.sev)}\">${escapeHtml(item.node)}</div><div class=\"ev-status\"></div></div>`).join('');
+    el.innerHTML = lines.map(item=> `<div class="ev-line"><div class="ev-when">${escapeHtml(item.when)}</div><div class="ev-node ${escapeHtml(item.sev)}">${escapeHtml(item.node)}</div><div class="ev-status"></div></div>`).join('');
   }catch(e){ el.innerHTML = '—'; }
 }
 
@@ -86,14 +84,38 @@ async function postQuery(workerId, query){
   }catch(_){ return {}; }
 }
 
+// ===== Runtime Status (running/idle + échecs récents) =====
+async function refreshWorkerRuntimeStatus(workerId){
+  try{
+    const q = "SELECT strftime('%s','now') AS now, MAX(strftime('%s', COALESCE(finished_at, started_at))) AS tmax FROM job_steps";
+    const r = await postQuery(workerId, q);
+    if (!r?.rows?.length) return;
+    const now = Number(r.rows[0]?.now||0);
+    const tmax = Number(r.rows[0]?.tmax||0);
+    const age = (now && tmax) ? (now - tmax) : 0;
+    const status = (tmax && age <= 300) ? 'running' : 'idle';
+
+    const errRes = await postQuery(workerId, "SELECT COUNT(*) AS c FROM job_steps WHERE status='failed' AND strftime('%s', COALESCE(finished_at, started_at)) >= strftime('%s','now') - 900");
+    const recentFailed = Number(errRes?.rows?.[0]?.c||0);
+
+    const badge = document.getElementById(`runtime-${workerId}`);
+    if (badge){
+      badge.textContent = status === 'running' ? `En cours · échecs(15min): ${recentFailed}` : `Au repos · échecs(15min): ${recentFailed}`;
+      badge.classList.toggle('chip', true);
+    }
+  }catch(_){ }
+}
+
 // polling 5s
 setInterval(async () => {
   for (const w of (window.workersData||[])){
     await refreshWorkerStats(w.id);
     await refreshWorkerEvents(w.id, 3);
+    await refreshWorkerRuntimeStatus(w.id);
   }
 }, 5000);
 
 // Expose
 window.refreshWorkerStats = refreshWorkerStats;
 window.refreshWorkerEvents = refreshWorkerEvents;
+window.refreshWorkerRuntimeStatus = refreshWorkerRuntimeStatus;

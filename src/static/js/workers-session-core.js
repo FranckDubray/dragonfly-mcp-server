@@ -1,13 +1,24 @@
+
+
 /**
  * Workers Session - Core (start/stop + system message + response create)
  */
 
 function htmlEscape(s){ return String(s || '').replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>'); }
-function miniAppend(role, text){ const body = document.getElementById('miniTranscriptsBody'); if (!body) return; const ts = new Date(); const hh = String(ts.getHours()).padStart(2,'0'); const mm = String(ts.getMinutes()).padStart(2,'0'); const time = `${hh}:${mm}`; body.insertAdjacentHTML('beforeend', `<div class="mini-line"><span class="t">${time}</span> <span class="r ${role}">${role==='vous'?'Vous':(role==='tool'?'Tool':'Assistant')}</span> <span class="m">${htmlEscape(text)}</span></div>`); body.scrollTop = body.scrollHeight; }
+function miniAppend(role, text){
+  const body = document.getElementById('miniTranscriptsBody'); if (!body) return;
+  const ts = new Date(); const hh = String(ts.getHours()).padStart(2,'0'); const mm = String(ts.getMinutes()).padStart(2,'0');
+  const time = `${hh}:${mm}`;
+  body.insertAdjacentHTML('beforeend', `<div class="mini-line"><span class="t">${time}</span> <span class="r ${role}">${role==='vous'?'Vous':(role==='tool'?'Tool':'Assistant')}</span> <span class="m">${htmlEscape(text)}</span></div>`);
+  // Auto-scroll (robuste): scrollTop + scrollIntoView sur le dernier élément
+  try{ body.scrollTop = body.scrollHeight; body.lastElementChild?.scrollIntoView({block:'end'}); }catch(_){ }
+}
 function inlineAppend(role, text){ /* no-op by design */ }
 function safeArgsPreview(obj){ try{ const s = JSON.stringify(obj); return s.length>400? s.slice(0,380)+'…' : s; }catch(_){ return String(obj);} }
 
 let lastResponseCreateTs = 0;
+let callStartTs = null; // NEW: call start timestamp
+let callTimer = null;
 
 async function startRealtimeSession(config) {
   currentWorkerConfig = { worker_id: config.worker_id };
@@ -25,17 +36,19 @@ async function startRealtimeSession(config) {
     currentWorkerConfig.instructions = sessionData.instructions || '';
     currentWorkerConfig.tools = sessionData.tools || [];
 
-    console.info('[REALTIME] Instructions length:', (currentWorkerConfig.instructions||'').length, 'preview:', (currentWorkerConfig.instructions||'').slice(0,120));
-    console.info('[REALTIME] Tools included:', (currentWorkerConfig.tools||[]).map(t=>t?.name || t));
-
     sessionId = sessionData.id;
     await connectWebSocket(`${sessionData.websocketUrl}?token=${encodeURIComponent(sessionData.sessionToken)}`);
+
+    // RESET transcript (nouvel appel)
+    try{
+      const body = document.getElementById('miniTranscriptsBody');
+      if (body) body.innerHTML = '';
+    }catch(_){ }
 
     // Fallback si session.created absent
     setTimeout(()=>{
       try{
         if (!systemMessageSent && ws && ws.readyState===WebSocket.OPEN){
-          console.warn('[REALTIME] session.created non reçu, fallback system + session.update');
           sendSystemMessage();
           if (Array.isArray(currentWorkerConfig.tools) && currentWorkerConfig.tools.length){
             ws.send(JSON.stringify({ type:'session.update', session:{ type:'realtime', instructions: currentWorkerConfig.instructions||'', tools: currentWorkerConfig.tools, tool_choice: 'auto' } }));
@@ -46,17 +59,41 @@ async function startRealtimeSession(config) {
 
     await startRecording();
     startAutoGreeting();
+
+    // NEW: start call timer UI
+    callStartTs = Date.now();
+    if (callTimer) clearInterval(callTimer);
+    callTimer = setInterval(updateCallDurationUI, 1000);
+    updateCallDurationUI();
   } catch (e) {
-    try { if (window.ringbackTone) ringbackTone.stop(); } catch(_){}
+    try { if (window.ringbackTone) ringbackTone.stop(); } catch(_){ }
     alert(`Erreur: ${e.message}`);
-    try { if (typeof endCall === 'function') endCall(); } catch(_){}
+    try { if (typeof endCall === 'function') endCall(); } catch(_){ }
   }
+}
+
+function updateCallDurationUI(){
+  try{
+    if (!callStartTs) return;
+    const t = Math.floor((Date.now() - callStartTs)/1000);
+    const m = String(Math.floor(t/60)).padStart(2,'0');
+    const s = String(t%60).padStart(2,'0');
+    let badge = document.getElementById('callDuration');
+    if (!badge){
+      const hdr = document.querySelector('.header-right');
+      if (!hdr) return;
+      badge = document.createElement('span');
+      badge.id = 'callDuration';
+      badge.className = 'chip';
+      hdr.appendChild(badge);
+    }
+    badge.textContent = `⏱ ${m}:${s}`;
+  }catch(_){ }
 }
 
 function sendSystemMessage(){
   if (!ws || ws.readyState!==WebSocket.OPEN || !currentWorkerConfig) return;
   const instructions = currentWorkerConfig.instructions || '🇫🇷 Parler en français.';
-  if (!currentWorkerConfig.instructions){ console.warn('[REALTIME] Aucune instruction DB fournie, fallback FR.'); }
   miniAppend('assistant','(contexte système chargé)'); inlineAppend('assistant','(contexte système chargé)');
   ws.send(JSON.stringify({ type:'conversation.item.create', item:{ type:'message', role:'system', content:[{ type:'input_text', text: instructions }] } }));
   systemMessageSent = true;
@@ -67,6 +104,8 @@ function sendResponseCreateSafe(){
   if (window.isUserSpeaking) return;
   if (currentResponseId) return;
   if (responseCreatePending) return;
+  // Ignorer les prises de parole trop courtes (< 500ms)
+  try{ if (window.userLastSpeechMs && window.userLastSpeechMs < 500) return; }catch(_){ }
   const now = Date.now();
   if (now - lastResponseCreateTs < 1200) return; // throttle
   try{
@@ -83,6 +122,8 @@ function closeSession(){
   try{ ringbackTone?.stop?.(); }catch(_){ }
   try{ setAISpeaking(false); resetVu(currentWorkerIdMemo||''); }catch(_){ }
   sessionActive = false;
+  // stop call timer
+  if (callTimer) clearInterval(callTimer); callTimer=null; callStartTs=null;
 }
 
 // Expose

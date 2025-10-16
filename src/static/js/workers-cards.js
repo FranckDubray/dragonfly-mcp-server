@@ -1,6 +1,4 @@
 
-
-
 /**
  * Workers Cards - rendu HTML d'une carte worker (sobre & pro)
  */
@@ -19,19 +17,19 @@ function renderWorkerCard(worker){
   const avatarUrl = worker.avatar_url;
   const hasGallery = Array.isArray(worker.gallery) && worker.gallery.length;
 
-  const avatarHtml = avatarUrl 
+  const avatarCore = avatarUrl 
     ? '<img src="'+avatarUrl+'" alt="'+escapeHtml(worker.name)+'" class="worker-avatar-img" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';" />\n       <div class="worker-avatar-emoji" style="display:none;">'+getWorkerEmoji(worker.id)+'</div>'
     : '<div class="worker-avatar-emoji">'+getWorkerEmoji(worker.id)+'</div>';
 
-  // Meta (horaires supprimés: ne pas afficher Dispo)
+  // Badge statut runtime (placeholder, sera rempli par refresh)
+  const statusBadge = '<div class="status-badge chip" id="runtime-'+worker.id+'" title="Statut">—</div>';
+
+  // Meta
   const metaHtml = ''+
     '<div class="worker-meta">'+
       (worker.job ? '<div class="worker-meta-line">Métier: '+escapeHtml(worker.job)+'</div>' : '')+
       (worker.employeur ? '<div class="worker-meta-line">Employeur: '+escapeHtml(worker.employeur)+(worker.employe_depuis ? ' (depuis '+escapeHtml(worker.employe_depuis)+')' : '')+'</div>' : '')+
     '</div>';
-
-  // Status badge (affiché juste sous le nom)
-  const statusBadge = worker.statut ? '<div class="status-badge" title="Statut">'+escapeHtml(worker.statut)+'</div>' : '';
 
   // Barre d'icônes (Process • Galerie)
   const icons = [];
@@ -39,7 +37,7 @@ function renderWorkerCard(worker){
   if (hasGallery) icons.push('<button class="icon-btn" title="Galerie" aria-label="Galerie" onclick="toggleGallery(\''+worker.id+'\')">📷</button>');
   const iconbarHtml = '<div class="iconbar right">'+icons.join('')+'</div>';
 
-  // Galerie (fermée par défaut)
+  // Galerie
   const galleryHtml = hasGallery
     ? '<div class="worker-gallery collapsed" id="gallery-'+worker.id+'">\n'
       + '  <button class="gallery-nav prev" onclick="scrollGallery(\''+worker.id+'\', -1)" aria-label="Précédent">‹</button>\n'
@@ -78,14 +76,17 @@ function renderWorkerCard(worker){
       + '<button class="icon-btn" title="Appeler" aria-label="Appeler" onclick="callWorker(\''+worker.id+'\')" style="background:#10b981;color:#fff;border-color:#0e8f6f;">'+phoneIconSvg(18)+'</button>'
     + '</div>';
 
-  // Structure: avatar + nom + statut, meta, iconbar, (galerie), events, stats, cta
+  // Structure
   return ''+
     '<div class="worker-card" id="card-'+worker.id+'" data-worker-id="'+worker.id+'">'
       + '<div class="worker-avatar">'
-        + avatarHtml
+        + '<div class="avatar-wrap">'
+        +   avatarCore
+        +   '<div class="avatar-ring"></div>'
+        + '</div>'
       + '</div>'
       + '<div class="worker-name">'+escapeHtml(worker.name)+'</div>'
-      + (statusBadge || '')
+      + statusBadge
       + metaHtml
       + iconbarHtml
       + galleryHtml

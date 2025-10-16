@@ -1,6 +1,5 @@
 
 
-
 // Mermaid rendering helper with robust normalization and legacy signature support + node click bridge
 (() => {
   const loadMermaidFromCdn = () => new Promise((resolve, reject) => {
@@ -77,6 +76,8 @@
         g.style.cursor = 'pointer';
         g.addEventListener('click', (e) => {
           window.dispatchEvent(new CustomEvent('wp-node-select', { detail: { node: id } }));
+          // Synchronise timeline highlight when clicking in the graph
+          try{ if (typeof highlightTimelineNode === 'function') highlightTimelineNode(String(id||''), /*smooth=*/true); }catch(_){ }
         });
       });
     }catch(_){ }
@@ -85,9 +86,18 @@
   async function renderMermaidNew(container, source, currentNode) {
     await ensureMermaid();
     if (!container) return;
-    container.innerHTML = '';
+    // Avoid re-render when nothing changed (source + node)
+    const prevSrc = container.getAttribute('data-src') || '';
+    const prevNode = container.getAttribute('data-node') || '';
     const normalized = normalizeMermaidSource(source);
     const withHL = applyHighlight(normalized, currentNode);
+    if (prevSrc === normalized && prevNode === String(currentNode||'')){
+      return; // no-op
+    }
+    container.setAttribute('data-src', normalized);
+    container.setAttribute('data-node', String(currentNode||''));
+
+    container.innerHTML = '';
     try {
       if (!window.mermaid?.render) {
         // Retry once after a tiny delay if mermaid is still booting
@@ -114,9 +124,3 @@
   window.DFMermaid = { renderMermaid: renderMermaidNew, normalizeMermaidSource };
   window.renderMermaid = renderMermaidLegacy;
 })();
-
- 
- 
- 
- 
- 

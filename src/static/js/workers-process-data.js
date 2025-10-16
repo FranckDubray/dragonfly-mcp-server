@@ -1,7 +1,5 @@
 
 
-
-
 // Workers Process - Data access helpers
 (function(){
   async function postQuery(workerId, query, limit){
@@ -50,24 +48,30 @@
   }
 
   async function fetchStatsLastHour(){
-    // Tasks performed (succeeded/failed) in 1h
-    var qTasks = "SELECT COUNT(*) AS c FROM job_steps WHERE status IN ('succeeded','failed') AND (strftime('%s','now') - strftime('%s', COALESCE(finished_at, started_at))) <= 3600";
+    // Compute a moving 1h window relative to the latest timestamp in DB (not wall clock),
+    // so metrics are meaningful even with seeded data.
+    var qMax = "SELECT MAX(strftime('%s', COALESCE(finished_at, started_at))) AS tmax FROM job_steps";
+    var rMax = await postQuery(WP.processWorkerId, qMax, 1);
+    var tmax = Number(rMax?.rows?.[0]?.tmax || 0);
+    if (!tmax) return { tasks: 0, llm_calls: 0, cycles: 0 };
+    var windowStart = tmax - 3600;
+
+    var qTasks = "SELECT COUNT(*) AS c FROM job_steps WHERE strftime('%s', COALESCE(finished_at, started_at)) >= "+windowStart+" AND status IN ('succeeded','failed')";
     var rTasks = await postQuery(WP.processWorkerId, qTasks, 1);
     var tasks = (rTasks?.rows?.[0]?.c) || 0;
 
-    // call_llm calls in 1h (match both 'call_llm%' and 'call llm%')
-    var qLLM = "SELECT COUNT(*) AS c FROM job_steps WHERE ((name LIKE 'call_llm%' ESCAPE '\\') OR (name LIKE 'call llm%')) AND (strftime('%s','now') - strftime('%s', COALESCE(finished_at, started_at))) <= 3600";
+    // call_llm calls (match both 'call_llm%' and 'call llm%')
+    var qLLM = "SELECT COUNT(*) AS c FROM job_steps WHERE strftime('%s', COALESCE(finished_at, started_at)) >= "+windowStart+" AND ((name LIKE 'call_llm%' ESCAPE '\\') OR (name LIKE 'call llm%'))";
     var rLLM = await postQuery(WP.processWorkerId, qLLM, 1);
     var llm = (rLLM?.rows?.[0]?.c) || 0;
 
-    // cycles in 1h - heuristic: count sleep_interval occurrences
-    var qCycles = "SELECT COUNT(*) AS c FROM job_steps WHERE name='sleep_interval' AND (strftime('%s','now') - strftime('%s', COALESCE(finished_at, started_at))) <= 3600";
+    // cycles heuristic: count sleep_interval occurrences in the window, fallback to finish_mailbox_db
+    var qCycles = "SELECT COUNT(*) AS c FROM job_steps WHERE strftime('%s', COALESCE(finished_at, started_at)) >= "+windowStart+" AND name='sleep_interval'";
     var rCycles = await postQuery(WP.processWorkerId, qCycles, 1);
     var cycles = (rCycles?.rows?.[0]?.c) || 0;
 
-    // fallback: if no sleep_interval, try finish_mailbox_db
     if (!cycles){
-      var qAlt = "SELECT COUNT(*) AS c FROM job_steps WHERE name='finish_mailbox_db' AND (strftime('%s','now') - strftime('%s', COALESCE(finished_at, started_at))) <= 3600";
+      var qAlt = "SELECT COUNT(*) AS c FROM job_steps WHERE strftime('%s', COALESCE(finished_at, started_at)) >= "+windowStart+" AND name='finish_mailbox_db'";
       var rAlt = await postQuery(WP.processWorkerId, qAlt, 1);
       cycles = (rAlt?.rows?.[0]?.c) || 0;
     }
@@ -105,9 +109,3 @@
   // Expose global for overlay click handler
   window.loadAndShowStepDetails = loadAndShowStepDetails;
 })();
-
- 
- 
- 
- 
- 

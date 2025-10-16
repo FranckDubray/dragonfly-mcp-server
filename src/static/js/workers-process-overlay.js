@@ -1,7 +1,5 @@
 
 
-
-
 // Workers Process - Overlay & UI wiring (with tape-like controls)
 (function(){
   function ensureProcessOverlay(){
@@ -14,12 +12,7 @@
       '  <div class="process-header">'+
       '    <div class="title">Processus</div>'+
       '    <div class="tools">'+
-      '      <select id="replayRange" aria-label="Période">'+
-      '        <option value="15min">15 min</option>'+
-      '        <option value="1h">1 h</option>'+
-      '        <option value="4h">4 h</option>'+
-      '      </select>'+
-      '      <div class="replay-controls" style="display:inline-flex; gap:6px; align-items:center; margin-left:8px;">'+
+      '      <div class="replay-controls" style="display:inline-flex; gap:6px; align-items:center;">'+
       '        <button class="btn btn-ghost" id="btnRw" title="Rewind">⏮</button>'+
       '        <button class="btn btn-ghost" id="btnStepBack" title="Step back">⏪</button>'+
       '        <button class="btn btn-ghost" id="btnPlay" title="Play/Pause">▶︎</button>'+
@@ -49,11 +42,30 @@
     q('#btnStepFwd', 'wpReplayStepForward');
     q('#btnFf', 'wpReplayForwardEnd');
 
-    // Click on timeline item → details
+    // Click on timeline item → highlight graph + details (two-way sync)
     el.addEventListener('click', async function(e){
       var it = e.target.closest('.tl-item');
       if (!it) return;
       var stepId = it.getAttribute('data-id');
+      var node = it.getAttribute('data-node') || '';
+      // Sync highlight in timeline (selected class managed by helper)
+      try{ if (typeof highlightTimelineNode === 'function') highlightTimelineNode(node, /*smooth=*/true); }catch(_){ }
+      // Sync highlight in graph
+      try{
+        var graphEl = document.getElementById('processGraph');
+        if (graphEl && window.DFMermaid && (window.MERMAID_CACHE || window.__MERMAID_CACHE__)){
+          var src = window.MERMAID_CACHE || window.__MERMAID_CACHE__;
+          await DFMermaid.renderMermaid(graphEl, src, node||'');
+        }
+      }catch(_){ }
+      // Update replay index (best-effort)
+      try{
+        if (Array.isArray(WP.replaySeq)){
+          var ix = WP.replaySeq.lastIndexOf(String(node||''));
+          if (ix >= 0){ WP.replayIx = ix; WP.atTail = (ix >= (WP.replaySeq.length-1)); }
+        }
+      }catch(_){ }
+      // Load details
       if (stepId) await loadAndShowStepDetails(WP.processWorkerId, stepId);
     });
     ensureProcessAlert();
@@ -102,9 +114,3 @@
   window.showProcessAlert = showProcessAlert;
   window.hideProcessAlert = hideProcessAlert;
 })();
-
- 
- 
- 
- 
- 
