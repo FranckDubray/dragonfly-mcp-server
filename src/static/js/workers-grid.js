@@ -12,12 +12,13 @@ window.workersData = [];
 if (typeof window.currentCallWorkerId === 'undefined') window.currentCallWorkerId = null;
 
 function unlockIfNeeded(){
-  try { if (typeof unlockAudio === 'function') unlockAudio(); } catch(_){}
+  try { if (typeof unlockAudio === 'function') unlockAudio(); } catch(_){ }
   try {
-    if (window.audioPlayer) window.audioPlayer.setVolume(0.5); // défaut 50%
+    // Utiliser setVolume pour piloter À LA FOIS ringback + voix IA
+    if (typeof setVolume === 'function') setVolume(0.5); // défaut 50%
     const volSlider = document.querySelector('#volumeSlider input[type="range"]');
     if (volSlider) volSlider.value = 0.5;
-  } catch(_){}
+  } catch(_){ }
 }
 
 async function loadWorkers() {

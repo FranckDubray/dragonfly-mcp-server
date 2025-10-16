@@ -1,5 +1,9 @@
 
 
+
+
+
+
 """
 HTML page Workers Realtime
 Mode téléphone simple : click et allo
@@ -11,7 +15,7 @@ WORKERS_HTML = '''<!DOCTYPE html>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Workers Vocaux - Dragonfly MCP</title>
-    <link rel="stylesheet" href="/static/css/workers.css?v=20251015-3">
+    <link rel="stylesheet" href="/static/css/workers.css?v=20251015-4">
     <style>
       /* Inline fallback (minimal) to guarantee avatar sizing even if external CSS fails */
       .worker-card .avatar-wrap { position: relative; display: inline-grid; place-items: center; }
@@ -88,30 +92,30 @@ WORKERS_HTML = '''<!DOCTYPE html>
     </div>
 
     <!-- Scripts (ordre important) -->
-    <script src="/static/js/workers-ringback.js?v=20251015-3"></script>
-    <script src="/static/js/workers-status.js?v=20251015-3"></script>
-    <script src="/static/js/workers-gallery.js?v=20251015-3"></script>
-    <script src="/static/js/workers-cards.js?v=20251015-3"></script>
-    <script src="/static/js/workers-grid.js?v=20251015-3"></script>
-    <script src="/static/js/workers-calls.js?v=20251015-3"></script>
-    <script src="/static/js/workers-vu.js?v=20251015-3"></script>
-    <script src="/static/js/workers-audio.js?v=20251015-3"></script>
+    <script src="/static/js/workers-ringback.js?v=20251015-4"></script>
+    <script src="/static/js/workers-status.js?v=20251015-4"></script>
+    <script src="/static/js/workers-gallery.js?v=20251015-4"></script>
+    <script src="/static/js/workers-cards.js?v=20251015-4"></script>
+    <script src="/static/js/workers-grid.js?v=20251015-4"></script>
+    <script src="/static/js/workers-calls.js?v=20251015-4"></script>
+    <script src="/static/js/workers-vu.js?v=20251015-4"></script>
+    <script src="/static/js/workers-audio.js?v=20251015-4"></script>
     <!-- Session split -->
-    <script src="/static/js/workers-session-state.js?v=20251015-3"></script>
-    <script src="/static/js/workers-session-core.js?v=20251015-3"></script>
-    <script src="/static/js/workers-session-ws.js?v=20251015-3"></script>
-    <script src="/static/js/workers-session-tools.js?v=20251015-3"></script>
-    <script src="/static/js/workers-session-audio.js?v=20251015-3"></script>
+    <script src="/static/js/workers-session-state.js?v=20251015-4"></script>
+    <script src="/static/js/workers-session-core.js?v=20251015-4"></script>
+    <script src="/static/js/workers-session-ws.js?v=20251015-4"></script>
+    <script src="/static/js/workers-session-tools.js?v=20251015-4"></script>
+    <script src="/static/js/workers-session-audio.js?v=20251015-4"></script>
     <!-- Process split (mermaid render sanitize + modules) -->
-    <script src="/static/js/workers-process-render.js?v=20251015-3"></script>
-    <script src="/static/js/workers-process-state.js?v=20251015-3"></script>
-    <script src="/static/js/workers-process-overlay.js?v=20251015-3"></script>
-    <script src="/static/js/workers-process-data.js?v=20251015-3"></script>
-    <script src="/static/js/workers-process-consistency.js?v=20251015-3"></script>
-    <script src="/static/js/workers-process-ui-side.js?v=20251015-3"></script>
-    <script src="/static/js/workers-process-ui-core.js?v=20251015-3"></script>
-    <script src="/static/js/workers-process-ui-replay.js?v=20251015-3"></script>
-    <script src="/static/js/workers-process.js?v=20251015-3"></script>
+    <script src="/static/js/workers-process-render.js?v=20251015-4"></script>
+    <script src="/static/js/workers-process-state.js?v=20251015-4"></script>
+    <script src="/static/js/workers-process-overlay.js?v=20251015-4"></script>
+    <script src="/static/js/workers-process-data.js?v=20251015-4"></script>
+    <script src="/static/js/workers-process-consistency.js?v=20251015-4"></script>
+    <script src="/static/js/workers-process-ui-side.js?v=20251015-4"></script>
+    <script src="/static/js/workers-process-ui-core.js?v=20251015-4"></script>
+    <script src="/static/js/workers-process-ui-replay.js?v=20251015-4"></script>
+    <script src="/static/js/workers-process.js?v=20251015-4"></script>
 
     <script>
         // Init au chargement

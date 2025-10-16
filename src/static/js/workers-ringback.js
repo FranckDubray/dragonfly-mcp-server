@@ -1,6 +1,5 @@
 
 
-
 /**
  * Workers Ringback - Familiar, pleasant ringback patterns for 2–10s init windows
  * Modes:
@@ -151,9 +150,5 @@ class RingbackTone {
 
 // Global instance, default to skype_like; share volume control via setVolume()
 const ringbackTone = new RingbackTone({ mode: 'skype_like', baseGain: 0.18 });
-
- 
- 
- 
- 
- 
+// Expose on window so other scripts can access safely
+window.ringbackTone = ringbackTone;
