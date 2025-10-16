@@ -17,6 +17,7 @@
 
   function pickLatestCompleted(history){
     if (!Array.isArray(history) || history.length===0) return null;
+    // Prefer 'succeeded', then 'failed', else first row
     for (var i=0;i<history.length;i++){ if (String(history[i].status||'').toLowerCase()==='succeeded') return history[i]; }
     for (var j=0;j<history.length;j++){ if (String(history[j].status||'').toLowerCase()==='failed') return history[j]; }
     return history[0];
@@ -25,15 +26,15 @@
   async function refreshProcessView(){
     var graphEl = document.getElementById('processGraph');
     var sideEl = document.getElementById('processSide');
-    var rangeSelect = document.getElementById('replayRange');
-    if (!graphEl || !sideEl || !rangeSelect) return;
+    if (!graphEl || !sideEl) return; // rangeSelect supprimé
+    const rangeKey = 'all';
     try {
       MERMAID_CACHE = await WPData.fetchMermaid();
       // Expose cache globally for other modules (overlay click)
       window.MERMAID_CACHE = MERMAID_CACHE;
 
       var current = await WPData.fetchCurrentState();
-      var historyOpen = await WPData.fetchHistory(rangeSelect.value);
+      var historyOpen = await WPData.fetchHistory(rangeKey);
       var latestCompleted = pickLatestCompleted(historyOpen);
 
       // Node à afficher/mettre en évidence
@@ -50,11 +51,11 @@
       else { graphEl.innerHTML = '<p style="padding:10px;">Graph non disponible</p>'; }
 
       // Update side panel only if data changed
-      await updateProcessSide(rangeSelect.value, current.args, historyOpen);
+      await updateProcessSide(rangeKey, current.args, historyOpen);
 
       // Rebuild replaySeq (based on visible window) and maintain tail semantics
       var wasAtTail = (WP.atTail === true);
-      WP.replaySeq = await buildReplaySequence(rangeSelect.value);
+      WP.replaySeq = await buildReplaySequence(rangeKey);
       if (wasAtTail) { WP.replayIx = Math.max(0, WP.replaySeq.length - 1); }
       else { WP.replayIx = Math.min(WP.replayIx || 0, Math.max(0, WP.replaySeq.length - 1)); }
       WP.atTail = (WP.replayIx >= (WP.replaySeq.length - 1));
@@ -65,7 +66,6 @@
 
       // Synchronize highlight BOTH: timeline + mermaid already rendered with openNode
       var initialSmooth = false;
-      // If we know the exact latestCompleted id and we are at tail, use id highlight; else fallback node
       if (latestCompleted && (WP.atTail === true)) highlightTimelineById(String(latestCompleted.id), /*smooth=*/initialSmooth);
       else if (openNode) highlightTimelineNode(openNode, /*smooth=*/initialSmooth);
 
@@ -185,7 +185,7 @@
              '  <div class="tl-status '+status+'">'+status+'</div>'+
              '</div>';
     }).join('');
-    var histHtml = '<div class="panel"><div class="panel-title">Historique ('+rangeKey+')</div><div class="timeline" id="timelineBox">'+(histItems||'<div class="empty">Aucun événement</div>')+'</div></div>';
+    var histHtml = '<div class="panel"><div class="panel-title">Historique</div><div class="timeline" id="timelineBox">'+(histItems||'<div class="empty">Aucun événement</div>')+'</div></div>';
     sideEl.innerHTML = (argsPanel||'') + histHtml + '<div class="panel" id="stepDetails"><div class="panel-title">Détails</div><div class="code">Cliquez un événement pour voir les détails</div></div>';
   }
 
