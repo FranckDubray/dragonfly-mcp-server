@@ -10,10 +10,13 @@ from .decisions import evaluate_decision, DecisionError
 class OrchestratorEngine:
     """Generic graph execution engine (no business logic)"""
     
+    # Safety guard: max nodes per cycle (prevents infinite loops within a cycle)
+    MAX_NODES_PER_CYCLE = 100
+    
     def __init__(self, graph: Dict, db_path: str, worker: str, cancel_flag_fn: Callable[[], bool]):
         """
         Args:
-            graph: Process graph (nodes, edges)
+            graph: Process graph (nodes, edges, scopes)
             db_path: SQLite DB path (for logging)
             worker: Worker name
             cancel_flag_fn: Callable that returns True if canceled
@@ -27,15 +30,19 @@ class OrchestratorEngine:
         # Parse graph
         self.nodes = {n['name']: n for n in graph.get('nodes', [])}
         self.edges = graph.get('edges', [])
+        self.scopes = graph.get('scopes', [])
     
-    def run_cycle(self, cycle_id: str, worker_ctx: Dict, cycle_ctx: Dict) -> None:
+    def run_cycle(self, cycle_id: str, worker_ctx: Dict, cycle_ctx: Dict) -> bool:
         """
-        Execute one cycle (START → ... → END).
+        Execute one cycle (START → ... → END/EXIT).
         
         Args:
             cycle_id: Cycle ID (e.g., "cycle_001")
             worker_ctx: Worker context (read-only)
             cycle_ctx: Cycle context (read/write, modified in-place)
+        
+        Returns:
+            bool: True if EXIT node reached (stop worker), False if END node (continue loop)
         
         Raises:
             Exception: On fatal error (unhandled)
@@ -45,10 +52,20 @@ class OrchestratorEngine:
         if not start_node:
             raise ValueError("No START node found in graph")
         
-        # Execute from START
+        # Execute from START with safety guard
         current_node_name = start_node['name']
+        nodes_traversed = 0
         
         while current_node_name and not self.cancel_flag_fn():
+            # Safety guard: prevent infinite loops within a cycle
+            nodes_traversed += 1
+            if nodes_traversed > self.MAX_NODES_PER_CYCLE:
+                raise RuntimeError(
+                    f"Cycle {cycle_id}: {nodes_traversed} nodes traversed "
+                    f"(max: {self.MAX_NODES_PER_CYCLE}) - infinite loop detected. "
+                    f"Check your graph for missing exit conditions in retry loops."
+                )
+            
             node = self.nodes.get(current_node_name)
             if not node:
                 raise ValueError(f"Node not found: {current_node_name}")
@@ -56,12 +73,19 @@ class OrchestratorEngine:
             # Execute node
             next_route = self._execute_node(cycle_id, node, worker_ctx, cycle_ctx)
             
+            # Check if EXIT node reached
+            if node.get('type') == 'exit':
+                return True  # Signal to stop worker
+            
+            # If END node reached → continue loop
+            if node.get('type') == 'end':
+                return False  # Signal to continue to next cycle
+            
             # Find next node via edges
             current_node_name = self._follow_edge(current_node_name, next_route)
-            
-            # If END node reached → break
-            if node.get('type') == 'end':
-                break
+        
+        # Loop exited without reaching END/EXIT (cancel or error)
+        return False
     
     def _find_start_node(self) -> Optional[Dict]:
         """Find START node (type='start')"""
@@ -69,6 +93,33 @@ class OrchestratorEngine:
             if node.get('type') == 'start':
                 return node
         return None
+    
+    def _apply_scopes_at_start(self, cycle_ctx: Dict) -> None:
+        """
+        Apply scope resets and seeds at START node.
+        
+        Reads graph.scopes[] and for each scope:
+        - If 'START' in reset_on → reset (clear) the scope
+        - If seed data present → seed the scope
+        
+        Args:
+            cycle_ctx: Cycle context (modified in-place)
+        """
+        for scope_def in self.scopes:
+            scope_name = scope_def.get('name')
+            if not scope_name:
+                continue
+            
+            reset_on = scope_def.get('reset_on', [])
+            seed_data = scope_def.get('seed', {})
+            
+            # Reset if START in reset_on list
+            if 'START' in reset_on:
+                reset_scope(cycle_ctx, scope_name)
+            
+            # Seed (always apply if seed_data present)
+            if seed_data:
+                seed_scope(cycle_ctx, scope_name, seed_data)
     
     def _execute_node(self, cycle_id: str, node: Dict, worker_ctx: Dict, cycle_ctx: Dict) -> str:
         """
@@ -91,8 +142,18 @@ class OrchestratorEngine:
         begin_step(self.db_path, self.worker, cycle_id, node_name, handler_kind)
         
         try:
-            # START/END nodes: no execution
-            if node_type in {'start', 'end'}:
+            # START node: apply scopes before returning
+            if node_type == 'start':
+                self._apply_scopes_at_start(cycle_ctx)
+                end_step(self.db_path, self.worker, cycle_id, node_name, 'succeeded', started_at, {
+                    "node": node_name,
+                    "type": node_type,
+                    "scopes_applied": len(self.scopes)
+                })
+                return "always"
+            
+            # END/EXIT nodes: no execution
+            if node_type in {'end', 'exit'}:
                 end_step(self.db_path, self.worker, cycle_id, node_name, 'succeeded', started_at, {
                     "node": node_name,
                     "type": node_type
