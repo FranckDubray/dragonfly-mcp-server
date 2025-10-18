@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Orchestrator detached runner (background process)
-# Spawned by tool API, runs indefinitely until cancel/error.
+# Spawned by tool API, runs until EXIT or cancel/error.
 # Handles SIGTERM/SIGINT/SIGBREAK for graceful shutdown.
 
 import sys
@@ -8,6 +8,7 @@ import os
 import signal
 import json
 import time
+import hashlib
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 
@@ -63,8 +64,29 @@ def _load_process(worker_file: str) -> dict:
     with open(worker_file, 'r', encoding='utf-8') as f:
         return json.load(f)
 
-def _run_loop(db_path: str, worker: str, worker_ctx: dict, graph: dict):
-    """Main loop: START → cycle → sleep → repeat"""
+def _compute_process_uid(worker_file: str) -> str:
+    """Compute SHA256 hash of worker_file content (short 12 chars)"""
+    with open(worker_file, 'rb') as f:
+        return hashlib.sha256(f.read()).hexdigest()[:12]
+
+def _check_hot_reload(db_path: str, worker: str, worker_file: str) -> bool:
+    """
+    Check if process file changed (hot-reload).
+    
+    Returns:
+        True if reload needed, False otherwise
+    """
+    hot_reload = get_state_kv(db_path, worker, 'hot_reload')
+    if hot_reload != 'true':
+        return False
+    
+    current_uid = get_state_kv(db_path, worker, 'process_uid')
+    new_uid = _compute_process_uid(worker_file)
+    
+    return current_uid != new_uid
+
+def _run_loop(db_path: str, worker: str, worker_ctx: dict, graph: dict, worker_file: str):
+    """Main loop: START → cycle → EXIT or sleep → repeat"""
     
     # Bootstrap handlers (with cancel_flag_fn for sleep)
     cancel_flag_fn = lambda: _is_canceled(db_path, worker)
@@ -77,6 +99,25 @@ def _run_loop(db_path: str, worker: str, worker_ctx: dict, graph: dict):
     cycle_num = 0
     
     while not _is_canceled(db_path, worker):
+        # Hot-reload check (before each cycle)
+        if _check_hot_reload(db_path, worker, worker_file):
+            print(f"[runner] Hot-reload detected, reloading process...", file=sys.stderr)
+            try:
+                process = _load_process(worker_file)
+                worker_ctx = process.get('worker_ctx', {})
+                graph = process.get('graph', {})
+                
+                # Update engine with new graph
+                engine = OrchestratorEngine(graph, db_path, worker, cancel_flag_fn)
+                
+                # Update process_uid in DB
+                new_uid = _compute_process_uid(worker_file)
+                set_state_kv(db_path, worker, 'process_uid', new_uid)
+                
+                print(f"[runner] Process reloaded (new uid: {new_uid})", file=sys.stderr)
+            except Exception as e:
+                print(f"[runner] Hot-reload failed: {e}, continuing with old process", file=sys.stderr)
+        
         cycle_num += 1
         cycle_id = f"cycle_{cycle_num:03d}"
         
@@ -90,7 +131,7 @@ def _run_loop(db_path: str, worker: str, worker_ctx: dict, graph: dict):
         
         # Execute one cycle (via engine)
         try:
-            engine.run_cycle(cycle_id, worker_ctx, cycle_ctx)
+            exit_reached = engine.run_cycle(cycle_id, worker_ctx, cycle_ctx)
         except Exception as e:
             # Fatal error: log and exit
             print(f"[runner] Fatal error in {cycle_id}: {e}", file=sys.stderr)
@@ -101,12 +142,28 @@ def _run_loop(db_path: str, worker: str, worker_ctx: dict, graph: dict):
         
         print(f"[runner] Completed {cycle_id}", file=sys.stderr)
         
+        # Check if EXIT was reached
+        if exit_reached:
+            print(f"[runner] EXIT node reached, stopping worker", file=sys.stderr)
+            set_phase(db_path, worker, 'completed')
+            heartbeat(db_path, worker)
+            return
+        
         # Check cancel after cycle
         if _is_canceled(db_path, worker):
             break
         
+        # Get sleep_seconds from worker_ctx (if not set, exit after one cycle)
+        sleep_seconds = worker_ctx.get('sleep_seconds', None)
+        
+        if sleep_seconds is None or sleep_seconds == 0:
+            # No sleep configured → one-shot execution, exit
+            print(f"[runner] No sleep configured, exiting after one cycle", file=sys.stderr)
+            set_phase(db_path, worker, 'completed')
+            heartbeat(db_path, worker)
+            return
+        
         # Set phase=sleeping, sleep
-        sleep_seconds = worker_ctx.get('sleep_seconds', 10)
         set_phase(db_path, worker, 'sleeping')
         sleep_until = (datetime.now(timezone.utc) + timedelta(seconds=sleep_seconds))
         set_state_kv(db_path, worker, 'sleep_until', sleep_until.strftime('%Y-%m-%d %H:%M:%S.%f'))
@@ -175,8 +232,8 @@ def main():
     
     print(f"[runner] Process loaded (version: {process.get('process_version', 'N/A')})", file=sys.stderr)
     
-    # Run loop (until cancel or fatal error)
-    _run_loop(_db_path, _worker_name, worker_ctx, graph)
+    # Run loop (until EXIT, cancel or fatal error)
+    _run_loop(_db_path, _worker_name, worker_ctx, graph, str(worker_file_full))
 
 if __name__ == '__main__':
     main()
