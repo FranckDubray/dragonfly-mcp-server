@@ -1,18 +1,12 @@
 {
   "version": "1.0",
-  "process_version": "5.5.1-gpt4o-mini-template-fixed",
+  "process_version": "6.0.1-single-db",
   "metadata": {
-    "description": "AI/LLM Curation - gpt-4o-mini + timeout fix + template fix",
-    "author": "orchestrator-production"
+    "description": "AI/LLM Curation v6 - Architecture modulaire avec $import + base unique",
+    "author": "orchestrator-production",
+    "changelog": "v6.0.1: Une seule DB (worker_ai_curation_data)"
   },
-  "worker_ctx": {
-    "timezone": "UTC",
-    "llm_model": "gpt-4o-mini",
-    "sonar_model": "sonar",
-    "llm_temperature": 0.3,
-    "quality_threshold": 7,
-    "max_retries": 3
-  },
+  "worker_ctx": {"$import": "config/worker_ctx.json"},
   "graph": {
     "nodes": [
       {"name": "START", "type": "start"},
@@ -104,12 +98,7 @@
           "operation": "call",
           "model": "${worker.sonar_model}",
           "timeout": 120,
-          "messages": [
-            {
-              "role": "user",
-              "content": "Tu es Perplexity Sonar avec accès web temps réel.\n\nTÂCHE : Trouve les développements IA/LLM les plus importants des 3 derniers jours (depuis ${cycle.dates.from}).\n\nEXIGENCES DIVERSITÉ :\n- Mix sources : papers académiques, articles news, repos GitHub, discussions Twitter/X, blogs techniques\n- Éviter doublons : si même news sur plusieurs sites, prendre la source la plus autoritaire\n- Priorité : Breakthroughs > Lancements produits > Recherche > Commentaires\n\nCRITÈRES QUALITÉ :\n- Développements IA/LLM core (pas applications tangentielles)\n- Impact ou nouveauté significatif\n- Sources vérifiables (avec URLs)\n\nFocus sur :\n- Nouveaux papers ou preprints\n- Annonces produits majeures\n- Projets GitHub significatifs\n- Breaking news industrie\n- Breakthroughs techniques\n\nMaximise la diversité des sources. Retourne UNIQUEMENT un array JSON : [{\"source\": \"web|twitter|github|arxiv|blog|news\", \"title\": \"...\", \"url\": \"...\", \"summary\": \"Description brève\"}]\n\nSois SÉLECTIF. Vise 8-10 items haute qualité."
-            }
-          ],
+          "messages": {"$import": "prompts/sonar_fetch.json"},
           "temperature": 0.3,
           "max_tokens": 2000
         },
@@ -124,13 +113,7 @@
         "inputs": {"content": "${cycle.sources.sonar_raw}", "expected_format": "json", "fallback_value": []},
         "outputs": {"parsed": "cycle.sources.sonar"}
       },
-      {
-        "name": "SCORING_LOOP",
-        "type": "transform",
-        "handler": "set_value",
-        "inputs": {"value": "scoring"},
-        "outputs": {"result": "cycle.meta.phase"}
-      },
+      {"name": "SCORING_LOOP", "type": "transform", "handler": "set_value", "inputs": {"value": "scoring"}, "outputs": {"result": "cycle.meta.phase"}},
       {
         "name": "get_scoring_timestamp",
         "type": "io",
@@ -148,16 +131,7 @@
           "operation": "call",
           "model": "${worker.llm_model}",
           "timeout": 180,
-          "messages": [
-            {
-              "role": "system",
-              "content": "You are an expert AI/LLM curator with deep technical knowledge.\n\nSCORING CRITERIA (1-10):\n1. Relevance (40%): Core AI/LLM advancement (not tangential applications like \"AI for marketing\")\n2. Novelty (30%): Breaking news > recent research > older developments; unique insights preferred\n3. Source Quality (20%): Peer-reviewed papers/arXiv > GitHub/Code > News/Blogs > Reddit/Social\n4. Diversity (10%): Prefer varied sources; penalize if 3+ items from same domain\n\nOUTPUT REQUIREMENTS:\n- EXACTLY 10 items, ranked by score (highest first)\n- Mix sources: aim for 2-3 papers, 2-3 news, 2-3 community (reddit/twitter), 1-2 code/practical\n- Avoid duplicates: if same topic appears multiple times, pick the best source\n- JSON format: [{\"source\": \"arxiv|news|reddit|github|paperswithcode|sonar\", \"title\": \"...\", \"url\": \"...\", \"score\": 9.5, \"reason\": \"Brief: why important + source quality note\"}]\n\nBe CRITICAL:\n- Score 9-10: Major breakthrough (e.g., new SOTA, paradigm shift)\n- Score 7-8: Significant development (e.g., important research, product launch)\n- Score <7: Routine/incremental (filter these out)\n\nReturn ONLY the JSON array, no other text."
-            },
-            {
-              "role": "user",
-              "content": "Score and rank ALL these items from FIVE sources. Return EXACTLY top 10 as JSON array.\n\n=== NEWS (${cycle.dates.from} to ${cycle.dates.now}) ===\n${cycle.sources.news}\n\n=== REDDIT DISCUSSIONS ===\n${cycle.sources.reddit}\n\n=== ARXIV PAPERS ===\n${cycle.sources.arxiv}\n\n=== PAPERS WITH CODE (extract paper titles, authors, GitHub stars/trends) ===\n${cycle.sources.pwc_raw}\n\n=== SONAR REAL-TIME SEARCH ===\n${cycle.sources.sonar}\n\nApply scoring criteria strictly. Maximize diversity across ALL 5 sources. Return ONLY JSON."
-            }
-          ],
+          "messages": {"$import": "prompts/gpt_scoring.json"},
           "temperature": 0.3,
           "max_tokens": 2500
         },
@@ -172,11 +146,7 @@
         "inputs": {"content": "${cycle.scoring.gpt_raw}", "expected_format": "json", "fallback_value": []},
         "outputs": {"parsed": "cycle.scoring.top10", "success": "cycle.scoring.gpt_ok"}
       },
-      {
-        "name": "check_parse",
-        "type": "decision",
-        "decision": {"kind": "truthy", "input": "${cycle.scoring.gpt_ok}"}
-      },
+      {"name": "check_parse", "type": "decision", "decision": {"kind": "truthy", "input": "${cycle.scoring.gpt_ok}"}},
       {
         "name": "get_validation_timestamp",
         "type": "io",
@@ -194,12 +164,7 @@
           "operation": "call",
           "model": "${worker.sonar_model}",
           "timeout": 90,
-          "messages": [
-            {
-              "role": "user",
-              "content": "Tu es un validateur CRITIQUE de qualité pour la curation IA/LLM.\n\nCRITÈRES D'ÉVALUATION (note 1-10) :\n\n1. PERTINENCE (40%) : Développements IA/LLM core ?\n   - Pénaliser applications tangentielles (\"IA pour X\" sauf breakthrough)\n   - Récompenser recherche fondamentale, améliorations modèles, infrastructure\n\n2. NOUVEAUTÉ (30%) : Récent et groundbreaking ?\n   - Pénaliser vieilles news ou updates incrémentales\n   - Récompenser breaking developments des 3 derniers jours\n\n3. DIVERSITÉ SOURCES (20%) : Mix de sources ?\n   - Idéal : 2-3 papers, 2-3 news, 2-3 community, 1-2 code\n   - Pénaliser : 4+ items même type source (ex: que des news)\n   - Vérifier variété domaines dans URLs\n\n4. AUTORITÉ (10%) : Qualité sources ?\n   - Haute : Peer-reviewed, arXiv, releases officielles\n   - Moyenne : Outlets news majeurs, blogs établis\n   - Basse : Opinions Reddit, claims non vérifiées\n\nGUIDE SCORING :\n- 9-10 : Curation exceptionnelle, breakthroughs majeurs, diversité parfaite\n- 7-8 : Bonne qualité, problèmes mineurs (légère redondance ou 1-2 items faibles)\n- 5-6 : Médiocre (trop de news, faible nouveauté, mauvaise diversité)\n- <5 : Pauvre (majoritairement irrelevant ou vieux contenu)\n\nSois DUR. La plupart des curations sont 6-8. Seul un travail exceptionnel obtient 9+.\n\n=== TOP 10 CURÉ (de 5 sources : News, Reddit, arXiv, Papers With Code, Sonar) ===\n${cycle.scoring.top10}\n\nAnalyse :\n- Qualité globale et pertinence\n- Nouveauté vs news recyclées\n- Diversité sources (compter par type)\n- Développements IA/LLM majeurs manquants ?\n- Autorité des sources\n\nSois exigeant. Note 1-10 et explique ton raisonnement. Retourne UNIQUEMENT du JSON : {\"score\": 7.5, \"feedback\": \"Critique détaillée : forces, faiblesses, évaluation diversité, ce qui manque\"}"
-            }
-          ],
+          "messages": {"$import": "prompts/sonar_validation.json"},
           "temperature": 0.2,
           "max_tokens": 800
         },
@@ -215,18 +180,17 @@
         "outputs": {"parsed": "cycle.validation.sonar_result"}
       },
       {
-        "name": "extract_score",
+        "name": "extract_validation_fields",
         "type": "transform",
         "handler": "extract_field",
-        "inputs": {"data": "${cycle.validation.sonar_result}", "path": "score", "default": 0},
-        "outputs": {"value": "cycle.validation.sonar_score"}
-      },
-      {
-        "name": "extract_feedback",
-        "type": "transform",
-        "handler": "extract_field",
-        "inputs": {"data": "${cycle.validation.sonar_result}", "path": "feedback", "default": "No feedback"},
-        "outputs": {"value": "cycle.validation.sonar_feedback"}
+        "inputs": {
+          "data": "${cycle.validation.sonar_result}",
+          "paths": {"score": "score", "feedback": "feedback"}
+        },
+        "outputs": {
+          "score": "cycle.validation.sonar_score",
+          "feedback": "cycle.validation.sonar_feedback"
+        }
       },
       {
         "name": "get_validation_end_timestamp",
@@ -237,13 +201,20 @@
         "timeout_sec": 5
       },
       {
+        "name": "stringify_top10_for_log",
+        "type": "transform",
+        "handler": "json_stringify",
+        "inputs": {"value": "${cycle.scoring.top10}"},
+        "outputs": {"json_string": "cycle.scoring.top10_json_str"}
+      },
+      {
         "name": "log_validation_to_db",
         "type": "io",
         "handler": "http_tool",
         "inputs": {
           "tool": "sqlite_db",
           "operation": "execute",
-          "db": "ai_curation_reports.db",
+          "db": "${worker.db_name}",
           "query": "CREATE TABLE IF NOT EXISTS validation_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT NOT NULL, attempt INTEGER, score REAL, feedback TEXT, top10_json TEXT)",
           "params": []
         },
@@ -257,9 +228,9 @@
         "inputs": {
           "tool": "sqlite_db",
           "operation": "execute",
-          "db": "ai_curation_reports.db",
+          "db": "${worker.db_name}",
           "query": "INSERT INTO validation_logs (timestamp, attempt, score, feedback, top10_json) VALUES (?, ?, ?, ?, ?)",
-          "params": ["${cycle.meta.validation_ended_at}", "${cycle.meta.retry_count}", "${cycle.validation.sonar_score}", "${cycle.validation.sonar_feedback}", "${cycle.scoring.top10}"]
+          "params": ["${cycle.meta.validation_ended_at}", "${cycle.meta.retry_count}", "${cycle.validation.sonar_score}", "${cycle.validation.sonar_feedback}", "${cycle.scoring.top10_json_str}"]
         },
         "outputs": {"success": "cycle.meta.log_inserted"},
         "timeout_sec": 10
@@ -277,16 +248,8 @@
         },
         "outputs": {"text": "cycle.validation.log_message"}
       },
-      {
-        "name": "check_quality",
-        "type": "decision",
-        "decision": {"kind": "compare", "input": "${cycle.validation.sonar_score}", "operator": ">=", "value": 7}
-      },
-      {
-        "name": "check_retry",
-        "type": "decision",
-        "decision": {"kind": "compare", "input": "${cycle.meta.retry_count}", "operator": "<", "value": 3}
-      },
+      {"name": "check_quality", "type": "decision", "decision": {"kind": "compare", "input": "${cycle.validation.sonar_score}", "operator": ">=", "value": 7}},
+      {"name": "check_retry", "type": "decision", "decision": {"kind": "compare", "input": "${cycle.meta.retry_count}", "operator": "<", "value": 3}},
       {
         "name": "increment",
         "type": "transform",
@@ -303,17 +266,8 @@
           "operation": "call",
           "model": "${worker.llm_model}",
           "timeout": 120,
-          "messages": [
-            {
-              "role": "system",
-              "content": "Tu es un rédacteur professionnel de rapports de curation IA/LLM en français.\n\nFORMAT STRICT DU RAPPORT:\n\n# 🤖 Top 10 IA/LLM — [Période]\n\n**Score de qualité:** X/10 | **Tentatives:** N | **Date:** [timestamp]\n\n---\n\n## 📊 Top 10 Sélection (5 sources: News, Reddit, arXiv, Papers With Code, Sonar)\n\n**1. [Titre en français]** — Note: X.X/10  \n*Résumé en 2-3 phrases expliquant pourquoi c'est important et l'impact.*  \n🔗 Source: [URL]\n\n**2. [Titre en français]** — Note: X.X/10  \n*Résumé...*  \n🔗 Source: [URL]\n\n[...répéter pour les 10 items]\n\n---\n\n## ✅ Évaluation Qualité\n\n[Feedback Sonar]\n\n**Score final:** X/10  \n**Nombre de tentatives:** N  \n**Validé le:** [timestamp]\n\n---\n\n## 🔍 Tendances clés\n\n*Synthèse en 2-3 phrases des thèmes principaux et développements notables à surveiller.*\n\nRÈGLES:\n- Traduis tous les titres en français (garde le sens technique)\n- Résumés concis (2-3 phrases max)\n- URLs exactes (ne pas inventer)\n- Emojis: 🚀 breakthrough, 📄 paper, 💻 code, 📰 news, 🎯 product, 🌐 sonar\n- Ton professionnel mais accessible"
-            },
-            {
-              "role": "user",
-              "content": "Crée le rapport final en français:\n\n**Période:** ${cycle.dates.from} au ${cycle.dates.now}\n\n**Top 10 (5 sources):**\n${cycle.scoring.top10}\n\n**Validation:**\n${cycle.validation.log_message}\n\nGénère un rapport markdown professionnel en français, format strict (titre + note + résumé + URL) × 10."
-            }
-          ],
-          "temperature": 0.5,
+          "messages": {"$import": "prompts/gpt_format_fr.json"},
+          "temperature": 0.1,
           "max_tokens": 4000
         },
         "outputs": {"content": "cycle.result.report"},
@@ -329,15 +283,36 @@
         "timeout_sec": 5
       },
       {
+        "name": "stringify_top10_for_report",
+        "type": "transform",
+        "handler": "json_stringify",
+        "inputs": {"value": "${cycle.scoring.top10}"},
+        "outputs": {"json_string": "cycle.scoring.top10_json_str_final"}
+      },
+      {
+        "name": "create_reports_table",
+        "type": "io",
+        "handler": "http_tool",
+        "inputs": {
+          "tool": "sqlite_db",
+          "operation": "execute",
+          "db": "${worker.db_name}",
+          "query": "CREATE TABLE IF NOT EXISTS reports (id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, date_from TEXT, date_to TEXT, report_markdown TEXT, avg_score REAL, retry_count INTEGER, top10_json TEXT, completed_at TEXT)",
+          "params": []
+        },
+        "outputs": {"success": "cycle.result.table_created"},
+        "timeout_sec": 10
+      },
+      {
         "name": "save_report",
         "type": "io",
         "handler": "http_tool",
         "inputs": {
           "tool": "sqlite_db",
           "operation": "execute",
-          "db": "ai_curation_reports.db",
+          "db": "${worker.db_name}",
           "query": "INSERT INTO reports (date_from, date_to, report_markdown, avg_score, retry_count, top10_json, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-          "params": ["${cycle.dates.from}", "${cycle.dates.now}", "${cycle.result.report}", "${cycle.validation.sonar_score}", "${cycle.meta.retry_count}", "${cycle.scoring.top10}", "${cycle.result.completed_at}"]
+          "params": ["${cycle.dates.from}", "${cycle.dates.now}", "${cycle.result.report}", "${cycle.validation.sonar_score}", "${cycle.meta.retry_count}", "${cycle.scoring.top10_json_str_final}", "${cycle.result.completed_at}"]
         },
         "outputs": {"success": "cycle.result.saved"},
         "timeout_sec": 15
@@ -364,10 +339,10 @@
       {"from": "check_parse", "to": "mark_fail", "when": "false"},
       {"from": "get_validation_timestamp", "to": "llm_sonar_validate"},
       {"from": "llm_sonar_validate", "to": "normalize_validation"},
-      {"from": "normalize_validation", "to": "extract_score"},
-      {"from": "extract_score", "to": "extract_feedback"},
-      {"from": "extract_feedback", "to": "get_validation_end_timestamp"},
-      {"from": "get_validation_end_timestamp", "to": "log_validation_to_db"},
+      {"from": "normalize_validation", "to": "extract_validation_fields"},
+      {"from": "extract_validation_fields", "to": "get_validation_end_timestamp"},
+      {"from": "get_validation_end_timestamp", "to": "stringify_top10_for_log"},
+      {"from": "stringify_top10_for_log", "to": "log_validation_to_db"},
       {"from": "log_validation_to_db", "to": "insert_validation_log"},
       {"from": "insert_validation_log", "to": "log_sonar_validation"},
       {"from": "log_sonar_validation", "to": "check_quality"},
@@ -377,18 +352,13 @@
       {"from": "check_retry", "to": "llm_format", "when": "false"},
       {"from": "increment", "to": "SCORING_LOOP"},
       {"from": "llm_format", "to": "get_final_timestamp"},
-      {"from": "get_final_timestamp", "to": "save_report"},
+      {"from": "get_final_timestamp", "to": "stringify_top10_for_report"},
+      {"from": "stringify_top10_for_report", "to": "create_reports_table"},
+      {"from": "create_reports_table", "to": "save_report"},
       {"from": "save_report", "to": "mark_success"},
       {"from": "mark_success", "to": "EXIT"},
       {"from": "mark_fail", "to": "EXIT"}
     ],
-    "scopes": [
-      {"name": "dates", "reset_on": [], "seed": {}},
-      {"name": "sources", "reset_on": [], "seed": {}},
-      {"name": "scoring", "reset_on": [], "seed": {}},
-      {"name": "validation", "reset_on": [], "seed": {}},
-      {"name": "result", "reset_on": [], "seed": {}},
-      {"name": "meta", "reset_on": [], "seed": {"retry_count": 0}}
-    ]
+    "scopes": {"$import": "config/scopes.json"}
   }
 }

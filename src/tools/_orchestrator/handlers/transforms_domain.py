@@ -129,9 +129,51 @@ class NormalizeLLMOutputHandler(AbstractHandler):
             }
 
 
+class JsonStringifyHandler(AbstractHandler):
+    """
+    Stringify Python object to JSON string.
+    Useful for storing objects in SQLite TEXT fields, preparing payloads.
+    """
+    
+    @property
+    def kind(self) -> str:
+        return "json_stringify"
+    
+    def run(self, value, ensure_ascii=False, indent=None, **kwargs) -> dict:
+        """
+        Args:
+            value: Any Python object (dict, list, primitives)
+            ensure_ascii: Escape non-ASCII (default: False, keeps UTF-8)
+            indent: Pretty-print indent (default: None = compact)
+        
+        Returns:
+            {
+                "json_string": JSON string,
+                "length": int (string length)
+            }
+        
+        Example:
+            value = {"name": "Alice", "items": [1, 2, 3]}
+            → {"json_string": '{"name":"Alice","items":[1,2,3]}', "length": 34}
+        """
+        try:
+            json_str = json.dumps(value, ensure_ascii=ensure_ascii, indent=indent)
+            return {
+                "json_string": json_str,
+                "length": len(json_str)
+            }
+        except (TypeError, ValueError) as e:
+            raise ValueError(f"Cannot stringify to JSON: {str(e)[:200]}")
+
+
 class ExtractFieldHandler(AbstractHandler):
     """
-    Extract field from nested object (JSONPath-like).
+    Extract field(s) from nested object (JSONPath-like).
+    
+    Supports two modes:
+    - Single field: path (string) → {"value": extracted}
+    - Multiple fields: paths (dict) → {output1: val1, output2: val2, ...}
+    
     Useful for transforming complex LLM/API responses.
     """
     
@@ -139,20 +181,54 @@ class ExtractFieldHandler(AbstractHandler):
     def kind(self) -> str:
         return "extract_field"
     
-    def run(self, data, path, default=None, **kwargs) -> dict:
+    def run(self, data, path=None, paths=None, default=None, **kwargs) -> dict:
         """
         Args:
-            data: Input object (dict/list)
-            path: Dotted path (e.g., "user.name", "items[0].id")
+            Input object (dict/list)
+            path: Single dotted path (e.g., "user.name") - for single extraction
+            paths: Dict of {output_key: dotted_path} - for multi extraction
             default: Default value if path not found (default: None)
         
         Returns:
-            {"value": extracted value}
+            Single mode: {"value": extracted value}
+            Multi mode: {output_key1: val1, output_key2: val2, ...}
+        
+        Examples:
+            # Single mode (backward compatible)
+            data = {"score": 7.5, "feedback": "Good"}
+            path = "score"
+            → {"value": 7.5}
+            
+            # Multi mode (new)
+            data = {"score": 7.5, "feedback": "Good"}
+            paths = {"score": "score", "feedback": "feedback"}
+            → {"score": 7.5, "feedback": "Good"}
         """
         if not isinstance(data, (dict, list)):
+            if path:
+                return {"value": default}
+            elif paths:
+                return {key: default for key in paths.keys()}
             return {"value": default}
         
-        # Simple path resolution (dotted notation, no array indexing for now)
+        # Single field mode (backward compatible)
+        if path:
+            value = self._extract_single(data, path, default)
+            return {"value": value}
+        
+        # Multi field mode (new)
+        elif paths:
+            result = {}
+            for output_key, field_path in paths.items():
+                result[output_key] = self._extract_single(data, field_path, default)
+            return result
+        
+        # No path specified
+        else:
+            raise ValueError("Either 'path' or 'paths' must be specified")
+    
+    def _extract_single(self, data, path, default):
+        """Extract a single field from data using dotted path"""
         parts = path.split('.')
         current = data
         
@@ -160,9 +236,9 @@ class ExtractFieldHandler(AbstractHandler):
             if isinstance(current, dict) and part in current:
                 current = current[part]
             else:
-                return {"value": default}
+                return default
         
-        return {"value": current}
+        return current
 
 
 class FormatTemplateHandler(AbstractHandler):
