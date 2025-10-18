@@ -1,0 +1,131 @@
+{
+  "version": "1.0",
+  "process_version": "1.0.1",
+  "metadata": {
+    "description": "Smart Daily Briefing v2: Fixed - location, date, random, moon, math with decisions",
+    "author": "orchestrator-final"
+  },
+  "worker_ctx": {
+    "timezone": "UTC",
+    "sleep_seconds": 7200
+  },
+  "graph": {
+    "nodes": [
+      {"name": "START", "type": "start"},
+      {
+        "name": "get_time",
+        "type": "io",
+        "handler": "http_tool",
+        "inputs": {"tool": "date", "operation": "now", "tz": "UTC"},
+        "outputs": {"result": "cycle.brief.time"},
+        "retry": {"max": 1, "delay_sec": 1}
+      },
+      {
+        "name": "get_location",
+        "type": "io",
+        "handler": "http_tool",
+        "inputs": {"tool": "device_location", "operation": "get_location"},
+        "outputs": {
+          "location": "cycle.brief.loc",
+          "coordinates": "cycle.brief.coords"
+        },
+        "retry": {"max": 1, "delay_sec": 1}
+      },
+      {
+        "name": "get_moon",
+        "type": "io",
+        "handler": "http_tool",
+        "inputs": {"tool": "astronomy", "operation": "moon_phase"},
+        "outputs": {"phase": "cycle.brief.moon"},
+        "retry": {"max": 1, "delay_sec": 1}
+      },
+      {
+        "name": "calc_day_of_year",
+        "type": "io",
+        "handler": "http_tool",
+        "inputs": {
+          "tool": "date",
+          "operation": "diff_days",
+          "start": "2025-01-01",
+          "end": "2025-10-18"
+        },
+        "outputs": {"result": "cycle.brief.day_num"},
+        "retry": {"max": 1, "delay_sec": 0.5}
+      },
+      {
+        "name": "check_day_num",
+        "type": "decision",
+        "decision": {"kind": "truthy", "input": "${cycle.brief.day_num}"}
+      },
+      {
+        "name": "pick_style",
+        "type": "io",
+        "handler": "http_tool",
+        "inputs": {
+          "tool": "random",
+          "operation": "pick_random",
+          "items": ["MOTIVATIONAL", "FACTUAL", "ZEN"]
+        },
+        "outputs": {"result": "cycle.brief.style"},
+        "retry": {"max": 1, "delay_sec": 0.5}
+      },
+      {
+        "name": "route_style",
+        "type": "decision",
+        "decision": {
+          "kind": "enum_from_field",
+          "input": "${cycle.brief.style}",
+          "normalize": "upper"
+        }
+      },
+      {
+        "name": "msg_motivational",
+        "type": "transform",
+        "handler": "sleep",
+        "inputs": {"seconds": 0},
+        "outputs": {"slept": "cycle.brief.done"}
+      },
+      {
+        "name": "msg_factual",
+        "type": "transform",
+        "handler": "sleep",
+        "inputs": {"seconds": 0},
+        "outputs": {"slept": "cycle.brief.done"}
+      },
+      {
+        "name": "msg_zen",
+        "type": "transform",
+        "handler": "sleep",
+        "inputs": {"seconds": 0},
+        "outputs": {"slept": "cycle.brief.done"}
+      },
+      {
+        "name": "skip",
+        "type": "transform",
+        "handler": "sleep",
+        "inputs": {"seconds": 0},
+        "outputs": {"slept": "cycle.brief.skip"}
+      },
+      {"name": "END", "type": "end"}
+    ],
+    "edges": [
+      {"from": "START", "to": "get_time"},
+      {"from": "get_time", "to": "get_location"},
+      {"from": "get_location", "to": "get_moon"},
+      {"from": "get_moon", "to": "calc_day_of_year"},
+      {"from": "calc_day_of_year", "to": "check_day_num"},
+      {"from": "check_day_num", "to": "pick_style", "when": "true"},
+      {"from": "check_day_num", "to": "skip", "when": "false"},
+      {"from": "pick_style", "to": "route_style"},
+      {"from": "route_style", "to": "msg_motivational", "when": "MOTIVATIONAL"},
+      {"from": "route_style", "to": "msg_factual", "when": "FACTUAL"},
+      {"from": "route_style", "to": "msg_zen", "when": "ZEN"},
+      {"from": "msg_motivational", "to": "END"},
+      {"from": "msg_factual", "to": "END"},
+      {"from": "msg_zen", "to": "END"},
+      {"from": "skip", "to": "END"}
+    ]
+  },
+  "scopes": [{"name": "brief", "reset_on": ["START"], "seed": {}}],
+  "graph_mermaid": "graph TD\n  START-->get_time-->get_location-->get_moon-->calc_day_of_year\n  calc_day_of_year-->check_day_num\n  check_day_num-->|true|pick_style\n  check_day_num-->|false|skip\n  pick_style-->route_style\n  route_style-->|MOTIVATIONAL|msg_motivational\n  route_style-->|FACTUAL|msg_factual\n  route_style-->|ZEN|msg_zen\n  msg_motivational-->END\n  msg_factual-->END\n  msg_zen-->END\n  skip-->END"
+}

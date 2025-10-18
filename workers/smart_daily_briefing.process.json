@@ -1,0 +1,215 @@
+{
+  "version": "1.0",
+  "process_version": "1.0.0",
+  "metadata": {
+    "description": "Smart Daily Briefing: location detection, date/time, random quote number, moon phase, math calculations with decisions",
+    "author": "orchestrator-final-test"
+  },
+  "worker_ctx": {
+    "timezone": "UTC",
+    "sleep_seconds": 3600,
+    "temperature_threshold": 15
+  },
+  "graph": {
+    "nodes": [
+      {
+        "name": "START",
+        "type": "start"
+      },
+      {
+        "name": "get_current_time",
+        "type": "io",
+        "handler": "http_tool",
+        "inputs": {
+          "tool": "date",
+          "operation": "now",
+          "tz": "UTC"
+        },
+        "outputs": {
+          "result": "cycle.briefing.timestamp"
+        },
+        "retry": {"max": 1, "delay_sec": 1}
+      },
+      {
+        "name": "detect_location",
+        "type": "io",
+        "handler": "http_tool",
+        "inputs": {
+          "tool": "device_location",
+          "operation": "get_location"
+        },
+        "outputs": {
+          "coordinates": "cycle.briefing.location_coords",
+          "location": "cycle.briefing.location_info",
+          "timezone": "cycle.briefing.timezone"
+        },
+        "retry": {"max": 2, "delay_sec": 2}
+      },
+      {
+        "name": "get_moon_phase",
+        "type": "io",
+        "handler": "http_tool",
+        "inputs": {
+          "tool": "astronomy",
+          "operation": "moon_phase"
+        },
+        "outputs": {
+          "phase": "cycle.briefing.moon"
+        },
+        "retry": {"max": 1, "delay_sec": 1}
+      },
+      {
+        "name": "generate_lucky_number",
+        "type": "io",
+        "handler": "http_tool",
+        "inputs": {
+          "tool": "random",
+          "operation": "generate_integers",
+          "min": 1,
+          "max": 100,
+          "count": 1
+        },
+        "outputs": {
+          "result": "cycle.briefing.lucky_numbers"
+        },
+        "retry": {"max": 1, "delay_sec": 0.5}
+      },
+      {
+        "name": "calculate_day_of_year",
+        "type": "io",
+        "handler": "http_tool",
+        "inputs": {
+          "tool": "date",
+          "operation": "diff_days",
+          "start": "2025-01-01",
+          "end": "${cycle.briefing.timestamp}"
+        },
+        "outputs": {
+          "result": "cycle.briefing.day_of_year"
+        },
+        "retry": {"max": 1, "delay_sec": 0.5}
+      },
+      {
+        "name": "calculate_progress",
+        "type": "io",
+        "handler": "http_tool",
+        "inputs": {
+          "tool": "math",
+          "operation": "multiply",
+          "a": "${cycle.briefing.day_of_year}",
+          "b": 100
+        },
+        "outputs": {
+          "value": "cycle.briefing.progress_raw"
+        },
+        "retry": {"max": 1, "delay_sec": 0.5}
+      },
+      {
+        "name": "calculate_percentage",
+        "type": "io",
+        "handler": "http_tool",
+        "inputs": {
+          "tool": "math",
+          "operation": "divide",
+          "a": "${cycle.briefing.progress_raw}",
+          "b": 365
+        },
+        "outputs": {
+          "value": "cycle.briefing.year_progress_percent"
+        },
+        "retry": {"max": 1, "delay_sec": 0.5}
+      },
+      {
+        "name": "check_lucky_number",
+        "type": "decision",
+        "decision": {
+          "kind": "truthy",
+          "input": "${cycle.briefing.lucky_numbers}"
+        }
+      },
+      {
+        "name": "pick_message_type",
+        "type": "io",
+        "handler": "http_tool",
+        "inputs": {
+          "tool": "random",
+          "operation": "pick_random",
+          "items": ["MOTIVATIONAL", "FACTUAL", "PHILOSOPHICAL"]
+        },
+        "outputs": {
+          "result": "cycle.briefing.message_type"
+        },
+        "retry": {"max": 1, "delay_sec": 0.5}
+      },
+      {
+        "name": "route_by_message_type",
+        "type": "decision",
+        "decision": {
+          "kind": "enum_from_field",
+          "input": "${cycle.briefing.message_type}",
+          "normalize": "upper"
+        }
+      },
+      {
+        "name": "motivational_message",
+        "type": "transform",
+        "handler": "sleep",
+        "inputs": {"seconds": 0},
+        "outputs": {"slept": "cycle.briefing.message_generated"}
+      },
+      {
+        "name": "factual_message",
+        "type": "transform",
+        "handler": "sleep",
+        "inputs": {"seconds": 0},
+        "outputs": {"slept": "cycle.briefing.message_generated"}
+      },
+      {
+        "name": "philosophical_message",
+        "type": "transform",
+        "handler": "sleep",
+        "inputs": {"seconds": 0},
+        "outputs": {"slept": "cycle.briefing.message_generated"}
+      },
+      {
+        "name": "skip_message",
+        "type": "transform",
+        "handler": "sleep",
+        "inputs": {"seconds": 0},
+        "outputs": {"slept": "cycle.briefing.skipped"}
+      },
+      {
+        "name": "END",
+        "type": "end"
+      }
+    ],
+    "edges": [
+      {"from": "START", "to": "get_current_time"},
+      {"from": "get_current_time", "to": "detect_location"},
+      {"from": "detect_location", "to": "get_moon_phase"},
+      {"from": "get_moon_phase", "to": "generate_lucky_number"},
+      {"from": "generate_lucky_number", "to": "calculate_day_of_year"},
+      {"from": "calculate_day_of_year", "to": "calculate_progress"},
+      {"from": "calculate_progress", "to": "calculate_percentage"},
+      {"from": "calculate_percentage", "to": "check_lucky_number"},
+      {"from": "check_lucky_number", "to": "pick_message_type", "when": "true"},
+      {"from": "check_lucky_number", "to": "skip_message", "when": "false"},
+      {"from": "pick_message_type", "to": "route_by_message_type"},
+      {"from": "route_by_message_type", "to": "motivational_message", "when": "MOTIVATIONAL"},
+      {"from": "route_by_message_type", "to": "factual_message", "when": "FACTUAL"},
+      {"from": "route_by_message_type", "to": "philosophical_message", "when": "PHILOSOPHICAL"},
+      {"from": "motivational_message", "to": "END"},
+      {"from": "factual_message", "to": "END"},
+      {"from": "philosophical_message", "to": "END"},
+      {"from": "skip_message", "to": "END"}
+    ]
+  },
+  "scopes": [
+    {
+      "name": "briefing",
+      "reset_on": ["START"],
+      "seed": {}
+    }
+  ],
+  "graph_mermaid": "graph TD\n  START-->get_current_time\n  get_current_time-->detect_location\n  detect_location-->get_moon_phase\n  get_moon_phase-->generate_lucky_number\n  generate_lucky_number-->calculate_day_of_year\n  calculate_day_of_year-->calculate_progress\n  calculate_progress-->calculate_percentage\n  calculate_percentage-->check_lucky_number\n  check_lucky_number-->|true|pick_message_type\n  check_lucky_number-->|false|skip_message\n  pick_message_type-->route_by_message_type\n  route_by_message_type-->|MOTIVATIONAL|motivational_message\n  route_by_message_type-->|FACTUAL|factual_message\n  route_by_message_type-->|PHILOSOPHICAL|philosophical_message\n  motivational_message-->END\n  factual_message-->END\n  philosophical_message-->END\n  skip_message-->END"
+}

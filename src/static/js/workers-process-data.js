@@ -1,6 +1,15 @@
 
 
-// Workers Process - Data access helpers
+
+
+
+
+
+
+
+
+
+// Workers Process - Data access helpers (history + mermaid)
 (function(){
   async function postQuery(workerId, query, limit){
     try{
@@ -12,13 +21,32 @@
     }catch(_){ return {}; }
   }
 
+  function stripMermaidFences(src){
+    try{
+      var s = String(src||'');
+      // Trim code fences ```mermaid ... ``` or ``` ... ``` and HTML <pre><code>...
+      s = s.replace(/^[ \t]*```\s*mermaid\s*/i, '').replace(/```\s*$/i, '');
+      s = s.replace(/^[ \t]*```\s*/i, '').replace(/```\s*$/i, '');
+      s = s.replace(/<\/?(pre|code)[^>]*>/gi, '');
+      return s.trim();
+    }catch(_){ return String(src||''); }
+  }
+
   async function fetchMermaid(){
-    var q1 = "SELECT svalue AS mermaid FROM job_state_kv WHERE skey='graph_mermaid' ORDER BY rowid DESC LIMIT 1";
+    // Try multiple keys (more robust):
+    var keys = ["graph_mermaid","mermaid_graph","process_mermaid","mermaid","process_graph"]; // fallback list
+    var inList = "('"+keys.join("','")+"')";
+
+    // job_state_kv first
+    var q1 = "SELECT svalue AS mermaid FROM job_state_kv WHERE skey IN "+inList+" ORDER BY rowid DESC LIMIT 1";
     var g1 = await postQuery(WP.processWorkerId, q1, 1);
-    if (g1?.rows?.length && g1.rows[0].mermaid) return g1.rows[0].mermaid;
-    var q2 = "SELECT svalue AS mermaid FROM job_meta WHERE skey='graph_mermaid' LIMIT 1";
+    if (g1?.rows?.length && g1.rows[0].mermaid){ return stripMermaidFences(g1.rows[0].mermaid); }
+
+    // fallback to job_meta
+    var q2 = "SELECT svalue AS mermaid FROM job_meta WHERE skey IN "+inList+" LIMIT 1";
     var g2 = await postQuery(WP.processWorkerId, q2, 1);
-    if (g2?.rows?.length && g2.rows[0].mermaid) return g2.rows[0].mermaid;
+    if (g2?.rows?.length && g2.rows[0].mermaid){ return stripMermaidFences(g2.rows[0].mermaid); }
+
     return '';
   }
 
@@ -39,21 +67,32 @@
   async function fetchHistory(rangeKey){
     // Load as much as permitted by backend cap (200 rows)
     var cap = 200;
-    var q = "SELECT id, name AS node, status, COALESCE(finished_at, started_at) AS ts FROM job_steps ORDER BY id DESC LIMIT "+cap;
+    // Include precise timestamp and epoch ms to avoid ambiguity
+    var q = "SELECT id, name AS node, status, "+
+            "COALESCE(finished_at, started_at) AS ts, "+
+            "strftime('%Y-%m-%d %H:%M:%f', COALESCE(finished_at, started_at)) AS ts_precise, "+
+            "CAST((julianday(COALESCE(finished_at, started_at)) - 2440587.5) * 86400000 AS INTEGER) AS ts_ms "+
+            "FROM job_steps ORDER BY id DESC LIMIT "+cap;
     var r = await postQuery(WP.processWorkerId, q, cap);
-    if (r?.rows?.length) return r.rows.map(function(x){ return { id: x.id, node: x.node||'', status: x.status||'', ts: x.ts||'' }; });
+    if (r?.rows?.length) return r.rows.map(function(x){ return { id: x.id, node: x.node||'', status: x.status||'', ts: x.ts||'', ts_precise: x.ts_precise||'', ts_ms: Number(x.ts_ms)||0 }; });
     var f = await postQuery(WP.processWorkerId, "SELECT rowid AS id, skey AS node FROM job_state_kv WHERE skey LIKE 'event_%' ORDER BY rowid DESC LIMIT "+cap, cap);
-    if (f?.rows?.length) return f.rows.map(function(x){ return { id: x.id, node: x.node||'', status: '', ts: '' }; });
+    if (f?.rows?.length) return f.rows.map(function(x){ return { id: x.id, node: x.node||'', status: '', ts: '', ts_precise:'', ts_ms: 0 }; });
     return [];
   }
 
   async function fetchStatsLastHour(){
+    // NEW: cycles = MAX(0, COUNT(UPPER(name)='START') - 1)
+    var qStartCount = "SELECT COUNT(*) AS c FROM job_steps WHERE UPPER(name)='START'";
+    var rStart = await postQuery(WP.processWorkerId, qStartCount, 1);
+    var startCount = Number(rStart?.rows?.[0]?.c || 0);
+    var cycles = Math.max(0, startCount - 1);
+
     // Compute a moving 1h window relative to the latest timestamp in DB (not wall clock),
     // so metrics are meaningful even with seeded data.
     var qMax = "SELECT MAX(strftime('%s', COALESCE(finished_at, started_at))) AS tmax FROM job_steps";
     var rMax = await postQuery(WP.processWorkerId, qMax, 1);
     var tmax = Number(rMax?.rows?.[0]?.tmax || 0);
-    if (!tmax) return { tasks: 0, llm_calls: 0, cycles: 0 };
+    if (!tmax) return { tasks: 0, llm_calls: 0, cycles: cycles };
     var windowStart = tmax - 3600;
 
     var qTasks = "SELECT COUNT(*) AS c FROM job_steps WHERE strftime('%s', COALESCE(finished_at, started_at)) >= "+windowStart+" AND status IN ('succeeded','failed')";
@@ -65,17 +104,6 @@
     var rLLM = await postQuery(WP.processWorkerId, qLLM, 1);
     var llm = (rLLM?.rows?.[0]?.c) || 0;
 
-    // cycles heuristic: count sleep_interval occurrences in the window, fallback to finish_mailbox_db
-    var qCycles = "SELECT COUNT(*) AS c FROM job_steps WHERE strftime('%s', COALESCE(finished_at, started_at)) >= "+windowStart+" AND name='sleep_interval'";
-    var rCycles = await postQuery(WP.processWorkerId, qCycles, 1);
-    var cycles = (rCycles?.rows?.[0]?.c) || 0;
-
-    if (!cycles){
-      var qAlt = "SELECT COUNT(*) AS c FROM job_steps WHERE strftime('%s', COALESCE(finished_at, started_at)) >= "+windowStart+" AND name='finish_mailbox_db'";
-      var rAlt = await postQuery(WP.processWorkerId, qAlt, 1);
-      cycles = (rAlt?.rows?.[0]?.c) || 0;
-    }
-
     return { tasks: Number(tasks)||0, llm_calls: Number(llm)||0, cycles: Number(cycles)||0 };
   }
 
@@ -84,7 +112,7 @@
     try{
       var idNum = parseInt(stepId, 10);
       if (!isFinite(idNum) || idNum <= 0) idNum = 0;
-      var q = "SELECT * FROM job_steps WHERE id="+idNum+" LIMIT 1";
+      var q = "SELECT *, strftime('%Y-%m-%d %H:%M:%f', COALESCE(finished_at, started_at)) AS ts_precise FROM job_steps WHERE id="+idNum+" LIMIT 1";
       var r = await postQuery(workerId, q, 1);
       var panel = document.getElementById('stepDetails');
       if (!panel) return;
@@ -106,6 +134,5 @@
   }
 
   window.WPData = { postQuery, fetchMermaid, fetchCurrentState, fetchHistory, fetchStatsLastHour };
-  // Expose global for overlay click handler
   window.loadAndShowStepDetails = loadAndShowStepDetails;
 })();

@@ -2,9 +2,9 @@
 
 Ce fichier est généré automatiquement par `scripts/generate_tools_catalog.py`. Ne pas éditer à la main.
 
-Total tools: 47
+Total tools: 48
 
-## 📊 Intelligence & Orchestration (4)
+## 📊 Intelligence & Orchestration (5)
 
 - LLM Orchestrator — Appelle un modèle LLM en streaming. Orchestration tool_calls (MCP) en 2 phases. Supporte l'entrée multi-modale (images) via messages Open… · Tags: llm, orchestration, vision, multimodal
   - Opérations: N/A
@@ -16,6 +16,10 @@ Total tools: 47
 
 - Ollama Local + Web Search — Interface avec Ollama local (localhost:11434) + recherche web cloud. Gestion modèles, génération, chat, embeddings, recherche web. IMPORT…
   - Opérations: list_models, get_version, get_running_models, show_model, pull_model, push_model …
+  - Tokens: aucun
+
+- Orchestrator (JSON-driven FSM) — Start/stop/status a JSON-driven worker that executes a process graph (FSM). Generic orchestrator with zero business logic in engine. Supp… · Tags: automation, workflows, state_machine, long_running
+  - Opérations: start, stop, status
   - Tokens: aucun
 
 - Research — Recherche académique multi-sources (PubMed, arXiv, HAL, CrossRef). · Tags: knowledge, research, external_sources

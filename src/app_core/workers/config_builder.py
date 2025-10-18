@@ -165,6 +165,47 @@ def _get_meta_json(meta: dict, key: str, default=None):
         return default
 
 
+def _normalize_tool_spec(spec: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalise un tool spec JSON vers le format Realtime attendu:
+    {"type":"function","name":...,"description":...,"parameters":{...}}
+    Accepte soit un objet brut, soit un wrapper {"function": {...}}.
+    """
+    try:
+        f = spec.get("function") if isinstance(spec, dict) else None
+    except Exception:
+        f = None
+    core = f if isinstance(f, dict) else spec
+    if not isinstance(core, dict):
+        raise ValueError("Invalid tool spec: not a dict")
+    name = core.get("name") or "worker_query"
+    description = core.get("description") or "Execute une requête SQL SELECT en lecture seule sur la base du worker."
+    parameters = core.get("parameters") or {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "Requête SELECT (lecture seule)"},
+            "limit": {"type": "integer", "minimum": 1, "maximum": 100, "default": 50},
+        },
+        "required": ["query"],
+        "additionalProperties": False,
+    }
+    return {"type": "function", "name": name, "description": description, "parameters": parameters}
+
+
+def _load_worker_query_tool_spec() -> Dict[str, Any]:
+    """Charge src/tool_specs/worker_query.json et le normalise pour Realtime."""
+    path = TOOL_SPECS_DIR / "worker_query.json"
+    if not path.exists():
+        logger.error("worker_query.json introuvable dans tool_specs; fallback minimal appliqué")
+        return _normalize_tool_spec({})
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return _normalize_tool_spec(data)
+    except Exception as e:
+        logger.error(f"Failed to parse worker_query.json: {e}")
+        return _normalize_tool_spec({})
+
+
 def _resolve_tools(meta: dict) -> list:
     tools_json = _get_meta_json(meta, 'tools_json', default=None)
     resolved = []
