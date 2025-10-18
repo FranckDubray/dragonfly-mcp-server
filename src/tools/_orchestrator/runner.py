@@ -6,15 +6,15 @@
 import sys
 import os
 import signal
-import json
-import time
 import hashlib
+import time
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 
 from .db import get_state_kv, set_state_kv, set_phase, heartbeat
 from .handlers import bootstrap_handlers
 from .engine import OrchestratorEngine
+from .process_loader import load_process_with_imports, ProcessLoadError
 
 # Global state for signal handlers
 _db_path: str = ""
@@ -60,9 +60,22 @@ def _cooperative_sleep(db_path: str, worker: str, total_seconds: float, tick: fl
         remaining -= tick
 
 def _load_process(worker_file: str) -> dict:
-    """Load process JSON from worker_file (full path)"""
-    with open(worker_file, 'r', encoding='utf-8') as f:
-        return json.load(f)
+    """
+    Load process JSON from worker_file with $import support.
+    
+    Args:
+        worker_file: Full path to process file
+    
+    Returns:
+        Fully resolved process dict
+    
+    Raises:
+        ProcessLoadError: If loading fails
+    """
+    try:
+        return load_process_with_imports(worker_file)
+    except ProcessLoadError as e:
+        raise RuntimeError(f"Failed to load process: {e}")
 
 def _compute_process_uid(worker_file: str) -> str:
     """Compute SHA256 hash of worker_file content (short 12 chars)"""
@@ -218,7 +231,7 @@ def main():
         set_state_kv(_db_path, _worker_name, 'last_error', f'worker_file not found: {worker_file}')
         sys.exit(1)
     
-    # Load process JSON
+    # Load process JSON (with $import support)
     try:
         process = _load_process(str(worker_file_full))
     except Exception as e:
