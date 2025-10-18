@@ -1,0 +1,176 @@
+{
+  "version": "1.0",
+  "process_version": "1.0.0",
+  "metadata": {
+    "description": "Email triage workflow: fetch unseen, classify with LLM, move to folders",
+    "author": "orchestrator-examples",
+    "tags": ["email", "llm", "automation"]
+  },
+  "worker_ctx": {
+    "timezone": "UTC",
+    "sleep_seconds": 300,
+    "llm_model": "gpt-4o-mini",
+    "llm_provider": "openai",
+    "imap_provider": "gmail",
+    "imap_folder": "INBOX",
+    "spam_folder": "Spam",
+    "archive_folder": "Archive"
+  },
+  "graph": {
+    "nodes": [
+      {
+        "name": "START",
+        "type": "start"
+      },
+      {
+        "name": "fetch_emails",
+        "type": "io",
+        "handler": "http_tool",
+        "inputs": {
+          "tool": "imap",
+          "operation": "search_messages",
+          "provider": "${worker.imap_provider}",
+          "folder": "${worker.imap_folder}",
+          "query": {"unseen": true}
+        },
+        "outputs": {
+          "messages": "cycle.mbox.messages"
+        },
+        "retry": {"max": 2, "delay_sec": 5},
+        "timeout_sec": 30
+      },
+      {
+        "name": "check_messages",
+        "type": "decision",
+        "decision": {
+          "kind": "truthy",
+          "input": "${cycle.mbox.messages}"
+        }
+      },
+      {
+        "name": "get_first_message",
+        "type": "transform",
+        "handler": "sleep",
+        "inputs": {"seconds": 0},
+        "outputs": {"done": "cycle.msg.extracted"}
+      },
+      {
+        "name": "classify_message",
+        "type": "io",
+        "handler": "http_tool",
+        "inputs": {
+          "tool": "call_llm",
+          "operation": "call",
+          "provider": "${worker.llm_provider}",
+          "model": "${worker.llm_model}",
+          "messages": [
+            {
+              "role": "system",
+              "content": "You are an email classifier. Respond ONLY with one word: SPAM, HAM, or UNSURE. SPAM = unsolicited/marketing. HAM = legitimate personal/work email. UNSURE = unclear/ambiguous."
+            },
+            {
+              "role": "user",
+              "content": "Classify this email:\n\nSubject: ${cycle.msg.subject}\n\nFrom: ${cycle.msg.from}\n\nBody: ${cycle.msg.body}"
+            }
+          ],
+          "temperature": 0.1
+        },
+        "outputs": {
+          "content": "cycle.msg.classification_raw"
+        },
+        "retry": {"max": 2, "delay_sec": 60},
+        "timeout_sec": 120
+      },
+      {
+        "name": "normalize_classification",
+        "type": "transform",
+        "handler": "sleep",
+        "inputs": {"seconds": 0},
+        "outputs": {"done": "cycle.msg.normalized"}
+      },
+      {
+        "name": "route_by_classification",
+        "type": "decision",
+        "decision": {
+          "kind": "enum_from_field",
+          "input": "${cycle.msg.classification}",
+          "normalize": "upper",
+          "fallback": "unsure"
+        }
+      },
+      {
+        "name": "move_to_spam",
+        "type": "io",
+        "handler": "http_tool",
+        "inputs": {
+          "tool": "imap",
+          "operation": "move_message",
+          "provider": "${worker.imap_provider}",
+          "folder": "${worker.imap_folder}",
+          "uid": "${cycle.msg.uid}",
+          "destination": "${worker.spam_folder}"
+        },
+        "outputs": {
+          "moved": "cycle.msg.moved_spam"
+        },
+        "retry": {"max": 1, "delay_sec": 2}
+      },
+      {
+        "name": "move_to_archive",
+        "type": "io",
+        "handler": "http_tool",
+        "inputs": {
+          "tool": "imap",
+          "operation": "move_message",
+          "provider": "${worker.imap_provider}",
+          "folder": "${worker.imap_folder}",
+          "uid": "${cycle.msg.uid}",
+          "destination": "${worker.archive_folder}"
+        },
+        "outputs": {
+          "moved": "cycle.msg.moved_archive"
+        },
+        "retry": {"max": 1, "delay_sec": 2}
+      },
+      {
+        "name": "skip_unsure",
+        "type": "transform",
+        "handler": "sleep",
+        "inputs": {"seconds": 0},
+        "outputs": {"skipped": "cycle.msg.skipped"}
+      },
+      {
+        "name": "END",
+        "type": "end"
+      }
+    ],
+    "edges": [
+      {"from": "START", "to": "fetch_emails"},
+      {"from": "fetch_emails", "to": "check_messages"},
+      {"from": "check_messages", "to": "get_first_message", "when": "true"},
+      {"from": "check_messages", "to": "END", "when": "false"},
+      {"from": "get_first_message", "to": "classify_message"},
+      {"from": "classify_message", "to": "normalize_classification"},
+      {"from": "normalize_classification", "to": "route_by_classification"},
+      {"from": "route_by_classification", "to": "move_to_spam", "when": "SPAM"},
+      {"from": "route_by_classification", "to": "move_to_archive", "when": "HAM"},
+      {"from": "route_by_classification", "to": "skip_unsure", "when": "unsure"},
+      {"from": "move_to_spam", "to": "END"},
+      {"from": "move_to_archive", "to": "END"},
+      {"from": "skip_unsure", "to": "END"}
+    ]
+  },
+  "scopes": [
+    {
+      "name": "mbox",
+      "reset_on": ["START"],
+      "seed": {}
+    },
+    {
+      "name": "msg",
+      "reset_on": ["get_first_message"],
+      "seed": {}
+    }
+  ],
+  "graph_mermaid": "graph TD\n  START-->fetch_emails\n  fetch_emails-->check_messages\n  check_messages-->|true|get_first_message\n  check_messages-->|false|END\n  get_first_message-->classify_message\n  classify_message-->normalize_classification\n  normalize_classification-->route_by_classification\n  route_by_classification-->|SPAM|move_to_spam\n  route_by_classification-->|HAM|move_to_archive\n  route_by_classification-->|unsure|skip_unsure\n  move_to_spam-->END\n  move_to_archive-->END\n  skip_unsure-->END"
+}

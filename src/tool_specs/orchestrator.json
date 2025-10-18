@@ -1,0 +1,50 @@
+{
+  "type": "function",
+  "function": {
+    "name": "orchestrator",
+    "displayName": "Orchestrator (JSON-driven FSM)",
+    "category": "intelligence",
+    "tags": ["automation", "workflows", "state_machine", "long_running"],
+    "description": "Start/stop/status a JSON-driven worker that executes a process graph (FSM). Generic orchestrator with zero business logic in engine. Supports: context resolution, decisions (truthy, enum_from_field), retry policies, MCP tool calls, cooperative cancel, hot-reload.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["start", "stop", "status"],
+          "description": "Operation: 'start' (spawn worker), 'stop' (cancel/signal), 'status' (read state)",
+          "default": "start"
+        },
+        "worker_name": {
+          "type": "string",
+          "description": "Worker name (alphanumeric, -, _). Required for all operations. Maps to sqlite3/worker_<name>.db",
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "worker_file": {
+          "type": "string",
+          "description": "Path to process JSON file (required for 'start', must be under workers/ directory, e.g., 'workers/email_triage.process.json'). Chrooted to workers/ for security."
+        },
+        "hot_reload": {
+          "type": "boolean",
+          "description": "Enable hot-reload: reload process at next START boundary if process_uid changed (default: true). Only for 'start' operation.",
+          "default": true
+        },
+        "stop": {
+          "type": "object",
+          "description": "Stop configuration (only for 'stop' operation)",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": ["soft", "term", "kill"],
+              "description": "Stop mode: 'soft' (cooperative cancel flag, graceful), 'term' (SIGTERM/SIGBREAK), 'kill' (SIGKILL/taskkill force)",
+              "default": "soft"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["operation", "worker_name"],
+      "additionalProperties": false
+    }
+  }
+}

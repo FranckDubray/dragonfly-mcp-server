@@ -1,0 +1,86 @@
+{
+  "version": "1.0",
+  "process_version": "0.2.0-test",
+  "metadata": {
+    "description": "Advanced test process (decision + sleep + context)",
+    "author": "orchestrator-dev"
+  },
+  "worker_ctx": {
+    "timezone": "UTC",
+    "sleep_seconds": 5,
+    "default_sleep": 2
+  },
+  "graph": {
+    "nodes": [
+      {
+        "name": "START",
+        "type": "start"
+      },
+      {
+        "name": "set_flag",
+        "type": "transform",
+        "handler": "sleep",
+        "inputs": {
+          "seconds": 0
+        },
+        "outputs": {
+          "slept": "cycle.test.slept"
+        }
+      },
+      {
+        "name": "check_flag",
+        "type": "decision",
+        "decision": {
+          "kind": "truthy",
+          "input": "${worker.default_sleep}"
+        }
+      },
+      {
+        "name": "do_sleep",
+        "type": "io",
+        "handler": "sleep",
+        "inputs": {
+          "seconds": "${worker.default_sleep}"
+        },
+        "outputs": {
+          "slept": "cycle.test.total_slept"
+        },
+        "retry": {
+          "max": 1,
+          "delay_sec": 0.5
+        }
+      },
+      {
+        "name": "skip_sleep",
+        "type": "transform",
+        "handler": "sleep",
+        "inputs": {
+          "seconds": 0
+        },
+        "outputs": {
+          "slept": "cycle.test.skipped"
+        }
+      },
+      {
+        "name": "END",
+        "type": "end"
+      }
+    ],
+    "edges": [
+      {"from": "START", "to": "set_flag"},
+      {"from": "set_flag", "to": "check_flag"},
+      {"from": "check_flag", "to": "do_sleep", "when": "true"},
+      {"from": "check_flag", "to": "skip_sleep", "when": "false"},
+      {"from": "do_sleep", "to": "END"},
+      {"from": "skip_sleep", "to": "END"}
+    ]
+  },
+  "scopes": [
+    {
+      "name": "test",
+      "reset_on": ["START"],
+      "seed": {}
+    }
+  ],
+  "graph_mermaid": "graph TD\n  START-->set_flag\n  set_flag-->check_flag\n  check_flag-->|true|do_sleep\n  check_flag-->|false|skip_sleep\n  do_sleep-->END\n  skip_sleep-->END"
+}
