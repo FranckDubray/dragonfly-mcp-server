@@ -117,7 +117,7 @@ print(stop)
   "worker_ctx": {
     "timezone": "UTC",
     "sleep_seconds": 300,
-    "llm_model": "gpt-4",
+    "llm_model": "gpt-4o-mini",
     "retry_defaults": {"max": 2, "delay_sec": 1}
   },
   "graph": {
@@ -237,7 +237,7 @@ Edges:
 ```json
 "worker_ctx": {
   "timezone": "UTC",
-  "llm_model": "gpt-4",
+  "llm_model": "gpt-4o-mini",
   "sleep_seconds": 300
 }
 ```
@@ -281,7 +281,6 @@ Write: `"outputs": {"uid": "cycle.msg.uid"}`
   "inputs": {
     "tool": "call_llm",
     "operation": "call",
-    "provider": "openai",
     "model": "${worker.llm_model}",
     "messages": [
       {"role": "system", "content": "Classify email as SPAM or HAM"},
@@ -295,6 +294,8 @@ Write: `"outputs": {"uid": "cycle.msg.uid"}`
   "timeout_sec": 180
 }
 ```
+
+**⚠️ Important**: When using `call_llm`, map `"content"` specifically (not the full response object).
 
 ---
 
@@ -402,25 +403,26 @@ Columns:
 
 ## 🧪 Testing
 
-### Unit tests
+### Production Tests (Validated ✅)
 
-```bash
-# Test validators
-python -m pytest tests/tools/_orchestrator/test_validators.py
+#### Test 1: Smart Daily Insight Generator
+**File**: `workers/test_smart_insight.process.json`
 
-# Test context resolution
-python -m pytest tests/tools/_orchestrator/test_context.py
-```
+**Features tested**:
+- ✅ Multiple `call_llm` calls (classification + context-aware generation)
+- ✅ Decision `enum_from_field` (MORNING|AFTERNOON|EVENING routing)
+- ✅ Decision `truthy` (quality validation)
+- ✅ Complex context resolution (nested objects in prompts)
+- ✅ Scopes lifecycle (data, analysis, result)
+- ✅ Retry policies on LLM calls
+- ✅ 6 MCP tools orchestrated (date, device_location, open_meteo, astronomy, call_llm×2)
 
-### Integration tests
-
-```bash
-# Phase 2A: spawn + loop + cancel
-python tests/orchestrator_phase2a_test.py
-
-# Phase 2C: advanced features
-python tests/orchestrator_phase2c_test.py
-```
+**Results**:
+- ✅ 11 nodes executed successfully
+- ✅ 2.4s total cycle time
+- ✅ Correct routing (EVENING → evening_insight)
+- ✅ Quality validation passed
+- ✅ 0 errors, 0 retries needed
 
 ---
 
@@ -431,6 +433,8 @@ See `workers/` directory for example processes:
 - `test_minimal.process.json` — START → END (minimal)
 - `test_advanced.process.json` — decision + sleep + retry
 - `test_mcp_tool.process.json` — MCP tool call (date)
+- `test_smart_insight.process.json` — ⭐ **Full LLM workflow** (classification + routing + generation)
+- `production_briefing.process.json` — Daily briefing (3 tools orchestrated)
 
 ---
 
@@ -463,6 +467,26 @@ ORDER BY id DESC
 LIMIT 10;
 ```
 
+### call_llm output mapping
+
+⚠️ **Common mistake**: Mapping entire response instead of `content` field.
+
+**Wrong**:
+```json
+"outputs": {
+  "classification": "cycle.analysis.result"  ❌
+}
+```
+
+**Correct**:
+```json
+"outputs": {
+  "content": "cycle.analysis.result"  ✅
+}
+```
+
+The `call_llm` tool returns `{"result": {"content": "...", "usage": {...}}}`. The `http_tool` handler extracts `result`, giving you `{"content": "...", "usage": {...}}`. Map `"content"` specifically to get the string value.
+
 ---
 
 ## 📖 Architecture Docs (membank)
@@ -477,7 +501,8 @@ Full technical specs in membank:
 6. `orchestrator_handlers.md` — handler interface, MCP client
 7. `orchestrator_runner.md` — detached runner, signals
 8. `orchestrator_mcp_error_handling.md` — 3-level retry, errors
-9. `n8n_make_diff.md` — comparison with n8n/Make
+9. `orchestrator_implementation.md` — implementation summary
+10. `n8n_make_diff.md` — comparison with n8n/Make
 
 ---
 
@@ -493,6 +518,7 @@ Full technical specs in membank:
 - [x] Retry policies (expo backoff)
 - [x] Logging (job_steps)
 - [x] Chroot security
+- [x] Production tests (call_llm workflows)
 
 ### v1.1 (next)
 - [ ] Scope lifecycle hooks (enter/leave triggers)
