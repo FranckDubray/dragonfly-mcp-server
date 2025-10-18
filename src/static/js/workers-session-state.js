@@ -1,3 +1,14 @@
+
+
+
+
+
+
+
+
+
+
+
 /**
  * Workers Session - State (globals only)
  * Doit être chargé avant les autres modules session.*
@@ -22,6 +33,13 @@ let firstTurnTriggered = false;
 let sessionActive = false;
 let gotFirstAIAudio = false;
 let assistantBuffer = ""; // buffer transcript assistant
+
+// Nouveaux verrous/temporisateurs
+let hasActiveResponse = false;          // ← empêche double response.create / cancel inutile
+let userSpeechTimer = null;             // ← watchdog pour reset isUserSpeaking si pas de committed
+
+// Nouveau: session.update réussi (instructions appliquées serveur)
+window.sessionUpdatedSent = false;
 
 // Marqueur debug
 window.__workersSessionState = { ready: true };

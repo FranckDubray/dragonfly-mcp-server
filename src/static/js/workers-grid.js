@@ -1,25 +1,13 @@
 
 /**
  * Workers Grid - Affichage & interactions cartes (inline call)
- * - Rendu cartes (avatar, méta, icônes, stats, événements, CTA)
- * - Démarrage/fin d'appel (inline) -> délégué à workers-calls.js
- * - Rafraîchissement stats + derniers événements (non intrusif)
- * NOTE: Galerie (workers-gallery.js) & Process (workers-process.js) sont découpés.
+ * NOTE: Ne plus définir unlockIfNeeded ici (déplacé dans workers-calls.js)
  */
 
 window.workersData = [];
-// Utiliser un état global unique pour éviter les décalages de modules
 if (typeof window.currentCallWorkerId === 'undefined') window.currentCallWorkerId = null;
 
-function unlockIfNeeded(){
-  try { if (typeof unlockAudio === 'function') unlockAudio(); } catch(_){ }
-  try {
-    // Utiliser setVolume pour piloter À LA FOIS ringback + voix IA
-    if (typeof setVolume === 'function') setVolume(0.5); // défaut 50%
-    const volSlider = document.querySelector('#volumeSlider input[type="range"]');
-    if (volSlider) volSlider.value = 0.5;
-  } catch(_){ }
-}
+// Supprimé: function unlockIfNeeded() - doit rester unique dans workers-calls.js
 
 async function loadWorkers() {
     const grid = document.getElementById('workersGrid');
@@ -35,7 +23,7 @@ async function loadWorkers() {
         grid.innerHTML = window.workersData.map(worker => renderWorkerCard(worker)).join('');
         for (const worker of window.workersData) {
             await refreshWorkerStats(worker.id);
-            await refreshWorkerEvents(worker.id, 3); // 3 derniers événements, sobre
+            await refreshWorkerEvents(worker.id, 3);
         }
     } catch (error) {
         console.error('Failed to load workers:', error);
@@ -46,12 +34,10 @@ async function loadWorkers() {
     }
 }
 
-// Déléguer les appels à workers-calls.js pour éviter les doublons
 function callWorker(workerId){ if (window && typeof window.callWorker === 'function' && window.callWorker !== callWorker){ return window.callWorker(workerId); } }
 function endCall(){ if (window && typeof window.endCall === 'function' && window.endCall !== endCall){ return window.endCall(); } }
 function hangup(){ if (window && typeof window.hangup === 'function' && window.hangup !== hangup){ return window.hangup(); } }
 
-// ===== Stats & Événements =====
 setInterval(async () => {
   for (const w of window.workersData){
     await refreshWorkerStats(w.id);
@@ -59,6 +45,4 @@ setInterval(async () => {
   }
 }, 30000);
 
-// Expose pour modules externes
 window.loadWorkers = loadWorkers;
-// Ne pas ré-exposer callWorker/endCall/hangup ici pour éviter l'écrasement

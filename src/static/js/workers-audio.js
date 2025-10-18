@@ -1,6 +1,18 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 /**
  * Workers Audio - lecteur PCM16 avec contrôle de volume et arrêt immédiat
  */
@@ -31,17 +43,44 @@
   window.audioPlayer = {
     queueTime: 0,
     activeSources: [],
+    _preDuckVolume: null,
+    _ducking: false,
 
     setVolume(v) {
       ensureContext();
       const vol = Math.max(0, Math.min(1, Number(v)));
       gain.gain.value = vol;
+      if (window.__DF_DEBUG) console.log('[AUDIO:setVolume]', vol);
+    },
+
+    beginDuck(factor = 0.6) {
+      try{
+        ensureContext();
+        if (!this._ducking){
+          this._preDuckVolume = gain.gain.value;
+          const f = Math.max(0, Math.min(1, Number(factor)));
+          gain.gain.value = Math.max(0, Math.min(1, this._preDuckVolume * f));
+          this._ducking = true;
+          if (window.__DF_DEBUG) console.log('[AUDIO:duck start]', { from: this._preDuckVolume, to: gain.gain.value });
+        }
+      }catch(_){ }
+    },
+
+    endDuck() {
+      try{
+        if (this._ducking){
+          const restore = (typeof this._preDuckVolume === 'number') ? this._preDuckVolume : gain.gain.value;
+          gain.gain.value = Math.max(0, Math.min(1, restore));
+          if (window.__DF_DEBUG) console.log('[AUDIO:duck stop]', { to: gain.gain.value });
+          this._preDuckVolume = null;
+          this._ducking = false;
+        }
+      }catch(_){ }
     },
 
     playBase64Pcm16(b64) {
       if (!b64) return;
       ensureContext();
-      if (window.isUserSpeaking) return; // drop immédiat si user parle
 
       const bytes = base64ToBytes(b64);
       const samples = bytes.length >> 1;
@@ -71,23 +110,27 @@
     },
 
     stopAll() {
-      // Stop toutes les sources immédiatement
       this.activeSources.forEach(s => { try { s.stop(0); s.disconnect(); } catch(_){} });
       this.activeSources = [];
       if (ctx) this.queueTime = ctx.currentTime;
     }
   };
 
-  // Helpers globaux
   window.setVolume = function(v){
     try { window.audioPlayer.setVolume(v); } catch(_){}
     try { window.ringbackTone?.setVolume?.(v); } catch(_){}
   }
-  window.unlockAudio = function(){
-    try { ensureContext(); } catch(_){}
-  }
+  window.unlockAudio = function(){ try { ensureContext(); } catch(_){} }
+  window.getAudioContext = function(){ try { return ensureContext(); } catch(_){ return null; } }
 })();
 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
  
  
  
