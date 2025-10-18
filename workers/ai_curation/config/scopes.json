@@ -1,0 +1,8 @@
+[
+  {"name": "dates", "reset_on": [], "seed": {}},
+  {"name": "sources", "reset_on": [], "seed": {}},
+  {"name": "scoring", "reset_on": [], "seed": {}},
+  {"name": "validation", "reset_on": [], "seed": {}},
+  {"name": "result", "reset_on": [], "seed": {}},
+  {"name": "meta", "reset_on": [], "seed": {"retry_count": 0}}
+]

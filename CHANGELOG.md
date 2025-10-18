@@ -1,5 +1,76 @@
 # Changelog
 
+## [1.28.1] - 2025-10-18
+
+### 🤖 Worker AI Curation — Architecture simplifiée et base unique
+
+**Worker de curation automatisée IA/LLM avec scoring GPT-4o-mini + validation Sonar.**
+
+#### ✨ Changements majeurs
+
+##### 📁 **Renommage et simplification**
+- ✅ Répertoire `workers/ai_curation_v6/` → `workers/ai_curation/`
+- ✅ Worker name : **`ai_curation`** (sans version dans le nom)
+- ✅ Version uniquement dans le code (organisation interne)
+
+##### 🗄️ **Base de données unique**
+- ✅ **Avant** : 2 bases (`worker_ai_curation_v8.db` + `ai_curation_reports.db`)
+- ✅ **Après** : 1 seule base **`worker_ai_curation.db`**
+- ✅ Tables orchestrator + métier dans la même base :
+  - `job_state_kv` (orchestrator - état)
+  - `job_steps` (orchestrator - logs)
+  - `validation_logs` (métier - retry Sonar)
+  - `reports` (métier - rapports finaux)
+
+##### ⚙️ **Configuration corrigée**
+- ✅ `worker_ctx.json` : `"db_name": "worker_ai_curation"` (correspond au worker_name)
+- ✅ Convention : **1 worker = 1 nom = 1 base**
+- ✅ Process utilise `${worker.db_name}` pour toutes les opérations SQLite
+
+##### 📄 **Documentation**
+- ✅ README complet dans `workers/ai_curation/README.md` :
+  - Architecture (worker + base + process)
+  - 5 sources (News, Reddit, arXiv, Papers With Code, Sonar)
+  - Workflow détaillé (collecte → scoring loop → rapport FR)
+  - Critères de scoring (Pertinence 40% + Nouveauté 30% + Qualité 20% + Diversité 10%)
+  - Schémas DB (validation_logs, reports)
+  - Guide lancement (start/stop/status)
+  - Métriques et dépannage
+  - Changelog
+
+##### 🔧 **Process v6.0.1**
+- ✅ Architecture modulaire avec `$import`
+- ✅ Tous les nodes SQLite utilisent `${worker.db_name}`
+- ✅ Ajout de `json_stringify` pour logs (évite problèmes d'échappement)
+- ✅ Ajout de `extract_field` multi-extraction (score + feedback en 1 node)
+
+#### 📊 Résumé architecture finale
+
+**Lancement** :
+```python
+orchestrator(
+    operation="start",
+    worker_name="ai_curation",  # Nom simple
+    worker_file="workers/ai_curation/main.process.json"
+)
+```
+
+**Base créée** : `sqlite3/worker_ai_curation.db`
+
+**Tables** :
+- 2 tables orchestrator (auto)
+- 2 tables métier (créées par process)
+
+**Workflow** :
+1. Collecte 5 sources (30-60s)
+2. Scoring GPT-4o-mini (Top 10)
+3. Validation Sonar (score >= 7/10)
+4. Retry loop si échec (max 3×)
+5. Format rapport français
+6. Sauvegarde DB + EXIT
+
+---
+
 ## [1.28.0] - 2025-10-18
 
 ### 🚀 Orchestrator v1.1 — Features Avancées (CRITIQUE + IMPORTANT)
@@ -49,9 +120,10 @@
 ##### 🟡 **Transforms Domain** (Réutilisables)
 - `sanitize_text` : nettoyage HTML, whitespace, truncate (max_length)
 - `normalize_llm_output` : parse JSON LLM, extraction markdown code blocks, fallback
-- `extract_field` : JSONPath-like extraction (dotted path)
+- `extract_field` : JSONPath-like extraction (dotted path) + multi-extraction
 - `format_template` : string templating (style Python format)
 - `idempotency_guard` : prévention actions dupliquées (skip si déjà fait)
+- `json_stringify` : conversion objet → JSON string (pour DB)
 
 #### 📦 Fichiers Ajoutés/Modifiés
 

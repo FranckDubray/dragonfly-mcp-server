@@ -14,6 +14,7 @@ from .transforms import (
 from .transforms_domain import (
     SanitizeTextHandler,
     NormalizeLLMOutputHandler,
+    JsonStringifyHandler,
     ExtractFieldHandler,
     FormatTemplateHandler,
     IdempotencyGuardHandler
@@ -34,6 +35,7 @@ __all__ = [
     'SetValueHandler',
     'SanitizeTextHandler',
     'NormalizeLLMOutputHandler',
+    'JsonStringifyHandler',
     'ExtractFieldHandler',
     'FormatTemplateHandler',
     'IdempotencyGuardHandler',
@@ -74,6 +76,7 @@ def bootstrap_handlers(cancel_flag_fn=None):
     domain_transforms = [
         SanitizeTextHandler(),
         NormalizeLLMOutputHandler(),
+        JsonStringifyHandler(),
         ExtractFieldHandler(),
         FormatTemplateHandler(),
         IdempotencyGuardHandler()

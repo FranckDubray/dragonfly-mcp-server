@@ -1,0 +1,55 @@
+graph TD
+  START([🚀 START])-->get_date_now
+  get_date_now[📅 get_date_now]-->get_date_from[📅 get_date_from]
+  get_date_from-->fetch_news[📰 Fetch News 8 items]
+  fetch_news-->fetch_reddit[💬 Fetch Reddit 3x3]
+  fetch_reddit-->fetch_arxiv[📄 Fetch arXiv 8 papers]
+  fetch_arxiv-->fetch_pwc[💻 Fetch Papers With Code]
+  fetch_pwc-->fetch_sonar[🌐 Fetch Sonar real-time]
+  fetch_sonar-->normalize_sonar[⚙️ Parse Sonar JSON]
+  normalize_sonar-->SCORING_LOOP[⚙️ SCORING LOOP]
+  SCORING_LOOP-->get_scoring_timestamp[📅 get_scoring_timestamp]
+  get_scoring_timestamp-->llm_gpt_score[🤖 GPT-4o-mini: Score]
+  llm_gpt_score-->normalize_gpt[⚙️ Parse GPT JSON]
+  normalize_gpt-->check_parse{Parse OK?}
+  check_parse-->|true|get_validation_timestamp[📅 get_validation_timestamp]
+  check_parse-->|false|mark_fail[⚙️ Parse Failed]
+  get_validation_timestamp-->llm_sonar_validate[🔍 Sonar: Validate]
+  llm_sonar_validate-->normalize_validation[⚙️ Parse Validation]
+  normalize_validation-->extract_score[⚙️ Extract Score]
+  extract_score-->extract_feedback[⚙️ Extract Feedback]
+  extract_feedback-->get_validation_end[📅 get_validation_end]
+  get_validation_end-->stringify_log[⚙️ JSON Stringify Log]
+  stringify_log-->log_validation_to_db[💾 Create validation_logs]
+  log_validation_to_db-->insert_log[💾 Insert log]
+  insert_log-->log_sonar[⚙️ Format Log Message]
+  log_sonar-->check_quality{Score >= 7?}
+  check_quality-->|true|llm_format[🇫🇷 Format FR]
+  check_quality-->|false|check_retry{Retry < 3?}
+  check_retry-->|true|increment[⚙️ Increment]
+  check_retry-->|false|llm_format
+  increment-->SCORING_LOOP
+  llm_format-->get_final[📅 get_final_timestamp]
+  get_final-->stringify_report[⚙️ JSON Stringify Report]
+  stringify_report-->create_table[💾 Create reports]
+  create_table-->save_report[💾 Save Report]
+  save_report-->mark_success[⚙️ Success]
+  mark_success-->EXIT([🏁 EXIT])
+  mark_fail-->EXIT
+  style normalize_sonar fill:#c8e6c9,stroke:#4caf50,stroke-width:2px
+  style SCORING_LOOP fill:#c8e6c9,stroke:#4caf50,stroke-width:3px
+  style normalize_gpt fill:#c8e6c9,stroke:#4caf50,stroke-width:2px
+  style normalize_validation fill:#c8e6c9,stroke:#4caf50,stroke-width:2px
+  style extract_score fill:#c8e6c9,stroke:#4caf50,stroke-width:2px
+  style extract_feedback fill:#c8e6c9,stroke:#4caf50,stroke-width:2px
+  style stringify_log fill:#c8e6c9,stroke:#4caf50,stroke-width:2px
+  style log_sonar fill:#c8e6c9,stroke:#4caf50,stroke-width:2px
+  style increment fill:#c8e6c9,stroke:#4caf50,stroke-width:2px
+  style stringify_report fill:#c8e6c9,stroke:#4caf50,stroke-width:2px
+  style mark_success fill:#c8e6c9,stroke:#4caf50,stroke-width:2px
+  style mark_fail fill:#c8e6c9,stroke:#4caf50,stroke-width:2px
+  style check_parse fill:#e3f2fd,stroke:#2196f3,stroke-width:2px
+  style check_quality fill:#e3f2fd,stroke:#2196f3,stroke-width:2px
+  style check_retry fill:#fff3e0,stroke:#ff9800,stroke-width:2px
+  style START fill:#e8f5e9,stroke:#4caf50,stroke-width:3px
+  style EXIT fill:#ffebee,stroke:#f44336,stroke-width:3px

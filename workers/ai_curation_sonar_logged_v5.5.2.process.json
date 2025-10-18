@@ -1,9 +1,10 @@
 {
   "version": "1.0",
-  "process_version": "5.5.1-gpt4o-mini-template-fixed",
+  "process_version": "5.5.2-json-stringify-fixed",
   "metadata": {
-    "description": "AI/LLM Curation - gpt-4o-mini + timeout fix + template fix",
-    "author": "orchestrator-production"
+    "description": "AI/LLM Curation - gpt-4o-mini + Sonar + JSON stringify fix + français renforcé",
+    "author": "orchestrator-production",
+    "changelog": "v5.5.2: Ajout json_stringify avant inserts DB, prompt français renforcé, schema DB compatible"
   },
   "worker_ctx": {
     "timezone": "UTC",
@@ -123,14 +124,9 @@
         "handler": "normalize_llm_output",
         "inputs": {"content": "${cycle.sources.sonar_raw}", "expected_format": "json", "fallback_value": []},
         "outputs": {"parsed": "cycle.sources.sonar"}
-      },
-      {
-        "name": "SCORING_LOOP",
-        "type": "transform",
-        "handler": "set_value",
-        "inputs": {"value": "scoring"},
-        "outputs": {"result": "cycle.meta.phase"}
-      },
+      }
+    ,
+      {"name": "SCORING_LOOP", "type": "transform", "handler": "set_value", "inputs": {"value": "scoring"}, "outputs": {"result": "cycle.meta.phase"}},
       {
         "name": "get_scoring_timestamp",
         "type": "io",
@@ -172,11 +168,7 @@
         "inputs": {"content": "${cycle.scoring.gpt_raw}", "expected_format": "json", "fallback_value": []},
         "outputs": {"parsed": "cycle.scoring.top10", "success": "cycle.scoring.gpt_ok"}
       },
-      {
-        "name": "check_parse",
-        "type": "decision",
-        "decision": {"kind": "truthy", "input": "${cycle.scoring.gpt_ok}"}
-      },
+      {"name": "check_parse", "type": "decision", "decision": {"kind": "truthy", "input": "${cycle.scoring.gpt_ok}"}},
       {
         "name": "get_validation_timestamp",
         "type": "io",
@@ -237,6 +229,13 @@
         "timeout_sec": 5
       },
       {
+        "name": "stringify_top10_for_log",
+        "type": "transform",
+        "handler": "json_stringify",
+        "inputs": {"value": "${cycle.scoring.top10}"},
+        "outputs": {"json_string": "cycle.scoring.top10_json_str"}
+      },
+      {
         "name": "log_validation_to_db",
         "type": "io",
         "handler": "http_tool",
@@ -259,7 +258,7 @@
           "operation": "execute",
           "db": "ai_curation_reports.db",
           "query": "INSERT INTO validation_logs (timestamp, attempt, score, feedback, top10_json) VALUES (?, ?, ?, ?, ?)",
-          "params": ["${cycle.meta.validation_ended_at}", "${cycle.meta.retry_count}", "${cycle.validation.sonar_score}", "${cycle.validation.sonar_feedback}", "${cycle.scoring.top10}"]
+          "params": ["${cycle.meta.validation_ended_at}", "${cycle.meta.retry_count}", "${cycle.validation.sonar_score}", "${cycle.validation.sonar_feedback}", "${cycle.scoring.top10_json_str}"]
         },
         "outputs": {"success": "cycle.meta.log_inserted"},
         "timeout_sec": 10
@@ -276,17 +275,10 @@
           "feedback": "${cycle.validation.sonar_feedback}"
         },
         "outputs": {"text": "cycle.validation.log_message"}
-      },
-      {
-        "name": "check_quality",
-        "type": "decision",
-        "decision": {"kind": "compare", "input": "${cycle.validation.sonar_score}", "operator": ">=", "value": 7}
-      },
-      {
-        "name": "check_retry",
-        "type": "decision",
-        "decision": {"kind": "compare", "input": "${cycle.meta.retry_count}", "operator": "<", "value": 3}
-      },
+      }
+    ,
+      {"name": "check_quality", "type": "decision", "decision": {"kind": "compare", "input": "${cycle.validation.sonar_score}", "operator": ">=", "value": 7}},
+      {"name": "check_retry", "type": "decision", "decision": {"kind": "compare", "input": "${cycle.meta.retry_count}", "operator": "<", "value": 3}},
       {
         "name": "increment",
         "type": "transform",
@@ -306,14 +298,14 @@
           "messages": [
             {
               "role": "system",
-              "content": "Tu es un rédacteur professionnel de rapports de curation IA/LLM en français.\n\nFORMAT STRICT DU RAPPORT:\n\n# 🤖 Top 10 IA/LLM — [Période]\n\n**Score de qualité:** X/10 | **Tentatives:** N | **Date:** [timestamp]\n\n---\n\n## 📊 Top 10 Sélection (5 sources: News, Reddit, arXiv, Papers With Code, Sonar)\n\n**1. [Titre en français]** — Note: X.X/10  \n*Résumé en 2-3 phrases expliquant pourquoi c'est important et l'impact.*  \n🔗 Source: [URL]\n\n**2. [Titre en français]** — Note: X.X/10  \n*Résumé...*  \n🔗 Source: [URL]\n\n[...répéter pour les 10 items]\n\n---\n\n## ✅ Évaluation Qualité\n\n[Feedback Sonar]\n\n**Score final:** X/10  \n**Nombre de tentatives:** N  \n**Validé le:** [timestamp]\n\n---\n\n## 🔍 Tendances clés\n\n*Synthèse en 2-3 phrases des thèmes principaux et développements notables à surveiller.*\n\nRÈGLES:\n- Traduis tous les titres en français (garde le sens technique)\n- Résumés concis (2-3 phrases max)\n- URLs exactes (ne pas inventer)\n- Emojis: 🚀 breakthrough, 📄 paper, 💻 code, 📰 news, 🎯 product, 🌐 sonar\n- Ton professionnel mais accessible"
+              "content": "IMPÉRATIF : Réponds UNIQUEMENT en français. Tu es un rédacteur professionnel de rapports de curation IA/LLM.\n\nFORMAT STRICT DU RAPPORT:\n\n# 🤖 Top 10 IA/LLM — [Période]\n\n**Score de qualité:** X/10 | **Tentatives:** N | **Date:** [timestamp]\n\n---\n\n## 📊 Top 10 Sélection (5 sources: News, Reddit, arXiv, Papers With Code, Sonar)\n\n**1. [Titre en français]** — Note: X.X/10  \n*Résumé en 2-3 phrases expliquant pourquoi c'est important et l'impact.*  \n🔗 Source: [URL]\n\n**2. [Titre en français]** — Note: X.X/10  \n*Résumé...*  \n🔗 Source: [URL]\n\n[...répéter pour les 10 items]\n\n---\n\n## ✅ Évaluation Qualité\n\n[Feedback Sonar]\n\n**Score final:** X/10  \n**Nombre de tentatives:** N  \n**Validé le:** [timestamp]\n\n---\n\n## 🔍 Tendances clés\n\n*Synthèse en 2-3 phrases des thèmes principaux et développements notables à surveiller.*\n\nRÈGLES:\n- Traduis tous les titres en français (garde le sens technique)\n- Résumés concis (2-3 phrases max)\n- URLs exactes (ne pas inventer)\n- Emojis: 🚀 breakthrough, 📄 paper, 💻 code, 📰 news, 🎯 product, 🌐 sonar\n- Ton professionnel mais accessible\n\nEXEMPLE DE TITRE FORMATÉ :\n**1. Plain English surpasse JSON pour les appels d'outils LLM (+18pp précision)** — Note: 9.5/10\n*Cette recherche démontre que l'utilisation du langage naturel améliore significativement la précision des appels d'outils dans les LLM, avec une réduction de 70% de la variance. Impact majeur sur l'architecture des agents IA.*\n🔗 Source: https://www.reddit.com/r/MachineLearning/...\n\nRÉPONDS UNIQUEMENT EN FRANÇAIS."
             },
             {
               "role": "user",
               "content": "Crée le rapport final en français:\n\n**Période:** ${cycle.dates.from} au ${cycle.dates.now}\n\n**Top 10 (5 sources):**\n${cycle.scoring.top10}\n\n**Validation:**\n${cycle.validation.log_message}\n\nGénère un rapport markdown professionnel en français, format strict (titre + note + résumé + URL) × 10."
             }
           ],
-          "temperature": 0.5,
+          "temperature": 0.1,
           "max_tokens": 4000
         },
         "outputs": {"content": "cycle.result.report"},
@@ -329,6 +321,27 @@
         "timeout_sec": 5
       },
       {
+        "name": "stringify_top10_for_report",
+        "type": "transform",
+        "handler": "json_stringify",
+        "inputs": {"value": "${cycle.scoring.top10}"},
+        "outputs": {"json_string": "cycle.scoring.top10_json_str_final"}
+      },
+      {
+        "name": "create_reports_table",
+        "type": "io",
+        "handler": "http_tool",
+        "inputs": {
+          "tool": "sqlite_db",
+          "operation": "execute",
+          "db": "ai_curation_reports.db",
+          "query": "CREATE TABLE IF NOT EXISTS reports (id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, date_from TEXT, date_to TEXT, report_markdown TEXT, avg_score REAL, retry_count INTEGER, top10_json TEXT, completed_at TEXT)",
+          "params": []
+        },
+        "outputs": {"success": "cycle.result.table_created"},
+        "timeout_sec": 10
+      },
+      {
         "name": "save_report",
         "type": "io",
         "handler": "http_tool",
@@ -337,7 +350,7 @@
           "operation": "execute",
           "db": "ai_curation_reports.db",
           "query": "INSERT INTO reports (date_from, date_to, report_markdown, avg_score, retry_count, top10_json, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-          "params": ["${cycle.dates.from}", "${cycle.dates.now}", "${cycle.result.report}", "${cycle.validation.sonar_score}", "${cycle.meta.retry_count}", "${cycle.scoring.top10}", "${cycle.result.completed_at}"]
+          "params": ["${cycle.dates.from}", "${cycle.dates.now}", "${cycle.result.report}", "${cycle.validation.sonar_score}", "${cycle.meta.retry_count}", "${cycle.scoring.top10_json_str_final}", "${cycle.result.completed_at}"]
         },
         "outputs": {"success": "cycle.result.saved"},
         "timeout_sec": 15
@@ -345,7 +358,8 @@
       {"name": "mark_success", "type": "transform", "handler": "set_value", "inputs": {"value": "Success"}, "outputs": {"result": "cycle.result.status"}},
       {"name": "mark_fail", "type": "transform", "handler": "set_value", "inputs": {"value": "Parse failed"}, "outputs": {"result": "cycle.result.status"}},
       {"name": "EXIT", "type": "exit"}
-    ],
+    ]
+  ,
     "edges": [
       {"from": "START", "to": "get_date_now"},
       {"from": "get_date_now", "to": "get_date_from"},
@@ -367,7 +381,8 @@
       {"from": "normalize_validation", "to": "extract_score"},
       {"from": "extract_score", "to": "extract_feedback"},
       {"from": "extract_feedback", "to": "get_validation_end_timestamp"},
-      {"from": "get_validation_end_timestamp", "to": "log_validation_to_db"},
+      {"from": "get_validation_end_timestamp", "to": "stringify_top10_for_log"},
+      {"from": "stringify_top10_for_log", "to": "log_validation_to_db"},
       {"from": "log_validation_to_db", "to": "insert_validation_log"},
       {"from": "insert_validation_log", "to": "log_sonar_validation"},
       {"from": "log_sonar_validation", "to": "check_quality"},
@@ -377,7 +392,9 @@
       {"from": "check_retry", "to": "llm_format", "when": "false"},
       {"from": "increment", "to": "SCORING_LOOP"},
       {"from": "llm_format", "to": "get_final_timestamp"},
-      {"from": "get_final_timestamp", "to": "save_report"},
+      {"from": "get_final_timestamp", "to": "stringify_top10_for_report"},
+      {"from": "stringify_top10_for_report", "to": "create_reports_table"},
+      {"from": "create_reports_table", "to": "save_report"},
       {"from": "save_report", "to": "mark_success"},
       {"from": "mark_success", "to": "EXIT"},
       {"from": "mark_fail", "to": "EXIT"}
@@ -390,5 +407,6 @@
       {"name": "result", "reset_on": [], "seed": {}},
       {"name": "meta", "reset_on": [], "seed": {"retry_count": 0}}
     ]
-  }
+  },
+  "graph_mermaid": "graph TD\n  START-->get_date_now\n  get_date_now-->get_date_from\n  get_date_from-->fetch_news[Fetch News 8 items]\n  fetch_news-->fetch_reddit[Fetch Reddit 3x3 posts]\n  fetch_reddit-->fetch_arxiv[Fetch arXiv 8 papers]\n  fetch_arxiv-->fetch_pwc[Fetch Papers With Code]\n  fetch_pwc-->fetch_sonar[Fetch Sonar real-time]\n  fetch_sonar-->normalize_sonar[Normalize Sonar JSON]\n  normalize_sonar-->SCORING_LOOP[SCORING LOOP]\n  SCORING_LOOP-->llm_gpt_score[LLM GPT: Score Top 10]\n  llm_gpt_score-->normalize_gpt[Normalize GPT JSON]\n  normalize_gpt-->check_parse{Parse OK?}\n  check_parse-->|true|llm_sonar_validate[LLM Sonar: Validate]\n  check_parse-->|false|mark_fail\n  llm_sonar_validate-->normalize_validation[Normalize Validation]\n  normalize_validation-->extract_score[Extract Score]\n  extract_score-->extract_feedback[Extract Feedback]\n  extract_feedback-->stringify_log[JSON Stringify for Log]\n  stringify_log-->insert_log[Insert validation_logs]\n  insert_log-->check_quality{Score >= 7?}\n  check_quality-->|true|llm_format[LLM: Format FR]\n  check_quality-->|false|check_retry{Retry < 3?}\n  check_retry-->|true|increment[Increment retry_count]\n  check_retry-->|false|llm_format\n  increment-->SCORING_LOOP\n  llm_format-->stringify_report[JSON Stringify for Report]\n  stringify_report-->save_db[Save to SQLite]\n  save_db-->mark_success\n  mark_success-->EXIT\n  mark_fail-->EXIT"
 }
