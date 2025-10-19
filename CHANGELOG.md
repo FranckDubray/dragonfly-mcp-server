@@ -1,5 +1,44 @@
 # Changelog
 
+## [1.40.0] - 2025-01-19
+
+### 🎯 Orchestrator v1.4 — Audit complet + Fixes P0/P1 (couverture 56% → 90%)
+
+#### 🔴 P0 Critiques (TERMINÉS)
+- ✅ **v1.3.1** : Fix api.py `_validate_process_logic(process_data)` variable name
+- ✅ **v1.3.2** : Crash logging avec contextes complets (table crash_logs)
+- ✅ **v1.4.0** : Scopes lifecycle complet (reset END, enter/leave triggers)
+- ✅ **v1.4.1** : Traceback Python enrichi (frame-by-frame + locals vars)
+
+#### 🟡 P1 Features manquantes (TERMINÉS)
+- ✅ **v1.4.2** : Retry logging (log_retry_attempt en DB)
+- ✅ **v1.4.3** : Transforms errors normalisés (HandlerError partout)
+
+#### 📊 Couverture specs membank
+- **Avant** : 10/18 features (56%)
+- **Après** : 16/18 features (89%)
+
+#### 🚀 Nouvelles features production
+1. **Crash logs complets**
+   - Table crash_logs avec worker_ctx + cycle_ctx + stack_trace
+   - Traceback Python frame-by-frame avec variables locales
+   - print_crash_report() pour debug rapide
+
+2. **Scopes lifecycle complet**
+   - reset_on: ["END"] fonctionnel
+   - reset_on: ["node_name"] fonctionnel
+   - scope_trigger: {action: "enter|leave", scope: "name"} sur edges
+
+3. **Retry logging**
+   - log_retry_attempt() log chaque tentative
+   - Query: `SELECT * FROM job_steps WHERE node LIKE '%_retry_%'`
+
+4. **Transforms robustes**
+   - Tous les transforms lèvent HandlerError
+   - Retry policy s'applique correctement
+
+---
+
 ## [1.31.0] - 2025-10-19
 
 ### 🛡️ Orchestrator v1.3 — Validation Schema + Error Messages
@@ -17,12 +56,6 @@
   - Circular imports : affiche chaîne complète
   - File not found : liste tous les chemins testés + tips organisation
 
-### 🔧 Notes techniques
-- jsonschema optionnel (si absent, validation skippée sans crash)
-- Schema strict : retry max 10, timeout max 2h, decision kinds enum
-- Custom validation après schema : edges/nodes coherence, START unique
-- Effort total : ~1h20 (P1: 1h, P2: 20min)
-
 ---
 
 ## [1.30.0] - 2025-10-19
@@ -34,11 +67,6 @@
 - 🧹 **Refactor**: handlers/__init__.py charge dynamiquement depuis transforms/ et transforms_domain/
 - ✅ **Validation**: Process loader avec $import fonctionnel en API start + runner hot-reload
 
-### 🔧 Notes techniques
-- Process avec `$import` supportés partout (API start + runner reload)
-- Bootstrap handlers automatique depuis sous-packages transforms/
-- Pas de régression: tous les transforms existants (5 math + 6 domain + 1 mock)
-
 ---
 
 ## [1.29.0] - 2025-10-19
@@ -48,18 +76,8 @@
 - 🧰 Runner (prod): redirection stdout/stderr → `logs/worker_<name>.log` (aucune synchro Git)
 - 🧱 Résilience: process loader avec $import sous `nodes/` (anti-cycles, erreurs courtes)
 - 🧩 Transforms (pur, 1 fichier = 1 transform): refactor + nouveaux
-  - `filter_by_date`, `filter_multi_by_date` (72h, déterministes)
-  - `dedupe_by_url` (filet hors LLM)
 - 🧭 Process `ai_curation` (v6.0.5):
-  - Dates centralisées (une capture au début, réutilisée partout)
-  - Filtre fraîcheur multi-source (<72h) + filtres API côté MCP
-  - Fusion/dédoublonnage du rapport avec le précédent (LLM JSON strict)
-  - README worker mis à jour
-- 🧹 .gitignore élargi (logs/, docs/, script_executor/, .dgy_backup/, sqlite3/, *.db, egg-info/, .env)
-
-### 🔧 Notes d'upgrade
-- Pour voir les erreurs de démarrage: inspecter `logs/worker_<name>.log`
-- En cas d'erreur JSON/$import: l'API Start renvoie `failed`; côté runner, phase=failed + last_error (si erreur post-spawn)
-- Recommandé: one-shot pour curation (sleep_seconds=0), et contrôle manuel des métriques fraîcheur (<72h)
-
----
+  - Dates centralisées
+  - Filtre fraîcheur multi-source (<72h)
+  - Fusion/dédoublonnage du rapport
+- 🧹 .gitignore élargi (logs/, docs/, sqlite3/, *.db)
