@@ -13,6 +13,7 @@ from typing import Any, Dict
 
 from .validators import validate_params
 from .db import init_db, get_state_kv, set_state_kv, get_phase, set_phase, heartbeat
+from .process_loader import load_process_with_imports, ProcessLoadError
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 SQLITE_DIR = PROJECT_ROOT / 'sqlite3'
@@ -99,15 +100,21 @@ def start(params: dict) -> dict:
             "truncated": False
         }
 
-    # Load worker_file to compute process_uid and extract version
+    # Load worker_file with $import support
     try:
-        with open(worker_file_resolved, 'r', encoding='utf-8') as f:
-            process_data = json.load(f)
+        process_data = load_process_with_imports(worker_file_resolved)
+    except ProcessLoadError as e:
+        return {
+            "accepted": False,
+            "status": "failed",
+            "message": f"Failed to load process: {str(e)[:200]}",
+            "truncated": False
+        }
     except Exception as e:
         return {
             "accepted": False,
             "status": "failed",
-            "message": f"Failed to load worker_file: {str(e)[:200]}",
+            "message": f"Unexpected error loading process: {str(e)[:200]}",
             "truncated": False
         }
 
