@@ -1,5 +1,70 @@
 # Changelog
 
+## [1.50.0] - 2025-01-19
+
+### 🎨 Orchestrator v6.2 — Architecture hiérarchique SSOT + Visualisation récursive
+
+#### 🏗️ Architecture modulaire (SSOT strict)
+- ✅ **5 subgraphs autonomes** (INIT → COLLECT → SCORE → VALIDATE → OUTPUT)
+- ✅ **Pas de duplication** : chaque node/edge défini UNE SEULE FOIS
+- ✅ **Tous fichiers < 7KB** (max: 4.8KB = 02_collect.subgraph.json)
+- ✅ **Navigation hiérarchique** : vue macro → clic boîte → drill-down détail → récursif infini
+
+#### 📦 Structure ai_curation worker
+```
+workers/ai_curation/
+├── main.process.json         (1.8KB)  # Orchestration pure (subgraphs refs + edges inter-SG)
+├── config/                           # worker_ctx + scopes
+├── prompts/                          # Data lourdes (GPT/Sonar prompts)
+├── subgraphs/                        # 5 phases autonomes (SSOT)
+│   ├── 01_init.subgraph.json
+│   ├── 02_collect.subgraph.json     # Fetch 5 sources + filter ≤72h
+│   ├── 03_score.subgraph.json       # GPT-4o-mini top 10
+│   ├── 04_validate.subgraph.json    # Sonar validation loop
+│   └── 05_output.subgraph.json      # Format FR + save DB
+└── visualization/                    # Mermaid avec emojis bien choisis
+    ├── main_global.mmd              # Vue macro (5 boîtes)
+    ├── subgraph_COLLECT.mmd         # Détail COLLECT
+    └── subgraph_VALIDATE.mmd        # Détail VALIDATE
+```
+
+#### 🎨 Visualisation avec emojis contextuels
+- **Vue globale** : 🚀 START → 🔧 INIT → 📦 COLLECT → 🎯 SCORE → ✅ VALIDATE → 💾 OUTPUT → 🏁 EXIT
+- **Détail COLLECT** : 🌐 News, 💬 Reddit, 📄 arXiv, 🏆 PWC, 🔍 Sonar, ⏱️ Filters, 📊 Count
+- **Détail VALIDATE** : 🤖 LLM, ⚖️ Decisions, 🗄️ DB logs, 🔄 Retry loop, ➕ Increment
+- **Légende couleurs** : Bleu (init), Vert (collect), Orange (score), Violet (validate), Gris (output)
+
+#### 🔧 Corrections P0/P1 (audit complet)
+1. **Transforms normalisés** → Tous lèvent `HandlerError` (pas `ValueError`)
+   - increment, decrement, add, multiply, set_value, json_stringify
+   - normalize_llm_output, extract_field, format_template, filter_by_date
+2. **Prompts Sonar** → User-only (pas de system prompt)
+3. **JSON stringify** → Avant INSERT SQLite (fix v5.5.2)
+4. **Scopes lifecycle** → Reset END + enter/leave triggers (complet)
+5. **Retry logging** → log_retry_attempt() en DB
+6. **Crash logs** → Table crash_logs avec worker_ctx + cycle_ctx + stack_trace complet
+
+#### 🎯 Viewer récursif (design validé)
+- Frontend appelle `GET /orchestrator/status?worker=ai_curation`
+- Identifie subgraph du `current_node`
+- Charge subgraph JSON → affiche vue détail
+- Highlight boîte macro + node détail
+- Trail animé (CSS classes `running`/`visited`/`active` sur SVG)
+- Récursion infinie (si node = subgraph → drill-down niveau N+1)
+
+#### 🗑️ Nettoyage code mort
+- ❌ Supprimé `workers/ai_curation/nodes/` (dupliqué dans subgraphs)
+- ❌ Supprimé `workers/ai_curation/edges/` (edges intra-SG dans subgraphs)
+- ❌ Supprimé 20 anciens process JSON monolithiques (15-23KB chacun)
+
+#### 📊 Métriques
+- **Avant** : 1 fichier monolithe 23KB
+- **Après** : 15 fichiers modulaires, max 4.8KB
+- **Couverture specs** : 16/18 features (89%)
+- **Total worker** : ~30KB (config + prompts + subgraphs + viz)
+
+---
+
 ## [1.40.0] - 2025-01-19
 
 ### 🎯 Orchestrator v1.4 — Audit complet + Fixes P0/P1 (couverture 56% → 90%)

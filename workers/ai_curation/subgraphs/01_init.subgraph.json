@@ -1,0 +1,75 @@
+{
+  "id": "INIT",
+  "version": "1.0",
+  "description": "Initialization: dates calculation + DB tables setup",
+  
+  "interface": {
+    "entry": "get_date_now",
+    "exits": {
+      "success": "ensure_reports_table"
+    }
+  },
+  
+  "nodes": [
+    {
+      "name": "get_date_now",
+      "type": "io",
+      "handler": "http_tool",
+      "inputs": {
+        "tool": "date",
+        "operation": "now",
+        "format": "iso",
+        "timezone": "UTC"
+      },
+      "outputs": {"iso": "cycle.dates.now"},
+      "timeout_sec": 5
+    },
+    {
+      "name": "compute_from_date",
+      "type": "io",
+      "handler": "http_tool",
+      "inputs": {
+        "tool": "date",
+        "operation": "add_delta",
+        "base_iso": "${cycle.dates.now}",
+        "days": -3
+      },
+      "outputs": {"iso": "cycle.dates.from"},
+      "timeout_sec": 5
+    },
+    {
+      "name": "ensure_validation_logs_table",
+      "type": "io",
+      "handler": "http_tool",
+      "inputs": {
+        "tool": "sqlite_db",
+        "operation": "execute",
+        "db": "${worker.db_name}.db",
+        "query": "CREATE TABLE IF NOT EXISTS validation_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT NOT NULL, attempt INTEGER, score REAL, feedback TEXT, top10_json TEXT)",
+        "params": []
+      },
+      "outputs": {"success": "cycle.meta.validation_table_ready"},
+      "timeout_sec": 5
+    },
+    {
+      "name": "ensure_reports_table",
+      "type": "io",
+      "handler": "http_tool",
+      "inputs": {
+        "tool": "sqlite_db",
+        "operation": "execute",
+        "db": "${worker.db_name}.db",
+        "query": "CREATE TABLE IF NOT EXISTS reports (id INTEGER PRIMARY KEY AUTOINCREMENT, date_from TEXT, date_to TEXT, report_markdown TEXT, avg_score REAL, retry_count INTEGER, top10_json TEXT, completed_at TEXT)",
+        "params": []
+      },
+      "outputs": {"success": "cycle.meta.reports_table_ready"},
+      "timeout_sec": 5
+    }
+  ],
+  
+  "edges": [
+    {"from": "get_date_now", "to": "compute_from_date"},
+    {"from": "compute_from_date", "to": "ensure_validation_logs_table"},
+    {"from": "ensure_validation_logs_table", "to": "ensure_reports_table"}
+  ]
+}

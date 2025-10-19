@@ -1,0 +1,48 @@
+{
+  "id": "SCORE",
+  "version": "1.0",
+  "description": "GPT-4o-mini scoring: analyze all sources and select top 10",
+  
+  "interface": {
+    "entry": "llm_gpt_score",
+    "exits": {
+      "success": "json_stringify_top10"
+    }
+  },
+  
+  "nodes": [
+    {
+      "name": "llm_gpt_score",
+      "type": "io",
+      "handler": "http_tool",
+      "inputs": {
+        "tool": "call_llm",
+        "model": "${worker.llm_model}",
+        "messages": {"$import": "../prompts/gpt_scoring.json"},
+        "temperature": "${worker.llm_temperature}"
+      },
+      "outputs": {"content": "cycle.scoring.raw"},
+      "timeout_sec": 180,
+      "retry": {"max": 2, "delay_sec": 5}
+    },
+    {
+      "name": "normalize_gpt_score",
+      "type": "transform",
+      "handler": "normalize_llm_output",
+      "inputs": {"content": "${cycle.scoring.raw}"},
+      "outputs": {"parsed": "cycle.scoring.top10"}
+    },
+    {
+      "name": "json_stringify_top10",
+      "type": "transform",
+      "handler": "json_stringify",
+      "inputs": {"value": "${cycle.scoring.top10}"},
+      "outputs": {"json_string": "cycle.scoring.top10_json"}
+    }
+  ],
+  
+  "edges": [
+    {"from": "llm_gpt_score", "to": "normalize_gpt_score"},
+    {"from": "normalize_gpt_score", "to": "json_stringify_top10"}
+  ]
+}

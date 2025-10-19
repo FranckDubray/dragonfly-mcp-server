@@ -1,34 +1,50 @@
-from ..base import AbstractHandler
+from ..base import AbstractHandler, HandlerError
 
 class ExtractFieldHandler(AbstractHandler):
     @property
     def kind(self) -> str:
         return "extract_field"
 
-    def run(self, data, path=None, paths=None, default=None, **kwargs):
-        if path is None and paths is None:
-            raise ValueError("extract_field: either 'path' or 'paths' must be specified")
-        if not isinstance(data, (dict, list)):
-            return {"value": default} if path else {k: default for k in paths.keys()}
-        if path:
-            return {"value": self._extract_single(data, path, default)}
-        result = {}
-        for out_key, p in paths.items():
-            result[out_key] = self._extract_single(data, p, default)
-        return result
-
-    def _extract_single(self, data, path, default):
-        parts = str(path).split('.') if path else []
-        cur = data
+    def run(self, data=None, field=None, default=None, **kwargs):
+        """Extract field from dict/list using dotted path or index."""
         try:
+            if data is None:
+                if default is not None:
+                    return {"result": default}
+                raise HandlerError("data is None and no default", "MISSING_DATA", "validation", False)
+            
+            if not field:
+                return {"result": data}
+            
+            # Navigate path (e.g., "items.0.title" or "score")
+            parts = str(field).split(".")
+            current = data
+            
             for part in parts:
-                if isinstance(cur, list):
-                    idx = int(part)
-                    cur = cur[idx]
-                elif isinstance(cur, dict):
-                    cur = cur.get(part, default)
+                if isinstance(current, dict):
+                    current = current.get(part)
+                elif isinstance(current, list):
+                    try:
+                        idx = int(part)
+                        current = current[idx] if 0 <= idx < len(current) else None
+                    except (ValueError, IndexError):
+                        current = None
                 else:
-                    return default
-            return cur
-        except Exception:
-            return default
+                    current = None
+                
+                if current is None:
+                    if default is not None:
+                        return {"result": default}
+                    raise HandlerError(f"Field '{field}' not found", "FIELD_NOT_FOUND", "validation", False)
+            
+            return {"result": current}
+            
+        except HandlerError:
+            raise
+        except Exception as e:
+            raise HandlerError(
+                message=f"extract_field failed: {str(e)[:200]}",
+                code="EXTRACT_ERROR",
+                category="validation",
+                retryable=False
+            )
