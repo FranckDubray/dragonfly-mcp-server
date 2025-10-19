@@ -1,4 +1,4 @@
-# SQLite helpers for orchestrator state (job_state_kv, job_steps)
+# SQLite helpers for orchestrator state (job_state_kv, job_steps, crash_logs)
 # No ORM, minimal, fast. UTC microseconds timestamps.
 
 import sqlite3
@@ -40,6 +40,26 @@ def init_db(db_path: str) -> None:
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_job_steps_worker_cycle ON job_steps(worker, cycle_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_job_steps_node ON job_steps(node)")
+        
+        # NEW: Crash logs table
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS crash_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                worker TEXT NOT NULL,
+                cycle_id TEXT NOT NULL,
+                node TEXT NOT NULL,
+                crashed_at TEXT NOT NULL,
+                error_message TEXT NOT NULL,
+                error_type TEXT,
+                error_code TEXT,
+                worker_ctx_json TEXT,
+                cycle_ctx_json TEXT,
+                stack_trace TEXT
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_crash_logs_worker ON crash_logs(worker)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_crash_logs_cycle ON crash_logs(cycle_id)")
+        
         conn.commit()
     finally:
         conn.close()
