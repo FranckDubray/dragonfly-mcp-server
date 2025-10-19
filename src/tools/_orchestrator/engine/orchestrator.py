@@ -86,12 +86,14 @@ class OrchestratorEngine:
             if node.get('type') == 'exit':
                 return True  # Signal to stop worker
             
-            # If END node reached → continue loop
+            # If END node reached → apply scope resets, then continue loop
             if node.get('type') == 'end':
+                self._apply_scope_resets('END', cycle_ctx)
                 return False  # Signal to continue to next cycle
             
-            # Find next node via edges
-            current_node_name = self._follow_edge(current_node_name, next_route)
+            # Find next node via edges (with scope triggers)
+            next_node_name = self._follow_edge_with_triggers(current_node_name, next_route, cycle_ctx)
+            current_node_name = next_node_name
         
         # Loop exited without reaching END/EXIT (cancel or error)
         return False
@@ -130,6 +132,59 @@ class OrchestratorEngine:
             if seed_data:
                 seed_scope(cycle_ctx, scope_name, seed_data)
     
+    def _apply_scope_resets(self, trigger: str, cycle_ctx: Dict) -> None:
+        """
+        Apply scope resets for a trigger (e.g., 'END', node name).
+        
+        Args:
+            trigger: Trigger name ('START', 'END', or node name)
+            cycle_ctx: Cycle context (modified in-place)
+        """
+        for scope_def in self.scopes:
+            scope_name = scope_def.get('name')
+            if not scope_name:
+                continue
+            
+            reset_on = scope_def.get('reset_on', [])
+            
+            if trigger in reset_on:
+                reset_scope(cycle_ctx, scope_name)
+                
+                # Re-seed if seed data present
+                seed_data = scope_def.get('seed', {})
+                if seed_data:
+                    seed_scope(cycle_ctx, scope_name, seed_data)
+    
+    def _apply_scope_trigger(self, scope_trigger: Dict, cycle_ctx: Dict) -> None:
+        """
+        Apply scope trigger from edge (enter/leave).
+        
+        Args:
+            scope_trigger: Edge scope_trigger dict {"action": "enter"|"leave", "scope": "name"}
+            cycle_ctx: Cycle context (modified in-place)
+        """
+        action = scope_trigger.get('action')
+        scope_name = scope_trigger.get('scope')
+        
+        if not scope_name:
+            return
+        
+        if action == 'enter':
+            # Enter: reset + seed
+            reset_scope(cycle_ctx, scope_name)
+            
+            # Find seed data from scope definition
+            for scope_def in self.scopes:
+                if scope_def.get('name') == scope_name:
+                    seed_data = scope_def.get('seed', {})
+                    if seed_data:
+                        seed_scope(cycle_ctx, scope_name, seed_data)
+                    break
+        
+        elif action == 'leave':
+            # Leave: reset (clear)
+            reset_scope(cycle_ctx, scope_name)
+    
     def _execute_node(self, cycle_id: str, node: Dict, worker_ctx: Dict, cycle_ctx: Dict) -> str:
         """
         Execute a single node.
@@ -161,13 +216,16 @@ class OrchestratorEngine:
                 })
                 return "always"
             
-            # END/EXIT nodes: no execution
+            # END/EXIT nodes: no execution (scopes handled in run_cycle)
             if node_type in {'end', 'exit'}:
                 end_step(self.db_path, self.worker, cycle_id, node_name, 'succeeded', started_at, {
                     "node": node_name,
                     "type": node_type
                 })
                 return "always"
+            
+            # Check if this node triggers scope resets (custom node triggers)
+            self._apply_scope_resets(node_name, cycle_ctx)
             
             # IO/transform nodes: execute handler
             if node_type in {'io', 'transform'}:
@@ -302,12 +360,27 @@ class OrchestratorEngine:
                     routes.append(when)
         return routes
     
-    def _follow_edge(self, from_node: str, route: str) -> Optional[str]:
-        """Find next node following edge (from_node + route label)"""
+    def _follow_edge_with_triggers(self, from_node: str, route: str, cycle_ctx: Dict) -> Optional[str]:
+        """
+        Find next node following edge (from_node + route label) and apply scope triggers.
+        
+        Args:
+            from_node: Source node name
+            route: Route label
+            cycle_ctx: Cycle context (for scope triggers)
+        
+        Returns:
+            Next node name or None
+        """
         for edge in self.edges:
             if edge['from'] == from_node:
                 when = edge.get('when', 'always')
                 if when == route or when == 'always':
+                    # Apply scope trigger if present
+                    scope_trigger = edge.get('scope_trigger')
+                    if scope_trigger:
+                        self._apply_scope_trigger(scope_trigger, cycle_ctx)
+                    
                     return edge['to']
         
         # No matching edge found
