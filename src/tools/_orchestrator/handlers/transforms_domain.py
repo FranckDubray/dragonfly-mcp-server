@@ -2,7 +2,7 @@
 
 import re
 import json
-from .base import AbstractHandler
+from .base import AbstractHandler, HandlerError
 
 class SanitizeTextHandler(AbstractHandler):
     """
@@ -163,7 +163,12 @@ class JsonStringifyHandler(AbstractHandler):
                 "length": len(json_str)
             }
         except (TypeError, ValueError) as e:
-            raise ValueError(f"Cannot stringify to JSON: {str(e)[:200]}")
+            raise HandlerError(
+                message=f"Cannot stringify to JSON: {str(e)[:200]}",
+                code="JSON_STRINGIFY_ERROR",
+                category="validation",
+                retryable=False
+            )
 
 
 class ExtractFieldHandler(AbstractHandler):
@@ -184,7 +189,7 @@ class ExtractFieldHandler(AbstractHandler):
     def run(self, data, path=None, paths=None, default=None, **kwargs) -> dict:
         """
         Args:
-            Input object (dict/list)
+            data: Input object (dict/list)
             path: Single dotted path (e.g., "user.name") - for single extraction
             paths: Dict of {output_key: dotted_path} - for multi extraction
             default: Default value if path not found (default: None)
@@ -225,7 +230,12 @@ class ExtractFieldHandler(AbstractHandler):
         
         # No path specified
         else:
-            raise ValueError("Either 'path' or 'paths' must be specified")
+            raise HandlerError(
+                message="Either 'path' or 'paths' must be specified",
+                code="EXTRACT_FIELD_MISSING_PATH",
+                category="validation",
+                retryable=False
+            )
     
     def _extract_single(self, data, path, default):
         """Extract a single field from data using dotted path"""
@@ -269,7 +279,12 @@ class FormatTemplateHandler(AbstractHandler):
             text = template.format(**kwargs)
             return {"text": text}
         except KeyError as e:
-            raise ValueError(f"Missing template variable: {e}")
+            raise HandlerError(
+                message=f"Missing template variable: {e}",
+                code="TEMPLATE_MISSING_VAR",
+                category="validation",
+                retryable=False
+            )
 
 
 class IdempotencyGuardHandler(AbstractHandler):
