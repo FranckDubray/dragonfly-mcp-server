@@ -25,7 +25,7 @@ def load_process_with_imports(process_file: str, base_dir: str = None) -> Dict:
         ProcessLoadError: If file not found or import fails
     
     Example:
-        process = load_process_with_imports('workers/ai_curation_v6/main.process.json')
+        process = load_process_with_imports('workers/ai_curation/main.process.json')
     """
     # Resolve process file path
     process_path = Path(process_file).resolve()
@@ -93,12 +93,26 @@ def _resolve_imports(data: Any, base_dir: Path, visited: set, depth: int = 0) ->
         return data
 
 
+def _candidate_import_paths(base_dir: Path, import_path: str) -> List[Path]:
+    """Return candidate absolute paths for an import, in priority order.
+    1) base_dir / import_path
+    2) base_dir / 'nodes' / import_path  (allow keeping JSON snippets under a local nodes/ folder)
+    """
+    paths: List[Path] = []
+    p1 = (base_dir / import_path).resolve()
+    paths.append(p1)
+    p2 = (base_dir / 'nodes' / import_path).resolve()
+    if p2 not in paths:
+        paths.append(p2)
+    return paths
+
+
 def _load_import(import_path: str, base_dir: Path, visited: set, depth: int) -> Any:
     """
     Load and resolve a single $import.
     
     Args:
-        import_path: Relative path to file (e.g., "prompts/sonar_fetch.json")
+        import_path: Relative path to file (e.g., "prompts/sonar_fetch.json" or "node_x.json")
         base_dir: Base directory for resolving path
         visited: Set of visited files (cycle detection)
         depth: Current depth
@@ -106,33 +120,41 @@ def _load_import(import_path: str, base_dir: Path, visited: set, depth: int) -> 
     Returns:
         Loaded and resolved content
     """
-    # Resolve import path (relative to base_dir)
-    import_file = (base_dir / import_path).resolve()
-    
-    # Check if file exists
-    if not import_file.exists():
-        raise ProcessLoadError(f"Import file not found: {import_path} (resolved: {import_file})")
-    
-    # Cycle detection
-    import_file_str = str(import_file)
-    if import_file_str in visited:
-        raise ProcessLoadError(f"Circular import detected: {import_path}")
-    
-    visited.add(import_file_str)
-    
-    # Load file
-    try:
-        with open(import_file, 'r', encoding='utf-8') as f:
-            imported = json.load(f)
-    except json.JSONDecodeError as e:
-        raise ProcessLoadError(f"Invalid JSON in {import_path}: {str(e)[:200]}")
-    except Exception as e:
-        raise ProcessLoadError(f"Failed to load {import_path}: {str(e)[:200]}")
-    
-    # Recursively resolve imports in loaded content
-    resolved = _resolve_imports(imported, import_file.parent, visited, depth + 1)
-    
-    # Remove from visited after processing (allow reuse in different branches)
-    visited.discard(import_file_str)
-    
-    return resolved
+    last_err = None
+
+    for candidate in _candidate_import_paths(base_dir, import_path):
+        try:
+            # Check if file exists
+            if not candidate.exists():
+                continue
+            
+            # Cycle detection
+            candidate_str = str(candidate)
+            if candidate_str in visited:
+                raise ProcessLoadError(f"Circular import detected: {import_path}")
+            visited.add(candidate_str)
+            
+            # Load file
+            with open(candidate, 'r', encoding='utf-8') as f:
+                imported = json.load(f)
+            
+            # Recursively resolve imports in loaded content
+            resolved = _resolve_imports(imported, candidate.parent, visited, depth + 1)
+            
+            # Remove from visited after processing (allow reuse in different branches)
+            visited.discard(candidate_str)
+            return resolved
+        except json.JSONDecodeError as e:
+            last_err = ProcessLoadError(f"Invalid JSON in {import_path}: {str(e)[:200]}")
+            break
+        except ProcessLoadError as e:
+            last_err = e
+            break
+        except Exception as e:
+            last_err = ProcessLoadError(f"Failed to load {import_path}: {str(e)[:200]}")
+            break
+
+    # If none of the candidates worked, raise a helpful error
+    if last_err is not None:
+        raise last_err
+    raise ProcessLoadError(f"Import file not found: {import_path} (searched under {base_dir} and {base_dir / 'nodes'})")

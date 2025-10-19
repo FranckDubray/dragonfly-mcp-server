@@ -51,7 +51,16 @@
         if (!(a && b)){
           try{ const len=p.getTotalLength(); const p0=p.getPointAtLength(Math.max(0, Math.min(2,len))); const p1=p.getPointAtLength(Math.max(0,len-2)); const r0=nearestId(p0), r1=nearestId(p1); if (r0 && r1 && r0!==r1){ a=r0; b=r1; } }catch(_){ }
         }
-        if (a && b){ const key = `${a}=>${b}`; (idx.get(key)||idx.set(key,[]).get(key)).push(p); }
+        if (a && b){
+          const key = `${a}=>${b}`;
+          (idx.get(key)||idx.set(key,[]).get(key)).push(p);
+          // NEW: annotate path with a stable df-e-<aSan>__<bSan> class for later selection (retry labels, etc.)
+          try{
+            const aSan = ((window.RenderUtils && typeof RenderUtils.sanitizeId==='function') ? RenderUtils.sanitizeId(a) : String(a)).toLowerCase();
+            const bSan = ((window.RenderUtils && typeof RenderUtils.sanitizeId==='function') ? RenderUtils.sanitizeId(b) : String(b)).toLowerCase();
+            if (aSan && bSan){ p.classList.add(`df-e-${aSan}__${bSan}`); }
+          }catch(_){ }
+        }
       });
     }catch(_){ }
     return idx;
