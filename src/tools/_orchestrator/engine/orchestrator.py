@@ -3,7 +3,7 @@
 from typing import Dict, Any, Callable, Optional
 from ..context import resolve_inputs, assign_outputs, reset_scope, seed_scope
 from ..handlers import get_registry, HandlerError
-from ..logging import begin_step, end_step
+from ..logging import begin_step, end_step, log_retry_attempt
 from ..logging.crash_logger import log_crash
 from ..policies import execute_with_retry, RetryExhaustedError
 from .decisions import evaluate_decision, DecisionError
@@ -290,8 +290,18 @@ class OrchestratorEngine:
         
         def on_retry(attempt: int, error: HandlerError):
             attempts_count[0] = attempt
-            # TODO: Log retry attempt to DB
-            pass
+            # Log retry attempt to DB
+            retry_after = error.details.get('retry_after_sec', retry_policy['delay_sec'] * (2 ** (attempt - 1)))
+            log_retry_attempt(
+                self.db_path,
+                self.worker,
+                cycle_id,
+                node_name,
+                attempt,
+                error.message,
+                error.code,
+                retry_after
+            )
         
         outputs = execute_with_retry(execute_handler, retry_policy, on_retry)
         
