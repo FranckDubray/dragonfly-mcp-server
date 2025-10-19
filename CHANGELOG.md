@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.31.0] - 2025-10-19
+
+### 🛡️ Orchestrator v1.3 — Validation Schema + Error Messages
+
+- ✅ **P1: JSON Schema Validation**
+  - Création `schemas/process.schema.json` (complet, 6 decision kinds, retry limits)
+  - api.py : validation automatique au start avec jsonschema (optional dependency)
+  - Détection erreurs : worker_ctx type, handler manquant, edges invalides, duplicate nodes/edges
+  - Messages clairs : path + schema_path pour localiser erreurs
+  - Custom validation : START unique, edges vers nodes existants, no duplicate signatures
+
+- 📝 **P2: Process Loader Error Messages**
+  - Messages enrichis : chemins candidats affichés (base_dir + nodes/)
+  - Erreurs JSON : ligne + colonne + conseil syntaxe
+  - Circular imports : affiche chaîne complète
+  - File not found : liste tous les chemins testés + tips organisation
+
+### 🔧 Notes techniques
+- jsonschema optionnel (si absent, validation skippée sans crash)
+- Schema strict : retry max 10, timeout max 2h, decision kinds enum
+- Custom validation après schema : edges/nodes coherence, START unique
+- Effort total : ~1h20 (P1: 1h, P2: 20min)
+
+---
+
 ## [1.30.0] - 2025-10-19
 
 ### 🔧 Orchestrator v1.2 — Audit & Cleanup

@@ -9,15 +9,33 @@ import signal
 import os
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from .validators import validate_params
 from .db import init_db, get_state_kv, set_state_kv, get_phase, set_phase, heartbeat
 from .process_loader import load_process_with_imports, ProcessLoadError
 
+# JSON Schema validation (optional dependency)
+try:
+    from jsonschema import validate as validate_schema, ValidationError
+    JSONSCHEMA_AVAILABLE = True
+except ImportError:
+    JSONSCHEMA_AVAILABLE = False
+    ValidationError = None
+
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 SQLITE_DIR = PROJECT_ROOT / 'sqlite3'
 LOG_DIR = PROJECT_ROOT / 'logs'
+
+# Load process schema (cached at module level)
+SCHEMA_PATH = Path(__file__).parent / 'schemas' / 'process.schema.json'
+PROCESS_SCHEMA = None
+if SCHEMA_PATH.exists():
+    try:
+        with open(SCHEMA_PATH, 'r', encoding='utf-8') as f:
+            PROCESS_SCHEMA = json.load(f)
+    except Exception:
+        pass  # Schema validation is optional
 
 
 def _compute_process_uid(worker_file_resolved: str) -> str:
@@ -77,6 +95,80 @@ def _spawn_runner(db_path: str, worker_name: str) -> int:
     return proc.pid
 
 
+def _validate_process_schema(process_data: dict) -> Optional[Dict[str, Any]]:
+    """
+    Validate process against JSON Schema.
+    
+    Returns:
+        None if valid, error dict if invalid
+    """
+    if not JSONSCHEMA_AVAILABLE or not PROCESS_SCHEMA:
+        return None  # Skip validation if schema/lib not available
+    
+    try:
+        validate_schema(instance=process_data, schema=PROCESS_SCHEMA)
+    except ValidationError as e:
+        return {
+            "accepted": False,
+            "status": "failed",
+            "message": f"Invalid process schema: {e.message[:250]}",
+            "validation_path": list(e.absolute_path) if e.absolute_path else [],
+            "schema_path": list(e.absolute_schema_path) if e.absolute_schema_path else [],
+            "truncated": False
+        }
+    
+    return None
+
+
+def _validate_process_logic(process_dict) -> Optional[str]:
+    """
+    Custom logical validations beyond JSON Schema.
+    
+    Returns:
+        Error message if invalid, None if valid
+    """
+    graph = process_data.get('graph', {})
+    nodes = graph.get('nodes', [])
+    edges = graph.get('edges', [])
+    
+    if not nodes:
+        return "Graph must have at least one node"
+    
+    # Build node name set
+    node_names = {n['name'] for n in nodes}
+    
+    # Check for duplicate node names
+    if len(node_names) != len(nodes):
+        names_list = [n['name'] for n in nodes]
+        duplicates = [name for name in names_list if names_list.count(name) > 1]
+        return f"Duplicate node names: {', '.join(set(duplicates))}"
+    
+    # Check START node exists and is unique
+    start_nodes = [n for n in nodes if n.get('type') == 'start']
+    if len(start_nodes) == 0:
+        return "No START node found (type='start' required)"
+    if len(start_nodes) > 1:
+        return f"Multiple START nodes found: {', '.join(n['name'] for n in start_nodes)}"
+    
+    # Check edges reference existing nodes
+    for i, edge in enumerate(edges):
+        from_node = edge.get('from')
+        to_node = edge.get('to')
+        
+        if from_node not in node_names:
+            return f"Edge #{i}: 'from' references unknown node '{from_node}'"
+        if to_node not in node_names:
+            return f"Edge #{i}: 'to' references unknown node '{to_node}'"
+    
+    # Check no duplicate edges (from + when)
+    edge_signatures = [(e.get('from'), e.get('when', 'always')) for e in edges]
+    if len(edge_signatures) != len(set(edge_signatures)):
+        duplicates = [sig for sig in edge_signatures if edge_signatures.count(sig) > 1]
+        return f"Duplicate edges detected: {duplicates[:3]}"
+    
+    return None
+
+
 def start(params: dict) -> dict:
     """Start operation: validate, persist, spawn runner"""
     p = validate_params(params)
@@ -115,6 +207,21 @@ def start(params: dict) -> dict:
             "accepted": False,
             "status": "failed",
             "message": f"Unexpected error loading process: {str(e)[:200]}",
+            "truncated": False
+        }
+    
+    # Validate process schema (JSON Schema)
+    schema_error = _validate_process_schema(process_data)
+    if schema_error:
+        return schema_error
+    
+    # Validate process logic (custom checks)
+    logic_error = _validate_process_logic(process_data)
+    if logic_error:
+        return {
+            "accepted": False,
+            "status": "failed",
+            "message": f"Process validation failed: {logic_error}",
             "truncated": False
         }
 
