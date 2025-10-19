@@ -1,0 +1,50 @@
+graph TB
+  entry[🚪 Entry Point]
+  
+  get_timestamp[🕐 get_validation_timestamp]
+  llm_validate[🤖 llm_sonar_validate<br>Quality check]
+  normalize_val[🔄 normalize_sonar_validation]
+  extract_score[📊 extract_score]
+  extract_feedback[💭 extract_feedback]
+  insert_log[🗄️ insert_validation_log]
+  
+  check_score{⚖️ check_score_threshold<br>geq 7}
+  
+  format_msg[📝 format_validation_log_message]
+  increment[➕ increment_retry]
+  
+  check_retry{⚖️ check_retry_limit<br>lt 3}
+  
+  exit_success[🚪 Exit SUCCESS to OUTPUT]
+  exit_retry[🔄 Exit RETRY to SCORE]
+  
+  entry-->get_timestamp
+  get_timestamp-->llm_validate
+  llm_validate-->normalize_val
+  normalize_val-->extract_score
+  extract_score-->extract_feedback
+  extract_feedback-->insert_log
+  insert_log-->check_score
+  
+  check_score-->|✓ true|format_msg
+  check_score-->|✗ false|increment
+  
+  increment-->check_retry
+  check_retry-->|✓ true|exit_retry
+  check_retry-->|✗ false|format_msg
+  
+  format_msg-->exit_success
+  
+  class entry entryNode
+  class exit_success,exit_retry exitNode
+  class llm_validate ioNode
+  class get_timestamp,normalize_val,extract_score,extract_feedback,format_msg,increment transformNode
+  class insert_log dbNode
+  class check_score,check_retry decisionNode
+  
+  classDef entryNode fill:#90CAF9,stroke:#42A5F5,stroke-width:3px
+  classDef exitNode fill:#90CAF9,stroke:#42A5F5,stroke-width:3px
+  classDef ioNode fill:#FFEB3B,stroke:#F57F17,stroke-width:2px
+  classDef transformNode fill:#81C784,stroke:#388E3C,stroke-width:2px
+  classDef dbNode fill:#BA68C8,stroke:#7B1FA2,stroke-width:2px
+  classDef decisionNode fill:#FF7043,stroke:#D84315,stroke-width:2px

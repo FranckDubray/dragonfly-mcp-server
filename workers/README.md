@@ -1,1 +1,0 @@
-Place here your process JSON files (e.g., workers/mail_manager.process.json). Each file must be self-contained (worker_ctx + nodes + edges + policies).

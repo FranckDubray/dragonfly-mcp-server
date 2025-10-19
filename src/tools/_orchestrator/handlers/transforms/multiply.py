@@ -1,4 +1,4 @@
-from ..base import AbstractHandler
+from ..base import AbstractHandler, HandlerError
 
 class MultiplyHandler(AbstractHandler):
     @property
@@ -13,4 +13,9 @@ class MultiplyHandler(AbstractHandler):
                 b = 1
             return {"result": float(a) * float(b)}
         except Exception as e:
-            raise ValueError(f"multiply: invalid inputs ({e})")
+            raise HandlerError(
+                message=f"multiply: invalid inputs ({e})",
+                code="INVALID_INPUT",
+                category="validation",
+                retryable=False
+            )

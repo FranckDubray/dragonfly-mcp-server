@@ -1,3 +1,16 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Generic MCP HTTP tool handler (POST /execute with 3-level retry)
 
 import time
@@ -61,7 +74,9 @@ class HttpToolHandler(AbstractHandler):
             "params": params
         }
         
-        timeout = kwargs.get('timeout', 60)
+        # Default timeouts: LLM calls → 90s by default, others → 60s
+        timeout_default = 90 if tool_name == 'call_llm' else 60
+        timeout = kwargs.get('timeout', timeout_default)
         
         # Transport retry (3×, exponential backoff)
         return self._call_with_transport_retry(payload, timeout, retries=3)
@@ -171,3 +186,64 @@ class HttpToolHandler(AbstractHandler):
                 category="io",
                 retryable=False
             )
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

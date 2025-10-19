@@ -5,5 +5,9 @@
   "llm_temperature": 0.3,
   "quality_threshold": 7,
   "max_retries": 3,
-  "db_name": "worker_ai_curation"
+  "db_name": "ai_curation_reports",
+  "retry_defaults": {
+    "max": 2,
+    "delay_sec": 1
+  }
 }

@@ -1,27 +1,43 @@
-import re, json
-from ..base import AbstractHandler
+import json
+from ..base import AbstractHandler, HandlerError
 
-class NormalizeLLMOutputHandler(AbstractHandler):
+class NormalizeLlmOutputHandler(AbstractHandler):
     @property
     def kind(self) -> str:
         return "normalize_llm_output"
 
-    def run(self, content, expected_format="json", fallback_value=None, **kwargs):
-        if not isinstance(content, str):
-            content = str(content)
-        content = content.strip()
-        if expected_format == "json":
-            try:
-                if content.startswith("```"):
-                    m = re.search(r"```(?:json)?\s*\n(.*?)\n```", content, re.DOTALL)
-                    if m:
-                        content = m.group(1).strip()
-                parsed = json.loads(content)
-                return {"parsed": parsed, "success": True}
-            except json.JSONDecodeError as e:
-                return {"parsed": fallback_value, "success": False, "error": f"JSON parse error: {str(e)[:200]}"}
-        elif expected_format == "lines":
-            lines = [ln.strip() for ln in content.split("\n") if ln.strip()]
-            return {"parsed": lines, "success": True}
-        else:
-            return {"parsed": content, "success": True}
+    def run(self, content=None, **kwargs):
+        """Parse LLM JSON output (handle markdown fences, extract JSON)."""
+        try:
+            if not content:
+                raise HandlerError("Empty content", "EMPTY_INPUT", "validation", False)
+            
+            text = str(content).strip()
+            
+            # Remove markdown code fences
+            if text.startswith("```"):
+                lines = text.split("\n")
+                if lines[0].startswith("```"):
+                    lines = lines[1:]
+                if lines and lines[-1].strip() == "```":
+                    lines = lines[:-1]
+                text = "\n".join(lines).strip()
+            
+            # Parse JSON
+            parsed = json.loads(text)
+            return {"parsed": parsed}
+            
+        except json.JSONDecodeError as e:
+            raise HandlerError(
+                message=f"Invalid JSON: {str(e)[:200]}",
+                code="INVALID_JSON",
+                category="validation",
+                retryable=False
+            )
+        except Exception as e:
+            raise HandlerError(
+                message=f"normalize_llm_output failed: {str(e)[:200]}",
+                code="PARSE_ERROR",
+                category="validation",
+                retryable=False
+            )

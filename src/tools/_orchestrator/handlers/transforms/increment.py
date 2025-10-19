@@ -1,4 +1,4 @@
-from ..base import AbstractHandler
+from ..base import AbstractHandler, HandlerError
 
 class IncrementHandler(AbstractHandler):
     @property
@@ -18,4 +18,9 @@ class IncrementHandler(AbstractHandler):
             r = v + s
             return {"result": r if (isinstance(value, float) or isinstance(step, float)) else int(r)}
         except Exception as e:
-            raise ValueError(f"increment: invalid inputs ({e})")
+            raise HandlerError(
+                message=f"increment: invalid inputs ({e})",
+                code="INVALID_INPUT",
+                category="validation",
+                retryable=False
+            )

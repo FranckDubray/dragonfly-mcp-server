@@ -5,28 +5,28 @@
     "displayName": "Orchestrator (JSON-driven FSM)",
     "category": "intelligence",
     "tags": ["automation", "workflows", "state_machine", "long_running"],
-    "description": "Start/stop/status a JSON-driven worker that executes a process graph (FSM). Generic orchestrator with zero business logic in engine. Supports: context resolution, decisions (truthy, enum_from_field), retry policies, MCP tool calls, cooperative cancel, hot-reload.",
+    "description": "Start/stop/status/debug/list a JSON-driven worker that executes a process graph (FSM).",
     "parameters": {
       "type": "object",
       "properties": {
         "operation": {
           "type": "string",
-          "enum": ["start", "stop", "status"],
-          "description": "Operation: 'start' (spawn worker), 'stop' (cancel/signal), 'status' (read state)",
+          "enum": ["start", "stop", "status", "debug", "list"],
+          "description": "Operation: 'start' (spawn worker), 'stop' (cancel/signal), 'status' (read state), 'debug' (step-by-step control), 'list' (enumerate workers)",
           "default": "start"
         },
         "worker_name": {
           "type": "string",
-          "description": "Worker name (alphanumeric, -, _). Required for all operations. Maps to sqlite3/worker_<name>.db",
+          "description": "Worker name (alphanumeric, -, _). Required for all operations except 'list'. Maps to sqlite3/worker_<name>.db",
           "pattern": "^[a-zA-Z0-9_-]+$"
         },
         "worker_file": {
           "type": "string",
-          "description": "Path to process JSON file (required for 'start', must be under workers/ directory, e.g., 'workers/email_triage.process.json'). Chrooted to workers/ for security."
+          "description": "Path to process JSON file (required for 'start', must be under workers/ directory)."
         },
         "hot_reload": {
           "type": "boolean",
-          "description": "Enable hot-reload: reload process at next START boundary if process_uid changed (default: true). Only for 'start' operation.",
+          "description": "Enable hot-reload at START boundary (default: true).",
           "default": true
         },
         "stop": {
@@ -36,14 +36,67 @@
             "mode": {
               "type": "string",
               "enum": ["soft", "term", "kill"],
-              "description": "Stop mode: 'soft' (cooperative cancel flag, graceful), 'term' (SIGTERM/SIGBREAK), 'kill' (SIGKILL/taskkill force)",
+              "description": "soft = cooperative cancel flag, term = SIGTERM/SIGBREAK, kill = SIGKILL/taskkill",
               "default": "soft"
             }
           },
           "additionalProperties": false
+        },
+        "debug": {
+          "type": "object",
+          "description": "Debug control (only for 'debug' operation).",
+          "properties": {
+            "action": {
+              "type": "string",
+              "enum": ["enable", "enable_now", "step", "continue", "run_until", "break_add", "break_remove", "break_list", "break_clear", "inspect", "disable"],
+              "description": "Debug command to execute."
+            },
+            "pause_at_start": { "type": "boolean", "description": "If true with 'enable', pause at next START boundary (default: true)." },
+            "breakpoints": {
+              "type": "array",
+              "description": "List of breakpoints to set (for enable/break_add).",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "node": { "type": "string" },
+                  "when": { "type": "string" }
+                },
+                "required": ["node"],
+                "additionalProperties": false
+              }
+            },
+            "breakpoint": {
+              "type": "object",
+              "description": "Single breakpoint to add/remove.",
+              "properties": {
+                "node": { "type": "string" },
+                "when": { "type": "string" }
+              },
+              "required": ["node"],
+              "additionalProperties": false
+            },
+            "target": {
+              "type": "object",
+              "description": "Target for run_until.",
+              "properties": {
+                "node": { "type": "string" },
+                "when": { "type": "string" }
+              },
+              "required": ["node"],
+              "additionalProperties": false
+            },
+            "watches": {
+              "type": "array",
+              "description": "Paths to inspect (read-only) when using 'inspect'.",
+              "items": { "type": "string" }
+            },
+            "timeout_sec": { "type": "number", "description": "Synchronous wait timeout for step/continue/run_until (seconds).", "default": 10 }
+          },
+          "required": ["action"],
+          "additionalProperties": false
         }
       },
-      "required": ["operation", "worker_name"],
+      "required": ["operation"],
       "additionalProperties": false
     }
   }

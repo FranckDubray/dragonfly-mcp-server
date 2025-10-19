@@ -1,4 +1,4 @@
-from ..base import AbstractHandler
+from ..base import AbstractHandler, HandlerError
 
 class AddHandler(AbstractHandler):
     @property
@@ -15,4 +15,9 @@ class AddHandler(AbstractHandler):
                 return {"result": float(a) + float(b)}
             return {"result": float(a) + float(b)}
         except Exception as e:
-            raise ValueError(f"add: invalid inputs ({e})")
+            raise HandlerError(
+                message=f"add: invalid inputs ({e})",
+                code="INVALID_INPUT",
+                category="validation",
+                retryable=False
+            )

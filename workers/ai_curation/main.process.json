@@ -1,117 +1,62 @@
 {
   "version": "1.0",
-  "process_version": "6.0.5-one-shot-dates-from-ctx",
+  "process_version": "6.2.0-hierarchical-ssot",
   "metadata": {
-    "description": "AI/LLM Curation - single date capture (ctx), multi-source freshness filter, GPT merge/dedup",
-    "author": "orchestrator-production"
+    "description": "AI/LLM curation worker with hierarchical subgraphs (72h freshness, 5 sources, quality validation, FR reports)",
+    "author": "orchestrator-team",
+    "architecture": "5 subgraphs (INIT → COLLECT → SCORE → VALIDATE → OUTPUT)"
   },
+  
   "worker_ctx": {"$import": "config/worker_ctx.json"},
+  "scopes": {"$import": "config/scopes.json"},
+  
   "graph": {
+    "subgraphs": [
+      {
+        "id": "INIT",
+        "name": "Initialization",
+        "import": "subgraphs/01_init.subgraph.json",
+        "viz": {"icon": "🔧", "color": "#2196F3"}
+      },
+      {
+        "id": "COLLECT",
+        "name": "Multi-Source Collection",
+        "import": "subgraphs/02_collect.subgraph.json",
+        "viz": {"icon": "📦", "color": "#4CAF50"}
+      },
+      {
+        "id": "SCORE",
+        "name": "GPT Scoring",
+        "import": "subgraphs/03_score.subgraph.json",
+        "viz": {"icon": "🎯", "color": "#FF9800"}
+      },
+      {
+        "id": "VALIDATE",
+        "name": "Quality Validation",
+        "import": "subgraphs/04_validate.subgraph.json",
+        "viz": {"icon": "✅", "color": "#9C27B0"}
+      },
+      {
+        "id": "OUTPUT",
+        "name": "Format & Save",
+        "import": "subgraphs/05_output.subgraph.json",
+        "viz": {"icon": "💾", "color": "#607D8B"}
+      }
+    ],
+    
     "nodes": [
       {"name": "START", "type": "start"},
-
-      {"name": "get_date_now", "type": "io", "handler": "http_tool", "inputs": {"tool": "date", "operation": "now", "tz": "UTC"}, "outputs": {"result": "cycle.dates.now"}, "timeout_sec": 5},
-      {"name": "get_date_from", "type": "io", "handler": "http_tool", "inputs": {"tool": "date", "operation": "add", "date": "${cycle.dates.now}", "days": -3}, "outputs": {"result": "cycle.dates.from"}, "timeout_sec": 5},
-
-      {"name": "fetch_news", "type": "io", "handler": "http_tool", "inputs": {"tool": "news_aggregator", "operation": "search_news", "query": "(LLM OR \"large language model\" OR transformer OR \"fine-tuning\") AND (OpenAI OR Anthropic OR DeepMind OR \"Google AI\" OR Meta)", "providers": ["nyt", "guardian"], "from_date": "${cycle.dates.from}", "to_date": "${cycle.dates.now}", "limit": 30}, "outputs": {"articles": "cycle.sources.news"}, "timeout_sec": 30, "retry": {"max": 2, "delay_sec": 5}},
-      {"name": "fetch_reddit", "type": "io", "handler": "http_tool", "inputs": {"tool": "reddit_intelligence", "operation": "multi_search", "subreddits": ["MachineLearning", "LocalLLaMA", "OpenAI"], "query": "AI OR LLM OR GPT", "limit_per_sub": 15, "time_filter": "week"}, "outputs": {"results": "cycle.sources.reddit"}, "timeout_sec": 30, "retry": {"max": 2, "delay_sec": 5}},
-      {"name": "fetch_arxiv", "type": "io", "handler": "http_tool", "inputs": {"tool": "academic_research_super", "operation": "search_papers", "query": "LLM OR GPT OR \"large language model\" OR transformer", "sources": ["arxiv"], "max_results": 30, "include_abstracts": false, "max_abstract_chars": 0}, "outputs": {"results": "cycle.sources.arxiv"}, "timeout_sec": 30, "retry": {"max": 2, "delay_sec": 5}},
-      {"name": "fetch_papers_with_code", "type": "io", "handler": "http_tool", "inputs": {"tool": "universal_doc_scraper", "operation": "extract_page", "url": "https://paperswithcode.com/latest"}, "outputs": {"content": "cycle.sources.pwc_raw"}, "timeout_sec": 30, "retry": {"max": 2, "delay_sec": 5}},
-      {"name": "fetch_sonar", "type": "io", "handler": "http_tool", "inputs": {"tool": "call_llm", "operation": "call", "model": "${worker.sonar_model}", "timeout": 120, "messages": {"$import": "prompts/sonar_fetch.json"}, "temperature": 0.3, "max_tokens": 2000}, "outputs": {"content": "cycle.sources.sonar_raw"}, "timeout_sec": 120, "retry": {"max": 2, "delay_sec": 10}},
-      {"name": "normalize_sonar_source", "type": "transform", "handler": "normalize_llm_output", "inputs": {"content": "${cycle.sources.sonar_raw}", "expected_format": "json", "fallback_value": []}, "outputs": {"parsed": "cycle.sources.sonar"}},
-
-      {"name": "filter_fresh_all", "type": "transform", "handler": "filter_multi_by_date", "inputs": {"cutoff_iso": "${cycle.dates.from}", "items_map": {"news": "${cycle.sources.news}", "reddit": "${cycle.sources.reddit}", "arxiv": "${cycle.sources.arxiv}", "sonar": "${cycle.sources.sonar}"}, "date_paths": {"news": "published_at", "reddit": "created_utc", "arxiv": "publication_date", "sonar": "published_at"}, "unix_seconds": {"reddit": true}}, "outputs": {"news_items_recent": "cycle.fresh.news", "news_kept": "cycle.metrics.news_kept", "news_dropped": "cycle.metrics.news_dropped", "reddit_items_recent": "cycle.fresh.reddit", "reddit_kept": "cycle.metrics.reddit_kept", "reddit_dropped": "cycle.metrics.reddit_dropped", "arxiv_items_recent": "cycle.fresh.arxiv", "arxiv_kept": "cycle.metrics.arxiv_kept", "arxiv_dropped": "cycle.metrics.arxiv_dropped", "sonar_items_recent": "cycle.fresh.sonar", "sonar_kept": "cycle.metrics.sonar_kept", "sonar_dropped": "cycle.metrics.sonar_dropped"}},
-
-      {"name": "filter_fresh_pwc", "type": "transform", "handler": "sanitize_text", "inputs": {"text": "${cycle.sources.pwc_raw}", "max_length": 20000}, "outputs": {"text": "cycle.fresh.pwc"}},
-
-      {"name": "SCORING_LOOP", "type": "transform", "handler": "set_value", "inputs": {"value": "scoring"}, "outputs": {"result": "cycle.meta.phase"}},
-      {"name": "set_scoring_started_at", "type": "transform", "handler": "set_value", "inputs": {"value": "${cycle.dates.now}"}, "outputs": {"result": "cycle.meta.scoring_started_at"}},
-      {"name": "llm_gpt_score", "type": "io", "handler": "http_tool", "inputs": {"tool": "call_llm", "operation": "call", "model": "${worker.llm_model}", "timeout": 180, "messages": {"$import": "prompts/gpt_scoring.json"}, "temperature": 0.3, "max_tokens": 2500}, "outputs": {"content": "cycle.scoring.gpt_raw"}, "timeout_sec": 180, "retry": {"max": 2, "delay_sec": 10}},
-      {"name": "normalize_gpt_score", "type": "transform", "handler": "normalize_llm_output", "inputs": {"content": "${cycle.scoring.gpt_raw}", "expected_format": "json", "fallback_value": []}, "outputs": {"parsed": "cycle.scoring.top10", "success": "cycle.scoring.gpt_ok"}},
-      {"name": "check_parse", "type": "decision", "decision": {"kind": "truthy", "input": "${cycle.scoring.gpt_ok}"}},
-
-      {"name": "set_validation_started_at", "type": "transform", "handler": "set_value", "inputs": {"value": "${cycle.dates.now}"}, "outputs": {"result": "cycle.meta.validation_started_at"}},
-      {"name": "llm_sonar_validate", "type": "io", "handler": "http_tool", "inputs": {"tool": "call_llm", "operation": "call", "model": "${worker.sonar_model}", "timeout": 90, "messages": {"$import": "prompts/sonar_validation.json"}, "temperature": 0.2, "max_tokens": 800}, "outputs": {"content": "cycle.validation.sonar_raw"}, "timeout_sec": 90, "retry": {"max": 2, "delay_sec": 10}},
-      {"name": "normalize_validation", "type": "transform", "handler": "normalize_llm_output", "inputs": {"content": "${cycle.validation.sonar_raw}", "expected_format": "json", "fallback_value": {"score": 0, "feedback": "Parse failed"}}, "outputs": {"parsed": "cycle.validation.sonar_result"}},
-      {"name": "extract_validation_fields", "type": "transform", "handler": "extract_field", "inputs": {"data": "${cycle.validation.sonar_result}", "paths": {"score": "score", "feedback": "feedback"}}, "outputs": {"score": "cycle.validation.sonar_score", "feedback": "cycle.validation.sonar_feedback"}},
-      {"name": "set_validation_ended_at", "type": "transform", "handler": "set_value", "inputs": {"value": "${cycle.dates.now}"}, "outputs": {"result": "cycle.meta.validation_ended_at"}},
-      {"name": "stringify_top10_for_log", "type": "transform", "handler": "json_stringify", "inputs": {"value": "${cycle.scoring.top10}"}, "outputs": {"json_string": "cycle.scoring.top10_json_str"}},
-      {"name": "log_validation_to_db", "type": "io", "handler": "http_tool", "inputs": {"tool": "sqlite_db", "operation": "execute", "db": "${worker.db_name}", "query": "CREATE TABLE IF NOT EXISTS validation_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT NOT NULL, attempt INTEGER, score REAL, feedback TEXT, top10_json TEXT)", "params": []}, "outputs": {"success": "cycle.meta.log_table_ready"}, "timeout_sec": 10},
-      {"name": "insert_validation_log", "type": "io", "handler": "http_tool", "inputs": {"tool": "sqlite_db", "operation": "execute", "db": "${worker.db_name}", "query": "INSERT INTO validation_logs (timestamp, attempt, score, feedback, top10_json) VALUES (?, ?, ?, ?, ?)", "params": ["${cycle.meta.validation_ended_at}", "${cycle.meta.retry_count}", "${cycle.validation.sonar_score}", "${cycle.validation.sonar_feedback}", "${cycle.scoring.top10_json_str}"]}, "outputs": {"success": "cycle.meta.log_inserted"}, "timeout_sec": 10},
-
-      {"name": "check_quality", "type": "decision", "decision": {"kind": "compare", "input": "${cycle.validation.sonar_score}", "operator": ">=", "value": 7}},
-      {"name": "check_retry", "type": "decision", "decision": {"kind": "compare", "input": "${cycle.meta.retry_count}", "operator": "<", "value": 3}},
-      {"name": "increment", "type": "transform", "handler": "increment", "inputs": {"value": "${cycle.meta.retry_count}"}, "outputs": {"result": "cycle.meta.retry_count"}},
-
-      {"name": "load_prev_report", "type": "io", "handler": "http_tool", "inputs": {"tool": "sqlite_db", "operation": "query", "db": "${worker.db_name}", "query": "SELECT report_markdown, top10_json FROM reports ORDER BY id DESC LIMIT 1"}, "outputs": {"rows": "cycle.prev.row"}},
-      {"name": "extract_prev_fields", "type": "transform", "handler": "extract_field", "inputs": {"data": "${cycle.prev.row}", "paths": {"report_markdown": "0.report_markdown", "top10_json": "0.top10_json"}}, "outputs": {"report_markdown": "cycle.prev.report_markdown", "top10_json": "cycle.prev.top10_json"}},
-      {"name": "parse_prev_top10", "type": "transform", "handler": "normalize_llm_output", "inputs": {"content": "${cycle.prev.top10_json}", "expected_format": "json", "fallback_value": []}, "outputs": {"parsed": "cycle.prev.top10"}},
-
-      {"name": "llm_merge_reports", "type": "io", "handler": "http_tool", "inputs": {"tool": "call_llm", "operation": "call", "model": "${worker.llm_model}", "timeout": 120, "messages": {"$import": "prompts/gpt_merge_report_fr.json"}, "temperature": 0.2, "max_tokens": 4000}, "outputs": {"content": "cycle.merge.raw"}},
-      {"name": "parse_merge", "type": "transform", "handler": "normalize_llm_output", "inputs": {"content": "${cycle.merge.raw}", "expected_format": "json", "fallback_value": {"final_report_markdown": "", "final_top10": []}}, "outputs": {"parsed": "cycle.merge.obj"}},
-      {"name": "extract_merged_fields", "type": "transform", "handler": "extract_field", "inputs": {"data": "${cycle.merge.obj}", "paths": {"report": "final_report_markdown", "items": "final_top10"}}, "outputs": {"report": "cycle.result.report", "items": "cycle.scoring.top10_final"}},
-
-      {"name": "set_completed_at", "type": "transform", "handler": "set_value", "inputs": {"value": "${cycle.dates.now}"}, "outputs": {"result": "cycle.result.completed_at"}},
-      {"name": "stringify_top10_for_report", "type": "transform", "handler": "json_stringify", "inputs": {"value": "${cycle.scoring.top10_final}"}, "outputs": {"json_string": "cycle.scoring.top10_json_str_final"}},
-      {"name": "create_reports_table", "type": "io", "handler": "http_tool", "inputs": {"tool": "sqlite_db", "operation": "execute", "db": "${worker.db_name}", "query": "CREATE TABLE IF NOT EXISTS reports (id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, date_from TEXT, date_to TEXT, report_markdown TEXT, avg_score REAL, retry_count INTEGER, top10_json TEXT, completed_at TEXT)", "params": []}, "outputs": {"success": "cycle.result.table_created"}, "timeout_sec": 10},
-      {"name": "save_report", "type": "io", "handler": "http_tool", "inputs": {"tool": "sqlite_db", "operation": "execute", "db": "${worker.db_name}", "query": "INSERT INTO reports (date_from, date_to, report_markdown, avg_score, retry_count, top10_json, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?)", "params": ["${cycle.dates.from}", "${cycle.dates.now}", "${cycle.result.report}", "${cycle.validation.sonar_score}", "${cycle.meta.retry_count}", "${cycle.scoring.top10_json_str_final}", "${cycle.result.completed_at}"]}, "outputs": {"success": "cycle.result.saved"}, "timeout_sec": 15},
-
-      {"name": "mark_success", "type": "transform", "handler": "set_value", "inputs": {"value": "Success"}, "outputs": {"result": "cycle.result.status"}},
-      {"name": "mark_fail", "type": "transform", "handler": "set_value", "inputs": {"value": "Parse failed"}, "outputs": {"result": "cycle.result.status"}},
       {"name": "EXIT", "type": "exit"}
     ],
+    
     "edges": [
-      {"from": "START", "to": "get_date_now"},
-      {"from": "get_date_now", "to": "get_date_from"},
-
-      {"from": "get_date_from", "to": "fetch_news"},
-      {"from": "fetch_news", "to": "fetch_reddit"},
-      {"from": "fetch_reddit", "to": "fetch_arxiv"},
-      {"from": "fetch_arxiv", "to": "fetch_papers_with_code"},
-      {"from": "fetch_papers_with_code", "to": "fetch_sonar"},
-      {"from": "fetch_sonar", "to": "normalize_sonar_source"},
-
-      {"from": "normalize_sonar_source", "to": "filter_fresh_all"},
-      {"from": "filter_fresh_all", "to": "filter_fresh_pwc"},
-      {"from": "filter_fresh_pwc", "to": "SCORING_LOOP"},
-
-      {"from": "SCORING_LOOP", "to": "set_scoring_started_at"},
-      {"from": "set_scoring_started_at", "to": "llm_gpt_score"},
-      {"from": "llm_gpt_score", "to": "normalize_gpt_score"},
-      {"from": "normalize_gpt_score", "to": "check_parse"},
-
-      {"from": "check_parse", "to": "set_validation_started_at", "when": "true"},
-      {"from": "set_validation_started_at", "to": "llm_sonar_validate"},
-      {"from": "llm_sonar_validate", "to": "normalize_validation"},
-      {"from": "normalize_validation", "to": "extract_validation_fields"},
-      {"from": "extract_validation_fields", "to": "set_validation_ended_at"},
-      {"from": "set_validation_ended_at", "to": "stringify_top10_for_log"},
-      {"from": "stringify_top10_for_log", "to": "log_validation_to_db"},
-      {"from": "log_validation_to_db", "to": "insert_validation_log"},
-      {"from": "insert_validation_log", "to": "check_quality"},
-
-      {"from": "check_parse", "to": "mark_fail", "when": "false"},
-
-      {"from": "check_quality", "to": "load_prev_report", "when": "true"},
-      {"from": "check_quality", "to": "check_retry", "when": "false"},
-      {"from": "check_retry", "to": "increment", "when": "true"},
-      {"from": "check_retry", "to": "load_prev_report", "when": "false"},
-      {"from": "increment", "to": "SCORING_LOOP"},
-
-      {"from": "load_prev_report", "to": "extract_prev_fields"},
-      {"from": "extract_prev_fields", "to": "parse_prev_top10"},
-      {"from": "parse_prev_top10", "to": "llm_merge_reports"},
-      {"from": "llm_merge_reports", "to": "parse_merge"},
-      {"from": "parse_merge", "to": "extract_merged_fields"},
-
-      {"from": "extract_merged_fields", "to": "set_completed_at"},
-      {"from": "set_completed_at", "to": "stringify_top10_for_report"},
-      {"from": "stringify_top10_for_report", "to": "create_reports_table"},
-      {"from": "create_reports_table", "to": "save_report"},
-      {"from": "save_report", "to": "mark_success"},
-      {"from": "mark_success", "to": "EXIT"},
-      {"from": "mark_fail", "to": "EXIT"}
-    ],
-    "scopes": {"$import": "config/scopes.json"}
+      {"from": "START", "to": "INIT"},
+      {"from": "INIT", "to": "COLLECT"},
+      {"from": "COLLECT", "to": "SCORE"},
+      {"from": "SCORE", "to": "VALIDATE"},
+      {"from": "VALIDATE", "to": "OUTPUT", "when": "success"},
+      {"from": "VALIDATE", "to": "SCORE", "when": "retry"},
+      {"from": "OUTPUT", "to": "EXIT"}
+    ]
   }
 }

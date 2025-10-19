@@ -1,17 +1,17 @@
+import json
 from ..base import AbstractHandler, HandlerError
 
-class SetValueHandler(AbstractHandler):
+class JsonStringifyHandler(AbstractHandler):
     @property
     def kind(self) -> str:
-        return "set_value"
+        return "json_stringify"
 
     def run(self, value=None, **kwargs):
         try:
-            # pass-through any JSON-serializable value
-            return {"result": value}
+            return {"json_string": json.dumps(value, ensure_ascii=False)}
         except Exception as e:
             raise HandlerError(
-                message=f"set_value failed: {e}",
+                message=f"json_stringify failed: {e}",
                 code="INVALID_INPUT",
                 category="validation",
                 retryable=False

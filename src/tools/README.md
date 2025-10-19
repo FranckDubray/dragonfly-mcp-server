@@ -18,8 +18,8 @@ Total tools: 48
   - Opérations: list_models, get_version, get_running_models, show_model, pull_model, push_model …
   - Tokens: aucun
 
-- Orchestrator (JSON-driven FSM) — Start/stop/status a JSON-driven worker that executes a process graph (FSM). Generic orchestrator with zero business logic in engine. Supp… · Tags: automation, workflows, state_machine, long_running
-  - Opérations: start, stop, status
+- Orchestrator (JSON-driven FSM) — Start/stop/status/debug/list a JSON-driven worker that executes a process graph (FSM). · Tags: automation, workflows, state_machine, long_running
+  - Opérations: start, stop, status, debug, list
   - Tokens: aucun
 
 - Research — Recherche académique multi-sources (PubMed, arXiv, HAL, CrossRef). · Tags: knowledge, research, external_sources
