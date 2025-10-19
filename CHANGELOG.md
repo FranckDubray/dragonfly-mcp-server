@@ -1,5 +1,20 @@
-
 # Changelog
+
+## [1.30.0] - 2025-10-19
+
+### 🔧 Orchestrator v1.2 — Audit & Cleanup
+
+- 🔴 **FIX CRITIQUE**: api.py utilise maintenant `load_process_with_imports` (support $import au démarrage)
+- 🗑️ **Cleanup**: Suppression handlers/transforms.py (dupliqué, handlers splittés dans transforms/*.py)
+- 🧹 **Refactor**: handlers/__init__.py charge dynamiquement depuis transforms/ et transforms_domain/
+- ✅ **Validation**: Process loader avec $import fonctionnel en API start + runner hot-reload
+
+### 🔧 Notes techniques
+- Process avec `$import` supportés partout (API start + runner reload)
+- Bootstrap handlers automatique depuis sous-packages transforms/
+- Pas de régression: tous les transforms existants (5 math + 6 domain + 1 mock)
+
+---
 
 ## [1.29.0] - 2025-10-19
 
@@ -17,10 +32,9 @@
   - README worker mis à jour
 - 🧹 .gitignore élargi (logs/, docs/, script_executor/, .dgy_backup/, sqlite3/, *.db, egg-info/, .env)
 
-### 🔧 Notes d’upgrade
+### 🔧 Notes d'upgrade
 - Pour voir les erreurs de démarrage: inspecter `logs/worker_<name>.log`
-- En cas d’erreur JSON/$import: l’API Start renvoie `failed`; côté runner, phase=failed + last_error (si erreur post-spawn)
+- En cas d'erreur JSON/$import: l'API Start renvoie `failed`; côté runner, phase=failed + last_error (si erreur post-spawn)
 - Recommandé: one-shot pour curation (sleep_seconds=0), et contrôle manuel des métriques fraîcheur (<72h)
 
 ---
-
