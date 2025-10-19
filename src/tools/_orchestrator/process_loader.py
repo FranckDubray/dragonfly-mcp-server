@@ -30,7 +30,11 @@ def load_process_with_imports(process_file: str, base_dir: str = None) -> Dict:
     # Resolve process file path
     process_path = Path(process_file).resolve()
     if not process_path.exists():
-        raise ProcessLoadError(f"Process file not found: {process_file}")
+        raise ProcessLoadError(
+            f"Process file not found: {process_file}\n"
+            f"Resolved path: {process_path}\n"
+            f"Check that the file exists and path is correct."
+        )
     
     # Base directory for relative imports (default: process file's directory)
     if base_dir is None:
@@ -39,11 +43,31 @@ def load_process_with_imports(process_file: str, base_dir: str = None) -> Dict:
         base_dir = Path(base_dir).resolve()
     
     # Load main process file
-    with open(process_path, 'r', encoding='utf-8') as f:
-        process = json.load(f)
+    try:
+        with open(process_path, 'r', encoding='utf-8') as f:
+            process = json.load(f)
+    except json.JSONDecodeError as e:
+        raise ProcessLoadError(
+            f"Invalid JSON in process file: {process_file}\n"
+            f"Error at line {e.lineno}, column {e.colno}: {e.msg}\n"
+            f"Check JSON syntax (trailing commas, quotes, brackets)."
+        )
+    except Exception as e:
+        raise ProcessLoadError(
+            f"Failed to read process file: {process_file}\n"
+            f"Error: {str(e)}"
+        )
     
     # Resolve all $import recursively
-    resolved = _resolve_imports(process, base_dir, visited=set())
+    try:
+        resolved = _resolve_imports(process, base_dir, visited=set())
+    except ProcessLoadError:
+        raise  # Re-raise with original context
+    except Exception as e:
+        raise ProcessLoadError(
+            f"Unexpected error resolving imports in: {process_file}\n"
+            f"Error: {str(e)}"
+        )
     
     return resolved
 
@@ -63,7 +87,11 @@ def _resolve_imports(data: Any, base_dir: Path, visited: set, depth: int = 0) ->
     """
     # Guard: max depth to prevent infinite recursion
     if depth > 10:
-        raise ProcessLoadError("Max import depth (10) exceeded - possible circular dependency")
+        raise ProcessLoadError(
+            f"Max import depth (10) exceeded - possible circular dependency.\n"
+            f"Import chain is too deep. Check for circular imports or excessive nesting.\n"
+            f"Current base directory: {base_dir}"
+        )
     
     # Dict: check for $import key or recurse
     if isinstance(data, dict):
@@ -121,8 +149,10 @@ def _load_import(import_path: str, base_dir: Path, visited: set, depth: int) -> 
         Loaded and resolved content
     """
     last_err = None
+    candidates = _candidate_import_paths(base_dir, import_path)
+    candidates_str = "\n  - ".join(str(p) for p in candidates)
 
-    for candidate in _candidate_import_paths(base_dir, import_path):
+    for candidate in candidates:
         try:
             # Check if file exists
             if not candidate.exists():
@@ -131,12 +161,32 @@ def _load_import(import_path: str, base_dir: Path, visited: set, depth: int) -> 
             # Cycle detection
             candidate_str = str(candidate)
             if candidate_str in visited:
-                raise ProcessLoadError(f"Circular import detected: {import_path}")
+                raise ProcessLoadError(
+                    f"Circular import detected!\n"
+                    f"Import path: {import_path}\n"
+                    f"File already visited: {candidate}\n"
+                    f"Import chain: {' -> '.join(sorted(visited))}\n"
+                    f"Check for circular dependencies in your $import declarations."
+                )
             visited.add(candidate_str)
             
             # Load file
-            with open(candidate, 'r', encoding='utf-8') as f:
-                imported = json.load(f)
+            try:
+                with open(candidate, 'r', encoding='utf-8') as f:
+                    imported = json.load(f)
+            except json.JSONDecodeError as e:
+                raise ProcessLoadError(
+                    f"Invalid JSON in imported file: {import_path}\n"
+                    f"Resolved to: {candidate}\n"
+                    f"Error at line {e.lineno}, column {e.colno}: {e.msg}\n"
+                    f"Check JSON syntax (trailing commas, quotes, brackets)."
+                )
+            except Exception as e:
+                raise ProcessLoadError(
+                    f"Failed to read imported file: {import_path}\n"
+                    f"Resolved to: {candidate}\n"
+                    f"Error: {str(e)}"
+                )
             
             # Recursively resolve imports in loaded content
             resolved = _resolve_imports(imported, candidate.parent, visited, depth + 1)
@@ -144,17 +194,31 @@ def _load_import(import_path: str, base_dir: Path, visited: set, depth: int) -> 
             # Remove from visited after processing (allow reuse in different branches)
             visited.discard(candidate_str)
             return resolved
-        except json.JSONDecodeError as e:
-            last_err = ProcessLoadError(f"Invalid JSON in {import_path}: {str(e)[:200]}")
-            break
+        
         except ProcessLoadError as e:
             last_err = e
             break
         except Exception as e:
-            last_err = ProcessLoadError(f"Failed to load {import_path}: {str(e)[:200]}")
+            last_err = ProcessLoadError(
+                f"Unexpected error loading import: {import_path}\n"
+                f"Tried: {candidate}\n"
+                f"Error: {str(e)}"
+            )
             break
 
     # If none of the candidates worked, raise a helpful error
     if last_err is not None:
         raise last_err
-    raise ProcessLoadError(f"Import file not found: {import_path} (searched under {base_dir} and {base_dir / 'nodes'})")
+    
+    raise ProcessLoadError(
+        f"Import file not found: {import_path}\n"
+        f"Searched in:\n  - {candidates_str}\n"
+        f"Base directory: {base_dir}\n\n"
+        f"Tip: Imported files can be placed in:\n"
+        f"  1. Same directory as process file\n"
+        f"  2. 'nodes/' subdirectory (recommended for organization)\n\n"
+        f"Check:\n"
+        f"  - File name spelling and extension (.json)\n"
+        f"  - Relative path from {base_dir}\n"
+        f"  - File permissions (readable)"
+    )

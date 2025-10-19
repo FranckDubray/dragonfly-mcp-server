@@ -1,0 +1,259 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Orchestrator Process Schema",
+  "description": "JSON Schema for orchestrator process files (FSM workflow definition)",
+  "type": "object",
+  "required": ["version", "worker_ctx", "graph"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$",
+      "description": "Schema version (e.g., '1.0')"
+    },
+    "process_version": {
+      "type": ["string", "number"],
+      "description": "Optional process version for tracking"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Optional metadata (description, author, tags, etc.)",
+      "properties": {
+        "description": {"type": "string"},
+        "author": {"type": "string"},
+        "tags": {"type": "array", "items": {"type": "string"}},
+        "features": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "worker_ctx": {
+      "type": "object",
+      "description": "Worker context: read-only constants available to all nodes (${worker.*})"
+    },
+    "graph": {
+      "type": "object",
+      "required": ["nodes", "edges"],
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Array of graph nodes (minimum: START node)",
+          "items": {"$ref": "#/definitions/node"}
+        },
+        "edges": {
+          "type": "array",
+          "description": "Array of graph edges (connections between nodes)",
+          "items": {"$ref": "#/definitions/edge"}
+        }
+      }
+    },
+    "scopes": {
+      "type": "array",
+      "description": "Optional scope lifecycle declarations (cycle context namespaces)",
+      "items": {"$ref": "#/definitions/scope"}
+    },
+    "graph_mermaid": {
+      "type": "string",
+      "description": "Optional Mermaid diagram of the graph (for documentation)"
+    }
+  },
+  "definitions": {
+    "node": {
+      "type": "object",
+      "required": ["name", "type"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique node identifier"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["start", "end", "exit", "io", "transform", "decision"],
+          "description": "Node type: start (entry), end (cycle boundary), exit (stop worker), io (MCP tool call), transform (pure function), decision (conditional routing)"
+        },
+        "handler": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Handler kind (required for io/transform nodes, e.g., 'http_tool', 'increment')"
+        },
+        "inputs": {
+          "type": "object",
+          "description": "Input parameters (keys map to handler params, values can be literals or ${...} refs)"
+        },
+        "outputs": {
+          "type": "object",
+          "description": "Output mapping (handler output keys → cycle context paths, e.g., {'result': 'cycle.ns1.value'})"
+        },
+        "retry": {
+          "type": "object",
+          "description": "Retry policy for this node",
+          "properties": {
+            "max": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10,
+              "description": "Max retry attempts (0 = no retry, max 10 to prevent infinite loops)"
+            },
+            "delay_sec": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 3600,
+              "description": "Base delay in seconds (exponential backoff: delay * 2^attempt)"
+            }
+          },
+          "additionalProperties": false
+        },
+        "timeout_sec": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7200,
+          "description": "Per-node timeout override (default: 60s, max: 2h)"
+        },
+        "decision": {
+          "type": "object",
+          "required": ["kind", "input"],
+          "description": "Decision specification (required for decision nodes)",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": ["truthy", "enum_from_field", "compare", "regex_match", "in_list", "has_key"],
+              "description": "Decision algorithm: truthy (boolean), enum_from_field (string match), compare (>, <, ==), regex_match, in_list, has_key"
+            },
+            "input": {
+              "type": "string",
+              "pattern": "^\\$\\{.+\\}$",
+              "description": "Context path to evaluate (must be ${...} reference)"
+            },
+            "normalize": {
+              "type": "string",
+              "enum": ["upper", "lower", "trim"],
+              "description": "Optional normalization before evaluation (for enum_from_field)"
+            },
+            "fallback": {
+              "type": "string",
+              "description": "Default route if no match (for enum_from_field)"
+            },
+            "operator": {
+              "type": "string",
+              "enum": ["==", "!=", ">", ">=", "<", "<="],
+              "description": "Comparison operator (for compare decision)"
+            },
+            "value": {
+              "description": "Comparison value (for compare decision)"
+            },
+            "pattern": {
+              "type": "string",
+              "description": "Regex pattern (for regex_match decision)"
+            },
+            "flags": {
+              "type": "string",
+              "pattern": "^[ims]*$",
+              "description": "Regex flags (for regex_match: i=case-insensitive, m=multiline, s=dotall)"
+            },
+            "list": {
+              "type": "array",
+              "description": "List of values to check membership (for in_list decision)"
+            },
+            "key": {
+              "type": "string",
+              "description": "Object key to check (for has_key decision)"
+            }
+          },
+          "additionalProperties": false
+        },
+        "on_error": {
+          "type": "object",
+          "description": "Error handling override (future: route_to_911)",
+          "properties": {
+            "action": {
+              "type": "string",
+              "enum": ["route_to_911", "fail"]
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"type": {"enum": ["io", "transform"]}}
+          },
+          "then": {
+            "required": ["handler"],
+            "errorMessage": "io/transform nodes must have 'handler' field"
+          }
+        },
+        {
+          "if": {
+            "properties": {"type": {"const": "decision"}}
+          },
+          "then": {
+            "required": ["decision"],
+            "errorMessage": "decision nodes must have 'decision' field"
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "edge": {
+      "type": "object",
+      "required": ["from", "to"],
+      "properties": {
+        "from": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Source node name"
+        },
+        "to": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Target node name"
+        },
+        "when": {
+          "type": "string",
+          "default": "always",
+          "description": "Route label (default: 'always'; for decisions: 'true'/'false', 'SPAM'/'HAM', etc.)"
+        },
+        "scope_trigger": {
+          "type": "object",
+          "required": ["action", "scope"],
+          "description": "Scope lifecycle trigger (optional)",
+          "properties": {
+            "action": {
+              "type": "string",
+              "enum": ["enter", "leave"],
+              "description": "Scope action: enter (reset + seed), leave (clear)"
+            },
+            "scope": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Scope name to trigger"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "scope": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Scope name (namespace under cycle.*)"
+        },
+        "reset_on": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Events triggering scope reset (e.g., ['START', 'END', 'node_name'])"
+        },
+        "seed": {
+          "type": "object",
+          "description": "Initial values set after reset"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true
+}
