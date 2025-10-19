@@ -4,6 +4,7 @@ from typing import Dict, Any, Callable, Optional
 from ..context import resolve_inputs, assign_outputs, reset_scope, seed_scope
 from ..handlers import get_registry, HandlerError
 from ..logging import begin_step, end_step
+from ..logging.crash_logger import log_crash
 from ..policies import execute_with_retry, RetryExhaustedError
 from .decisions import evaluate_decision, DecisionError
 
@@ -60,18 +61,26 @@ class OrchestratorEngine:
             # Safety guard: prevent infinite loops within a cycle
             nodes_traversed += 1
             if nodes_traversed > self.MAX_NODES_PER_CYCLE:
-                raise RuntimeError(
+                error = RuntimeError(
                     f"Cycle {cycle_id}: {nodes_traversed} nodes traversed "
                     f"(max: {self.MAX_NODES_PER_CYCLE}) - infinite loop detected. "
                     f"Check your graph for missing exit conditions in retry loops."
                 )
+                # Log crash with context snapshot
+                log_crash(self.db_path, self.worker, cycle_id, current_node_name, error, worker_ctx, cycle_ctx)
+                raise error
             
             node = self.nodes.get(current_node_name)
             if not node:
                 raise ValueError(f"Node not found: {current_node_name}")
             
-            # Execute node
-            next_route = self._execute_node(cycle_id, node, worker_ctx, cycle_ctx)
+            # Execute node (with crash logging on fatal errors)
+            try:
+                next_route = self._execute_node(cycle_id, node, worker_ctx, cycle_ctx)
+            except Exception as e:
+                # Log crash with full context
+                log_crash(self.db_path, self.worker, cycle_id, current_node_name, e, worker_ctx, cycle_ctx)
+                raise  # Re-raise to stop cycle
             
             # Check if EXIT node reached
             if node.get('type') == 'exit':
@@ -172,7 +181,7 @@ class OrchestratorEngine:
             raise ValueError(f"Unknown node type: {node_type}")
         
         except RetryExhaustedError as e:
-            # Retry exhausted: log with attempts count
+            # Retry exhausted: log with attempts count + crash log
             end_step(self.db_path, self.worker, cycle_id, node_name, 'failed', started_at, {
                 "error": {
                     "message": str(e)[:400],
@@ -181,10 +190,11 @@ class OrchestratorEngine:
                 },
                 "attempts": e.attempts
             })
+            # Crash log already done in run_cycle, just re-raise
             raise
         
         except Exception as e:
-            # Other failure
+            # Other failure: log + crash log
             end_step(self.db_path, self.worker, cycle_id, node_name, 'failed', started_at, {
                 "error": {
                     "message": str(e)[:400],
@@ -192,6 +202,7 @@ class OrchestratorEngine:
                     "category": getattr(e, 'category', 'unknown')
                 }
             })
+            # Crash log already done in run_cycle, just re-raise
             raise
     
     def _execute_handler_node(self, cycle_id: str, node: Dict, worker_ctx: Dict, cycle_ctx: Dict, started_at: str) -> str:
@@ -221,7 +232,7 @@ class OrchestratorEngine:
         
         def on_retry(attempt: int, error: HandlerError):
             attempts_count[0] = attempt
-            # Log retry attempt (optional, for debugging)
+            # TODO: Log retry attempt to DB
             pass
         
         outputs = execute_with_retry(execute_handler, retry_policy, on_retry)
