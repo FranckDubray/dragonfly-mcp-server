@@ -1,42 +1,43 @@
-# Git ignore
-.env
-.dgy_backup/
-sqlite3/
+# Python
 __pycache__/
-**/__pycache__/
 *.pyc
-src/add_mcp_server.egg-info/
+*.pyo
+*.pyd
 
-# OS junk
-.DS_Store
-
-# Local data and generated content (not source)
-docs/
-files/
-script_executor/
-
-# Virtual environments
-venv/
+# Virtual envs
 .venv/
+venv/
 
-# IMAP tool data (credentials, attachments, cache)
-files/imap/
+# IDE
+.vscode/
+.idea/
 
-*.egg-info/
-*.egg-info
+# OS
+.DS_Store
+Thumbs.db
 
-# Skyfield ephemeris data (downloaded on first use)
-*.bsp
-*.npy
+# Env/Secrets
+.env
 
-# SSH Keys and local scripts (CRITICAL: never commit)
-ssh_keys/
-scripts_ssh/
-
-# Project-local SQLite DBs (safety)
+# Local databases (anywhere)
 *.db
-!sqlite3/*.db
+*.db-shm
+*.db-wal
 
-# Additional hardening (src-local secrets/scripts)
-src/ssh_keys/
-src/scripts_ssh/
+# Project SQLite dirs
+sqlite3/
+src/sqlite3/
+
+# Runner/Server logs (do not sync)
+logs/
+logs/*.log
+
+# Heavy/local artifacts (not for repo)
+.dgy_backup/
+docs/
+script_executor/
+tests/
+
+# Build/egg-info metadata
+src/add_mcp_server.egg-info/
+src/dragonfly_mcp_server.egg-info/

@@ -1,276 +1,142 @@
 # 🤖 AI/LLM Curation Worker
 
-**Worker d'orchestration pour la curation automatisée des actualités IA/LLM**
+Worker d'orchestration pour la curation automatisée des actualités IA/LLM (≤ 72h), avec fusion du rapport précédent et déduplication, génération d’un rapport FR lisible grand public mais techniquement fiable.
 
 ---
 
 ## 📋 Description
 
-Worker orchestré qui collecte, score et valide automatiquement les actualités IA/LLM des 3 derniers jours depuis 5 sources différentes, avec validation qualité par Perplexity Sonar et génération d'un rapport en français.
+- Collecte multi-sources (News, Reddit, arXiv, Papers With Code, Sonar + blogs/labs selon config)
+- Fraîcheur stricte: ≤ 72 heures (3 jours)
+- Double verrou fraîcheur:
+  1) Filtrage côté API via les paramètres MCP (from_date/to_date, etc.)
+  2) Filet de sécurité moteur via transform `filter_by_date` (déterministe)
+- Scoring via GPT (pertinence/novelty/source/diversité)
+- Validation qualité via Sonar (score ≥ 7/10)
+- Fusion/dédoublonnage avec le rapport précédent via GPT (sortie JSON stricte), puis format final FR
+- Sauvegarde en base unique du worker (`worker_ai_curation.db`)
 
 ---
 
-## 🎯 Architecture
+## 🧭 Politique de fraîcheur (≤ 72h)
 
-### **Worker**
-- **Nom** : `ai_curation`
-- **Type** : One-shot (EXIT après exécution)
-- **Base de données** : `worker_ai_curation.db`
-
-### **Process**
-- **Fichier** : `main.process.json`
-- **Version** : 6.0.1-single-db
-- **Architecture** : Modulaire avec $import
+- Cutoff dynamique: `from_date = now - 3 jours`, `to_date = now` (UTC)
+- Priorité aux filtres API (MCP params) pour réduire le volume amont:
+  - News (news_aggregator): `from_date`, `to_date`, `query` stricte LLM-core
+  - Reddit (reddit_intelligence): `time_filter=week` (approx), puis filtre moteur <72h via `created_utc`
+  - arXiv (academic_research_super): filtre moteur <72h via `publication_date` (et bornage année si utile)
+  - Sonar: contrainte dans le prompt (imposer `published_at` ISO et ≤72h)
+- Sécurité moteur (transform `filter_by_date`): applique la règle <72h de manière déterministe par source
 
 ---
 
-## 📊 Sources de données (5)
+## 🔄 Workflow (v6.0.3)
 
-1. **📰 News** (NYT + Guardian) — 8 articles
-2. **💬 Reddit** (MachineLearning, LocalLLaMA, OpenAI) — 3 posts/sub
-3. **📄 arXiv** (papers académiques) — 8 papers
-4. **💻 Papers With Code** (trending papers)
-5. **🌐 Sonar** (Perplexity real-time web search) — 8-10 items
+1) Collecte (API-level filters d’abord)
+- News: requête LLM-core + from/to
+- Reddit: multi_subs (time_filter=week)
+- arXiv: derniers papiers (max_results 30)
+- PWC: page “latest”
+- Sonar: recherche temps réel (prompt)
 
----
+2) Normalisation & Fraîcheur
+- Normalise Sonar (JSON)
+- `filter_by_date` par source (news/reddit/arXiv/sonar)
+- Déduplication éventuelle (optionnelle) avant LLM (par URL)
 
-## 🔄 Workflow
+3) Scoring & Validation
+- GPT scoring → top10 (mix sources)
+- Sonar validation (score >= 7) + retry loop (max 3)
 
-### **Phase 1 : Collecte** (30-60s)
-- Fetch 5 sources en parallèle
-- Parse et normalisation
+4) Fusion / Dédup rapport
+- Charge le rapport précédent (markdown + top10_json)
+- GPT “merge” (prompts/gpt_merge_report_fr.json) → JSON: {final_report_markdown, final_top10}
+- Parse + utilise `final_top10` pour la sauvegarde
 
-### **Phase 2 : Scoring Loop** (avec retry)
-```
-SCORING_LOOP
-  ↓
-  GPT-4o-mini scoring (Top 10)
-  ↓
-  Sonar validation (score 1-10)
-  ↓
-  Score >= 7 ? → [OUI] Format rapport FR → EXIT
-               → [NON] Retry < 3 ? → [OUI] BACK TO LOOP
-                                   → [NON] Format rapport → EXIT
-```
-
-**Critères de scoring** (GPT-4o-mini) :
-- **Pertinence** (40%) : IA/LLM core (pas applications tangentielles)
-- **Nouveauté** (30%) : Breaking news > recherche récente
-- **Source Quality** (20%) : arXiv > GitHub > News > Reddit
-- **Diversité** (10%) : Mix de sources
-
-**Validation Sonar** :
-- Score 1-10 avec feedback détaillé
-- Seuil : **>= 7/10**
-- Max retries : **3**
-
-### **Phase 3 : Rapport** (30-60s)
-- Génération rapport markdown en français (GPT-4o-mini)
-- Format strict : Titre + Note + Résumé + URL × 10 items
-- Sauvegarde DB + completion
+5) Sauvegarde
+- DB: `reports(report_markdown, top10_json, avg_score, retry_count, completed_at, ...)`
 
 ---
 
-## 📁 Structure du répertoire
+## 📁 Répertoire
 
 ```
 workers/ai_curation/
-├── main.process.json          # Process principal (avec $import)
+├── main.process.json                 # Process principal
 ├── config/
-│   ├── worker_ctx.json         # Configuration worker
-│   └── scopes.json             # Scopes lifecycle
+│   ├── worker_ctx.json               # db_name=worker_ai_curation, modèles, seuils, etc.
+│   └── scopes.json                   # Scopes cycle*
 ├── prompts/
-│   ├── sonar_fetch.json        # Prompt Sonar search
-│   ├── gpt_scoring.json        # Prompt GPT scoring
-│   ├── sonar_validation.json   # Prompt Sonar validation
-│   └── gpt_format_fr.json      # Prompt format rapport FR
-└── README.md                   # Ce fichier
+│   ├── gpt_scoring.json              # Scoring (rappel de FROM/TO ISO, JSON only)
+│   ├── sonar_fetch.json              # Sonar (published_at ISO obligatoire, ≤72h)
+│   ├── sonar_validation.json         # Validation Sonar (score 1-10 + feedback JSON)
+│   └── gpt_merge_report_fr.json      # Fusion/dédoublonnage de rapports (JSON strict)
+└── README.md
 ```
 
 ---
 
-## 🗄️ Base de données
+## 🗄️ Base de données (worker_ai_curation.db)
 
-### **worker_ai_curation.db**
-
-#### Table `validation_logs`
-Logs des tentatives de validation Sonar (retry loop).
-
-```sql
-CREATE TABLE validation_logs (
-  id INTEGER PRIMARY KEY,
-  timestamp TEXT NOT NULL,
-  attempt INTEGER,
-  score REAL,
-  feedback TEXT,      -- Feedback Sonar complet
-  top10_json TEXT     -- Top 10 à cette tentative
-);
-```
-
-#### Table `reports`
-Rapports finaux générés.
-
-```sql
-CREATE TABLE reports (
-  id INTEGER PRIMARY KEY,
-  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  date_from TEXT,
-  date_to TEXT,
-  report_markdown TEXT,  -- Rapport complet en français
-  avg_score REAL,
-  retry_count INTEGER,
-  top10_json TEXT,
-  completed_at TEXT
-);
-```
+- `validation_logs(id, timestamp, attempt, score, feedback, top10_json)`
+- `reports(id, created_at, date_from, date_to, report_markdown, avg_score, retry_count, top10_json, completed_at)`
 
 ---
 
 ## 🚀 Lancement
 
-### **Start**
 ```python
 from src.tools.orchestrator import run
 
-result = run(
-    operation="start",
-    worker_name="ai_curation",
-    worker_file="workers/ai_curation/main.process.json",
-    hot_reload=True
-)
-```
+# Start
+run(operation="start", worker_name="ai_curation", worker_file="workers/ai_curation/main.process.json", hot_reload=True)
 
-### **Status**
-```python
-status = run(
-    operation="status",
-    worker_name="ai_curation"
-)
-```
+# Status
+run(operation="status", worker_name="ai_curation")
 
-### **Stop**
-```python
-stop = run(
-    operation="stop",
-    worker_name="ai_curation",
-    stop={"mode": "soft"}
-)
+# Stop
+run(operation="stop", worker_name="ai_curation", stop={"mode": "soft"})
 ```
 
 ---
 
-## 📊 Exemple de rapport
+## 🎛️ MCP params (filtres côté API)
 
-```markdown
-# 🤖 Top 10 IA/LLM — 2025-10-15 au 2025-10-18
-
-**Score de qualité:** 7.6/10 | **Tentatives:** 0 | **Date:** 2025-10-18
-
----
-
-## 📌 Top 10 Sélection (5 sources: News, Reddit, arXiv, Papers With Code, Sonar)
-
-**1. Design Agentique de Machines Compositives** — Note: 9.0/10  
-*Cette recherche propose une nouvelle perspective sur la création de machines par les LLM, représentant une avancée fondamentale dans les capacités de l'IA.*  
-🔗 Source: [arxiv.org](http://arxiv.org/abs/2510.14980v1)
-
-**2. L'Attention est Tout Ce Dont Vous Avez Besoin pour le Cache KV dans les LLM en Diffusion** — Note: 8.5/10  
-*Cet article présente des améliorations dans la gestion du cache KV pour les LLM, augmentant ainsi l'efficacité des modèles de diffusion.*  
-🔗 Source: [arxiv.org](http://arxiv.org/abs/2510.14973v1)
-
-[...8 autres items]
+- News (news_aggregator.search_news)
+  - `query`: (LLM OR "large language model" OR transformer OR "fine-tuning") AND (OpenAI OR Anthropic OR DeepMind OR "Google AI" OR Meta)
+  - `from_date`: `${cycle.dates.from}` (ISO date YYYY-MM-DD)
+  - `to_date`: `${cycle.dates.now}` (ISO date YYYY-MM-DD)
+  - `providers`: ["nyt","guardian"], `limit`: 30, pagination si besoin
+- Reddit (reddit_intelligence.multi_search)
+  - `subreddits`: ["MachineLearning","LocalLLaMA","OpenAI"], `limit_per_sub`: 10, `time_filter`: "week"
+  - Filtrage moteur <72h via `created_utc`
+- arXiv (academic_research_super.search_papers)
+  - `query` LLM-core, `max_results`: 30; filtrage moteur via `publication_date`
+- Sonar (call_llm)
+  - Prompt impose `published_at` ISO ≤72h; filtre moteur `filter_by_date` en plus
 
 ---
 
-## ✅ Évaluation Qualité
+## 🧪 Qualité & Traçabilité
 
-**Score final:** 7.6/10  
-**Nombre de tentatives:** 0  
-**Validé le:** 2025-10-18T21:22:10
-
----
-
-## 🔍 Tendances clés
-
-*Les thèmes principaux incluent des avancées dans la conception agentique des LLM, l'amélioration de l'efficacité des modèles via des techniques de cache optimisées...*
-```
+- Compteurs par source: `cycle.metrics.*_kept` / `*_dropped` après `filter_by_date`
+- Fusion GPT: retourne JSON strict; on exige `published_at` dans `final_top10[]`
+- Déduplication: par URL et par titres quasi-identiques (règle de prompt), + option filet moteur `dedupe_by_url`
 
 ---
 
-## ⚙️ Configuration
+## 🛠️ Transforms utilisés
 
-### **worker_ctx.json**
-```json
-{
-  "timezone": "UTC",
-  "llm_model": "gpt-4o-mini",
-  "sonar_model": "sonar",
-  "llm_temperature": 0.3,
-  "quality_threshold": 7,
-  "max_retries": 3,
-  "db_name": "worker_ai_curation"
-}
-```
+- `filter_by_date` (déterministe, <72h) — SÉCURITÉ
+- `normalize_llm_output`, `extract_field`, `json_stringify`, `sanitize_text`, `increment`, `set_value`
 
-### **Scopes**
-- `dates` : Date de collecte (from/now)
-- `sources` : Données sources brutes
-- `scoring` : Résultats scoring GPT
-- `validation` : Résultats validation Sonar
-- `result` : Rapport final
-- `meta` : Métadonnées (retry_count, timestamps)
-
----
-
-## 📈 Métriques
-
-### **Temps d'exécution typique**
-- **Total** : 70-120 secondes
-  - Collecte : 30-60s
-  - Scoring loop : 20-40s (1-3 tentatives)
-  - Format rapport : 15-30s
-
-### **Coûts LLM**
-- **GPT-4o-mini** : ~2-3 appels (scoring + format)
-- **Sonar** : ~1-3 appels (fetch + validation retry)
-
----
-
-## 🔧 Dépannage
-
-### **Retry loop infini**
-Si le worker boucle > 3 fois :
-- Vérifier les logs `validation_logs`
-- Sonar retourne probablement du texte au lieu de JSON
-- Solution : améliorer le prompt `prompts/sonar_validation.json`
-
-### **Score toujours < 7**
-- Sources trop faibles (vérifier diversité)
-- Critères trop stricts (ajuster seuil à 6.5)
-
-### **Parse failed sur top10**
-- GPT-4o-mini a retourné du texte au lieu de JSON
-- Vérifier `prompts/gpt_scoring.json` (instruction "ONLY JSON")
+NB: Les transforms sont pures (aucune I/O). Toute I/O passe par les tools MCP (`http_tool`, `sqlite_db`, etc.).
 
 ---
 
 ## 📝 Changelog
 
-### v6.0.1 (2025-10-18)
-- ✅ Base unique `worker_ai_curation.db`
-- ✅ Architecture modulaire avec $import
-- ✅ Retry loop avec validation Sonar
-- ✅ Rapport français formaté
-- ✅ 5 sources (ajout Sonar)
-
----
-
-## 📚 Voir aussi
-
-- [orchestrator_tool_design.md](../../membank/orchestrator_tool_design.md) — Specs orchestrator
-- [orchestrator_process_schema.md](../../membank/orchestrator_process_schema.md) — Format JSON process
-- [orchestrator_mcp_error_handling.md](../../membank/orchestrator_mcp_error_handling.md) — Gestion erreurs
-
----
-
-**Status : ✅ Production-ready**
+- v6.0.3 (2025-10-18)
+  - Fraîcheur: filtres API (MCP) + `filter_by_date` moteur
+  - Fusion/dédoublonnage GPT entre ancien et nouveau rapport
+  - Refactor transforms: 1 fichier = 1 transform (pur)
