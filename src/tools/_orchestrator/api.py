@@ -120,9 +120,12 @@ def _validate_process_schema(process_data: dict) -> Optional[Dict[str, Any]]:
     return None
 
 
-def _validate_process_logic(process_dict) -> Optional[str]:
+def _validate_process_logic(process_data: dict) -> Optional[str]:
     """
     Custom logical validations beyond JSON Schema.
+    
+    Args:
+        process_Process dict to validate
     
     Returns:
         Error message if invalid, None if valid
