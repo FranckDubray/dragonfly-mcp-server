@@ -1,69 +1,36 @@
-
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "dragonfly-mcp-server"
-version = "1.10.0"
-description = "Dragonfly MCP Server (FastAPI)"
-authors = [
-    {name = "MCP Developer", email = "dev@example.com"}
-]
+version = "1.51.2"
+description = "Dragonfly MCP server tools (orchestrator, handlers, utilities)"
 readme = "README.md"
-license = {text = "MIT"}
-requires-python = ">=3.11"
-classifiers = [
-    "Development Status :: 4 - Beta",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-]
+authors = [{ name = "orchestrator-team" }]
+requires-python = ">=3.10"
+keywords = ["mcp", "orchestrator", "workflows", "automation", "ai"]
+license = { text = "MIT" }
+
+# Runtime deps
 dependencies = [
-    "fastapi>=0.104.0",
-    "uvicorn[standard]>=0.24.0",
-    "pydantic>=2.0.0",
-    "requests>=2.28.0",
-    "beautifulsoup4>=4.12.0",
-    "pypdf>=4.2.0",
-    "yt-dlp>=2023.10.0",
-    "websocket-client>=1.6.0",
-    "docx2pdf>=0.1.8",
-    "skyfield>=1.48",
-    "python-chess>=1.999"
+  "requests>=2.31.0",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.0.0",
-    "pytest-asyncio>=0.21.0",
-    "httpx>=0.24.0",
-    "black>=23.0.0",
-    "isort>=5.12.0",
-    "flake8>=6.0.0",
-]
-
-[project.urls]
-Homepage = "https://github.com/FranckDubray/dragonfly-mcp-server"
-Repository = "https://github.com/FranckDubray/dragonfly-mcp-server.git"
-Issues = "https://github.com/FranckDubray/dragonfly-mcp-server/issues"
+[tool.setuptools]
+package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-[tool.black]
-line-length = 88
-target-version = ['py311']
+include = ["src*"]
 
 [tool.isort]
 profile = "black"
-src_paths = ["src", "tests"]
+
+[tool.black]
+line-length = 100
 
 [tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-q"
 testpaths = ["tests"]
-python_files = "test_*.py"
-python_classes = "Test*"
-python_functions = "test_*"
-asyncio_mode = "auto"
