@@ -1,9 +1,30 @@
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Runner loop: executes the JSON FSM with debug integration (refactored <7KB)
 from .db import get_state_kv, set_state_kv, set_phase, heartbeat
 from .handlers import bootstrap_handlers
-from .engine import OrchestratorEngine
+# IMPORTANT: import OrchestratorEngine directly from the module to avoid engine/__init__ side-effects
+from .engine.orchestrator import OrchestratorEngine
 from .runner_helpers import (
     is_canceled, is_debug_enabled, get_debug_state,
     load_process, compute_process_uid, check_hot_reload,

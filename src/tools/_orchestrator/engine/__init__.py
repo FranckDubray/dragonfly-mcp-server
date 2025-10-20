@@ -1,4 +1,3 @@
-# Engine package
-from .orchestrator import OrchestratorEngine
+# Engine package (no import side-effects)
 
-__all__ = ['OrchestratorEngine']
+__all__ = []
