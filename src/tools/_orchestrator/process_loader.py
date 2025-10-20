@@ -1,5 +1,5 @@
-# Process loader with $import support
-# Allows splitting large process files into reusable fragments
+# Process loader with $import support + subgraph resolution
+# Allows splitting large process files into reusable fragments + hierarchical subgraphs
 
 import json
 import os
@@ -12,14 +12,14 @@ class ProcessLoadError(Exception):
 
 def load_process_with_imports(process_file: str, base_dir: str = None) -> Dict:
     """
-    Load process JSON with $import resolution.
+    Load process JSON with $import resolution + subgraph flattening.
     
     Args:
         process_file: Path to main process file (absolute or relative)
         base_dir: Base directory for resolving relative imports (default: process file's directory)
     
     Returns:
-        Fully resolved process dict (all $import replaced with actual content)
+        Fully resolved process dict (all $import replaced + subgraphs flattened)
     
     Raises:
         ProcessLoadError: If file not found or import fails
@@ -69,7 +69,135 @@ def load_process_with_imports(process_file: str, base_dir: str = None) -> Dict:
             f"Error: {str(e)}"
         )
     
+    # Flatten subgraphs if present
+    if 'graph' in resolved and 'subgraphs' in resolved.get('graph', {}):
+        resolved = _flatten_subgraphs(resolved, base_dir)
+    
     return resolved
+
+
+def _flatten_subgraphs(process: Dict, base_dir: Path) -> Dict:
+    """
+    Flatten subgraphs into main graph (resolve interfaces entry/exit).
+    
+    Transforms:
+      graph.subgraphs: [{id, import, ...}]
+      graph.edges: [{from: "INIT", to: "COLLECT"}]
+    
+    Into:
+      graph.nodes: [all nodes from all subgraphs]
+      graph.edges: [resolved inter-subgraph edges + all intra-subgraph edges]
+    """
+    graph = process.get('graph', {})
+    subgraphs_spec = graph.get('subgraphs', [])
+    
+    if not subgraphs_spec:
+        return process  # No subgraphs, nothing to flatten
+    
+    # Load all subgraphs
+    subgraphs = {}  # {id: {nodes, edges, interface}}
+    for sg_spec in subgraphs_spec:
+        sg_id = sg_spec['id']
+        sg_import = sg_spec['import']
+        
+        # Load subgraph file
+        sg_path = (base_dir / sg_import).resolve()
+        if not sg_path.exists():
+            raise ProcessLoadError(f"Subgraph import not found: {sg_import} (resolved: {sg_path})")
+        
+        try:
+            with open(sg_path, 'r', encoding='utf-8') as f:
+                sg_data = json.load(f)
+        except Exception as e:
+            raise ProcessLoadError(f"Failed to load subgraph {sg_import}: {e}")
+        
+        # Resolve imports within subgraph
+        sg_data = _resolve_imports(sg_data, sg_path.parent, visited=set())
+        
+        subgraphs[sg_id] = sg_data
+    
+    # Collect all nodes
+    all_nodes = list(graph.get('nodes', []))  # START, EXIT from main
+    for sg_data in subgraphs.values():
+        all_nodes.extend(sg_data.get('nodes', []))
+    
+    # Resolve inter-subgraph edges
+    main_edges = graph.get('edges', [])
+    resolved_edges = []
+    
+    for edge in main_edges:
+        from_node = edge['from']
+        to_node = edge['to']
+        when = edge.get('when', 'always')
+        
+        # Check if from/to are subgraph IDs
+        from_real = _resolve_subgraph_node(from_node, subgraphs, 'exit', when)
+        to_real = _resolve_subgraph_node(to_node, subgraphs, 'entry')
+        
+        resolved_edges.append({
+            'from': from_real,
+            'to': to_real,
+            'when': when
+        })
+    
+    # Add all intra-subgraph edges
+    for sg_data in subgraphs.values():
+        resolved_edges.extend(sg_data.get('edges', []))
+    
+    # Rebuild graph
+    process['graph']['nodes'] = all_nodes
+    process['graph']['edges'] = resolved_edges
+    
+    # Remove subgraphs spec (now flattened)
+    del process['graph']['subgraphs']
+    
+    return process
+
+
+def _resolve_subgraph_node(node_ref: str, subgraphs: Dict, interface_type: str, when: str = None) -> str:
+    """
+    Resolve subgraph ID to real node name using interface.
+    
+    Args:
+        node_ref: Node name or subgraph ID
+        subgraphs: {id: {interface: {entry, exits}, ...}}
+        interface_type: "entry" or "exit"
+        when: route label (for exit resolution)
+    
+    Returns:
+        Real node name
+    """
+    # If node_ref is a known subgraph ID, resolve via interface
+    if node_ref in subgraphs:
+        interface = subgraphs[node_ref].get('interface', {})
+        
+        if interface_type == 'entry':
+            entry = interface.get('entry')
+            if not entry:
+                raise ProcessLoadError(f"Subgraph {node_ref} missing interface.entry")
+            return entry
+        
+        elif interface_type == 'exit':
+            exits = interface.get('exits', {})
+            
+            # Try to match when label
+            if when and when != 'always' and when in exits:
+                return exits[when]
+            
+            # Fallback to 'success' exit
+            if 'success' in exits:
+                return exits['success']
+            
+            # If only one exit, use it
+            if len(exits) == 1:
+                return list(exits.values())[0]
+            
+            raise ProcessLoadError(
+                f"Subgraph {node_ref} exit ambiguous: when={when}, available exits={list(exits.keys())}"
+            )
+    
+    # Not a subgraph ID, return as-is (real node name)
+    return node_ref
 
 
 def _resolve_imports(data: Any, base_dir: Path, visited: set, depth: int = 0) -> Any:

@@ -1,16 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
 #!/usr/bin/env python3
 # Orchestrator detached runner (background process)
 
@@ -141,6 +128,9 @@ def _run_loop(db_path: str, worker: str, worker_ctx: dict, graph: dict, worker_f
                 set_state_kv(db_path, worker, 'debug.next_node', e.next_node or '')
                 set_state_kv(db_path, worker, 'debug.last_step', json.dumps(last_step))
                 set_state_kv(db_path, worker, 'debug.ctx_diff', json.dumps(ctx_diff))
+                # NEW: handshake response id
+                req_id = get_state_kv(db_path, worker, 'debug.req_id') or ''
+                set_state_kv(db_path, worker, 'debug.response_id', req_id)
                 heartbeat(db_path, worker)
                 print(f"[runner] Debug paused at {last_step.get('node')} → next {e.next_node}", file=sys.stderr)
                 # Wait for next command

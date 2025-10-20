@@ -1,3 +1,4 @@
+
 {
   "id": "VALIDATE",
   "version": "1.0",
@@ -107,7 +108,7 @@
       "type": "transform",
       "handler": "format_template",
       "inputs": {
-        "template": "Score: ${score}/10 | Tentatives: ${retry_count} | Feedback: ${feedback}",
+        "template": "Score: {{score}}/10 | Tentatives: {{retry_count}} | Feedback: {{feedback}}",
         "context": {
           "score": "${cycle.validation.score}",
           "retry_count": "${cycle.meta.retry_count}",

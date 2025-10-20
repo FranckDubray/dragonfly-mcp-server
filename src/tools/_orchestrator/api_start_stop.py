@@ -1,6 +1,7 @@
 # Start/Stop operations (module <7KB)
 
 import json
+import importlib
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -14,7 +15,11 @@ from .api_common import (
     validate_process_logic,
 )
 from .db import init_db, get_state_kv, set_state_kv, get_phase, set_phase, heartbeat
-from .process_loader import load_process_with_imports, ProcessLoadError
+# Ensure latest process_loader is used (dev hotpatch)
+from . import process_loader as _process_loader
+importlib.reload(_process_loader)
+load_process_with_imports = _process_loader.load_process_with_imports
+ProcessLoadError = _process_loader.ProcessLoadError
 
 
 def start(params: dict) -> dict:
