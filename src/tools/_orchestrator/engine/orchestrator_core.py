@@ -1,13 +1,16 @@
+# Orchestrator core - Main execution loop (refactored <7KB)
 
 from typing import Dict, Any, Callable, Optional
 from datetime import datetime, timezone
-from ..context import resolve_inputs, assign_outputs, reset_scope, seed_scope
+from ..context import resolve_inputs, assign_outputs
 from ..handlers import get_registry, HandlerError
 from ..logging import begin_step, end_step, log_retry_attempt
 from ..logging.crash_logger import log_crash
 from ..policies import execute_with_retry, RetryExhaustedError
 from .decisions import evaluate_decision, DecisionError
-from .debug_utils import DebugPause, compute_ctx_diff, mk_step_summary, should_pause_after
+from .debug_utils import compute_ctx_diff, mk_step_summary, should_pause_after
+from .orchestrator_scopes import apply_scopes_at_start, apply_scope_resets, apply_scope_trigger
+from .orchestrator_edges import get_available_routes, follow_edge, get_scope_trigger
 import copy
 
 class OrchestratorCore:
@@ -62,16 +65,21 @@ class OrchestratorCore:
                 return True
             # END reloops to START internally (same cycle)
             if node.get('type') == 'end':
-                self._apply_scope_resets('END', cycle_ctx)
+                apply_scope_resets('END', cycle_ctx, self.scopes)
                 start = self.find_start()
                 if not start:
                     raise ValueError("END encountered but no START node found to reloop")
                 current_node_name = start['name']
                 continue
             # Normal edge following
-            next_node = self._follow_edge_with_triggers(current_node_name, route, cycle_ctx)
+            next_node = follow_edge(current_node_name, route, self.edges)
+            # Apply scope trigger if present
+            scope_trig = get_scope_trigger(current_node_name, route, self.edges)
+            if scope_trig:
+                apply_scope_trigger(scope_trig, cycle_ctx, self.scopes)
             dbg = self.debug_getter() if self.debug_getter else None
             if should_pause_after(dbg, node, route):
+                from .debug_utils import DebugPause
                 raise DebugPause(next_node)
             current_node_name = next_node
         return False
@@ -93,7 +101,7 @@ class OrchestratorCore:
         self._last_ctx_diff = None
         try:
             if ntype == 'start':
-                self._apply_scopes_at_start(cycle_ctx)
+                apply_scopes_at_start(cycle_ctx, self.scopes)
                 details = {"node": name, "type": ntype, "scopes_applied": len(self.scopes)}
                 end_step(self.db_path, self.worker, cycle_id, name, 'succeeded', started_at, details)
                 self._last_step = mk_step_summary(details, started_at)
@@ -103,7 +111,7 @@ class OrchestratorCore:
                 end_step(self.db_path, self.worker, cycle_id, name, 'succeeded', started_at, details)
                 self._last_step = mk_step_summary(details, started_at)
                 return 'always'
-            self._apply_scope_resets(name, cycle_ctx)
+            apply_scope_resets(name, cycle_ctx, self.scopes)
             if ntype in {'io','transform'}:
                 return self._execute_handler_node(cycle_id, node, worker_ctx, cycle_ctx, started_at)
             if ntype == 'decision':
@@ -146,7 +154,6 @@ class OrchestratorCore:
         if isinstance(outputs, dict) and '__debug_preview' in outputs:
             debug_preview = outputs.get('__debug_preview')
             try:
-                # don't propagate preview into mapping
                 del outputs['__debug_preview']
             except Exception:
                 pass
@@ -177,7 +184,7 @@ class OrchestratorCore:
             raise ValueError(f"Decision node {name} missing decision.kind")
         from ..context.resolver import resolve_value
         inp = resolve_value(spec.get('input'), worker_ctx, cycle_ctx)
-        routes = self._get_available_routes(name)
+        routes = get_available_routes(name, self.edges)
         try:
             route = evaluate_decision(kind, inp, spec, routes)
         except DecisionError as e:
@@ -187,65 +194,6 @@ class OrchestratorCore:
         self._last_step = mk_step_summary(details, started_at)
         self._last_ctx_diff = {"added": {}, "changed": {}, "deleted": []}
         return route
-
-    def _apply_scopes_at_start(self, cycle_ctx: Dict) -> None:
-        for scope_def in self.scopes:
-            sname = scope_def.get('name')
-            if not sname:
-                continue
-            reset_on = scope_def.get('reset_on', [])
-            seed_data = scope_def.get('seed', {})
-            if 'START' in reset_on:
-                reset_scope(cycle_ctx, sname)
-            if seed_data:
-                seed_scope(cycle_ctx, sname, seed_data)
-
-    def _apply_scope_resets(self, trigger: str, cycle_ctx: Dict) -> None:
-        for scope_def in self.scopes:
-            sname = scope_def.get('name')
-            if not sname:
-                continue
-            if trigger in scope_def.get('reset_on', []):
-                reset_scope(cycle_ctx, sname)
-                seed_data = scope_def.get('seed', {})
-                if seed_data:
-                    seed_scope(cycle_ctx, sname, seed_data)
-
-    def _get_available_routes(self, from_node: str) -> list:
-        routes = []
-        for edge in self.edges:
-            if edge['from'] == from_node:
-                when = edge.get('when', 'always')
-                if when != 'always':
-                    routes.append(when)
-        return routes
-
-    def _follow_edge_with_triggers(self, from_node: str, route: str, cycle_ctx: Dict) -> Optional[str]:
-        for edge in self.edges:
-            if edge['from'] == from_node:
-                when = edge.get('when', 'always')
-                if when == route or when == 'always':
-                    scope_trigger = edge.get('scope_trigger')
-                    if scope_trigger:
-                        self._apply_scope_trigger(scope_trigger, cycle_ctx)
-                    return edge['to']
-        return None
-
-    def _apply_scope_trigger(self, scope_trigger: Dict, cycle_ctx: Dict) -> None:
-        action = scope_trigger.get('action')
-        sname = scope_trigger.get('scope')
-        if not sname:
-            return
-        if action == 'enter':
-            reset_scope(cycle_ctx, sname)
-            for scope_def in self.scopes:
-                if scope_def.get('name') == sname:
-                    seed_data = scope_def.get('seed', {})
-                    if seed_data:
-                        seed_scope(cycle_ctx, sname, seed_data)
-                    break
-        elif action == 'leave':
-            reset_scope(cycle_ctx, sname)
 
     # Accessors for debug (runner can read last step/diff)
     def get_last_step(self) -> Optional[Dict[str, Any]]:

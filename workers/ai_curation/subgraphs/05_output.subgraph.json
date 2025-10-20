@@ -30,7 +30,7 @@
       "type": "io",
       "handler": "http_tool",
       "inputs": {"tool": "date", "operation": "now", "format": "iso", "timezone": "UTC"},
-      "outputs": {"iso": "cycle.result.completed_at"},
+      "outputs": {"result": "cycle.result.completed_at", "content": "cycle.result.completed_at"},
       "timeout_sec": 5
     },
     {

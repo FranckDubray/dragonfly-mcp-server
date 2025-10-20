@@ -1,12 +1,8 @@
 # Runner helpers: state utils, debug state, process loading, hot-reload
-from datetime import datetime, timezone
 from pathlib import Path
 from .db import get_state_kv, set_state_kv, heartbeat
 from .process_loader import load_process_with_imports, ProcessLoadError
-
-
-def utcnow_str() -> str:
-    return datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S.%f')
+from .utils import utcnow_str
 
 
 def is_canceled(db_path: str, worker: str) -> bool:

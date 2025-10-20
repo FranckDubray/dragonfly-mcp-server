@@ -3,6 +3,12 @@ import json
 import re
 from datetime import datetime, timezone
 
+# Import centralized time utility
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from utils import utcnow_str
+
 MAX_PREVIEW_BYTES = 10_000  # 10 KB as requested
 MAX_ARRAY_ITEMS = 50
 
@@ -13,9 +19,6 @@ class DebugPause(Exception):
     def __init__(self, next_node: Optional[str]):
         super().__init__("Debug pause")
         self.next_node = next_node
-
-def utcnow_str() -> str:
-    return datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S.%f')
 
 def _mask_pii(s: str) -> str:
     try:
@@ -76,28 +79,65 @@ def compute_ctx_diff(before: Dict[str, Any], after: Dict[str, Any]) -> Dict[str,
             changed[f"cycle.{k}"] = {"old": _preview(before[k]), "new": _preview(after[k])}
     return {"added": added, "changed": changed, "deleted": deleted}
 
-# step summary
+# step summary WITH DEBUG ENRICHMENT
 
-def mk_step_summary(details: Dict[str, Any], started_at: str) -> Dict[str, Any]:
+def mk_step_summary(details: Dict[str, Any], started_at: str, 
+                   inputs: Dict[str, Any] = None, 
+                   outputs: Dict[str, Any] = None,
+                   cycle_ctx: Dict[str, Any] = None) -> Dict[str, Any]:
     try:
         start_dt = datetime.fromisoformat(started_at.replace(' ', 'T'))
         end_dt = datetime.fromisoformat(utcnow_str().replace(' ', 'T'))
         duration_ms = int((end_dt - start_dt).total_seconds() * 1000)
     except Exception:
         duration_ms = None
+    
     summary = {
         "node": details.get('node'),
         "type": details.get('type'),
         "handler_kind": details.get('handler_kind'),
         "duration_ms": duration_ms,
     }
+    
     if 'edge_taken' in details:
         summary['edge_taken'] = details['edge_taken']
     if 'attempts' in details:
         summary['attempts'] = details['attempts']
+    
     # Attach debug previews if present in details
     if 'debug_preview' in details:
         summary['debug_preview'] = details['debug_preview']
+    
+    # ENRICHMENT: Add inputs/outputs/ctx_keys for better debugging
+    debug_info = {}
+    
+    if inputs is not None:
+        try:
+            debug_info['inputs_preview'] = _preview(inputs)
+        except Exception:
+            pass
+    
+    if outputs is not None:
+        try:
+            debug_info['outputs_preview'] = _preview(outputs)
+        except Exception:
+            pass
+    
+    if cycle_ctx is not None:
+        try:
+            debug_info['ctx_keys'] = list(cycle_ctx.keys())
+            # Count total keys recursively
+            total_keys = 0
+            for scope_name, scope_data in cycle_ctx.items():
+                if isinstance(scope_data, dict):
+                    total_keys += len(scope_data)
+            debug_info['ctx_total_keys'] = total_keys
+        except Exception:
+            pass
+    
+    if debug_info:
+        summary['debug_info'] = debug_info
+    
     return summary
 
 # pause policy
