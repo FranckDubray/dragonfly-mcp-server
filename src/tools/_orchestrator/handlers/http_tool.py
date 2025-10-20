@@ -1,16 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
 # Generic MCP HTTP tool handler (POST /execute with 3-level retry)
 
 import time
@@ -37,17 +24,6 @@ class HttpToolHandler(AbstractHandler):
     def run(self, **kwargs) -> Dict[str, Any]:
         """
         Call MCP tool via POST /execute.
-        
-        Required kwargs:
-            - tool: Tool name (e.g., "imap", "call_llm")
-            - operation: Operation name (optional, tool-specific)
-            - ... other tool-specific params
-        
-        Returns:
-            Tool output (dict)
-        
-        Raises:
-            HandlerError: On failure (transport, HTTP error, timeout)
         """
         if requests is None:
             raise HandlerError(
@@ -66,23 +42,33 @@ class HttpToolHandler(AbstractHandler):
                 retryable=False
             )
         
-        # Extract params (everything except 'tool')
         params = {k: v for k, v in kwargs.items() if k != 'tool'}
-        
-        payload = {
-            "tool": tool_name,
-            "params": params
-        }
-        
-        # Default timeouts: LLM calls → 90s by default, others → 60s
+        payload = {"tool": tool_name, "params": params}
         timeout_default = 90 if tool_name == 'call_llm' else 60
         timeout = kwargs.get('timeout', timeout_default)
         
-        # Transport retry (3×, exponential backoff)
-        return self._call_with_transport_retry(payload, timeout, retries=3)
+        # Transport retry (3×)
+        result = self._call_with_transport_retry(payload, timeout, retries=3)
+        
+        # Build debug preview (10KB) but preserve original shape for outputs
+        try:
+            from ..engine.debug_utils import _preview
+            preview = {
+                "inputs": {"tool": tool_name, **({k: params[k] for k in ('model','temperature') if k in params})},
+                "messages": _preview(params.get('messages')) if 'messages' in params else None,
+                "output": _preview(result),
+            }
+            if isinstance(result, dict):
+                result["__debug_preview"] = preview
+                return result
+            else:
+                # Promote scalar/str to dict with content key for mapping compatibility
+                return {"content": result, "__debug_preview": preview}
+        except Exception:
+            # Fallback: return original result on any preview error
+            return result
     
     def _call_with_transport_retry(self, payload: Dict, timeout: int, retries: int) -> Dict:
-        """Call with automatic transport retry (network failures)"""
         for attempt in range(retries):
             try:
                 response = requests.post(
@@ -91,24 +77,16 @@ class HttpToolHandler(AbstractHandler):
                     timeout=timeout,
                     headers={"Content-Type": "application/json"}
                 )
-                
-                # Normalize HTTP status
                 return self._handle_response(response)
-            
             except (requests.ConnectionError, requests.Timeout) as e:
                 if attempt == retries - 1:
-                    # Last attempt failed
                     raise HandlerError(
                         message=f"Transport failure after {retries} attempts: {str(e)[:200]}",
                         code="TRANSPORT_FAILURE",
                         category="io",
                         retryable=True
                     )
-                
-                # Exponential backoff: 0.5s, 1s, 2s
                 time.sleep(0.5 * (2 ** attempt))
-        
-        # Unreachable (safety)
         raise HandlerError(
             message="Transport retry exhausted",
             code="TRANSPORT_FAILURE",
@@ -117,10 +95,7 @@ class HttpToolHandler(AbstractHandler):
         )
     
     def _handle_response(self, response) -> Dict:
-        """Normalize HTTP response (status codes + JSON extraction)"""
         status = response.status_code
-        
-        # 2xx Success
         if 200 <= status < 300:
             try:
                 body = response.json()
@@ -131,13 +106,9 @@ class HttpToolHandler(AbstractHandler):
                     category="validation",
                     retryable=False
                 )
-            
-            # Extract 'result' field if present (Dragonfly convention)
             if isinstance(body, dict) and 'result' in body:
                 return body['result']
             return body
-        
-        # 429 Rate Limit (retryable with Retry-After)
         elif status == 429:
             retry_after = int(response.headers.get("Retry-After", 60))
             raise HandlerError(
@@ -147,38 +118,30 @@ class HttpToolHandler(AbstractHandler):
                 retryable=True,
                 details={"retry_after_sec": retry_after}
             )
-        
-        # 4xx Client Error (non-retryable except 429)
         elif 400 <= status < 500:
             try:
                 body = response.json()
                 error_msg = body.get("error", {}).get("message", response.text[:200])
             except:
                 error_msg = response.text[:200]
-            
             raise HandlerError(
                 message=f"Client error {status}: {error_msg}",
                 code=f"HTTP_{status}",
                 category="validation",
                 retryable=False
             )
-        
-        # 5xx Server Error (retryable)
         elif 500 <= status < 600:
             try:
                 body = response.json()
                 error_msg = body.get("error", {}).get("message", response.text[:200])
             except:
                 error_msg = response.text[:200]
-            
             raise HandlerError(
                 message=f"Server error {status}: {error_msg}",
                 code=f"HTTP_{status}",
                 category="io",
                 retryable=True
             )
-        
-        # Unexpected status
         else:
             raise HandlerError(
                 message=f"Unexpected HTTP status {status}",
@@ -186,64 +149,3 @@ class HttpToolHandler(AbstractHandler):
                 category="io",
                 retryable=False
             )
-
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 

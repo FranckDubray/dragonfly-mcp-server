@@ -3,24 +3,19 @@ import json
 import re
 from datetime import datetime, timezone
 
-MAX_PREVIEW_BYTES = 100  # ~0.1 KB per value
+MAX_PREVIEW_BYTES = 10_000  # 10 KB as requested
 MAX_ARRAY_ITEMS = 50
 
 EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 SECRET_KEYS = {"password", "token", "api_key", "apikey", "secret", "access_token", "refresh_token"}
 
 class DebugPause(Exception):
-    """Signifies a debug pause request after executing a node."""
     def __init__(self, next_node: Optional[str]):
         super().__init__("Debug pause")
         self.next_node = next_node
 
-# -- Small time helper (no engine dependency) --
-
 def utcnow_str() -> str:
     return datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S.%f')
-
-# -- redaction helpers --
 
 def _mask_pii(s: str) -> str:
     try:
@@ -38,14 +33,12 @@ def _redact_dict_shallow(d: Dict[str, Any]) -> Dict[str, Any]:
             out[k] = v
     return out
 
-# -- ctx diff + redaction/truncation utilities --
+# previews
 
 def _preview(value: Any) -> Any:
     try:
-        # Redact shallow secrets in dicts first
         if isinstance(value, dict):
             value = _redact_dict_shallow(value)
-        # Truncate long arrays
         if isinstance(value, list) and len(value) > MAX_ARRAY_ITEMS:
             head = value[:MAX_ARRAY_ITEMS]
             return {
@@ -53,7 +46,6 @@ def _preview(value: Any) -> Any:
                 "truncated": True,
                 "total_count": len(value)
             }
-        # Serialize to JSON string for byte-precise truncation
         s = json.dumps(value, ensure_ascii=False, default=str)
     except Exception:
         s = str(value)
@@ -66,6 +58,8 @@ def _preview(value: Any) -> Any:
         head = b[:MAX_PREVIEW_BYTES].decode('utf-8', errors='ignore')
         return f"{head}... (truncated, total: {len(b)} bytes)"
     return s_masked if isinstance(value, (dict, list)) else s_masked
+
+# ctx diff
 
 def compute_ctx_diff(before: Dict[str, Any], after: Dict[str, Any]) -> Dict[str, Any]:
     added: Dict[str, Any] = {}
@@ -82,7 +76,7 @@ def compute_ctx_diff(before: Dict[str, Any], after: Dict[str, Any]) -> Dict[str,
             changed[f"cycle.{k}"] = {"old": _preview(before[k]), "new": _preview(after[k])}
     return {"added": added, "changed": changed, "deleted": deleted}
 
-# -- step summary --
+# step summary
 
 def mk_step_summary(details: Dict[str, Any], started_at: str) -> Dict[str, Any]:
     try:
@@ -101,9 +95,12 @@ def mk_step_summary(details: Dict[str, Any], started_at: str) -> Dict[str, Any]:
         summary['edge_taken'] = details['edge_taken']
     if 'attempts' in details:
         summary['attempts'] = details['attempts']
+    # Attach debug previews if present in details
+    if 'debug_preview' in details:
+        summary['debug_preview'] = details['debug_preview']
     return summary
 
-# -- pause policy --
+# pause policy
 
 def should_pause_after(debug_state: Dict[str, Any] | None, node: Dict[str, Any], route: str) -> bool:
     if not debug_state or not debug_state.get('enabled'):

@@ -165,3 +165,29 @@ workers/ai_curation/
 #### Upgrade notes
 - Aucun breaking change
 - Redémarrer le worker pour prendre en compte les templates corrigés
+
+## [1.50.2] - 2025-10-20
+
+### ♻️ Orchestrator Runner — Refactor + Debug-first + I/O Preview (10KB)
+
+- ✂️ Split runner into small modules (<7KB each):
+  - runner.py (entrypoint thin)
+  - runner_main.py (signals + bootstrap)
+  - runner_loop.py (execution loop + debug integration)
+  - runner_helpers.py (state/debug/process helpers)
+  - debug_loop.py (pause/wait loop)
+- 🧭 Debug invariance:
+  - Pause immédiate possible au START: start(..., debug={"enable_on_start": true})
+  - Reprise dans le même cycle_id (pas de retour à START ni reset inattendu)
+  - Fallback in-progress: executing_node = next_node
+- 🔎 I/O instrumentation (debug only):
+  - step.summary.debug_preview:
+    - inputs: {tool, model, temperature}
+    - messages: prompt résolu (aperçu 10KB, PII masquée)
+    - output: début de réponse tool (aperçu 10KB)
+- 🧹 Suppression SLEEP_end (scorie historique). END reboucle vers START dans l’engine; EXIT termine.
+- 🧱 Sans breaking change pour les process JSON existants.
+
+#### Notes
+- En mode in_progress, previous_node peut rester vide tant que la pause n’est pas encore atteinte. Dès ready, paused_at/next_node/step/ctx_diff sont complets.
+- Recommandé: utiliser enable_on_start pour un debug step-by-step déterministe dès le début du cycle.
