@@ -1,4 +1,4 @@
-# Thin wrapper preserving public API
+# Orchestrator Engine public entry
 from typing import Dict, Any, Callable, Optional
 from .orchestrator_core import OrchestratorCore
 

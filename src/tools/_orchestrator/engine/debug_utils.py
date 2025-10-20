@@ -11,6 +11,15 @@
 
 
 
+
+
+
+
+
+
+
+
+
 from typing import Any, Dict, Optional
 import json
 import re
@@ -252,15 +261,3 @@ def sanitize_details_for_log(details: Dict[str, Any], max_bytes: int = MAX_PREVI
         return clean
     except Exception:
         return {"error": "failed to sanitize details"}
-
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
