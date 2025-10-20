@@ -1,3 +1,31 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Start/Stop operations (module <7KB)
 
 import json
@@ -67,12 +95,21 @@ def start(params: dict) -> dict:
         set_state_kv(db_path, worker_name, 'process_version', str(process_version))
     set_state_kv(db_path, worker_name, 'hot_reload', str(hot_reload).lower())
     
-    # NEW: start directly in debug if requested
+    # NEW: start directly in debug if requested; otherwise hard-reset stale debug state
     debug_params = (params or {}).get('debug') or {}
     if debug_params.get('enable_on_start'):
         set_state_kv(db_path, worker_name, 'debug.enabled', 'true')
         set_state_kv(db_path, worker_name, 'debug.mode', 'step')
         set_state_kv(db_path, worker_name, 'debug.pause_request', 'immediate')
+    else:
+        # Reset stale debug flags from previous runs
+        set_state_kv(db_path, worker_name, 'debug.enabled', 'false')
+        for key in [
+            'debug.mode','debug.pause_request','debug.until','debug.breakpoints','debug.command',
+            'debug.paused_at','debug.next_node','debug.cycle_id','debug.last_step','debug.ctx_diff',
+            'debug.watches','debug.watches_values','debug.response_id','debug.req_id','debug.executing_node'
+        ]:
+            set_state_kv(db_path, worker_name, key, '')
 
     heartbeat(db_path, worker_name)
 
@@ -134,3 +171,83 @@ def stop(params: dict) -> dict:
         return {"accepted": True, "status": "ok", "message": message, "pid": pid, "db_path": db_path, "truncated": False}
     except Exception as e:
         return {"accepted": False, "status": "error", "message": f"Failed to send signal: {str(e)[:200]}", "pid": pid, "db_path": db_path, "truncated": False}
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
