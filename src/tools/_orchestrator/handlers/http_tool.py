@@ -1,19 +1,28 @@
 
-
 # Generic MCP HTTP tool handler (POST /execute with 3-level retry)
 
 import time
 import json
 from typing import Dict, Any
+import sys
+
+# Try to import requests, capture import error for diagnostics
 try:
-    import requests
-except ImportError:
-    requests = None
+    import requests  # type: ignore
+    _requests_import_error = None
+except Exception as e:  # broader than ImportError for env issues
+    requests = None  # type: ignore
+    _requests_import_error = str(e)
+
+# Fallback imports
+import urllib.request
+import urllib.error
+import socket
 
 from .base import AbstractHandler, HandlerError
 
 class HttpToolHandler(AbstractHandler):
-    """Generic HTTP tool handler (calls MCP server /execute endpoint)"""
+    """Generic HTTP tool handler (calls MCP server /execute endpoint) with urllib fallback if 'requests' is unavailable."""
     
     def __init__(self, base_url: str = "http://127.0.0.1:8000"):
         self.base_url = base_url.rstrip('/')
@@ -27,14 +36,6 @@ class HttpToolHandler(AbstractHandler):
         """
         Call MCP tool via POST /execute.
         """
-        if requests is None:
-            raise HandlerError(
-                message="requests library not available",
-                code="MISSING_DEPENDENCY",
-                category="validation",
-                retryable=False
-            )
-        
         tool_name = kwargs.get('tool')
         if not tool_name:
             raise HandlerError(
@@ -74,22 +75,66 @@ class HttpToolHandler(AbstractHandler):
     def _call_with_transport_retry(self, payload: Dict, timeout: int, retries: int) -> Dict:
         for attempt in range(retries):
             try:
-                response = requests.post(
-                    self._endpoint,
-                    json=payload,
-                    timeout=timeout,
-                    headers={"Content-Type": "application/json"}
-                )
-                return self._handle_response(response)
-            except (requests.ConnectionError, requests.Timeout) as e:
+                if requests is not None:
+                    response = requests.post(
+                        self._endpoint,
+                        json=payload,
+                        timeout=timeout,
+                        headers={"Content-Type": "application/json", "User-Agent": "Orchestrator/1.0"}
+                    )
+                    return self._handle_response(response.status_code, response.headers, response.text)
+                else:
+                    # urllib fallback
+                    data = json.dumps(payload).encode('utf-8')
+                    req = urllib.request.Request(
+                        self._endpoint,
+                        data=data,
+                        headers={"Content-Type": "application/json", "User-Agent": "Orchestrator/1.0"},
+                        method="POST",
+                    )
+                    with urllib.request.urlopen(req, timeout=timeout) as resp:
+                        status = resp.getcode()
+                        headers = dict(resp.headers.items()) if hasattr(resp, 'headers') else {}
+                        body_text = resp.read().decode('utf-8', errors='replace')
+                        return self._handle_response(status, headers, body_text)
+            except (socket.timeout) as e:
                 if attempt == retries - 1:
                     raise HandlerError(
-                        message=f"Transport failure after {retries} attempts: {str(e)[:200]}",
+                        message=f"Timeout after {retries} attempts: {str(e)[:200]}",
+                        code="TIMEOUT",
+                        category="timeout",
+                        retryable=True
+                    )
+                time.sleep(0.5 * (2 ** attempt))
+            except (urllib.error.URLError) as e:
+                if attempt == retries - 1:
+                    raise HandlerError(
+                        message=f"Transport failure after {retries} attempts (urllib): {str(e)[:200]}",
                         code="TRANSPORT_FAILURE",
+                        category="io",
+                        retryable=True,
+                        details={"import_error": _requests_import_error, "python": sys.executable}
+                    )
+                time.sleep(0.5 * (2 ** attempt))
+            except Exception as e:
+                # requests path or unexpected
+                if attempt == retries - 1:
+                    # If specifically requests missing, surface clearer message once
+                    if requests is None and _requests_import_error:
+                        raise HandlerError(
+                            message=f"requests not available: {_requests_import_error} (python={sys.executable})",
+                            code="MISSING_DEPENDENCY",
+                            category="validation",
+                            retryable=False
+                        )
+                    raise HandlerError(
+                        message=f"HTTP call failed: {str(e)[:200]}",
+                        code="HTTP_ERROR",
                         category="io",
                         retryable=True
                     )
                 time.sleep(0.5 * (2 ** attempt))
+        # Safety net
         raise HandlerError(
             message="Transport retry exhausted",
             code="TRANSPORT_FAILURE",
@@ -97,11 +142,10 @@ class HttpToolHandler(AbstractHandler):
             retryable=True
         )
     
-    def _handle_response(self, response) -> Dict:
-        status = response.status_code
+    def _handle_response(self, status: int, headers: Dict[str, Any], body_text: str) -> Dict:
         if 200 <= status < 300:
             try:
-                body = response.json()
+                body = json.loads(body_text)
             except json.JSONDecodeError:
                 raise HandlerError(
                     message="Response body is not valid JSON",
@@ -113,7 +157,7 @@ class HttpToolHandler(AbstractHandler):
                 return body['result']
             return body
         elif status == 429:
-            retry_after = int(response.headers.get("Retry-After", 60))
+            retry_after = int(headers.get("Retry-After", 60)) if headers else 60
             raise HandlerError(
                 message=f"Rate limited, retry after {retry_after}s",
                 code="RATE_LIMIT",
@@ -122,11 +166,13 @@ class HttpToolHandler(AbstractHandler):
                 details={"retry_after_sec": retry_after}
             )
         elif 400 <= status < 500:
+            error_msg = body_text[:200]
             try:
-                body = response.json()
-                error_msg = body.get("error", {}).get("message", response.text[:200])
-            except:
-                error_msg = response.text[:200]
+                body = json.loads(body_text)
+                if isinstance(body, dict):
+                    error_msg = body.get("error", {}).get("message", error_msg)
+            except Exception:
+                pass
             raise HandlerError(
                 message=f"Client error {status}: {error_msg}",
                 code=f"HTTP_{status}",
@@ -134,11 +180,13 @@ class HttpToolHandler(AbstractHandler):
                 retryable=False
             )
         elif 500 <= status < 600:
+            error_msg = body_text[:200]
             try:
-                body = response.json()
-                error_msg = body.get("error", {}).get("message", response.text[:200])
-            except:
-                error_msg = response.text[:200]
+                body = json.loads(body_text)
+                if isinstance(body, dict):
+                    error_msg = body.get("error", {}).get("message", error_msg)
+            except Exception:
+                pass
             raise HandlerError(
                 message=f"Server error {status}: {error_msg}",
                 code=f"HTTP_{status}",
