@@ -1,3 +1,15 @@
+
+
+
+
+
+
+
+
+
+
+
+
 # Orchestrator Core (post-split aggregator) — see core_nodes_*.py for logic
 from typing import Dict, Any, Callable, Optional
 import copy
@@ -27,6 +39,13 @@ class OrchestratorCore:
         self.scopes = graph.get('scopes', [])
         self._last_step: Optional[Dict[str, Any]] = None
         self._last_ctx_diff: Optional[Dict[str, Any]] = None
+
+    # Exposed for debug inspector
+    def get_last_step(self) -> Optional[Dict[str, Any]]:
+        return self._last_step
+
+    def get_last_ctx_diff(self) -> Optional[Dict[str, Any]]:
+        return self._last_ctx_diff
 
     def find_start(self) -> Optional[Dict]:
         for node in self.nodes.values():
@@ -74,9 +93,11 @@ class OrchestratorCore:
                     else:
                         raise ValueError(f"Unknown node type: {ntype}")
 
-                # Routing
+                # If EXIT encountered, stop external run
                 if node.get('type') == 'exit':
                     return True
+
+                # END reboucle to START automatically
                 if node.get('type') == 'end':
                     start = self.find_start()
                     if not start:
@@ -84,10 +105,23 @@ class OrchestratorCore:
                     current_node_name = start['name']
                     continue
 
+                # Compute next node from routing
                 next_node = follow_edge(current_node_name, route, self.edges)
                 scope_trig = get_scope_trigger(current_node_name, route, self.edges)
                 if scope_trig:
                     apply_scope_trigger(scope_trig, cycle_ctx, self.scopes)
+
+                # DEBUG GATING: pause after node if requested
+                try:
+                    if self.debug_getter is not None:
+                        dbg = self.debug_getter() or {}
+                        from .debug_utils import should_pause_after, DebugPause
+                        if should_pause_after(dbg, node, route):
+                            # Hand off next_node to runner loop
+                            raise DebugPause(next_node)
+                except Exception:
+                    # Never let debug gating crash normal execution
+                    pass
 
                 current_node_name = next_node
 
