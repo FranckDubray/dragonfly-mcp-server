@@ -1,0 +1,12 @@
+{
+  "version": "1.0",
+  "process_version": "6.2.1-alain",
+  "metadata": {
+    "description": "AI/LLM curation worker (Alain) with single-DB (worker_Alain.db)",
+    "author": "orchestrator-team",
+    "architecture": "INIT → COLLECT → SCORE → VALIDATE → OUTPUT"
+  },
+  "worker_ctx": {"$import": "config/worker_ctx_alain.json"},
+  "scopes": {"$import": "config/scopes.json"},
+  "graph": {"$import": "main.process.json#graph"}
+}
