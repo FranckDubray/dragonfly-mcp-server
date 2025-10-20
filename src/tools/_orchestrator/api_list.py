@@ -5,7 +5,7 @@ import sqlite3
 from pathlib import Path
 from typing import Dict, Any, List
 
-from .api_common import SQLITE_DIR
+from .api_spawn import SQLITE_DIR
 
 
 def _read_state(db_path: str, worker: str, key: str) -> str:

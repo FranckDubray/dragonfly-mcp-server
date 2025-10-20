@@ -2,13 +2,10 @@
 # No ORM, minimal, fast. UTC microseconds timestamps.
 
 import sqlite3
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+from .utils import utcnow_str
 
-def _utcnow_str() -> str:
-    """UTC ISO8601 with microseconds (e.g., '2025-01-18 14:32:10.123456')"""
-    return datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S.%f')
 
 def init_db(db_path: str) -> None:
     """Create tables if absent (idempotent)"""
@@ -96,4 +93,4 @@ def set_phase(db_path: str, worker: str, phase: str) -> None:
 
 def heartbeat(db_path: str, worker: str) -> None:
     """Update heartbeat timestamp"""
-    set_state_kv(db_path, worker, 'heartbeat', _utcnow_str())
+    set_state_kv(db_path, worker, 'heartbeat', utcnow_str())

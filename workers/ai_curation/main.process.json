@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "process_version": "6.2.0-hierarchical-ssot",
+  "process_version": "6.2.1-hf",
   "metadata": {
     "description": "AI/LLM curation worker with hierarchical subgraphs (72h freshness, 5 sources, quality validation, FR reports)",
     "author": "orchestrator-team",

@@ -21,8 +21,15 @@
         "format": "iso",
         "timezone": "UTC"
       },
-      "outputs": {"iso": "cycle.dates.now"},
+      "outputs": {"result": "cycle.dates.now", "content": "cycle.dates.now"},
       "timeout_sec": 5
+    },
+    {
+      "name": "date_to_iso_now",
+      "type": "transform",
+      "handler": "date_to_iso",
+      "inputs": {"value": "${cycle.dates.now}"},
+      "outputs": {"result": "cycle.dates.now"}
     },
     {
       "name": "compute_from_date",
@@ -30,11 +37,11 @@
       "handler": "http_tool",
       "inputs": {
         "tool": "date",
-        "operation": "add_delta",
-        "base_iso": "${cycle.dates.now}",
+        "operation": "add",
+        "date": "${cycle.dates.now}",
         "days": -3
       },
-      "outputs": {"iso": "cycle.dates.from"},
+      "outputs": {"result": "cycle.dates.from", "content": "cycle.dates.from"},
       "timeout_sec": 5
     },
     {
@@ -68,7 +75,8 @@
   ],
   
   "edges": [
-    {"from": "get_date_now", "to": "compute_from_date"},
+    {"from": "get_date_now", "to": "date_to_iso_now"},
+    {"from": "date_to_iso_now", "to": "compute_from_date"},
     {"from": "compute_from_date", "to": "ensure_validation_logs_table"},
     {"from": "ensure_validation_logs_table", "to": "ensure_reports_table"}
   ]
