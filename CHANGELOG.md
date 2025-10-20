@@ -146,3 +146,22 @@ workers/ai_curation/
   - Filtre fraîcheur multi-source (<72h)
   - Fusion/dédoublonnage du rapport
 - 🧹 .gitignore élargi (logs/, docs/, sqlite3/, *.db)
+
+## [1.50.1] - 2025-10-20
+
+### 🚑 Orchestrator v6.2.1 — Hotfix debug + stabilité
+
+- ✅ FIX: process_loader._resolve_imports — mauvais nom de paramètre (Any → data) causant NameError
+- ✅ FIX: Runner debug handshake — écrit maintenant debug.response_id lors du pause, évite les "in_progress" vides
+- ✅ FEAT: Engine live fields — écrit current_node et debug.executing_node au begin_step (effacé au finally)
+- ✅ FIX: VALIDATE template — remplace ${score}|${retry_count}|${feedback} par {{score}}|{{retry_count}}|{{feedback}} pour éviter la double-résolution
+- 🧩 LOGS: step summaries plus lisibles (durations, attempts); ctx diff dispo via debug (redaction/truncation)
+- 📝 NOTE: En mode step-by-step, cycle_id s’incrémente (effet de bord connu). À investiguer pour une future version (pause intra-cycle sans ++).
+
+#### Impact
+- Debug pas-à-pas exploitable (paused_at/next_node/cycle_id stables, step + ctx_diff visibles)
+- Disparition de l’erreur "Invalid path … score" après 1 cycle OK (ancien last_error conservé jusqu’à succès)
+
+#### Upgrade notes
+- Aucun breaking change
+- Redémarrer le worker pour prendre en compte les templates corrigés

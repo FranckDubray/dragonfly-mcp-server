@@ -1,3 +1,4 @@
+
 from typing import Dict, Any, Callable, Optional
 from datetime import datetime, timezone
 from ..context import resolve_inputs, assign_outputs, reset_scope, seed_scope
@@ -73,6 +74,13 @@ class OrchestratorCore:
         ntype = node.get('type', 'io')
         handler_kind = node.get('handler')
         started_at = self._utcnow_str()
+        # NEW: expose current/executing node
+        try:
+            from ..db import set_state_kv
+            set_state_kv(self.db_path, self.worker, 'current_node', name)
+            set_state_kv(self.db_path, self.worker, 'debug.executing_node', name)
+        except Exception:
+            pass
         begin_step(self.db_path, self.worker, cycle_id, name, handler_kind)
         self._last_step = None
         self._last_ctx_diff = None
@@ -100,6 +108,12 @@ class OrchestratorCore:
         except Exception as e:
             end_step(self.db_path, self.worker, cycle_id, name, 'failed', started_at, {"error": {"message": str(e)[:400], "code": getattr(e,'code','UNKNOWN'), "category": getattr(e,'category','unknown')}})
             raise
+        finally:
+            try:
+                from ..db import set_state_kv
+                set_state_kv(self.db_path, self.worker, 'debug.executing_node', '')
+            except Exception:
+                pass
 
     def _execute_handler_node(self, cycle_id: str, node: Dict, worker_ctx: Dict, cycle_ctx: Dict, started_at: str) -> str:
         name = node['name']
@@ -124,9 +138,16 @@ class OrchestratorCore:
         outputs_spec = node.get('outputs', {})
         if outputs_spec:
             assign_outputs(cycle_ctx, outputs, outputs_spec)
+        # Enrich details
+        import json
         details = {"node": name, "type": node.get('type'), "handler_kind": node.get('handler')}
         if attempts[0] > 1:
             details['attempts'] = attempts[0]
+        try:
+            details['input_size'] = len(json.dumps(inputs))
+            details['output_size'] = len(json.dumps(outputs))
+        except Exception:
+            pass
         end_step(self.db_path, self.worker, cycle_id, name, 'succeeded', started_at, details)
         self._last_ctx_diff = compute_ctx_diff(before_ctx, cycle_ctx)
         self._last_step = mk_step_summary(details, started_at)
