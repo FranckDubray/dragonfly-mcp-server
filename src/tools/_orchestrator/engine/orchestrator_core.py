@@ -57,17 +57,16 @@ class OrchestratorCore:
             except Exception as e:
                 log_crash(self.db_path, self.worker, cycle_id, current_node_name, e, worker_ctx, cycle_ctx)
                 raise
-            # Handle EXIT / END semantics here (no runner-driven sleep)
+            # EXIT ends the whole process
             if node.get('type') == 'exit':
-                return True  # EXIT ends the whole process
+                return True
+            # END reloops to START internally (same cycle)
             if node.get('type') == 'end':
-                # Declarative resets for END, then reloop to START automatically
                 self._apply_scope_resets('END', cycle_ctx)
                 start = self.find_start()
                 if not start:
                     raise ValueError("END encountered but no START node found to reloop")
                 current_node_name = start['name']
-                # Continue same cycle (no cycle_id increment here)
                 continue
             # Normal edge following
             next_node = self._follow_edge_with_triggers(current_node_name, route, cycle_ctx)
@@ -130,7 +129,6 @@ class OrchestratorCore:
         timeout_eff = node.get('timeout_sec', 60)
         if 'timeout' not in inputs and timeout_eff is not None:
             inputs['timeout'] = timeout_eff
-        # Retry policy: merge worker_ctx.retry_defaults with node.retry (node overrides)
         retry_defaults = worker_ctx.get('retry_defaults', {'max': 0, 'delay_sec': 0.5})
         node_retry = node.get('retry', {}) or {}
         retry_policy = {**retry_defaults, **node_retry}
@@ -143,10 +141,18 @@ class OrchestratorCore:
         def execute_handler():
             return handler.run(**inputs)
         outputs = execute_with_retry(execute_handler, retry_policy, on_retry)
+        # Extract debug preview if present
+        debug_preview = None
+        if isinstance(outputs, dict) and '__debug_preview' in outputs:
+            debug_preview = outputs.get('__debug_preview')
+            try:
+                # don't propagate preview into mapping
+                del outputs['__debug_preview']
+            except Exception:
+                pass
         outputs_spec = node.get('outputs', {})
         if outputs_spec:
             assign_outputs(cycle_ctx, outputs, outputs_spec)
-        # Enrich details
         import json
         details = {"node": name, "type": node.get('type'), "handler_kind": node.get('handler')}
         if attempts[0] > 1:
@@ -156,6 +162,8 @@ class OrchestratorCore:
             details['output_size'] = len(json.dumps(outputs))
         except Exception:
             pass
+        if debug_preview is not None:
+            details['debug_preview'] = debug_preview
         end_step(self.db_path, self.worker, cycle_id, name, 'succeeded', started_at, details)
         self._last_ctx_diff = compute_ctx_diff(before_ctx, cycle_ctx)
         self._last_step = mk_step_summary(details, started_at)

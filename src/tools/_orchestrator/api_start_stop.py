@@ -66,6 +66,14 @@ def start(params: dict) -> dict:
     if process_version:
         set_state_kv(db_path, worker_name, 'process_version', str(process_version))
     set_state_kv(db_path, worker_name, 'hot_reload', str(hot_reload).lower())
+    
+    # NEW: start directly in debug if requested
+    debug_params = (params or {}).get('debug') or {}
+    if debug_params.get('enable_on_start'):
+        set_state_kv(db_path, worker_name, 'debug.enabled', 'true')
+        set_state_kv(db_path, worker_name, 'debug.mode', 'step')
+        set_state_kv(db_path, worker_name, 'debug.pause_request', 'immediate')
+
     heartbeat(db_path, worker_name)
 
     try:
