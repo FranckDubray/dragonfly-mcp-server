@@ -8,5 +8,5 @@
   },
   "worker_ctx": {"$import": "config/worker_ctx_alain.json"},
   "scopes": {"$import": "config/scopes.json"},
-  "graph": {"$import": "main.process.json#graph"}
+  "graph": {"$import": "main_alain_full.process.json#graph"}
 }

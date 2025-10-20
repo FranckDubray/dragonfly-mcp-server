@@ -1,3 +1,4 @@
+
 {
   "timezone": "UTC",
   "llm_model": "gpt-4o-mini",
@@ -5,7 +6,7 @@
   "llm_temperature": 0.3,
   "quality_threshold": 7,
   "max_retries": 3,
-  "db_name": "ai_curation_reports",
+  "db_name": "worker_Alain",
   "retry_defaults": {
     "max": 2,
     "delay_sec": 1
