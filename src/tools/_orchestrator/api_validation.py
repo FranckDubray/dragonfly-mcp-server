@@ -58,8 +58,9 @@ def validate_process_logic(process_data: dict) -> Optional[str]:
 
     if not isinstance(process_data.get('worker_ctx'), dict):
         return "worker_ctx must be an object (and must include db_name)"
-    if not process_data['worker_ctx'].get('db_name'):
-        return "worker_ctx.db_name required (single data DB per worker)"
+
+    # db_name not required anymore: db_file is injected by runner_main
+    # Keep backward compatibility: if db_name present, ignore
 
     graph = process_data.get('graph', {})
     if not isinstance(graph, dict) or not graph:

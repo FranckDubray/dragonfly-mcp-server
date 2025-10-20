@@ -1,3 +1,24 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # SQLite helpers for orchestrator state (job_state_kv, job_steps, crash_logs)
 # No ORM, minimal, fast. UTC microseconds timestamps.
 
@@ -10,8 +31,14 @@ from .utils import utcnow_str
 def init_db(db_path: str) -> None:
     """Create tables if absent (idempotent)"""
     Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(db_path)
+    # Set a small busy timeout to reduce 'database is locked' errors
+    conn = sqlite3.connect(db_path, timeout=5.0)
     try:
+        # Enable WAL mode for better concurrency (safe default)
+        try:
+            conn.execute("PRAGMA journal_mode=WAL;")
+        except Exception:
+            pass
         conn.execute("""
             CREATE TABLE IF NOT EXISTS job_state_kv (
                 worker TEXT NOT NULL,
@@ -63,7 +90,7 @@ def init_db(db_path: str) -> None:
 
 def get_state_kv(db_path: str, worker: str, key: str) -> Optional[str]:
     """Read state value (returns None if missing)"""
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path, timeout=5.0)
     try:
         cur = conn.execute("SELECT svalue FROM job_state_kv WHERE worker=? AND skey=?", (worker, key))
         row = cur.fetchone()
@@ -73,7 +100,7 @@ def get_state_kv(db_path: str, worker: str, key: str) -> Optional[str]:
 
 def set_state_kv(db_path: str, worker: str, key: str, value: str) -> None:
     """Write state value (upsert)"""
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path, timeout=5.0)
     try:
         conn.execute(
             "INSERT OR REPLACE INTO job_state_kv (worker, skey, svalue) VALUES (?, ?, ?)",
@@ -94,3 +121,72 @@ def set_phase(db_path: str, worker: str, phase: str) -> None:
 def heartbeat(db_path: str, worker: str) -> None:
     """Update heartbeat timestamp"""
     set_state_kv(db_path, worker, 'heartbeat', utcnow_str())
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

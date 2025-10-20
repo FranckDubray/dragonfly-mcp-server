@@ -1,3 +1,16 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
 from typing import Any, Dict, Optional
 import json
 import re
@@ -162,3 +175,92 @@ def should_pause_after(debug_state: Dict[str, Any] | None, node: Dict[str, Any],
             if when is None or when == route:
                 return True
     return False
+
+# truncation detection (shared)
+
+def is_truncated_preview(obj: Any, max_bytes: int = MAX_PREVIEW_BYTES) -> bool:
+    """
+    Returns True if the preview payload is considered truncated, based on:
+      - total serialized size exceeding max_bytes, or
+      - presence of inner truncation markers produced by _preview (truncated=True or "(truncated, total:")
+    """
+    try:
+        def _has_trunc(o: Any) -> bool:
+            if isinstance(o, dict):
+                if o.get('truncated') is True:
+                    return True
+                for v in o.values():
+                    if _has_trunc(v):
+                        return True
+                return False
+            if isinstance(o, list):
+                for v in o:
+                    if _has_trunc(v):
+                        return True
+                return False
+            if isinstance(o, str) and '(truncated, total:' in o:
+                return True
+            return False
+        s = json.dumps(obj, ensure_ascii=False)
+        if len(s) > max_bytes:
+            return True
+        return _has_trunc(obj)
+    except Exception:
+        return False
+
+# sanitize details for logs (PII masking + truncation + size cap)
+
+def sanitize_details_for_log(details: Dict[str, Any], max_bytes: int = MAX_PREVIEW_BYTES) -> Dict[str, Any]:
+    """
+    Return a sanitized copy of details suitable for persistent logs.
+    - masks secrets by key name
+    - truncates long strings (>200 chars)
+    - limits arrays to 50 items with preview metadata
+    - sets details['truncated']=True if resulting JSON exceeds max_bytes (and drops bulky debug_preview)
+    """
+    import copy
+    def _sanitize(obj: Any) -> Any:
+        if isinstance(obj, dict):
+            out = {}
+            for k, v in obj.items():
+                lk = str(k).lower()
+                if any(sk in lk for sk in SECRET_KEYS):
+                    out[k] = "REDACTED"
+                    continue
+                out[k] = _sanitize(v)
+            return out
+        if isinstance(obj, list):
+            if len(obj) > MAX_ARRAY_ITEMS:
+                head = [_sanitize(x) for x in obj[:MAX_ARRAY_ITEMS]]
+                return {"preview": head, "truncated": True, "total_count": len(obj)}
+            return [_sanitize(x) for x in obj]
+        if isinstance(obj, str):
+            s = _mask_pii(obj)
+            if len(s) > 200:
+                return f"{s[:200]}... (truncated, total: {len(s)} chars)"
+            return s
+        return obj
+
+    clean = _sanitize(copy.deepcopy(details or {}))
+    try:
+        s = json.dumps(clean, ensure_ascii=False, separators=(',', ':'))
+        if len(s) > max_bytes:
+            # Drop heavy debug_preview if present, mark truncated
+            if isinstance(clean, dict) and 'debug_preview' in clean:
+                clean['debug_preview'] = "omitted due to size"
+            clean['truncated'] = True
+        return clean
+    except Exception:
+        return {"error": "failed to sanitize details"}
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

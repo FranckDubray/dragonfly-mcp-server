@@ -40,7 +40,7 @@
       "inputs": {
         "tool": "sqlite_db",
         "operation": "execute",
-        "db": "${worker.db_name}.db",
+        "db": "${worker.db_file}",
         "query": "INSERT INTO reports (date_from, date_to, report_markdown, avg_score, retry_count, top10_json, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
         "params": [
           "${cycle.dates.from}",

@@ -1,3 +1,16 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Input validation for orchestrator tool (spec-aligned)
 # Chroot enforcement: workers/ only, no .., no absolute paths, no escaping symlinks
 
@@ -6,6 +19,18 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]  # dragonfly-mcp-server/
 WORKERS_DIR = PROJECT_ROOT / 'workers'
+
+def validate_worker_name(worker_name: str) -> str:
+    """Validate worker_name (alnum, -, _) and return normalized value.
+    Raises ValueError if invalid.
+    """
+    name = (worker_name or '').strip()
+    if not name:
+        raise ValueError("worker_name required")
+    if not all(c.isalnum() or c in '-_' for c in name):
+        raise ValueError("worker_name must be alphanumeric with - or _")
+    return name
+
 
 def validate_params(params: dict) -> dict:
     """Validate and normalize params (raises ValueError if invalid)"""
@@ -16,19 +41,12 @@ def validate_params(params: dict) -> dict:
         p['operation'] = 'start'
     
     op = p['operation']
-    if op not in {'start', 'stop', 'status'}:
+    if op not in {'start', 'stop', 'status', 'debug', 'list'}:
         raise ValueError(f"Invalid operation: {op}")
     
-    # worker_name required for all operations
-    worker_name = (p.get('worker_name') or '').strip()
-    if not worker_name:
-        raise ValueError("worker_name required")
-    
-    # Validate worker_name (safe chars only: alnum, -, _)
-    if not all(c.isalnum() or c in '-_' for c in worker_name):
-        raise ValueError("worker_name must be alphanumeric with - or _")
-    
-    p['worker_name'] = worker_name
+    # worker_name required for all operations except 'list'
+    if op != 'list':
+        p['worker_name'] = validate_worker_name(p.get('worker_name'))
     
     # Start operation: worker_file required and chrooted
     if op == 'start':

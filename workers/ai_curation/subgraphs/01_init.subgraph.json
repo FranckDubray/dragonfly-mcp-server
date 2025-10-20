@@ -1,3 +1,7 @@
+
+
+
+
 {
   "id": "INIT",
   "version": "1.0",
@@ -27,8 +31,12 @@
     {
       "name": "date_to_iso_now",
       "type": "transform",
-      "handler": "date_to_iso",
-      "inputs": {"value": "${cycle.dates.now}"},
+      "handler": "date_ops",
+      "inputs": {
+        "ops": [
+          {"op": "format", "value": "${cycle.dates.now}", "to": "iso", "save_as": "result"}
+        ]
+      },
       "outputs": {"result": "cycle.dates.now"}
     },
     {
@@ -51,7 +59,7 @@
       "inputs": {
         "tool": "sqlite_db",
         "operation": "execute",
-        "db": "${worker.db_name}.db",
+        "db": "${worker.db_file}",
         "query": "CREATE TABLE IF NOT EXISTS validation_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT NOT NULL, attempt INTEGER, score REAL, feedback TEXT, top10_json TEXT)",
         "params": []
       },
@@ -65,7 +73,7 @@
       "inputs": {
         "tool": "sqlite_db",
         "operation": "execute",
-        "db": "${worker.db_name}.db",
+        "db": "${worker.db_file}",
         "query": "CREATE TABLE IF NOT EXISTS reports (id INTEGER PRIMARY KEY AUTOINCREMENT, date_from TEXT, date_to TEXT, report_markdown TEXT, avg_score REAL, retry_count INTEGER, top10_json TEXT, completed_at TEXT)",
         "params": []
       },

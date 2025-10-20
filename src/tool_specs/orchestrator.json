@@ -1,3 +1,16 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
 {
   "type": "function",
   "function": {
@@ -93,6 +106,20 @@
             "timeout_sec": { "type": "number", "description": "Synchronous wait timeout for step/continue/run_until (seconds).", "default": 10 }
           },
           "required": ["action"],
+          "additionalProperties": false
+        },
+        "include_metrics": {
+          "type": "boolean",
+          "description": "If true, include a compact metrics block in status response (safe for LLM/UI).",
+          "default": false
+        },
+        "metrics": {
+          "type": "object",
+          "description": "Optional metrics configuration for status.",
+          "properties": {
+            "include": { "type": "boolean", "description": "Include metrics block (same as include_metrics)", "default": false },
+            "window": { "type": ["string", "number"], "description": "Window size: '5m', '15m', '1h' or minutes as number (default 60)." }
+          },
           "additionalProperties": false
         }
       },

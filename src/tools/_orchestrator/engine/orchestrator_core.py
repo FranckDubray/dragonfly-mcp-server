@@ -1,14 +1,36 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Orchestrator core - Main execution loop (refactored <7KB)
 
 from typing import Dict, Any, Callable, Optional
-from datetime import datetime, timezone
 from ..context import resolve_inputs, assign_outputs
 from ..handlers import get_registry, HandlerError
 from ..logging import begin_step, end_step, log_retry_attempt
 from ..logging.crash_logger import log_crash
 from ..policies import execute_with_retry, RetryExhaustedError
 from .decisions import evaluate_decision, DecisionError
-from .debug_utils import compute_ctx_diff, mk_step_summary, should_pause_after
+from .debug_utils import compute_ctx_diff, mk_step_summary, should_pause_after, _preview, is_truncated_preview
 from .orchestrator_scopes import apply_scopes_at_start, apply_scope_resets, apply_scope_trigger
 from .orchestrator_edges import get_available_routes, follow_edge, get_scope_trigger
 import copy
@@ -30,10 +52,6 @@ class OrchestratorCore:
         self.scopes = graph.get('scopes', [])
         self._last_step: Optional[Dict[str, Any]] = None
         self._last_ctx_diff: Optional[Dict[str, Any]] = None
-
-    @staticmethod
-    def _utcnow_str() -> str:
-        return datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S.%f')
 
     def find_start(self) -> Optional[Dict]:
         for node in self.nodes.values():
@@ -88,7 +106,6 @@ class OrchestratorCore:
         name = node['name']
         ntype = node.get('type', 'io')
         handler_kind = node.get('handler')
-        started_at = self._utcnow_str()
         # Expose current/executing node
         try:
             from ..db import set_state_kv
@@ -103,25 +120,25 @@ class OrchestratorCore:
             if ntype == 'start':
                 apply_scopes_at_start(cycle_ctx, self.scopes)
                 details = {"node": name, "type": ntype, "scopes_applied": len(self.scopes)}
-                end_step(self.db_path, self.worker, cycle_id, name, 'succeeded', started_at, details)
-                self._last_step = mk_step_summary(details, started_at)
+                end_step(self.db_path, self.worker, cycle_id, name, 'succeeded', utcnow_str(), details)
+                self._last_step = mk_step_summary(details, utcnow_str())
                 return 'always'
             if ntype in {'end','exit'}:
                 details = {"node": name, "type": ntype}
-                end_step(self.db_path, self.worker, cycle_id, name, 'succeeded', started_at, details)
-                self._last_step = mk_step_summary(details, started_at)
+                end_step(self.db_path, self.worker, cycle_id, name, 'succeeded', utcnow_str(), details)
+                self._last_step = mk_step_summary(details, utcnow_str())
                 return 'always'
             apply_scope_resets(name, cycle_ctx, self.scopes)
             if ntype in {'io','transform'}:
-                return self._execute_handler_node(cycle_id, node, worker_ctx, cycle_ctx, started_at)
+                return self._execute_handler_node(cycle_id, node, worker_ctx, cycle_ctx, utcnow_str())
             if ntype == 'decision':
-                return self._execute_decision_node(cycle_id, node, worker_ctx, cycle_ctx, started_at)
+                return self._execute_decision_node(cycle_id, node, worker_ctx, cycle_ctx, utcnow_str())
             raise ValueError(f"Unknown node type: {ntype}")
         except RetryExhaustedError as e:
-            end_step(self.db_path, self.worker, cycle_id, name, 'failed', started_at, {"error": {"message": str(e)[:400], "code": "RETRY_EXHAUSTED", "category": "io"}, "attempts": e.attempts})
+            end_step(self.db_path, self.worker, cycle_id, name, 'failed', utcnow_str(), {"error": {"message": str(e)[:400], "code": "RETRY_EXHAUSTED", "category": "io"}, "attempts": e.attempts})
             raise
         except Exception as e:
-            end_step(self.db_path, self.worker, cycle_id, name, 'failed', started_at, {"error": {"message": str(e)[:400], "code": getattr(e,'code','UNKNOWN'), "category": getattr(e,'category','unknown')}})
+            end_step(self.db_path, self.worker, cycle_id, name, 'failed', utcnow_str(), {"error": {"message": str(e)[:400], "code": getattr(e,'code','UNKNOWN'), "category": getattr(e,'category','unknown')}})
             raise
         finally:
             try:
@@ -132,6 +149,7 @@ class OrchestratorCore:
 
     def _execute_handler_node(self, cycle_id: str, node: Dict, worker_ctx: Dict, cycle_ctx: Dict, started_at: str) -> str:
         name = node['name']
+        from ..utils import utcnow_str
         handler = self.registry.get(node.get('handler'))
         inputs = resolve_inputs(node.get('inputs', {}), worker_ctx, cycle_ctx)
         timeout_eff = node.get('timeout_sec', 60)
@@ -162,18 +180,21 @@ class OrchestratorCore:
             assign_outputs(cycle_ctx, outputs, outputs_spec)
         import json
         details = {"node": name, "type": node.get('type'), "handler_kind": node.get('handler')}
-        if attempts[0] > 1:
-            details['attempts'] = attempts[0]
         try:
             details['input_size'] = len(json.dumps(inputs))
             details['output_size'] = len(json.dumps(outputs))
         except Exception:
             pass
+        if attempts[0] > 1:
+            details['attempts'] = attempts[0]
         if debug_preview is not None:
             details['debug_preview'] = debug_preview
+            if is_truncated_preview(debug_preview):
+                details['truncated'] = True
         end_step(self.db_path, self.worker, cycle_id, name, 'succeeded', started_at, details)
         self._last_ctx_diff = compute_ctx_diff(before_ctx, cycle_ctx)
-        self._last_step = mk_step_summary(details, started_at)
+        # include inputs/outputs/cycle_ctx previews into step summary for debug
+        self._last_step = mk_step_summary(details, started_at, inputs=inputs, outputs=outputs, cycle_ctx=cycle_ctx)
         return 'always'
 
     def _execute_decision_node(self, cycle_id: str, node: Dict, worker_ctx: Dict, cycle_ctx: Dict, started_at: str) -> str:
@@ -190,8 +211,21 @@ class OrchestratorCore:
         except DecisionError as e:
             raise ValueError(f"Decision evaluation failed for node {name}: {e}")
         details = {"node": name, "type": "decision", "edge_taken": route, "input_value": str(inp)[:100]}
+        # Build debug preview for decision inputs/outputs and set truncated flag if needed
+        try:
+            decision_inputs = {"decision": {"kind": kind, "spec": spec}, "input_resolved": inp, "available_routes": routes}
+            decision_outputs = {"route": route}
+            dp = {"inputs": _preview(decision_inputs), "output": _preview(decision_outputs)}
+            details['debug_preview'] = dp
+            if is_truncated_preview(dp):
+                details['truncated'] = True
+        except Exception:
+            pass
         end_step(self.db_path, self.worker, cycle_id, name, 'succeeded', started_at, details)
-        self._last_step = mk_step_summary(details, started_at)
+        # Enrich debug step with decision I/O previews (input resolved + route)
+        decision_inputs = {"decision": {"kind": kind, "spec": spec}, "input_resolved": inp, "available_routes": routes}
+        decision_outputs = {"route": route}
+        self._last_step = mk_step_summary(details, started_at, inputs=decision_inputs, outputs=decision_outputs, cycle_ctx=cycle_ctx)
         self._last_ctx_diff = {"added": {}, "changed": {}, "deleted": []}
         return route
 
@@ -200,3 +234,15 @@ class OrchestratorCore:
         return self._last_step
     def get_last_ctx_diff(self) -> Optional[Dict[str, Any]]:
         return self._last_ctx_diff
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

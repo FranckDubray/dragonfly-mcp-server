@@ -1,14 +1,140 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Status & Debug operations (module <7KB)
 
 import json
 import time
 import uuid
+import sqlite3
 from pathlib import Path
 from typing import Any, Dict
+from datetime import datetime, timedelta, timezone
 
 from .validators import validate_params
 from .api_common import db_path_for_worker, compact_errors_for_status, debug_status_block
 from .db import get_state_kv, set_state_kv, get_phase
+
+
+def _compute_metrics_window(db_path: str, worker: str, minutes: int = 60) -> Dict[str, Any]:
+    """Compute compact metrics over the last N minutes from job_steps.
+    Returns a tiny dict (counts only), safe for UI/LLM (no large payloads).
+    """
+    if minutes <= 0:
+        minutes = 60
+    cutoff_dt = datetime.now(timezone.utc) - timedelta(minutes=minutes)
+    cutoff = cutoff_dt.strftime('%Y-%m-%d %H:%M:%S.%f')
+    nodes_executed = 0
+    sum_duration = 0
+    count_duration = 0
+    errors = {"io": 0, "validation": 0, "permission": 0, "timeout": 0}
+    retries_attempts = 0
+    nodes_with_retries = set()
+    llm_tokens = 0
+
+    try:
+        conn = sqlite3.connect(db_path, timeout=3.0)
+        try:
+            cur = conn.execute(
+                """
+                SELECT node, status, duration_ms, details_json
+                FROM job_steps
+                WHERE worker=? AND started_at >= ?
+                """,
+                (worker, cutoff)
+            )
+            for node, status, duration_ms, details_json in cur:
+                nodes_executed += 1
+                if isinstance(duration_ms, int):
+                    sum_duration += duration_ms
+                    count_duration += 1
+                # Parse details lightly
+                dj = None
+                if details_json:
+                    try:
+                        dj = json.loads(details_json)
+                    except Exception:
+                        dj = None
+                # Errors by category
+                if status == 'failed' and isinstance(dj, dict):
+                    err = dj.get('error') or {}
+                    cat = err.get('category')
+                    if cat in errors:
+                        errors[cat] += 1
+                # Retries: count _retry_ rows and attempts fields
+                if '_retry_' in node:
+                    retries_attempts += 1
+                    parent = node.split('_retry_')[0]
+                    nodes_with_retries.add(parent)
+                elif isinstance(dj, dict) and isinstance(dj.get('attempts'), int) and dj['attempts'] > 1:
+                    # attempts counts total tries; extra retries = attempts-1
+                    retries_attempts += max(0, dj['attempts'] - 1)
+                    nodes_with_retries.add(node)
+                # LLM tokens (if usage available)
+                if isinstance(dj, dict) and isinstance(dj.get('usage'), dict):
+                    u = dj['usage']
+                    try:
+                        llm_tokens += int(u.get('prompt_tokens', 0)) + int(u.get('completion_tokens', 0))
+                    except Exception:
+                        pass
+        finally:
+            conn.close()
+    except Exception:
+        # On error, return minimal metrics instead of failing status
+        return {
+            "window": "0m",
+            "nodes_executed": 0,
+            "avg_duration_ms": 0,
+            "errors": {"io": 0, "validation": 0, "permission": 0, "timeout": 0},
+            "retries": {"attempts": 0, "nodes_with_retries": 0},
+            "llm_tokens": 0
+        }
+
+    avg_duration = int(sum_duration / count_duration) if count_duration > 0 else 0
+    # Compact window label
+    label = f"{minutes//60}h" if minutes % 60 == 0 else f"{minutes}m"
+    return {
+        "window": label,
+        "nodes_executed": nodes_executed,
+        "avg_duration_ms": avg_duration,
+        "errors": errors,
+        "retries": {"attempts": retries_attempts, "nodes_with_retries": len(nodes_with_retries)},
+        "llm_tokens": llm_tokens,
+    }
+
+
+def _parse_metrics_window_minutes(metrics_param: Dict[str, Any]) -> int:
+    """Parse a compact window parameter (e.g., "5m", "15m", "1h") into minutes.
+    Defaults to 60 if missing/invalid.
+    """
+    if not isinstance(metrics_param, dict):
+        return 60
+    win = metrics_param.get('window')
+    if win is None:
+        return 60
+    try:
+        if isinstance(win, (int, float)):
+            return max(1, int(win))
+        s = str(win).strip().lower()
+        if s.endswith('m'):
+            return max(1, int(s[:-1]))
+        if s.endswith('h'):
+            h = int(s[:-1])
+            return max(1, h * 60)
+        # raw number -> assume minutes
+        return max(1, int(s))
+    except Exception:
+        return 60
 
 
 def status(params: dict) -> dict:
@@ -36,6 +162,14 @@ def status(params: dict) -> dict:
     if process_uid: result['process_uid'] = process_uid
     if process_version: result['process_version'] = process_version
     if last_error: result['last_error'] = last_error[:400]
+
+    # Optional compact metrics — only if explicitly requested
+    include_metrics = False
+    metrics_param = (params or {}).get('metrics') or {}
+    include_metrics = bool(params.get('include_metrics')) or bool(metrics_param.get('include'))
+    if include_metrics:
+        minutes = _parse_metrics_window_minutes(metrics_param)
+        result['metrics'] = _compute_metrics_window(db_path, worker_name, minutes)
 
     result.update(compact_errors_for_status(db_path, worker_name))
     result.update(debug_status_block(db_path, worker_name))
