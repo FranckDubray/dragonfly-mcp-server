@@ -1,3 +1,5 @@
+
+
 # Runner loop: executes the JSON FSM with debug integration (refactored <7KB)
 from .db import get_state_kv, set_state_kv, set_phase, heartbeat
 from .handlers import bootstrap_handlers
@@ -19,11 +21,7 @@ def _persist_debug_pause(db_path: str, worker: str, cycle_id: str, last_step: di
     set_state_kv(db_path, worker, 'debug.paused_at', paused_at)
     set_state_kv(db_path, worker, 'debug.next_node', next_node or '')
     set_state_kv(db_path, worker, 'debug.last_step', json.dumps(last_step))
-    # Store previous_node for breadcrumb
-    if paused_at:
-        set_state_kv(db_path, worker, 'debug.previous_node', paused_at)
-    # Diff context (will be populated by caller)
-    set_state_kv(db_path, worker, 'debug.ctx_diff', json.dumps({}))
+    # NOTE: do NOT overwrite debug.ctx_diff here; it is set by the caller with the actual diff
     # Handshake for sync wait
     req_id = get_state_kv(db_path, worker, 'debug.req_id') or ''
     set_state_kv(db_path, worker, 'debug.response_id', req_id)
@@ -34,7 +32,7 @@ def _clear_debug_state(db_path: str, worker: str) -> None:
     """Clear ephemeral debug state before resuming."""
     set_state_kv(db_path, worker, 'debug.paused_at', '')
     set_state_kv(db_path, worker, 'debug.last_step', '')
-    set_state_kv(db_path, worker, 'debug.ctx_diff', '')
+    # keep ctx_diff intact until next pause is computed; it will be overwritten at next pause
     set_state_kv(db_path, worker, 'debug.executing_node', '')
 
 
@@ -52,7 +50,7 @@ def _handle_debug_pause_loop(
     from .engine.debug_utils import DebugPause
     import json
     
-    # Persist initial pause
+    # Persist initial pause with actual ctx diff
     last_step = engine.get_last_step() or {}
     last_diff = engine.get_last_ctx_diff() or {"added": {}, "changed": {}, "deleted": []}
     set_state_kv(db_path, worker, 'debug.ctx_diff', json.dumps(last_diff))
@@ -80,7 +78,7 @@ def _handle_debug_pause_loop(
             return exit_reached
             
         except DebugPause as e:
-            # Another pause - persist and loop
+            # Another pause - persist and loop with real diff
             last_step = engine.get_last_step() or {}
             last_diff = engine.get_last_ctx_diff() or {"added": {}, "changed": {}, "deleted": []}
             set_state_kv(db_path, worker, 'debug.ctx_diff', json.dumps(last_diff))

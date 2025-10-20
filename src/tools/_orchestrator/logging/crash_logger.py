@@ -1,3 +1,16 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Crash logger: logs complete context snapshots on errors
 # Critical for debugging production issues
 
@@ -8,9 +21,9 @@ import sys
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 
-def _utcnow_str() -> str:
-    """UTC ISO8601 microseconds"""
-    return datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S.%f')
+# Use centralized time and sanitation
+from ..utils import utcnow_str
+from ..engine.debug_utils import sanitize_details_for_log
 
 def _sanitize_context(ctx: Dict[str, Any], max_size: int = 100000) -> str:
     """
@@ -24,27 +37,13 @@ def _sanitize_context(ctx: Dict[str, Any], max_size: int = 100000) -> str:
         JSON string (sanitized, truncated if needed)
     """
     try:
-        # Deep copy to avoid mutating original
-        import copy
-        sanitized = copy.deepcopy(ctx)
-        
-        # TODO: Implement PII masking (emails, tokens, passwords)
-        # For now: basic serialization with truncation
-        
-        json_str = json.dumps(sanitized, separators=(',', ':'), ensure_ascii=False, default=str)
-        
-        # Truncate if too large
+        # Reuse sanitize_details_for_log for consistent PII masking/truncation
+        clean = sanitize_details_for_log(ctx, max_bytes=max_size)
+        json_str = json.dumps(clean, separators=(',', ':'), ensure_ascii=False, default=str)
+        # Bound the size as a last resort
         if len(json_str) > max_size:
-            truncated = json_str[:max_size]
-            # Try to close JSON properly
-            if truncated.count('{') > truncated.count('}'):
-                truncated += '}'
-            if truncated.count('[') > truncated.count(']'):
-                truncated += ']'
-            json_str = truncated + f'\n... (truncated, original size: {len(json_str)} bytes)'
-        
+            return json_str[:max_size] + f"\n... (truncated, original size: {len(json_str)} bytes)"
         return json_str
-    
     except Exception as e:
         # Fallback: return error message if serialization fails
         return json.dumps({"error": f"Failed to serialize context: {str(e)[:200]}"})
@@ -174,7 +173,7 @@ def log_crash(
     Side-effects:
         Inserts row in crash_logs table with full context dumps
     """
-    crashed_at = _utcnow_str()
+    crashed_at = utcnow_str()
     error_message = str(error)[:2000]  # Truncate to 2KB
     error_type = f"{type(error).__module__}.{type(error).__name__}"
     error_code = getattr(error, 'code', None)

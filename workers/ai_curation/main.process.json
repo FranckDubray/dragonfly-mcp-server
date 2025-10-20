@@ -1,6 +1,8 @@
+
+
 {
   "version": "1.0",
-  "process_version": "6.2.1-hf",
+  "process_version": "6.2.2",
   "metadata": {
     "description": "AI/LLM curation worker with hierarchical subgraphs (72h freshness, 5 sources, quality validation, FR reports)",
     "author": "orchestrator-team",
@@ -12,36 +14,11 @@
   
   "graph": {
     "subgraphs": [
-      {
-        "id": "INIT",
-        "name": "Initialization",
-        "import": "subgraphs/01_init.subgraph.json",
-        "viz": {"icon": "🔧", "color": "#2196F3"}
-      },
-      {
-        "id": "COLLECT",
-        "name": "Multi-Source Collection",
-        "import": "subgraphs/02_collect.subgraph.json",
-        "viz": {"icon": "📦", "color": "#4CAF50"}
-      },
-      {
-        "id": "SCORE",
-        "name": "GPT Scoring",
-        "import": "subgraphs/03_score.subgraph.json",
-        "viz": {"icon": "🎯", "color": "#FF9800"}
-      },
-      {
-        "id": "VALIDATE",
-        "name": "Quality Validation",
-        "import": "subgraphs/04_validate.subgraph.json",
-        "viz": {"icon": "✅", "color": "#9C27B0"}
-      },
-      {
-        "id": "OUTPUT",
-        "name": "Format & Save",
-        "import": "subgraphs/05_output.subgraph.json",
-        "viz": {"icon": "💾", "color": "#607D8B"}
-      }
+      {"id": "INIT", "name": "Initialization", "import": "subgraphs/01_init.subgraph.json", "viz": {"icon": "🔧", "color": "#2196F3"}},
+      {"id": "COLLECT", "name": "Multi-Source Collection", "import": "subgraphs/02_collect.subgraph.json", "viz": {"icon": "📦", "color": "#4CAF50"}},
+      {"id": "SCORE", "name": "GPT Scoring", "import": "subgraphs/03_score.subgraph.json", "viz": {"icon": "🎯", "color": "#FF9800"}},
+      {"id": "VALIDATE", "name": "Quality Validation", "import": "subgraphs/04_validate.subgraph.json", "viz": {"icon": "✅", "color": "#9C27B0"}},
+      {"id": "OUTPUT", "name": "Format & Save", "import": "subgraphs/05_output.subgraph.json", "viz": {"icon": "💾", "color": "#607D8B"}}
     ],
     
     "nodes": [
@@ -52,7 +29,8 @@
     "edges": [
       {"from": "START", "to": "INIT"},
       {"from": "INIT", "to": "COLLECT"},
-      {"from": "COLLECT", "to": "SCORE"},
+      {"from": "COLLECT", "to": "SCORE", "when": "success"},
+      {"from": "COLLECT", "to": "EXIT", "when": "fail"},
       {"from": "SCORE", "to": "VALIDATE"},
       {"from": "VALIDATE", "to": "OUTPUT", "when": "success"},
       {"from": "VALIDATE", "to": "SCORE", "when": "retry"},

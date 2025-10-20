@@ -1,3 +1,5 @@
+
+
 # Generic MCP HTTP tool handler (POST /execute with 3-level retry)
 
 import time
@@ -55,6 +57,7 @@ class HttpToolHandler(AbstractHandler):
             from ..engine.debug_utils import _preview
             preview = {
                 "inputs": {"tool": tool_name, **({k: params[k] for k in ('model','temperature') if k in params})},
+                "params": _preview(params),
                 "messages": _preview(params.get('messages')) if 'messages' in params else None,
                 "output": _preview(result),
             }
