@@ -2,7 +2,7 @@
 
 Ce fichier est généré automatiquement par `scripts/generate_tools_catalog.py`. Ne pas éditer à la main.
 
-Total tools: 48
+Total tools: 49
 
 ## 📊 Intelligence & Orchestration (5)
 
@@ -74,7 +74,7 @@ Total tools: 48
   - Opérations: send_message, send_photo, send_document, send_location, send_video, get_updates …
   - Tokens: aucun
 
-## 🗄️ Data & Storage (3)
+## 🗄️ Data & Storage (4)
 
 - CoinGecko — Complete cryptocurrency data via CoinGecko API. Prices, market data, historical charts, trending coins, exchanges. Free tier: 50 calls/mi… · Tags: crypto, cryptocurrency, prices, market_data
   - Opérations: get_price, get_coin_info, search_coins, get_market_chart, get_trending, get_global_data …
@@ -86,6 +86,10 @@ Total tools: 48
 
 - SQLite Database — Gestion d'une base SQLite locale dans <projet>/sqlite3. Créer, lister, supprimer des DB et exécuter des requêtes SQL. · Tags: sqlite, database, sql, local_storage
   - Opérations: ensure_dir, list_dbs, create_db, delete_db, get_tables, describe …
+  - Tokens: aucun
+
+- Worker Query (Read-Only) — Execute read-only SQL queries on your personal worker database. Only SELECT queries are allowed. You have access to tables like job_steps… · Tags: sqlite, introspection, monitoring, read_only
+  - Opérations: N/A
   - Tokens: aucun
 
 ## 📄 Documents (5)
