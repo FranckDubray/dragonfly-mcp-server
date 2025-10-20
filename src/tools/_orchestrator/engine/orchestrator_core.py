@@ -57,11 +57,19 @@ class OrchestratorCore:
             except Exception as e:
                 log_crash(self.db_path, self.worker, cycle_id, current_node_name, e, worker_ctx, cycle_ctx)
                 raise
+            # Handle EXIT / END semantics here (no runner-driven sleep)
             if node.get('type') == 'exit':
-                return True
+                return True  # EXIT ends the whole process
             if node.get('type') == 'end':
+                # Declarative resets for END, then reloop to START automatically
                 self._apply_scope_resets('END', cycle_ctx)
-                return False
+                start = self.find_start()
+                if not start:
+                    raise ValueError("END encountered but no START node found to reloop")
+                current_node_name = start['name']
+                # Continue same cycle (no cycle_id increment here)
+                continue
+            # Normal edge following
             next_node = self._follow_edge_with_triggers(current_node_name, route, cycle_ctx)
             dbg = self.debug_getter() if self.debug_getter else None
             if should_pause_after(dbg, node, route):
@@ -74,7 +82,7 @@ class OrchestratorCore:
         ntype = node.get('type', 'io')
         handler_kind = node.get('handler')
         started_at = self._utcnow_str()
-        # NEW: expose current/executing node
+        # Expose current/executing node
         try:
             from ..db import set_state_kv
             set_state_kv(self.db_path, self.worker, 'current_node', name)
