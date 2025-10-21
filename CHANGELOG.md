@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.52.0] - 2025-10-21
+
+### ✨ NEW: Excel Row
+- **Nouveau tool**: `excel_row` pour manipuler les lignes Excel avec formats avancés
+- **Opérations**: insert_row, update_row, delete_row, list_backups, restore_backup
+- **Formats Excel**:
+  - Number formats: date_iso, date_short_fr, currency_eur_fr, currency_usd_en, accounting_eur_fr, percent_0/2, decimal_2/3, integer, custom
+  - Font: name, size (6-72), bold, italic, underline, color
+  - Alignment: horizontal/vertical, wrap_text, indent
+  - Background color + border (thin/medium/thick)
+- **Granularité**: row_format (défaut) + columns_format (overrides par colonne)
+- **Parsing dates**: parse.date_input_format (auto/DD/MM/YYYY/YYYY-MM-DD/MM/DD/YYYY) séparé de l'affichage Excel
+- **Backups**: création, listing, restauration (docs/office/excel_backups/)
+- **Mapping**: clés normalisées ou noms Excel originaux acceptés
+- **Support**: colonnes > 26 (A-Z-AA-AZ...)
+- **Compatibilité**: params legacy (color, border_color, date_format) mappés automatiquement
+
+Note: Warning Excel "contenu illisible" peut apparaître avec formats complexes (bénin, formats appliqués correctement).
+
 ## [1.51.2] - 2025-10-20
 
 ### ♻️ Refactor & Stability

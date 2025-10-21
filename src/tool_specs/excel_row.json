@@ -1,0 +1,99 @@
+{
+  "type": "function",
+  "function": {
+    "name": "excel_row",
+    "displayName": "Excel Row",
+    "category": "data",
+    "tags": ["excel", "spreadsheet", "formatting"],
+    "description": "Insert, update, delete rows in Excel with advanced formatting (row-level and per-column overrides), backups, and restore.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["insert_row", "update_row", "delete_row", "list_backups", "restore_backup"],
+          "description": "Operation to perform"
+        },
+        "file_path": {"type": "string", "description": "Path to .xlsx (relative to project root)"},
+        "sheet_name": {"oneOf": [{"type": "string"}, {"type": "integer"}], "description": "Sheet name or 0-based index"},
+        "position": {"type": "integer", "minimum": 1, "description": "1 = first data row (after header row 1)"},
+        "row_data": {"type": "object", "description": "Column values. Keys can be header names (original or normalized)", "additionalProperties": true},
+
+        "row_format": {
+          "type": "object",
+          "description": "Default row formatting for all columns (overridden by columns_format)",
+          "properties": {
+            "background_color": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"},
+            "border": {
+              "type": "object",
+              "properties": {
+                "color": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"},
+                "style": {"type": "string", "enum": ["thin","medium","thick","none"], "default": "thin"}
+              },
+              "additionalProperties": false
+            },
+            "font": {
+              "type": "object",
+              "properties": {
+                "name": {"type": "string"},
+                "size": {"type": "number", "minimum": 6, "maximum": 72},
+                "bold": {"type": "boolean"},
+                "italic": {"type": "boolean"},
+                "underline": {"type": "boolean"},
+                "color": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"}
+              },
+              "additionalProperties": false
+            },
+            "alignment": {
+              "type": "object",
+              "properties": {
+                "horizontal": {"type": "string", "enum": ["left","center","right","justify","distributed","fill","general"]},
+                "vertical": {"type": "string", "enum": ["top","center","bottom","justify","distributed"]},
+                "wrap_text": {"type": "boolean"},
+                "indent": {"type": "integer", "minimum": 0, "maximum": 10}
+              },
+              "additionalProperties": false
+            },
+            "number_format": {
+              "type": "object",
+              "properties": {
+                "preset": {"type": "string", "enum": ["general","date_iso","date_short_fr","currency_eur_fr","currency_usd_en","accounting_eur_fr","percent_0","percent_2","integer","decimal_2","decimal_3","text"]},
+                "custom": {"type": "string"},
+                "decimals": {"type": "integer", "minimum": 0, "maximum": 6},
+                "currency_symbol": {"type": "string"},
+                "locale": {"type": "string"}
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+
+        "columns_format": {
+          "type": "object",
+          "description": "Per-column formatting overrides: { \"col_name\": <same schema as row_format> }",
+          "additionalProperties": { "$ref": "#/function/parameters/properties/row_format" }
+        },
+
+        "parse": {
+          "type": "object",
+          "description": "Input parsing options (does not affect Excel display)",
+          "properties": {
+            "date_input_format": {"type": "string", "enum": ["auto","DD/MM/YYYY","YYYY-MM-DD","MM/DD/YYYY"], "default": "auto"}
+          },
+          "additionalProperties": false
+        },
+
+        "create_backup": {"type": "boolean", "default": false},
+        "backup_version": {"type": "integer", "minimum": 0, "maximum": 5, "default": 0},
+        "create_safety_backup": {"type": "boolean", "default": true},
+
+        "color": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$", "description": "(DEPRECATED) Use row_format.background_color"},
+        "border_color": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$", "description": "(DEPRECATED) Use row_format.border"},
+        "date_format": {"type": "string", "enum": ["auto","DD/MM/YYYY","YYYY-MM-DD","MM/DD/YYYY"], "description": "(DEPRECATED) Use parse.date_input_format"}
+      },
+      "required": ["operation", "file_path"],
+      "additionalProperties": false
+    }
+  }
+}
