@@ -2,7 +2,7 @@
 
 Ce fichier est généré automatiquement par `scripts/generate_tools_catalog.py`. Ne pas éditer à la main.
 
-Total tools: 49
+Total tools: 50
 
 ## 📊 Intelligence & Orchestration (5)
 
@@ -18,7 +18,10 @@ Total tools: 49
   - Opérations: list_models, get_version, get_running_models, show_model, pull_model, push_model …
   - Tokens: aucun
 
-- Orchestrator (JSON-driven FSM) — Start/stop/status/debug/list a JSON-driven worker that executes a process graph (FSM). · Tags: automation, workflows, state_machine, long_running
+- Orchestrator (JSON-driven FSM) — Start/stop/status/debug/list a JSON-driven worker that executes a process graph (FSM).
+
+Debug mode (quick guide):
+- Pauses occur at node… · Tags: automation, workflows, state_machine, long_running
   - Opérations: start, stop, status, debug, list
   - Tokens: aucun
 
@@ -74,10 +77,14 @@ Total tools: 49
   - Opérations: send_message, send_photo, send_document, send_location, send_video, get_updates …
   - Tokens: aucun
 
-## 🗄️ Data & Storage (4)
+## 🗄️ Data & Storage (5)
 
 - CoinGecko — Complete cryptocurrency data via CoinGecko API. Prices, market data, historical charts, trending coins, exchanges. Free tier: 50 calls/mi… · Tags: crypto, cryptocurrency, prices, market_data
   - Opérations: get_price, get_coin_info, search_coins, get_market_chart, get_trending, get_global_data …
+  - Tokens: aucun
+
+- Excel Row — Insert, update, delete rows in Excel with advanced formatting (row-level and per-column overrides), backups, and restore. · Tags: excel, spreadsheet, formatting
+  - Opérations: insert_row, update_row, delete_row, list_backups, restore_backup
   - Tokens: aucun
 
 - Excel to SQLite — Import Excel (.xlsx) data into SQLite database with automatic schema detection, type mapping, and batch processing

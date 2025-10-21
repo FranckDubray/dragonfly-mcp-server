@@ -18,9 +18,14 @@ def build_base_instructions(worker_id: str, meta: dict) -> str:
     for en, fr in {'January':'Janvier','February':'Février','March':'Mars','April':'Avril','May':'Mai','June':'Juin','July':'Juillet','August':'Août','September':'Septembre','October':'Octobre','November':'Novembre','December':'Décembre'}.items():
         date_str = date_str.replace(en, fr)
 
+    # Construire les lignes d'identité
+    job_line = f"Métier : {job}\n" if job else ""
+    employe_info = f" (depuis {employe_depuis})" if employe_depuis else ""
+    employeur_line = f"Employeur : {employeur}{employe_info}\n" if employeur else ""
+    
     identite_section = f"""IDENTITÉ DU WORKER
 Tu t'appelles {worker_name}.
-{('Métier : ' + job + '\n') if job else ''}{('Employeur : ' + employeur + (' (depuis ' + employe_depuis + ')') if employe_depuis else '') + '\n' if employeur else ''}
+{job_line}{employeur_line}
 """
 
     client_section = ""
