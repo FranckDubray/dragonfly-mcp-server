@@ -53,8 +53,6 @@
     {"from": "merge_sources", "to": "dedupe_sources"},
     {"from": "dedupe_sources", "to": "json_stringify_sources"},
     {"from": "json_stringify_sources", "to": "insert_sources_row"},
-    {"from": "insert_sources_row", "to": "make_slice_skip"},
-
-    {"from": "exit_enrich", "to": "exit_enrich"}
+    {"from": "insert_sources_row", "to": "make_slice_skip"}
   ]
 }
