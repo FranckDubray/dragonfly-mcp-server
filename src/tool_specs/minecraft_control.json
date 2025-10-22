@@ -1,0 +1,120 @@
+{
+  "type": "function",
+  "function": {
+    "name": "minecraft_control",
+    "displayName": "Minecraft Control",
+    "category": "entertainment",
+    "tags": ["gaming", "3d", "scripting", "rcon"],
+    "description": "Control Minecraft server via RCON: execute commands, spawn entities, build structures, import 3D models, control player, manage environment.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": [
+            "execute_command",
+            "spawn_entities",
+            "build_structure",
+            "import_3d_model",
+            "control_player",
+            "set_environment",
+            "batch_commands",
+            "get_player_state",
+            "render_image"
+          ],
+          "description": "Operation to perform on Minecraft server"
+        },
+        "position": {
+          "type": "object",
+          "properties": { "x": { "type": "number" }, "y": { "type": "number" }, "z": { "type": "number" } },
+          "additionalProperties": false,
+          "description": "Absolute world coordinates (if null and relative_to_player=true, use player position with offset)"
+        },
+        "relative_to_player": { "type": "boolean", "default": true, "description": "Calculate position relative to player" },
+        "offset": {
+          "type": "object",
+          "properties": {
+            "forward": { "type": "number", "default": 5 },
+            "up": { "type": "number", "default": 0 },
+            "right": { "type": "number", "default": 0 }
+          },
+          "additionalProperties": false,
+          "description": "Offset from player position (meters)"
+        },
+        "player_name": { "type": "string", "default": "@p", "description": "Target player selector or name (@p=nearest, @a=all)" },
+        "delay_ms": { "type": "integer", "minimum": 0, "maximum": 5000, "default": 50, "description": "Delay between batch commands (milliseconds)" },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 500, "default": 50, "description": "Max items to return in results" },
+        "command": { "type": "string", "description": "Raw Minecraft command (for execute_command)" },
+        "entity_type": { "type": "string", "description": "Minecraft entity ID (e.g. 'horse', 'zombie', 'cow')" },
+        "count": { "type": "integer", "minimum": 1, "maximum": 1000, "default": 1, "description": "Number of entities to spawn" },
+        "nbt_data": { "type": "object", "additionalProperties": true, "description": "NBT tags for entity customization" },
+        "spread_pattern": { "type": "string", "enum": ["line", "circle", "grid", "random"], "default": "random", "description": "Distribution pattern for multiple entities" },
+        "block_type": { "type": "string", "description": "Minecraft block ID (e.g. 'stone', 'gold_block')" },
+        "start_pos": {
+          "type": "object",
+          "properties": { "x": { "type": "number" }, "y": { "type": "number" }, "z": { "type": "number" } },
+          "additionalProperties": false,
+          "description": "Starting corner for structure"
+        },
+        "end_pos": {
+          "type": "object",
+          "properties": { "x": { "type": "number" }, "y": { "type": "number" }, "z": { "type": "number" } },
+          "additionalProperties": false,
+          "description": "Ending corner for structure"
+        },
+        "dimensions": {
+          "type": "object",
+          "properties": {
+            "width": { "type": "integer", "minimum": 1, "maximum": 500 },
+            "height": { "type": "integer", "minimum": 1, "maximum": 320 },
+            "depth": { "type": "integer", "minimum": 1, "maximum": 500 }
+          },
+          "additionalProperties": false,
+          "description": "Structure dimensions (alternative to end_pos)"
+        },
+        "shape": { "type": "string", "enum": ["cube", "sphere", "pyramid", "cylinder", "wall", "platform"], "default": "cube", "description": "Structure shape" },
+        "hollow": { "type": "boolean", "default": false, "description": "Create hollow structure" },
+        "model_path": { "type": "string", "description": "Path to 3D model file relative to docs/models/" },
+        "scale": { "type": "number", "minimum": 0.1, "maximum": 10.0, "default": 1.0, "description": "Model scale factor" },
+        "voxel_resolution": { "type": "number", "minimum": 0.1, "maximum": 2.0, "default": 1.0, "description": "Voxel size (1.0 = 1 block per voxel)" },
+        "material_mapping": { "type": "string", "enum": ["auto", "color", "single"], "default": "auto", "description": "How to map model materials to blocks" },
+        "orient": { "type": "string", "enum": ["auto", "y_up", "z_up_to_y"], "default": "auto", "description": "Model up-axis handling (auto-detect or force z->y)" },
+        "anchor": { "type": "string", "enum": ["bottom", "center", "top"], "default": "bottom", "description": "Vertical anchoring of model to base position" },
+        "anchor_xz": { "type": "string", "enum": ["center", "min"], "default": "center", "description": "Horizontal anchoring in XZ (center to base position or align to mins)" },
+        "target_height": { "type": "number", "minimum": 0.1, "maximum": 10000, "description": "Fit the model to this target height before voxelization" },
+        "clear_area": { "type": "boolean", "default": false, "description": "Clear world-aligned bounding box with air before build" },
+        "densify": { "type": "boolean", "default": false, "description": "(Single mapping only) fill vertical gaps within each (x,z) column" },
+        "player_action": { "type": "string", "enum": ["teleport", "look", "gamemode"], "description": "Player action to perform" },
+        "target_position": {
+          "type": "object",
+          "properties": { "x": { "type": "number" }, "y": { "type": "number" }, "z": { "type": "number" } },
+          "additionalProperties": false,
+          "description": "Target position for player teleport"
+        },
+        "yaw": { "type": "number", "minimum": -180, "maximum": 180, "description": "Camera horizontal rotation (degrees)" },
+        "pitch": { "type": "number", "minimum": -90, "maximum": 90, "description": "Camera vertical rotation (degrees)" },
+        "look_at": {
+          "type": "object",
+          "properties": { "x": { "type": "number" }, "y": { "type": "number" }, "z": { "type": "number" } },
+          "additionalProperties": false,
+          "description": "Coordinates to look at (auto-calculate yaw/pitch)"
+        },
+        "weather": { "type": "string", "enum": ["clear", "rain", "thunder"], "description": "Weather condition" },
+        "time": { "type": "string", "enum": ["day", "night", "noon", "midnight", "sunrise", "sunset"], "description": "Time of day preset" },
+        "time_value": { "type": "integer", "minimum": 0, "maximum": 24000, "description": "Precise time value (0=dawn, 6000=noon, 18000=midnight)" },
+        "difficulty": { "type": "string", "enum": ["peaceful", "easy", "normal", "hard"], "description": "Game difficulty" },
+        "commands": { "type": "array", "items": { "type": "string" }, "maxItems": 100, "description": "Array of commands for batch execution" },
+        "image_path": { "type": "string", "description": "Path to image relative to docs/images/" },
+        "mode": { "type": "string", "enum": ["wall", "floor"], "default": "wall", "description": "Render orientation: vertical wall or horizontal floor" },
+        "target_width": { "type": "integer", "minimum": 1, "maximum": 512, "default": 64, "description": "Resize image to this width (keeps aspect ratio)" },
+        "image_mapping": { "type": "string", "enum": ["color", "single"], "default": "color", "description": "Color mapping strategy (closest block colors) or single block" },
+        "wool_only": { "type": "boolean", "default": true, "description": "Restrict palette to wool colors only (deprecated, use 'palette')" },
+        "palette": { "type": "string", "enum": ["wool", "concrete", "both"], "default": "both", "description": "Palette to use for color mapping" },
+        "distance": { "type": "string", "enum": ["rgb", "lab"], "default": "rgb", "description": "Color distance metric (rgb=fast, lab=perceptual)" },
+        "dither": { "type": "boolean", "default": false, "description": "Apply Floyd–Steinberg dithering (requires numpy)" }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}

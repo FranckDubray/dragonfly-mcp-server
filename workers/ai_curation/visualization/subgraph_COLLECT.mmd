@@ -1,39 +1,37 @@
 graph TB
-  entry[🚪 Entry Point]
+  entry[🛂 Entry Point]
   
   fetch_news[🌐 fetch_news<br>NYT + Guardian]
   fetch_reddit[💬 fetch_reddit<br>ML subs]
   fetch_arxiv[📄 fetch_arxiv<br>Papers]
-  fetch_pwc[🏆 fetch_pwc<br>Trending]
   fetch_sonar[🔍 fetch_sonar<br>Real-time web]
   
   normalize_sonar[🔄 normalize_sonar<br>Parse JSON]
   
-  filter_news[⏱️ filter_news<br>geq 72h]
-  filter_reddit[⏱️ filter_reddit<br>geq 72h]
-  filter_arxiv[⏱️ filter_arxiv<br>geq 72h]
-  filter_sonar[⏱️ filter_sonar<br>geq 72h]
+  filter_news[⏱️ filter_news<br>≥ 72h]
+  filter_reddit[⏱️ filter_reddit<br>≥ 72h]
+  filter_arxiv[⏱️ filter_arxiv<br>≥ 72h]
+  filter_sonar[⏱️ filter_sonar<br>≥ 72h]
   
-  count_pwc[📊 count_pwc<br>Pass-through]
-  exit[🚪 Exit to SCORE]
+  compute_total[📊 compute_total_kept]
+  exit[🛂 Exit to SCORE]
   
   entry-->fetch_news
   fetch_news-->fetch_reddit
   fetch_reddit-->fetch_arxiv
-  fetch_arxiv-->fetch_pwc
-  fetch_pwc-->fetch_sonar
+  fetch_arxiv-->fetch_sonar
   fetch_sonar-->normalize_sonar
   normalize_sonar-->filter_news
   filter_news-->filter_reddit
   filter_reddit-->filter_arxiv
   filter_arxiv-->filter_sonar
-  filter_sonar-->count_pwc
-  count_pwc-->exit
+  filter_sonar-->compute_total
+  compute_total-->exit
   
   class entry entryNode
   class exit exitNode
-  class fetch_news,fetch_reddit,fetch_arxiv,fetch_pwc,fetch_sonar ioNode
-  class normalize_sonar,filter_news,filter_reddit,filter_arxiv,filter_sonar,count_pwc transformNode
+  class fetch_news,fetch_reddit,fetch_arxiv,fetch_sonar ioNode
+  class normalize_sonar,filter_news,filter_reddit,filter_arxiv,filter_sonar,compute_total transformNode
   
   classDef entryNode fill:#90CAF9,stroke:#42A5F5,stroke-width:3px
   classDef exitNode fill:#90CAF9,stroke:#42A5F5,stroke-width:3px

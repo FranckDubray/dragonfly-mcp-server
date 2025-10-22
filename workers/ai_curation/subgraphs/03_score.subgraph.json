@@ -1,5 +1,4 @@
 
-
 {
   "id": "SCORE",
   "version": "1.0",
@@ -42,7 +41,9 @@
         "tool": "call_llm",
         "model": "${worker.llm_model}",
         "messages": {"$import": "../prompts/gpt_scoring.json"},
-        "temperature": "${worker.llm_temperature}"
+        "temperature": "${worker.llm_temperature}",
+        "response_format": "json",
+        "require_keys": ["content"]
       },
       "outputs": {"content": "cycle.scoring.raw"},
       "timeout_sec": 180,

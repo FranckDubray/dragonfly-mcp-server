@@ -1,4 +1,6 @@
 
+
+
 # Generic MCP HTTP tool handler (POST /execute with 3-level retry)
 
 import time
@@ -22,7 +24,12 @@ import socket
 from .base import AbstractHandler, HandlerError
 
 class HttpToolHandler(AbstractHandler):
-    """Generic HTTP tool handler (calls MCP server /execute endpoint) with urllib fallback if 'requests' is unavailable."""
+    """Generic HTTP tool handler (calls MCP server /execute endpoint) with urllib fallback if 'requests' is unavailable.
+
+    Extra (generic) validation:
+    - optional input `require_keys`: list[str] of keys that MUST be present in the returned result dict; otherwise raises HandlerError("MISSING_KEYS").
+      This allows workflows to fail early at the IO node when a tool returns a structurally incomplete payload (e.g., call_llm without 'content').
+    """
     
     def __init__(self, base_url: str = "http://127.0.0.1:8000"):
         self.base_url = base_url.rstrip('/')
@@ -45,13 +52,43 @@ class HttpToolHandler(AbstractHandler):
                 retryable=False
             )
         
-        params = {k: v for k, v in kwargs.items() if k != 'tool'}
+        # Extract local-only controls (not forwarded)
+        require_keys = kwargs.get('require_keys')
+        if require_keys is not None and not isinstance(require_keys, list):
+            raise HandlerError(
+                message="require_keys must be a list of strings",
+                code="INVALID_INPUT",
+                category="validation",
+                retryable=False
+            )
+        
+        # Build payload for remote tool call (strip local-only keys)
+        forward_exclude = { 'tool', 'require_keys' }
+        params = {k: v for k, v in kwargs.items() if k not in forward_exclude}
         payload = {"tool": tool_name, "params": params}
         timeout_default = 90 if tool_name == 'call_llm' else 60
         timeout = kwargs.get('timeout', timeout_default)
         
         # Transport retry (3×)
         result = self._call_with_transport_retry(payload, timeout, retries=3)
+        
+        # Optional structural validation: ensure required keys exist in result dict
+        if isinstance(require_keys, list):
+            if not isinstance(result, dict):
+                raise HandlerError(
+                    message="Result is not an object while require_keys was provided",
+                    code="MISSING_KEYS",
+                    category="validation",
+                    retryable=False
+                )
+            for key in require_keys:
+                if key not in result:
+                    raise HandlerError(
+                        message=f"Missing required key in result: '{key}'",
+                        code="MISSING_KEYS",
+                        category="validation",
+                        retryable=False
+                    )
         
         # Build debug preview (10KB) but preserve original shape for outputs
         try:
@@ -61,6 +98,7 @@ class HttpToolHandler(AbstractHandler):
                 "params": _preview(params),
                 "messages": _preview(params.get('messages')) if 'messages' in params else None,
                 "output": _preview(result),
+                "require_keys": require_keys or []
             }
             if isinstance(result, dict):
                 result["__debug_preview"] = preview
@@ -105,7 +143,7 @@ class HttpToolHandler(AbstractHandler):
                         category="timeout",
                         retryable=True
                     )
-                time.sleep(0.5 * (2 ** attempt))
+                time.sleep(0.5 * (2 ** (attempt)))
             except (urllib.error.URLError) as e:
                 if attempt == retries - 1:
                     raise HandlerError(
@@ -115,7 +153,7 @@ class HttpToolHandler(AbstractHandler):
                         retryable=True,
                         details={"import_error": _requests_import_error, "python": sys.executable}
                     )
-                time.sleep(0.5 * (2 ** attempt))
+                time.sleep(0.5 * (2 ** (attempt)))
             except Exception as e:
                 # requests path or unexpected
                 if attempt == retries - 1:
@@ -133,7 +171,7 @@ class HttpToolHandler(AbstractHandler):
                         category="io",
                         retryable=True
                     )
-                time.sleep(0.5 * (2 ** attempt))
+                time.sleep(0.5 * (2 ** (attempt)))
         # Safety net
         raise HandlerError(
             message="Transport retry exhausted",
@@ -170,7 +208,8 @@ class HttpToolHandler(AbstractHandler):
             try:
                 body = json.loads(body_text)
                 if isinstance(body, dict):
-                    error_msg = body.get("error", {}).get("message", error_msg)
+                    # Prefer API error message when present
+                    error_msg = body.get("error", {}).get("message", body.get("message", error_msg))
             except Exception:
                 pass
             raise HandlerError(
@@ -184,7 +223,7 @@ class HttpToolHandler(AbstractHandler):
             try:
                 body = json.loads(body_text)
                 if isinstance(body, dict):
-                    error_msg = body.get("error", {}).get("message", error_msg)
+                    error_msg = body.get("error", {}).get("message", body.get("message", error_msg))
             except Exception:
                 pass
             raise HandlerError(

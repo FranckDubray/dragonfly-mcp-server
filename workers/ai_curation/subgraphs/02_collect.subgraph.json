@@ -74,7 +74,7 @@
       "retry": {"max": 2, "delay_sec": 5}
     },
 
-    {"name": "normalize_sonar", "type": "transform", "handler": "normalize_llm_output", "inputs": {"content": "${cycle.sources.sonar_raw}"}, "outputs": {"parsed": "cycle.sources.sonar"}},
+    {"name": "normalize_sonar", "type": "transform", "handler": "normalize_llm_output", "inputs": {"content": "${cycle.sources.sonar_raw}", "fallback_value": []}, "outputs": {"parsed": "cycle.sources.sonar"}},
 
     {"name": "filter_news",   "type": "transform", "handler": "array_ops", "inputs": {"op":"filter","items":"${cycle.sources.news}",   "predicate":{"kind":"date_gte","path":"published_at","cutoff":"${cycle.dates.from}"}}, "outputs": {"items": "cycle.fresh.news",  "kept": "cycle.metrics.news_kept",  "dropped": "cycle.metrics.news_dropped"}},
     {"name": "filter_reddit", "type": "transform", "handler": "array_ops", "inputs": {"op":"filter","items":"${cycle.sources.reddit}", "predicate":{"kind":"date_gte","path":"created_utc","cutoff":"${cycle.dates.from}","unix":true}}, "outputs": {"items": "cycle.fresh.reddit", "kept": "cycle.metrics.reddit_kept", "dropped": "cycle.metrics.reddit_dropped"}},

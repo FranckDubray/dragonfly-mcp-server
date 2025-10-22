@@ -1,0 +1,93 @@
+{
+  "type": "function",
+  "function": {
+    "name": "playwright",
+    "displayName": "Playwright (Record & Play)",
+    "category": "development",
+    "tags": ["browser", "record", "replay"],
+    "description": "Enregistre une navigation via Playwright codegen (process.json live) et rejoue par ID (tout, jusqu’à une étape, ou une étape). Tous les fichiers vivent sous playwright/<id>/.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["record_start", "record_list", "record_delete", "play"]
+        },
+        "recording_id": {
+          "type": "string",
+          "description": "Identifiant de l’enregistrement (choisi par l’utilisateur). Format: ^[A-Za-z0-9._-]{4,64}$"
+        },
+        "overwrite": {
+          "type": "boolean",
+          "default": false,
+          "description": "record_start: si true et l'ID existe, purge le répertoire avant de (re)créer (refus si un process actif est détecté)"
+        },
+        "start_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "record_start: URL initiale (optionnelle)"
+        },
+        "target": {
+          "type": "string",
+          "enum": ["playwright_python", "playwright_ts"],
+          "default": "playwright_python",
+          "description": "record_start: format du script codegen parallèle (py ou ts)"
+        },
+        "record_headless": {
+          "type": "boolean",
+          "default": false,
+          "description": "record_start: lancer codegen en headless (déconseillé pour enregistrer)"
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["run_all", "run_until", "run_step"],
+          "default": "run_all",
+          "description": "play: stratégie d’exécution"
+        },
+        "target_step_index": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "play: index d’étape pour run_until ou run_step"
+        },
+        "play_headless": {
+          "type": "boolean",
+          "default": true,
+          "description": "play: exécution headless"
+        },
+        "slow_mo_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2000,
+          "default": 0,
+          "description": "play: ralentissement global"
+        },
+        "timeout_ms": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 60000,
+          "default": 10000,
+          "description": "play: timeout par étape"
+        },
+        "screenshot_on_failure": {
+          "type": "boolean",
+          "default": true,
+          "description": "play: capture un screenshot si échec"
+        },
+        "video": {
+          "type": "boolean",
+          "default": false,
+          "description": "play: enregistre une vidéo de la session"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500,
+          "default": 50,
+          "description": "record_list: pagination; play: borne des logs/artefacts renvoyés"
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}
