@@ -41,3 +41,6 @@ tests/
 # Build/egg-info metadata
 src/add_mcp_server.egg-info/
 src/dragonfly_mcp_server.egg-info/
+
+# Playwright recordings, profiles and browsers
+playwright/
