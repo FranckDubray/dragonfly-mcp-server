@@ -1,6 +1,7 @@
-import os, json
+import os, json, subprocess, sys
 from datetime import datetime
 from .utils import CHROOT, ensure_dir, safe_path, abs_from_rel, set_tmp_env_for_recording, restore_tmp_env, resolve_locator
+from .parser import parse_script_to_steps
 
 try:
     from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
@@ -17,8 +18,78 @@ def _snap(page, images_dir: str, tag: str, idx: int) -> str:
     return out
 
 
+def _ensure_process_json(rec_dir: str) -> str:
+    pj_path = os.path.join(rec_dir, 'process.json')
+    need_generate = True
+    if os.path.isfile(pj_path):
+        try:
+            with open(pj_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            if isinstance(data, dict) and isinstance(data.get('steps'), list) and len(data['steps']) > 0:
+                need_generate = False
+        except Exception:
+            pass
+    if not need_generate:
+        return pj_path
+
+    script_py = os.path.join(rec_dir, 'script.py')
+    script_ts = os.path.join(rec_dir, 'script.ts')
+    script_path = script_py if os.path.isfile(script_py) else (script_ts if os.path.isfile(script_ts) else None)
+    if not script_path:
+        with open(pj_path, 'w', encoding='utf-8') as f:
+            json.dump({"version": "pw-steps-1", "steps": []}, f)
+        return pj_path
+
+    language = 'playwright_python' if script_path.endswith('.py') else 'playwright_ts'
+    try:
+        with open(script_path, 'r', encoding='utf-8') as f:
+            text = f.read()
+        steps = parse_script_to_steps(text, language, os.path.abspath(CHROOT))
+        with open(pj_path, 'w', encoding='utf-8') as f:
+            json.dump({"version": "pw-steps-1", "steps": steps}, f, ensure_ascii=False, indent=2)
+    except Exception:
+        try:
+            with open(pj_path, 'w', encoding='utf-8') as f:
+                json.dump({"version": "pw-steps-1", "steps": []}, f)
+        except Exception:
+            pass
+    return pj_path
+
+
 def play_run(p: dict):
     rid = p['recording_id']
+    raw_script = bool(p.get('raw_script', False))
+
+    if raw_script:
+        # Exécuter directement le script Playwright généré
+        rec_dir = safe_path(rid)
+        script_py = os.path.join(rec_dir, 'script.py')
+        if not os.path.isfile(script_py):
+            return {"ok": False, "error": "script.py introuvable pour cet ID"}
+        env = os.environ.copy()
+        # Confinement TMP/HOME
+        prev_env = set_tmp_env_for_recording(rec_dir)
+        try:
+            # Lancer le script avec le Python courant
+            proc = subprocess.run([sys.executable, script_py], cwd=CHROOT, capture_output=True, text=True, timeout=600)
+            out = proc.stdout[-4000:] if proc.stdout else ""
+            err = proc.stderr[-4000:] if proc.stderr else ""
+            return {
+                "ok": proc.returncode == 0,
+                "recording_id": rid,
+                "mode": "raw_script",
+                "exit_code": proc.returncode,
+                "stdout_tail": out,
+                "stderr_tail": err,
+            }
+        except subprocess.TimeoutExpired:
+            return {"ok": False, "error": "raw_script timeout (600s)"}
+        except Exception as e:
+            return {"ok": False, "error": f"raw_script error: {e}"}
+        finally:
+            restore_tmp_env(prev_env)
+
+    # Sinon: exécution par étapes (screenshots before/after)
     mode = p.get('mode', 'run_all')
     tsi = p.get('target_step_index')
     headless = bool(p.get('play_headless', True))
@@ -28,9 +99,9 @@ def play_run(p: dict):
     limit = int(p.get('limit', 50))
 
     rec_dir = safe_path(rid)
-    pj_path = os.path.join(rec_dir, 'process.json')
+    pj_path = _ensure_process_json(rec_dir)
     if not os.path.isfile(pj_path):
-        raise ValueError('process.json introuvable pour cet ID')
+        raise ValueError('process.json introuvable pour cet ID (et aucun script.* pour le générer)')
     with open(pj_path, 'r', encoding='utf-8') as f:
         proc = json.load(f)
 
@@ -114,14 +185,12 @@ def play_run(p: dict):
                     _snap(page, images_dir, 'after', i)
                     executed = i + 1
                 except PWTimeout as te:
-                    if screenshot_on_failure:
-                        try: _snap(page, images_dir, 'error', i)
-                        except Exception: pass
+                    try: _snap(page, images_dir, 'error', i)
+                    except Exception: pass
                     return _result(rid, mode, executed, total, images_dir, logs, limit, failed=i, err=str(te))
                 except Exception as e:
-                    if screenshot_on_failure:
-                        try: _snap(page, images_dir, 'error', i)
-                        except Exception: pass
+                    try: _snap(page, images_dir, 'error', i)
+                    except Exception: pass
                     return _result(rid, mode, executed, total, images_dir, logs, limit, failed=i, err=str(e))
             ctx.close()
     except Exception as e:

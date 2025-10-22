@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dragonfly-mcp-server"
-version = "1.54.1"
+version = "1.55.0"
 description = "Dragonfly MCP server tools (orchestrator, handlers, utilities)"
 readme = "README.md"
 authors = [{ name = "orchestrator-team" }]

@@ -1,5 +1,36 @@
 # Changelog
 
+## [1.55.0] - 2025-10-22
+
+### ✨ NEW: Playwright (Record & Play) tool
+- Nouveau tool unique `playwright` (category: development) qui regroupe l’enregistrement et la relecture.
+- Opérations: `record_start`, `record_list`, `record_delete`, `play`.
+- Chroot strict: tous les fichiers sous `playwright/<id>/` (script.py|ts, process.json, images/, storage/, tmp/, logs/…).
+- Enregistrement via Playwright codegen (fenêtre headful), process.json maintenu/finalisé automatiquement à partir du script généré.
+- Relecture:
+  - Mode steps: exécution step-by-step (goto/click/fill/press/waits/upload), screenshots horodatés before/after (+ on error), timeouts et slowMo.
+  - Mode raw_script: exécution directe du script Playwright (une seule étape, pratique pour un "replay total").
+- Résolution des locators whitelist (locator, get_by_role/text/label/placeholder/test_id). Validation stricte des paramètres.
+
+### 🔒 Sécurité & confinement
+- TMP/HOME/USERPROFILE confinés dans `playwright/<id>/tmp` durant record & play.
+- Option de cache navigateurs local: `PLAYWRIGHT_BROWSERS_PATH=playwright/browsers`.
+- Interdiction des chemins hors chroot, pas de symlinks sortants.
+
+### 🧰 DX & scripts
+- `scripts/dev.sh` et `scripts/dev.ps1` installent automatiquement Chromium pour Playwright dans `playwright/browsers` (si nécessaire), génèrent le catalogue des tools, puis démarquent le serveur.
+- `.gitignore`: ajout de `playwright/` (artifacts d’enregistrements et profils).
+
+### 📦 Dépendances
+- `pyproject.toml`: ajout de `playwright>=1.47.0`, `pypdf>=4.0.0`, `sympy>=1.12`, `av>=11.0.0`, `python-chess>=1.999` (runtime), extras `dev` conservés.
+
+### 🛠️ Fixes & robustesse
+- `utils.py`: correctifs regex (unterminated string literal) et centralisation des helpers (CHROOT, TMP/HOME confinement, resolve_locator…).
+- `record_start`: préflight CLI, logs locaux stdout/stderr, message d’erreur explicite si codegen s’arrête immédiatement (GUI absente, navigateurs non installés, etc.).
+- `play`: génération automatique de `process.json` depuis `script.py|ts` si absent/vide, screenshots horodatés, bornage des logs (limit + truncated).
+
+---
+
 ## [1.54.1] - 2025-10-22
 
 ### 🛠 Fixes & Improvements (Image & 3D Import)
@@ -26,10 +57,10 @@
 - wool_only still supported (deprecated) → internally mapped to palette
 - Default palette now “both” (wool + concrete) for higher contrast
 
-### 🧱 Palette
+### 🧰 Palette
 - Extended high-contrast palette: full 16 wool + 16 concrete colors (+ neutrals)
 
-### 🧭 Positioning
+### 🧱 Positioning
 - FIX: floor mode now respects params.position.y exactly (no fallback to y=64)
 
 ### 🧩 Refactor

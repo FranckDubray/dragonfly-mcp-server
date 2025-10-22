@@ -54,6 +54,11 @@
           "default": true,
           "description": "play: exécution headless"
         },
+        "raw_script": {
+          "type": "boolean",
+          "default": false,
+          "description": "play: si true, exécute directement playwright/<id>/script.py en sous-processus (sans screenshots par étape)."
+        },
         "slow_mo_ms": {
           "type": "integer",
           "minimum": 0,
@@ -71,12 +76,12 @@
         "screenshot_on_failure": {
           "type": "boolean",
           "default": true,
-          "description": "play: capture un screenshot si échec"
+          "description": "play: capture un screenshot si échec (mode steps)"
         },
         "video": {
           "type": "boolean",
           "default": false,
-          "description": "play: enregistre une vidéo de la session"
+          "description": "play: enregistre une vidéo de la session (mode steps)"
         },
         "limit": {
           "type": "integer",

@@ -96,6 +96,15 @@ def _dir_non_empty(path: str) -> bool:
         return False
 
 
+def _tail(path: str, n: int = 40) -> str:
+    try:
+        with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+            lines = f.readlines()
+        return ''.join(lines[-n:])
+    except Exception:
+        return ''
+
+
 def record_start(p: dict):
     rid = p['recording_id']
     overwrite = bool(p.get('overwrite', False))
@@ -125,6 +134,7 @@ def record_start(p: dict):
     _ensure_dir(os.path.join(rec_dir, 'artifacts'))
     _ensure_dir(os.path.join(rec_dir, 'storage'))
     _ensure_dir(os.path.join(rec_dir, 'tmp'))
+    _ensure_dir(os.path.join(rec_dir, 'logs'))
 
     # init process.json minimal (sera remplacé à la fermeture)
     pj_path = _process_json_path(rid)
@@ -163,9 +173,14 @@ def record_start(p: dict):
     env['TMPDIR'] = tmpdir
     env['TEMP'] = tmpdir
     env['TMP'] = tmpdir
-    # Ne définir PLAYWRIGHT_BROWSERS_PATH que si des navigateurs sont installés dedans
     if _dir_non_empty(browsers_dir):
         env['PLAYWRIGHT_BROWSERS_PATH'] = browsers_dir
+
+    # Préparer logs locaux
+    stdout_path = os.path.join(rec_dir, 'logs', 'codegen_stdout.log')
+    stderr_path = os.path.join(rec_dir, 'logs', 'codegen_stderr.log')
+    stdout_f = open(stdout_path, 'w', encoding='utf-8')
+    stderr_f = open(stderr_path, 'w', encoding='utf-8')
 
     # Lancer codegen
     creationflags = subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == 'win32' else 0
@@ -175,13 +190,17 @@ def record_start(p: dict):
         proc = subprocess.Popen(
             args,
             cwd=CHROOT,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            stdout=stdout_f,
+            stderr=stderr_f,
             creationflags=creationflags,
             preexec_fn=preexec_fn,
             env=env,
         )
     except Exception as e:
+        try:
+            stdout_f.close(); stderr_f.close()
+        except Exception:
+            pass
         return {"ok": False, "error": f"Echec lancement codegen: {e}"}
 
     # Écrire pid.json immédiatement
@@ -192,7 +211,12 @@ def record_start(p: dict):
     # Vérifier démarrage effectif (process vivant après court délai)
     time.sleep(0.8)
     if proc.poll() is not None:
-        # Process déjà terminé → fournir un message explicite et des hints
+        # Close files to flush buffers and read logs
+        try:
+            stdout_f.close(); stderr_f.close()
+        except Exception:
+            pass
+        # Provide explicit hints + logs tail
         hints = [
             "Vérifiez l'installation des navigateurs: python -m playwright install chromium",
             "Assurez-vous que le serveur tourne dans une session utilisateur GUI (Terminal ouvert), pas en service headless",
@@ -209,9 +233,13 @@ def record_start(p: dict):
                 "dir": os.path.relpath(rec_dir, CHROOT),
                 "script": os.path.relpath(script_path, CHROOT),
                 "process_json": os.path.relpath(pj_path, CHROOT),
+                "stdout_log": os.path.relpath(stdout_path, CHROOT),
+                "stderr_log": os.path.relpath(stderr_path, CHROOT),
             },
+            "stderr_tail": _tail(stderr_path, 80),
         }
 
+    # Laisser les fichiers log ouverts (attachés au process) et finaliser plus tard
     # Thread finaliseur à la fermeture
     _start_finalizer_thread(proc, rec_dir, script_path, pidfile)
 
@@ -223,6 +251,8 @@ def record_start(p: dict):
             "dir": os.path.relpath(rec_dir, CHROOT),
             "script": os.path.relpath(script_path, CHROOT),
             "process_json": os.path.relpath(pj_path, CHROOT),
+            "stdout_log": os.path.relpath(stdout_path, CHROOT),
+            "stderr_log": os.path.relpath(stderr_path, CHROOT),
         },
         "note": "Fermez la fenêtre Playwright pour finaliser l'enregistrement. process.json est généré automatiquement à la fermeture.",
     }
