@@ -28,6 +28,7 @@
       {"from": "COLLECT", "to": "EXIT", "when": "fail"},
       {"from": "SCORE", "to": "VALIDATE"},
       {"from": "VALIDATE", "to": "ENRICH", "when": "success"},
+      {"from": "VALIDATE", "to": "SCORE", "when": "retry"},
       {"from": "VALIDATE", "to": "ENRICH", "when": "retry_exhausted"},
       {"from": "ENRICH", "to": "OUTPUT"},
       {"from": "OUTPUT", "to": "EXIT"}

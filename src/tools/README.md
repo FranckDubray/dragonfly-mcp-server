@@ -2,7 +2,7 @@
 
 Ce fichier est généré automatiquement par `scripts/generate_tools_catalog.py`. Ne pas éditer à la main.
 
-Total tools: 50
+Total tools: 52
 
 ## 📊 Intelligence & Orchestration (5)
 
@@ -29,7 +29,7 @@ Debug mode (quick guide):
   - Opérations: search_papers, get_paper_details, search_authors, get_citations
   - Tokens: aucun
 
-## 🔧 Development (5)
+## 🔧 Development (6)
 
 - Dev Navigator — Couteau suisse LLM pour explorer un dépôt: overview, tree, search, outline, open (plan fs_requests uniquement — pas de contenu), endpoint… · Tags: knowledge
   - Opérations: compose, overview, tree, search, outline, open …
@@ -41,6 +41,10 @@ Debug mode (quick guide):
 
 - GitBook — Recherche et exploration de documentation GitBook. Découverte automatique de pages, recherche globale sans connaître les URLs. · Tags: knowledge, docs, search
   - Opérations: find_docs, extract_base_url, discover_site, search_site, read_page
+  - Tokens: aucun
+
+- Playwright (Record & Play) — Enregistre une navigation via Playwright codegen (process.json live) et rejoue par ID (tout, jusqu’à une étape, ou une étape). Tous les f… · Tags: browser, record, replay
+  - Opérations: record_start, record_list, record_delete, play
   - Tokens: aucun
 
 - Python Sandbox — Exécute du code Python dans un sandbox sécurisé avec accès à des tools MCP. Pas d'imports, API limitée, timeout configurable.
@@ -201,7 +205,7 @@ Debug mode (quick guide):
   - Opérations: connect, exec, exec_file, upload, download
   - Tokens: aucun
 
-## 🎮 Social & Entertainment (6)
+## 🎮 Social & Entertainment (7)
 
 - Astronomy & Space — Complete astronomy calculations using Skyfield (100% local, no API key required). Planet positions, moon phases, ephemeris, celestial eve… · Tags: space, astronomy, science, educational, planets, stars
   - Opérations: planet_position, moon_phase, sun_moon_times, celestial_events, planet_info, visible_planets …
@@ -213,6 +217,10 @@ Debug mode (quick guide):
 
 - Lichess (Public API) — Accès en lecture seule aux endpoints publics de Lichess: profils, perfs, équipes, parties, tournois, leaderboards, puzzles. Sans authenti… · Tags: chess, lichess, public_api
   - Opérations: get_user_profile, get_user_perfs, get_user_teams, get_user_current_game, get_user_games, get_team_details …
+  - Tokens: aucun
+
+- Minecraft Control — Control Minecraft server via RCON: execute commands, spawn entities, build structures, import 3D models, control player, manage environment. · Tags: gaming, 3d, scripting, rcon
+  - Opérations: execute_command, spawn_entities, build_structure, import_3d_model, control_player, set_environment …
   - Tokens: aucun
 
 - Reddit — Advanced Reddit analysis tool. Search subreddits, analyze sentiment, find experts, track trends, get post comments. Discover insights fro… · Tags: social, knowledge, scraping, external_sources

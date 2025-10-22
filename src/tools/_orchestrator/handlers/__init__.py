@@ -1,16 +1,4 @@
 
-
-
-
-
-
-
-
-
-
-
-
-
 # Handlers registry bootstrap (IO + transforms)
 from .base import AbstractHandler, HandlerError
 from .registry import HandlerRegistry, get_registry
@@ -18,7 +6,7 @@ from .http_tool import HttpToolHandler
 from .sleep import SleepHandler
 
 # Dynamic import of transforms packages (one file per transform)
-import pkgutil, importlib, pathlib, os, sys
+import pkgutil, importlib, pathlib, os, sys, inspect
 
 __all__ = [
     'AbstractHandler', 'HandlerError', 'HandlerRegistry', 'get_registry',
@@ -46,15 +34,34 @@ def bootstrap_handlers(cancel_flag_fn=None):
                 continue
             try:
                 module = importlib.import_module(f"{__package__}.{pkg_name}.{modname}")
-                # Register any class with 'kind' property and 'run' method
+                # Register any concrete handler class defined in this module
                 for attr in dir(module):
                     obj = getattr(module, attr)
-                    if isinstance(obj, type) and hasattr(obj, 'kind') and callable(getattr(obj, 'run', None)):
+                    if (
+                        isinstance(obj, type)
+                        and issubclass(obj, AbstractHandler)
+                        and obj is not AbstractHandler
+                        and not inspect.isabstract(obj)
+                        and getattr(obj, '__module__', '') == module.__name__
+                        and callable(getattr(obj, 'run', None))
+                    ):
                         try:
                             inst = obj()
                             if not registry.has(inst.kind):
                                 registry.register(inst)
                         except Exception as reg_e:
-                            print(f"[orchestrator.handlers] failed to register handler '{attr}' from {pkg_name}/{modname}: {reg_e}", file=sys.stderr)
+                            print(
+                                f"[orchestrator.handlers] failed to register handler '{attr}' from {pkg_name}/{modname}: {reg_e}",
+                                file=sys.stderr,
+                            )
             except Exception as imp_e:
-                print(f"[orchestrator.handlers] failed to import module {pkg_name}/{modname}: {imp_e}", file=sys.stderr)
+                print(
+                    f"[orchestrator.handlers] failed to import module {pkg_name}/{modname}: {imp_e}",
+                    file=sys.stderr,
+                )
+
+# Explicit import to ensure coerce_number is discoverable in transforms_domain
+try:
+    from .transforms_domain.coerce_number import CoerceNumberHandler  # noqa: F401
+except Exception:
+    pass
