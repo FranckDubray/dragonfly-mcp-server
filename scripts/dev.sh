@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Detect venv python
+# Always run from repo root (relative paths only)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "${SCRIPT_DIR}/.."
+
+# Detect venv python (no absolute paths required)
 if [[ -n "${VIRTUAL_ENV:-}" ]]; then
   PYBIN="$(command -v python)"
 else
@@ -11,15 +15,15 @@ fi
 
 echo "[dev.sh] 🔧 Python: $($PYBIN --version)"
 
-echo "[dev.sh] 📦 Installation navigateurs Playwright (confinés dans playwright/browsers)"
+echo "[dev.sh] 📦 Installation navigateurs Playwright (scopés dans ./playwright/browsers)"
 PLAYWRIGHT_BROWSERS_PATH="playwright/browsers" "$PYBIN" -m playwright install chromium || true
 
-# Génération du catalogue tools (si le script existe)
+# Génération du catalogue tools (si présent)
 if [[ -f scripts/generate_tools_catalog.py ]]; then
-  echo "[dev.sh] 🧾 Génération catalogue tools"
+  echo "[dev.sh] 🧠 Génération catalogue tools"
   "$PYBIN" scripts/generate_tools_catalog.py || true
 fi
 
-# Lancement du serveur
+# Lancement du serveur (chemins relatifs)
 echo "[dev.sh] 🚀 Démarrage serveur"
 "$PYBIN" src/server.py

@@ -2,7 +2,7 @@
   "type": "function",
   "function": {
     "name": "orchestrator",
-    "displayName": "Orchestrator (JSON-driven FSM)",
+    "displayName": "Call LLM",
     "category": "intelligence",
     "tags": ["automation", "workflows", "state_machine", "long_running"],
     "description": "Start/stop/status/debug/list a JSON-driven worker that executes a process graph (FSM).\n\nDebug mode (quick guide):\n- Pauses occur at node boundaries (AFTER a node executes), never in the middle of a handler.\n- To pause immediately on a fresh run, start with debug.enable_on_start=true.\n- step executes exactly 1 node, then pauses again.\n- continue runs until a breakpoint matches, or until END/EXIT.\n- run_until is a one-off temporary breakpoint (e.g., node=\"llm_gpt_score\").\n- breakpoints are {node, when?} where when is an optional decision route label.\n- timeout_sec is the synchronous wait budget for the pause handshake; if you get status=in_progress, poll again.\n\nRecommended sequence:\n1) start with debug.enable_on_start=true → wait for status.debug.paused=true (boundary at START).\n2) debug.step → observe ctx diffs and previews; you are now right AFTER START, next_node is typically your first IO.\n3) debug.break_add {node:\"get_date_now\"} (or any target), then debug.continue → pauses just AFTER that node executed.\n4) debug.step over nodes of interest (e.g., llm_gpt_score), inspecting ctx_cycle_diff + debug_preview (PII masked, truncated).\n5) debug.disable to resume normal orchestration.",
@@ -44,17 +44,17 @@
         },
         "debug": {
           "type": "object",
-          "description": "Debug control (only for 'debug' operation).\n\nNotes and best practices:\n- Pauses happen AFTER node execution (boundary).\n- For an immediate pause on fresh run: use start with debug.enable_on_start=true.\n- step executes exactly 1 node and then pauses.\n- continue runs until a breakpoint (or END/EXIT).\n- run_until sets a one-off target {node, when?}.\n- breakpoint items: {node, when?} (when is optional decision route).\n- timeout_sec controls the sync wait for pause; if in_progress, poll again with status.",
+          "description": "Debug control (only for 'debug' operation).\n\nNotes and best practices:\n- Pauses happen AFTER node execution (boundary).\n- For an immediate pause on fresh run: use start with debug.enable_on_start=true.\n- step executes exactly 1 node and then pauses.\n- continue runs until a breakpoint (or END/EXIT).\n- run_until sets a one-off temporary breakpoint (target) and continue.\n- breakpoint items: {node, when?} (when is optional decision route).\n- timeout_sec controls the sync wait for pause; if in_progress, poll again with status.",
           "properties": {
             "action": {
               "type": "string",
               "enum": ["enable", "enable_now", "step", "continue", "run_until", "break_add", "break_remove", "break_list", "break_clear", "inspect", "disable"],
-              "description": "Debug command to execute.\n- enable: turn debug on; pause at next safe boundary (usually after the next node).\n- enable_now: ask the runner to pause as soon as possible (typically at the current/next boundary).\n- step: execute exactly one node, then pause.\n- continue: run until a breakpoint or END/EXIT, then pause.\n- run_until: set a one-off temporary breakpoint (target) and continue.\n- break_add/remove/list/clear: manage persistent breakpoints.\n- inspect: fetch last_step/ctx_cycle_diff/watches values without executing.\n- disable: turn debug off and resume normal orchestration."
+              "description": "Debug command to execute.\n- enable: turn debug on; pause at next safe boundary (usually after the next node).\n- enable_now: ask the runner to pause as soon as possible (typically at the current/next boundary).\n- step: execute exactly 1 node, then pause.\n- continue: run until a breakpoint or END/EXIT, then pause.\n- run_until: set a one-off temporary breakpoint (target) and continue.\n- break_add/remove/list/clear: manage persistent breakpoints.\n- inspect: fetch last_step/ctx_cycle_diff/watches values without executing.\n- disable: turn debug off and resume normal orchestration."
             },
             "pause_at_start": { "type": "boolean", "description": "If true with 'enable', pause at next START boundary (default: true)." },
             "breakpoints": {
               "type": "array",
-              "description": "List of breakpoints to set (for enable/break_add). Items look like {node: 'name', when?: 'route_label'}.",
+              "description": "List of breakpoints to set (for enable/break_add). Items look like {node: 'name', when?: 'route_label' }.",
               "items": {
                 "type": "object",
                 "properties": {
