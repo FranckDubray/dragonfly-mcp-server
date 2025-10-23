@@ -1,0 +1,70 @@
+{
+  "type": "function",
+  "function": {
+    "name": "vscode_control",
+    "displayName": "VS Code Control",
+    "category": "developer_tools",
+    "tags": ["vscode", "editor", "cli", "local"],
+    "description": "Contrôle local de VS Code via la CLI 'code' et opérations de workspace: ouvrir fichiers/dossiers, diff, extensions, settings, recherche, et prévisualisation/applications de changements.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": [
+            "open_file",
+            "open_folder",
+            "diff_files",
+            "goto_line",
+            "list_extensions",
+            "install_extension",
+            "uninstall_extension",
+            "get_version",
+            "get_status",
+            "execute_system_command",
+            "get_settings",
+            "update_settings",
+            "list_common_settings",
+            "get_workspace_info",
+            "search_files",
+            "list_open_files",
+            "close_file",
+            "get_project_structure",
+            "read_file",
+            "write_file",
+            "append_to_file",
+            "preview_file_changes",
+            "apply_file_changes"
+          ],
+          "description": "Opération VS Code à exécuter"
+        },
+        "file_path": {"type": "string", "description": "Chemin du fichier"},
+        "folder_path": {"type": "string", "description": "Chemin du dossier"},
+        "file_path_1": {"type": "string", "description": "Chemin du fichier A (diff)"},
+        "file_path_2": {"type": "string", "description": "Chemin du fichier B (diff)"},
+        "line_number": {"type": "integer", "minimum": 1},
+        "column_number": {"type": "integer", "minimum": 1},
+        "new_window": {"type": "boolean", "default": false},
+        "wait": {"type": "boolean", "default": false},
+        "add_to_workspace": {"type": "boolean", "default": false},
+        "extension_id": {"type": "string", "description": "Identifiant extension VS Code (publisher.name)"},
+        "show_categories": {"type": "boolean", "default": false},
+        "include_disabled": {"type": "boolean", "default": false},
+        "command": {"type": "string", "description": "Commande système à exécuter (prudence)"},
+        "scope": {"type": "string", "enum": ["user", "workspace"], "default": "user"},
+        "setting_key": {"type": "string"},
+        "setting_value": {},
+        "search_pattern": {"type": "string", "description": "Pattern glob (ex: *.py)"},
+        "search_path": {"type": "string"},
+        "max_results": {"type": "integer", "minimum": 1, "default": 100},
+        "new_content": {"type": "string", "description": "Nouveau contenu (preview/apply)"},
+        "operation_mode": {"type": "string", "enum": ["write", "append"], "default": "write", "description": "Mode d'application du contenu"},
+        "encoding": {"type": "string", "default": "utf-8"},
+        "show_in_vscode": {"type": "boolean", "default": true},
+        "change_id": {"type": "string", "description": "Identifiant de changement à appliquer"}
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}
