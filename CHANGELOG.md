@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.55.5 — 2025-10-23
+
+Chore
+- Dependencies updated in pyproject.toml:
+  - Added: yt_dlp, beautifulsoup4 (bs4), websocket-client (websocket), fastapi, uvicorn
+- Version bump to 1.55.5
+
 ## 1.55.3 — 2025-10-23
 
 Improvements

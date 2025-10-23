@@ -1,0 +1,88 @@
+/* Control Panel styles */
+:root {
+  --sidebar-width: 300px;
+  --primary: #10b981; --primary-hover: #059669; --secondary: #6366f1;
+  --success: #10b981; --error: #ef4444; --warning: #f59e0b;
+  --bg-main: #fafafa; --bg-sidebar: #ffffff; --bg-hover: #f3f4f6; --bg-card: #ffffff;
+  --text-primary: #111827; --text-secondary: #6b7280; --border: #e5e7eb;
+}
+
+/* Layout */
+.sidebar {
+  width: var(--sidebar-width);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  background: var(--bg-sidebar);
+}
+
+/* Category sections */
+.category-section { border-bottom: 1px solid var(--border); }
+.category-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; font-weight: 600; cursor: pointer; user-select: none;
+  color: var(--text-primary); background: #fff;
+}
+.category-header:hover { background: var(--bg-hover); }
+.category-chevron { width: 16px; display: inline-block; transform: rotate(0deg); transition: transform 0.2s ease; color: #6b7280; }
+.category-section.collapsed .category-chevron { transform: rotate(-90deg); }
+.category-emoji { width: 18px; text-align: center; }
+.category-count { margin-left: auto; font-size: 12px; color: var(--text-secondary); background: #eef2ff; border: 1px solid #e5e7eb; padding: 1px 6px; border-radius: 999px; }
+.category-tools { display: flex; flex-direction: column; padding: 6px 6px 10px; gap: 4px; background: #fafafa; }
+.category-section.collapsed .category-tools { display: none; }
+
+/* Tool items */
+.tool-item {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px;
+  margin: 0 8px; cursor: pointer; color: var(--text-primary);
+}
+.tool-item:hover { background: var(--bg-hover); }
+.tool-item.active { background: #eef2ff; }
+.tool-icon { width: 22px; text-align: center; }
+.tool-name { flex: 1; font-size: 13px; font-weight: 600; }
+.fav-btn {
+  font-size: 16px; line-height: 1; border: none; background: transparent; cursor: pointer;
+  color: #f59e0b; opacity: 0.8;
+}
+.fav-btn:hover { opacity: 1; }
+
+/* Main view */
+.tool-view { max-width: 980px; margin: 0 auto; }
+.tool-header { margin-bottom: 16px; }
+.tool-title { font-size: 18px; font-weight: 800; display: flex; align-items: center; gap: 4px; }
+.tool-badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #ecfeff; color: #155e75; border: 1px solid #cffafe; }
+.tool-description { color: var(--text-secondary); margin-top: 6px; }
+
+/* Form */
+.form-section { display: flex; flex-direction: column; gap: 12px; margin: 16px 0; }
+.form-group { display: flex; flex-direction: column; gap: 6px; background: var(--bg-card); padding: 12px; border: 1px solid var(--border); border-radius: 10px; }
+.form-label { font-weight: 700; font-size: 12px; color: var(--text-primary); }
+.required-mark { color: var(--error); margin-left: 4px; }
+.form-input, .form-select { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; outline: none; background: #fff; }
+.form-input:focus, .form-select:focus { border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(59,130,246,.2); }
+.form-help, .enum-hint { font-size: 12px; color: var(--text-secondary); }
+
+/* Execute button */
+.execute-btn {
+  align-self: flex-start; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--primary);
+  background: var(--primary); color: #fff; cursor: pointer; font-weight: 700;
+}
+.execute-btn:hover { background: var(--primary-hover); }
+
+/* Results */
+.result-section { margin-top: 18px; }
+.result-header { font-weight: 800; margin-bottom: 8px; }
+.result-body { white-space: pre-wrap; background: #0b1020; color: #e2e8f0; padding: 12px; border-radius: 8px; border: 1px solid #111827; min-height: 64px; }
+.result-body.success { border-color: #16a34a; }
+.result-body.error { border-color: #dc2626; }
+
+/* Empty state */
+.empty-state .empty-state-icon { opacity: .3; }
+
+/* Status bar */
+.status-bar { transition: background .2s ease, color .2s ease; }
+
+/* Search input (if no inline styles) */
+.search-input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; outline: none; background: white; }
+.search-input:focus { border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(59,130,246,.2); }
