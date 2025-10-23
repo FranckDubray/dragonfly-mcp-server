@@ -1,4 +1,19 @@
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import json
 import re
 from ..base import AbstractHandler, HandlerError
@@ -21,6 +36,7 @@ class NormalizeLlmOutputHandler(AbstractHandler):
         return t
 
     def _extract_first_json(self, text: str) -> str:
+        # Robust extraction: find first '{' or '[' and then walk to matching '}' or ']'
         start_idx = None
         for i, ch in enumerate(text):
             if ch in "[{":
@@ -93,33 +109,62 @@ class NormalizeLlmOutputHandler(AbstractHandler):
                     in_str = True
         return ''.join(out)
 
+    def _extract_from_fenced_block(self, text: str) -> str | None:
+        """
+        Try to extract JSON from a ```json ... ``` fenced block anywhere in the text.
+        Returns the inner content if found, else None.
+        """
+        # Look for ```json ... ``` ... ``` patterns lazily
+        m = re.search(r"```json\s*(.+?)\s*```", text, flags=re.DOTALL | re.IGNORECASE)
+        if not m:
+            return None
+        inner = m.group(1).strip()
+        return inner
+
     def run(self, content=None, fallback_value=None, **kwargs):
         try:
-            # NEW: if content is already parsed JSON (dict/list), pass-through
+            # Pass-through if already parsed
             if isinstance(content, (dict, list)):
                 return {"parsed": content}
             if not content:
                 if fallback_value is not None:
                     return {"parsed": fallback_value}
                 raise HandlerError("Empty content", "EMPTY_INPUT", "validation", False)
-            text = self._strip_fences(str(content))
+
+            raw = str(content)
+
+            # 1) Direct JSON if possible
             try:
-                parsed = json.loads(text)
-                return {"parsed": parsed}
+                return {"parsed": json.loads(raw)}
             except json.JSONDecodeError:
-                snippet = self._extract_first_json(text)
+                pass
+
+            # 2) If a fenced ```json block exists anywhere, parse inside it
+            fenced = self._extract_from_fenced_block(raw)
+            if fenced:
                 try:
-                    parsed = json.loads(snippet)
-                    return {"parsed": parsed}
+                    return {"parsed": json.loads(fenced)}
                 except json.JSONDecodeError:
-                    repaired = self._repair_invalid_escapes(snippet)
+                    # Try repairs on fenced content
+                    repaired = self._repair_invalid_escapes(fenced)
                     try:
-                        parsed = json.loads(repaired)
-                        return {"parsed": parsed}
+                        return {"parsed": json.loads(repaired)}
                     except json.JSONDecodeError:
                         repaired2 = self._escape_control_chars_in_strings(repaired)
-                        parsed = json.loads(repaired2)
-                        return {"parsed": parsed}
+                        return {"parsed": json.loads(repaired2)}
+
+            # 3) Extract the first JSON object/array from anywhere in the text
+            snippet = self._extract_first_json(raw)
+            try:
+                return {"parsed": json.loads(snippet)}
+            except json.JSONDecodeError:
+                repaired = self._repair_invalid_escapes(snippet)
+                try:
+                    return {"parsed": json.loads(repaired)}
+                except json.JSONDecodeError:
+                    repaired2 = self._escape_control_chars_in_strings(repaired)
+                    return {"parsed": json.loads(repaired2)}
+
         except HandlerError:
             raise
         except json.JSONDecodeError as e:
