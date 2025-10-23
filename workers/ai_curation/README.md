@@ -14,7 +14,7 @@ Produire quotidiennement un **Top 10 IA/LLM** de haute qualité :
 
 ---
 
-## 📁 Architecture hiérarchique (SSOT)
+## 🗂️ Architecture hiérarchique (SSOT)
 
 ### Principe : Single Source of Truth
 - **Chaque node défini UNE SEULE FOIS** dans son subgraph
@@ -23,7 +23,7 @@ Produire quotidiennement un **Top 10 IA/LLM** de haute qualité :
 
 ```
 workers/ai_curation/
-├── main.process.json                 (1.8KB)  # Orchestration 5 subgraphs
+├── main.process.json                 (1.8KB)  # Orchestration 6 subgraphs
 │
 ├── config/                           # Configurations
 │   ├── worker_ctx.json               (248B)   # Modèles, seuils, DB
@@ -41,11 +41,11 @@ workers/ai_curation/
 │   ├── 02_collect.subgraph.json      (4.8KB)  # Fetch 4 sources + filter
 │   ├── 03_score.subgraph.json        (1.2KB)  # GPT scoring top 10
 │   ├── 04_validate.subgraph.json     (4.9KB)  # Validation loop Sonar
-│   └── 05_output.subgraph.json       (1.8KB)  # Format FR + save DB
+│   ├── 05_output.subgraph.json       (1.8KB)  # Format FR + save DB
 │   └── 06_enrich.subgraph.json       (5.2KB)  # Enrich primary sources
 │
 └── visualization/                    # Mermaid avec emojis
-    ├── main_global.mmd               (830B)   # Vue macro (5 boîtes)
+    ├── main_global.mmd               (830B)   # Vue macro (6 boîtes)
     ├── subgraph_COLLECT.mmd          (1.4KB)  # Détail COLLECT (4 sources)
     └── subgraph_VALIDATE.mmd         (1.9KB)  # Détail VALIDATE
 ```
@@ -55,15 +55,16 @@ workers/ai_curation/
 
 ---
 
-## 🎨 Vue globale (5 subgraphs)
+## 🎨 Vue globale (6 subgraphs)
 
 ```mermaid
 graph LR
   START([🚀 START])
-  INIT[🔧 INIT<br>dates + DB setup]
+  INIT[🛠️ INIT<br>dates + DB setup]
   COLLECT[📦 COLLECT<br>4 sources + filter]
   SCORE[🎯 SCORE<br>GPT top 10]
   VALIDATE[✅ VALIDATE<br>Sonar quality check]
+  ENRICH[➕ ENRICH<br>Primary sources]
   OUTPUT[💾 OUTPUT<br>Format FR + save]
   EXIT([🏁 EXIT])
   
@@ -71,9 +72,9 @@ graph LR
   INIT-->COLLECT
   COLLECT-->SCORE
   SCORE-->VALIDATE
-  VALIDATE-->|🔄 retry|SCORE
-  VALIDATE-->|✓ success|ENRICH
-  VALIDATE-->|🛑 retry_exhausted|ENRICH
+  VALIDATE-->🔄 retry|SCORE
+  VALIDATE-->✓ success|ENRICH
+  VALIDATE-->🛑 retry_exhausted|ENRICH
   ENRICH-->OUTPUT
   OUTPUT-->EXIT
   
@@ -81,12 +82,14 @@ graph LR
   class COLLECT collect
   class SCORE score
   class VALIDATE validate
+  class ENRICH enrich
   class OUTPUT output
   
   classDef init fill:#2196F3,stroke:#1976D2,stroke-width:2px,color:#fff
   classDef collect fill:#4CAF50,stroke:#388E3C,stroke-width:2px,color:#fff
   classDef score fill:#FF9800,stroke:#F57C00,stroke-width:2px,color:#fff
   classDef validate fill:#9C27B0,stroke:#7B1FA2,stroke-width:2px,color:#fff
+  classDef enrich fill:#8BC34A,stroke:#689F38,stroke-width:2px,color:#fff
   classDef output fill:#607D8B,stroke:#455A64,stroke-width:2px,color:#fff
 ```
 
@@ -168,7 +171,7 @@ run(operation="stop", worker_name="ai_curation", stop={"mode": "soft"})
 
 ## 🔄 Workflow détaillé
 
-### 🔧 1. INIT (Initialization)
+### 🛠️ 1. INIT (Initialization)
 - UTC now → now - 3 jours
 - CREATE TABLE IF NOT EXISTS (validation_logs, reports)
 
@@ -191,19 +194,24 @@ run(operation="stop", worker_name="ai_curation", stop={"mode": "soft"})
     - Oui → exit retry → boucle vers SCORE
     - Non → retry_exhausted → ENRICH
 
-### 💾 5. OUTPUT (Format & Save)
+### ➕ 5. ENRICH (Primary Sources Enrichment)
+- Recherche de sources primaires par item (blogs officiels, arXiv, news majeures)
+- Dédoublonnage + stockage JSON par item (table sources)
+
+### 💾 6. OUTPUT (Format & Save)
 - GPT format FR (markdown) + timestamp
 - DB INSERT (reports)
 
 ---
 
-## 🗄️ Base de données
+## 🗒️ Base de données
 
 SQLite (fichier injecté par runner: ${worker.db_file})
 
 Tables principales:
 - validation_logs(id, timestamp, attempt, score, feedback, top10_json)
 - reports(id, date_from, date_to, report_markdown, avg_score, retry_count, top10_json, completed_at)
+- sources(id, report_from, report_to, item_index, topic_title, sources_json, inserted_at)
 
 ---
 

@@ -13,7 +13,9 @@ else
   PYBIN="python"
 fi
 
-echo "[dev.sh] 🔧 Python: $($PYBIN --version)"
+# Print Python version (path may contain spaces, so quote in command substitution)
+PYVER="$("$PYBIN" --version 2>&1)"
+echo "[dev.sh] 🔧 Python: ${PYVER}"
 
 echo "[dev.sh] 📦 Installation navigateurs Playwright (scopés dans ./playwright/browsers)"
 PLAYWRIGHT_BROWSERS_PATH="playwright/browsers" "$PYBIN" -m playwright install chromium || true

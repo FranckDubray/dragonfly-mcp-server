@@ -10,6 +10,7 @@ from .environment import set_environment_op
 from .batch import batch_commands_op
 from .state import get_player_state_op
 from .image import render_image_op
+from .list_entities import list_entities_op
 
 __all__ = [
     'execute_command_op',
@@ -21,4 +22,5 @@ __all__ = [
     'batch_commands_op',
     'get_player_state_op',
     'render_image_op',
+    'list_entities_op',
 ]

@@ -2,7 +2,7 @@
   "type": "function",
   "function": {
     "name": "call_llm",
-    "displayName": "LLM Orchestrator",
+    "displayName": "Call LLM+tools",
     "category": "intelligence",
     "tags": ["llm", "orchestration", "vision", "multimodal"],
     "description": "Appelle un modèle LLM en streaming. Orchestration tool_calls (MCP) en 2 phases. Supporte l'entrée multi-modale (images) via messages OpenAI, image_urls ou des fichiers du répertoire docs/.",

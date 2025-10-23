@@ -20,6 +20,7 @@ OPERATION_MAP = {
     "batch_commands": operations.batch_commands_op,
     "get_player_state": operations.get_player_state_op,
     "render_image": operations.render_image_op,
+    "list_entities": operations.list_entities_op,
 }
 
 def execute_with_rcon(operation: str, params: dict) -> dict:

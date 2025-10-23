@@ -42,7 +42,9 @@ def execute_operation(**params) -> dict:
                 "control_player",
                 "set_environment",
                 "batch_commands",
-                "get_player_state"
+                "get_player_state",
+                "render_image",
+                "list_entities",
             ]
         }
     
@@ -86,6 +88,7 @@ def _standardize_output(result: dict) -> dict:
         stats['blocks_placed'] = result['blocks_placed']
     if 'chunks_count' in result:
         stats['chunks_count'] = result['chunks_count']
+    # Note: 'count' stays in result payload for list_entities compatibility
     
     if stats:
         standardized['stats'] = stats

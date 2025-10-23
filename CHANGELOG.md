@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.6.0 — 2025-10-23
+
+Improvements (Minecraft Control / list_entities)
+- Robust SNBT parsing and automatic fallback:
+  - When full SNBT is not available or braces are unbalanced, the tool now switches to per-field queries (Pos, Rotation, CustomName, id, Tags, Dimension, UUID) and reassembles entities by index.
+  - Quote-aware multi-compound extraction supports concatenated outputs like "<name> has the following entity data: {…}" repeated on one line.
+- Output fidelity: raw output returned verbatim.
+  - New field result.raw contains the full, unmodified server output (no client-side truncation or ellipsis).
+  - Removed result.raw_lines (no longer needed).
+- Custom name normalization:
+  - result.entities[*].custom_name is now normalized (outer quotes removed), e.g. '"wP_a2"' -> 'wP_a2'.
+- Optional fields:
+  - result.entities[*].type (from NBT id without namespace, e.g. "cat").
+  - result.entities[*].uuid when available.
+- Module split (<7KB per file) for maintainability:
+  - operations/list_entities/api.py — orchestration and response shaping.
+  - operations/list_entities/fallback.py — per-field query path and utility splitting.
+  - operations/list_entities/fields.py — field decoders and counted fallback extraction.
+
+Notes
+- Sorting by distance requires a known center. If a full selector is supplied and relative_to_player=false, center is None and distance sort is a no-op. Provide area.center or rely on relative_to_player=true without a prebuilt selector for distance sorting.
+
+Migration
+- No breaking changes to tool spec. Consumers may now rely on result.raw for debugging and on normalized custom_name for grouping.
+
 ## 1.55.7 — 2025-10-23
 
 Fixes / Chore

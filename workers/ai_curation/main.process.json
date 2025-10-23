@@ -2,7 +2,7 @@
   "version": "1.0",
   "process_version": "6.3.0",
   "metadata": {
-    "description": "AI/LLM curation worker with hierarchical subgraphs (72h freshness, 5 sources, quality validation, FR reports + ENRICH primary sources)",
+    "description": "AI/LLM curation worker with hierarchical subgraphs (72h freshness, 4 sources, quality validation, FR reports + ENRICH primary sources)",
     "author": "orchestrator-team",
     "architecture": "6 subgraphs (INIT → COLLECT → SCORE → VALIDATE → ENRICH → OUTPUT)"
   },

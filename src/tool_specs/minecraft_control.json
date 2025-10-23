@@ -1,3 +1,4 @@
+
 {
   "type": "function",
   "function": {
@@ -20,7 +21,8 @@
             "set_environment",
             "batch_commands",
             "get_player_state",
-            "render_image"
+            "render_image",
+            "list_entities"
           ],
           "description": "Operation to perform on Minecraft server"
         },
@@ -43,7 +45,7 @@
         },
         "player_name": { "type": "string", "default": "@p", "description": "Target player selector or name (@p=nearest, @a=all)" },
         "delay_ms": { "type": "integer", "minimum": 0, "maximum": 5000, "default": 50, "description": "Delay between batch commands (milliseconds)" },
-        "limit": { "type": "integer", "minimum": 1, "maximum": 500, "default": 50, "description": "Max items to return in results" },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 500, "default": 64, "description": "Max items to return in results" },
         "command": { "type": "string", "description": "Raw Minecraft command (for execute_command)" },
         "entity_type": { "type": "string", "description": "Minecraft entity ID (e.g. 'horse', 'zombie', 'cow')" },
         "count": { "type": "integer", "minimum": 1, "maximum": 1000, "default": 1, "description": "Number of entities to spawn" },
@@ -111,7 +113,41 @@
         "wool_only": { "type": "boolean", "default": true, "description": "Restrict palette to wool colors only (deprecated, use 'palette')" },
         "palette": { "type": "string", "enum": ["wool", "concrete", "both"], "default": "both", "description": "Palette to use for color mapping" },
         "distance": { "type": "string", "enum": ["rgb", "lab"], "default": "rgb", "description": "Color distance metric (rgb=fast, lab=perceptual)" },
-        "dither": { "type": "boolean", "default": false, "description": "Apply Floyd–Steinberg dithering (requires numpy)" }
+        "dither": { "type": "boolean", "default": false, "description": "Apply Floyd–Steinberg dithering (requires numpy)" },
+
+        "selector": { "type": "string", "default": "@e", "description": "Raw Minecraft selector for entities (e.g. @e[tag=chess_piece])" },
+        "filters": {
+          "type": "object",
+          "properties": {
+            "types": { "type": "array", "items": { "type": "string" } },
+            "tags_all": { "type": "array", "items": { "type": "string" } },
+            "tags_any": { "type": "array", "items": { "type": "string" } },
+            "tags_none": { "type": "array", "items": { "type": "string" } },
+            "name": { "type": "string" },
+            "custom_name_pattern": { "type": "string" }
+          }
+        },
+        "area": {
+          "type": "object",
+          "properties": {
+            "mode": { "type": "string", "enum": ["sphere", "aabb"], "default": "sphere" },
+            "center": { "type": "object", "properties": { "x": { "type": "number" }, "y": { "type": "number" }, "z": { "type": "number" } } },
+            "radius": { "type": "number" },
+            "aabb": {
+              "type": "object",
+              "properties": {
+                "min": { "type": "object", "properties": { "x": { "type": "number" }, "y": { "type": "number" }, "z": { "type": "number" } } },
+                "max": { "type": "object", "properties": { "x": { "type": "number" }, "y": { "type": "number" }, "z": { "type": "number" } } }
+              }
+            }
+          }
+        },
+        "fields": { "type": "array", "items": { "type": "string", "enum": ["uuid","name","custom_name","type","pos","yaw","pitch","tags","dimension","nbt_min"] } },
+        "sort_by": { "type": "string", "enum": ["distance","y","type","name"] },
+        "descending": { "type": "boolean" },
+        "pos_ref": { "type": "string", "enum": ["feet","eyes"], "default": "feet" },
+        "include_passengers": { "type": "boolean", "default": false },
+        "include_riding": { "type": "boolean", "default": false }
       },
       "required": ["operation"],
       "additionalProperties": false
