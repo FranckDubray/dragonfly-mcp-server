@@ -1,3 +1,12 @@
+
+
+
+
+
+
+
+
+
 # Orchestrator engine — handler node execution (JSON in → JSON out)
 from typing import Dict
 import copy
@@ -67,6 +76,12 @@ def execute_handler_node(core, cycle_id: str, node: Dict, worker_ctx: Dict, cycl
         details['debug_preview'] = debug_preview
         if is_truncated_preview(debug_preview):
             details['truncated'] = True
+    # Surface LLM usage if provided by the tool (e.g., call_llm)
+    try:
+        if isinstance(outputs, dict) and isinstance(outputs.get('usage'), dict):
+            details['usage'] = outputs['usage']
+    except Exception:
+        pass
 
     end_step(core.db_path, core.worker, cycle_id, name, 'succeeded', started_at, details)
 

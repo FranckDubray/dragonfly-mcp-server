@@ -1,4 +1,8 @@
 
+
+
+
+
 from pathlib import Path
 from fastapi.staticfiles import StaticFiles
 import logging
@@ -20,3 +24,4 @@ def mount_static_and_assets(app, project_root: Path):
         logger.info(f"📁 Mounted /assets from {assets_dir}")
     else:
         logger.warning(f"⚠️ Assets directory not found: {assets_dir}")
+

@@ -1,3 +1,8 @@
+
+
+
+
+
 # 📁 src/ - Code Source Dragonfly MCP Server
 
 Organisation modulaire du serveur MCP.
@@ -36,22 +41,24 @@ src/
 │   └── ...
 │
 ├── templates/              # Templates HTML
+│   ├── control/            # Control Panel (/control)
+│   │   ├── index.py        # Assemble layout + sidebar + main
+│   │   ├── layout.py       # Layout + CSS + (scripts JS inclus)
+│   │   ├── sidebar.py      # Sidebar (logo, search, bouton config)
+│   │   └── main.py         # Main view (status, container)
 │   └── workers_page.py     # Page /workers/ui
 │
 ├── static/                 # Assets frontend
 │   ├── css/
 │   │   └── workers.css     # Style workers
 │   └── js/
-│       ├── workers-grid.js      # Grid workers
-│       ├── workers-calls.js     # Démarrage/fin d'appel
-│       ├── workers-vu.js        # Anneau VU (avatar)
-│       ├── workers-audio.js     # Audio PCM16 + volume partagé
-│       ├── workers-session-*.js # Session realtime (split)
-│       ├── workers-process-*.js # Process overlay (split)
-│       └── ...
+│       ├── categories.js   # Catégories canoniques (Control)
+│       ├── tools.js        # Chargement/rendu/exec des tools (Control)
+│       ├── search.js       # Recherche texte (Control)
+│       ├── config.js       # Modale config (Control)
+│       └── main.js         # Initialisation + auto-reload (Control)
 │
-├── ui_html.py              # HTML control panel
-└── ui_js.py                # JS control panel
+└── ui_html.py              # Deprecated shim vers templates/control (conservé)
 ```
 
 ---
@@ -62,7 +69,7 @@ src/
   - Coupure immédiate de la voix IA à la parole utilisateur et annulation de la réponse en cours.
   - Volume unique partagé sonnerie + IA (setVolume).
 - Sonnerie:
-  - Pattern “Skype-like” (~400/450 Hz), tu‑tu‑tuu tu‑tu‑tu, 2–10 s d’init.
+  - Pattern “Skype-like” (~400/450 Hz), tu-tu-tuu tu-tu-tu, 2–10 s d’init.
   - Préchargement Mermaid pour overlay Process.
 - Overlay Process (Mermaid):
   - Nœud courant surligné, timeline, “magnétophone” (⏮ ⏪ ▶︎/⏸ ⏩ ⏭).
@@ -81,7 +88,7 @@ src/
 
 ## 🧪 Tests utiles
 
-```bash
+```
 # Découverte des tools
 python -c "from app_core.tool_discovery import discover_tools; discover_tools()"
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dragonfly-mcp-server"
-version = "1.55.0"
+version = "1.55.5"
 description = "Dragonfly MCP server tools (orchestrator, handlers, utilities)"
 readme = "README.md"
 authors = [{ name = "orchestrator-team" }]
@@ -25,6 +25,11 @@ dependencies = [
   "sympy>=1.12",
   "av>=11.0.0",
   "python-chess>=1.999",
+  "yt_dlp",
+  "beautifulsoup4",
+  "websocket-client",
+  "fastapi",
+  "uvicorn"
 ]
 
 [project.optional-dependencies]
