@@ -7,10 +7,6 @@
 
 
 
-
-
-
-
 # Status & Debug operations (module <7KB)
 
 import json
@@ -152,7 +148,6 @@ def status(params: dict) -> dict:
     retry_next_at = get_state_kv(db_path, worker_name, 'retry_next_at')
     process_uid = get_state_kv(db_path, worker_name, 'process_uid')
     process_version = get_state_kv(db_path, worker_name, 'process_version')
-    last_error = get_state_kv(db_path, worker_name, 'last_error')
 
     result = {"accepted": True, "status": phase, "worker_name": worker_name,
               "pid": int(pid_str) if pid_str and pid_str.isdigit() else None,
@@ -161,7 +156,9 @@ def status(params: dict) -> dict:
     if retry_next_at: result['retry_next_at'] = retry_next_at
     if process_uid: result['process_uid'] = process_uid
     if process_version: result['process_version'] = process_version
-    if last_error: result['last_error'] = last_error[:400]
+
+    # Remove stale last_error: we no longer include it in status
+    # Errors should be read from job_steps (failed) or crash_logs.
 
     # Optional compact metrics — only if explicitly requested
     include_metrics = False

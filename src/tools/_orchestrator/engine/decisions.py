@@ -1,3 +1,12 @@
+
+
+
+
+
+
+
+
+
 # Decision evaluation (truthy, enum_from_field, compare, regex_match, in_list, has_key)
 
 import re
@@ -7,21 +16,16 @@ class DecisionError(Exception):
     """Raised when decision evaluation fails"""
     pass
 
+def _t(v: Any) -> str:
+    try:
+        return type(v).__name__
+    except Exception:
+        return "unknown"
+
+
 def evaluate_decision(kind: str, input_value: Any, decision_spec: Dict, available_routes: List[str]) -> str:
     """
     Evaluate decision and return route label.
-    
-    Args:
-        kind: Decision kind
-        input_value: Resolved input value
-        decision_spec: Full decision spec (from node)
-        available_routes: Available route labels (from edges)
-    
-    Returns:
-        Route label (e.g., "true", "false", "SPAM", "match")
-    
-    Raises:
-        DecisionError: If evaluation fails or no matching route
     """
     if kind == 'truthy':
         return evaluate_truthy(input_value)
@@ -37,6 +41,7 @@ def evaluate_decision(kind: str, input_value: Any, decision_spec: Dict, availabl
         return evaluate_has_key(input_value, decision_spec)
     else:
         raise DecisionError(f"Unknown decision kind: {kind}")
+
 
 def evaluate_truthy(value: Any) -> str:
     """
@@ -54,6 +59,7 @@ def evaluate_truthy(value: Any) -> str:
         return "false"
     return "true"
 
+
 def evaluate_enum_from_field(value: Any, decision_spec: Dict, available_routes: List[str]) -> str:
     """
     Evaluate enum_from_field (route based on string value).
@@ -62,6 +68,7 @@ def evaluate_enum_from_field(value: Any, decision_spec: Dict, available_routes: 
         value = "spam", normalize = "upper", available_routes = ["SPAM", "HAM"]
         → returns "SPAM"
     """
+    original = value
     if not isinstance(value, str):
         value = str(value)
     
@@ -84,8 +91,9 @@ def evaluate_enum_from_field(value: Any, decision_spec: Dict, available_routes: 
         return fallback
     
     raise DecisionError(
-        f"No matching route for value '{value}' (available: {available_routes}, no fallback)"
+        f"No matching route for value '{value}' (original={original}<{_t(original)}>, available: {available_routes}, no fallback)"
     )
+
 
 def evaluate_compare(value: Any, decision_spec: Dict) -> str:
     """
@@ -125,18 +133,23 @@ def evaluate_compare(value: Any, decision_spec: Dict) -> str:
         return "true" if result else "false"
     
     except (ValueError, TypeError):
-        # Fallback to string comparison
+        # Fallback to string comparison with explicit type info
         left_str = str(value)
         right_str = str(right_value)
         
+        if operator in {'>','>=','<','<='}:
+            raise DecisionError(
+                f"Operator {operator} requires numeric values (left={left_str}<{_t(value)}>, right={right_str}<{_t(right_value)}>)"
+            )
         if operator == '==':
             result = left_str == right_str
         elif operator == '!=':
             result = left_str != right_str
         else:
-            raise DecisionError(f"Operator {operator} requires numeric values")
+            raise DecisionError(f"Operator {operator} requires numeric values (left={left_str}<{_t(value)}>, right={right_str}<{_t(right_value)}>)")
         
         return "true" if result else "false"
+
 
 def evaluate_regex_match(value: Any, decision_spec: Dict) -> str:
     """
@@ -177,6 +190,7 @@ def evaluate_regex_match(value: Any, decision_spec: Dict) -> str:
     except re.error as e:
         raise DecisionError(f"Invalid regex pattern '{pattern}': {e}")
 
+
 def evaluate_in_list(value: Any, decision_spec: Dict) -> str:
     """
     Evaluate in_list decision (membership test).
@@ -193,13 +207,14 @@ def evaluate_in_list(value: Any, decision_spec: Dict) -> str:
     """
     target_list = decision_spec.get('list')
     if not isinstance(target_list, list):
-        raise DecisionError("in_list decision missing 'list' field (must be array)")
+        raise DecisionError(f"in_list decision missing 'list' field (must be array, got {_t(target_list)})")
     
     # Check membership
     if value in target_list:
         return "true"
     else:
         return "false"
+
 
 def evaluate_has_key(value: Any, decision_spec: Dict) -> str:
     """

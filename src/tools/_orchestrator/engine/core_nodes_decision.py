@@ -1,3 +1,12 @@
+
+
+
+
+
+
+
+
+
 # Orchestrator engine — decision node execution
 from typing import Dict
 from ..logging import end_step
@@ -14,18 +23,23 @@ def execute_decision_node(core, cycle_id: str, node: Dict, worker_ctx: Dict, cyc
     if not kind:
         raise ValueError(f"Decision node {name} missing decision.kind")
 
+    # Resolve input explicitly
     inp = resolve_value(spec.get('input'), worker_ctx, cycle_ctx)
+    # Resolve the whole spec (to allow dynamic 'value' and others)
+    # This preserves existing behavior while enabling ${...} in decision fields (e.g., compare.value)
+    spec_resolved = resolve_value(spec, worker_ctx, cycle_ctx)
+
     routes = get_available_routes(name, core.edges)
 
     try:
-        route = evaluate_decision(kind, inp, spec, routes)
+        route = evaluate_decision(kind, inp, spec_resolved, routes)
     except DecisionError as e:
         raise ValueError(f"Decision evaluation failed for node {name}: {e}")
 
     details = {"node": name, "type": "decision", "edge_taken": route, "input_value": str(inp)[:100]}
 
     try:
-        decision_inputs = {"decision": {"kind": kind, "spec": spec}, "input_resolved": inp, "available_routes": routes}
+        decision_inputs = {"decision": {"kind": kind, "spec": spec_resolved}, "input_resolved": inp, "available_routes": routes}
         decision_outputs = {"route": route}
         dp = {"inputs": _preview(decision_inputs), "output": _preview(decision_outputs)}
         details['debug_preview'] = dp
