@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.55.6 — 2025-10-23
+
+Chore
+- Dependencies updated in pyproject.toml:
+  - Added: skyfield
+
 ## 1.55.5 — 2025-10-23
 
 Chore

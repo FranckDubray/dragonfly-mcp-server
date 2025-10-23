@@ -29,7 +29,8 @@ dependencies = [
   "beautifulsoup4",
   "websocket-client",
   "fastapi",
-  "uvicorn"
+  "uvicorn",
+  "skyfield"
 ]
 
 [project.optional-dependencies]
