@@ -6,6 +6,13 @@ Total tools: 52
 
 ## 📊 Intelligence & Orchestration (5)
 
+- Call LLM — Start/stop/status/debug/list a JSON-driven worker that executes a process graph (FSM).
+
+Debug mode (quick guide):
+- Pauses occur at node… · Tags: automation, workflows, state_machine, long_running
+  - Opérations: start, stop, status, debug, list
+  - Tokens: aucun
+
 - LLM Orchestrator — Appelle un modèle LLM en streaming. Orchestration tool_calls (MCP) en 2 phases. Supporte l'entrée multi-modale (images) via messages Open… · Tags: llm, orchestration, vision, multimodal
   - Opérations: N/A
   - Tokens: aucun
@@ -16,13 +23,6 @@ Total tools: 52
 
 - Ollama Local + Web Search — Interface avec Ollama local (localhost:11434) + recherche web cloud. Gestion modèles, génération, chat, embeddings, recherche web. IMPORT…
   - Opérations: list_models, get_version, get_running_models, show_model, pull_model, push_model …
-  - Tokens: aucun
-
-- Orchestrator (JSON-driven FSM) — Start/stop/status/debug/list a JSON-driven worker that executes a process graph (FSM).
-
-Debug mode (quick guide):
-- Pauses occur at node… · Tags: automation, workflows, state_machine, long_running
-  - Opérations: start, stop, status, debug, list
   - Tokens: aucun
 
 - Research — Recherche académique multi-sources (PubMed, arXiv, HAL, CrossRef). · Tags: knowledge, research, external_sources

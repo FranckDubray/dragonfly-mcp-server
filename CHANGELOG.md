@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.55.7 — 2025-10-23
+
+Fixes / Chore
+- Dev scripts: remove absolute paths, use only relative paths in scripts/dev.sh and scripts/dev.ps1 (GitHub-friendly, portable).
+- Tool spec: vscode_control category fixed to `developer_tools` (LLM dev guide compliance).
+- Tool spec: orchestrator displayName updated to `Call LLM`.
+
 ## 1.55.6 — 2025-10-23
 
 Chore

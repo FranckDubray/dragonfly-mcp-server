@@ -15,9 +15,12 @@ license = { text = "MIT" }
 # Runtime deps
 dependencies = [
   "requests>=2.31.0",
+  "httpx>=0.28.0",
+  "jsonschema>=4.25.0",
   "mcipc>=2.4.0",
   "trimesh[easy]>=4.0.0",
   "numpy>=1.24.0",
+  "pandas>=2.3.0",
   "openpyxl>=3.1.2",
   "pillow>=10.0.0",
   "playwright>=1.47.0",
@@ -25,6 +28,10 @@ dependencies = [
   "sympy>=1.12",
   "av>=11.0.0",
   "python-chess>=1.999",
+  "paramiko>=4.0.0",
+  "psutil>=5.9.0",
+  "pydantic>=2.12.0",
+  "docx2pdf>=0.1.8",
   "yt_dlp",
   "beautifulsoup4",
   "websocket-client",
