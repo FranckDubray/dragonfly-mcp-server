@@ -2,18 +2,11 @@
 
 Ce fichier est généré automatiquement par `scripts/generate_tools_catalog.py`. Ne pas éditer à la main.
 
-Total tools: 52
+Total tools: 53
 
 ## 📊 Intelligence & Orchestration (5)
 
-- Call LLM — Start/stop/status/debug/list a JSON-driven worker that executes a process graph (FSM).
-
-Debug mode (quick guide):
-- Pauses occur at node… · Tags: automation, workflows, state_machine, long_running
-  - Opérations: start, stop, status, debug, list
-  - Tokens: aucun
-
-- LLM Orchestrator — Appelle un modèle LLM en streaming. Orchestration tool_calls (MCP) en 2 phases. Supporte l'entrée multi-modale (images) via messages Open… · Tags: llm, orchestration, vision, multimodal
+- Call LLM+tools — Appelle un modèle LLM en streaming. Orchestration tool_calls (MCP) en 2 phases. Supporte l'entrée multi-modale (images) via messages Open… · Tags: llm, orchestration, vision, multimodal
   - Opérations: N/A
   - Tokens: aucun
 
@@ -29,7 +22,14 @@ Debug mode (quick guide):
   - Opérations: search_papers, get_paper_details, search_authors, get_citations
   - Tokens: aucun
 
-## 🔧 Development (6)
+- Worker Orchestrator — Start/stop/status/debug/list a JSON-driven worker that executes a process graph (FSM).
+
+Debug mode (quick guide):
+- Pauses occur at node… · Tags: automation, workflows, state_machine, long_running
+  - Opérations: start, stop, status, debug, list
+  - Tokens: aucun
+
+## 🔧 Development (7)
 
 - Dev Navigator — Couteau suisse LLM pour explorer un dépôt: overview, tree, search, outline, open (plan fs_requests uniquement — pas de contenu), endpoint… · Tags: knowledge
   - Opérations: compose, overview, tree, search, outline, open …
@@ -53,6 +53,10 @@ Debug mode (quick guide):
 
 - Tool Audit — Audit lecture-seule d’un tool MCP: périmètre strict au tool, contexte complet pour LLM, multi-profils (perf, quality, maintain, invariant… · Tags: quality, performance, maintainability
   - Opérations: audit_tool
+  - Tokens: aucun
+
+- VS Code Control — Contrôle local de VS Code via la CLI 'code' et opérations de workspace: ouvrir fichiers/dossiers, diff, extensions, settings, recherche,… · Tags: vscode, editor, cli, local
+  - Opérations: open_file, open_folder, diff_files, goto_line, list_extensions, install_extension …
   - Tokens: aucun
 
 ## 📧 Communication (6)

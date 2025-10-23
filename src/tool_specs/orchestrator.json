@@ -2,7 +2,7 @@
   "type": "function",
   "function": {
     "name": "orchestrator",
-    "displayName": "Call LLM",
+    "displayName": "Worker Orchestrator",
     "category": "intelligence",
     "tags": ["automation", "workflows", "state_machine", "long_running"],
     "description": "Start/stop/status/debug/list a JSON-driven worker that executes a process graph (FSM).\n\nDebug mode (quick guide):\n- Pauses occur at node boundaries (AFTER a node executes), never in the middle of a handler.\n- To pause immediately on a fresh run, start with debug.enable_on_start=true.\n- step executes exactly 1 node, then pauses again.\n- continue runs until a breakpoint matches, or until END/EXIT.\n- run_until is a one-off temporary breakpoint (e.g., node=\"llm_gpt_score\").\n- breakpoints are {node, when?} where when is an optional decision route label.\n- timeout_sec is the synchronous wait budget for the pause handshake; if you get status=in_progress, poll again.\n\nRecommended sequence:\n1) start with debug.enable_on_start=true → wait for status.debug.paused=true (boundary at START).\n2) debug.step → observe ctx diffs and previews; you are now right AFTER START, next_node is typically your first IO.\n3) debug.break_add {node:\"get_date_now\"} (or any target), then debug.continue → pauses just AFTER that node executed.\n4) debug.step over nodes of interest (e.g., llm_gpt_score), inspecting ctx_cycle_diff + debug_preview (PII masked, truncated).\n5) debug.disable to resume normal orchestration.",

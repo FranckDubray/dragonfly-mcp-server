@@ -3,7 +3,7 @@
   "function": {
     "name": "vscode_control",
     "displayName": "VS Code Control",
-    "category": "developer_tools",
+    "category": "development",
     "tags": ["vscode", "editor", "cli", "local"],
     "description": "Contrôle local de VS Code via la CLI 'code' et opérations de workspace: ouvrir fichiers/dossiers, diff, extensions, settings, recherche, et prévisualisation/applications de changements.",
     "parameters": {

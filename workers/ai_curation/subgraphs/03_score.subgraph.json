@@ -5,7 +5,7 @@
   "description": "GPT-4o-mini scoring: analyze all sources and select top 10",
   
   "interface": {
-    "entry": "llm_gpt_score",
+    "entry": "concat_sources",
     "exits": {
       "success": "json_stringify_top10"
     }
@@ -40,7 +40,7 @@
       "inputs": {
         "tool": "call_llm",
         "model": "${worker.llm_model}",
-        "messages": {"$import": "../prompts/gpt_scoring.json"},
+        "messages": {"$import": "..\/prompts\/gpt_scoring.json"},
         "temperature": "${worker.llm_temperature}",
         "response_format": "json",
         "require_keys": ["content"]

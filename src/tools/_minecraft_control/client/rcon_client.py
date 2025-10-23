@@ -28,6 +28,28 @@ class RconError(Exception):
     """RCON operation error"""
     pass
 
+# Tolerant regex for NBT parsing
+_POS_RE = re.compile(r"Pos:\s*\[\s*([-\d.]+)d?,\s*([-\d.]+)d?,\s*([-\d.]+)d?\s*\]")
+_ROT_RE = re.compile(r"Rotation:\s*\[\s*([-\d.]+)f?,\s*([-\d.]+)f?\s*\]")
+
+
+def _extract_top_compound(s: str) -> str:
+    if not s:
+        return s
+    start = s.find('{')
+    if start == -1:
+        return s
+    depth = 0
+    for i in range(start, len(s)):
+        ch = s[i]
+        if ch == '{':
+            depth += 1
+        elif ch == '}':
+            depth -= 1
+            if depth == 0:
+                return s[start:i+1]
+    return s[start:]
+
 class RconClient:
     """RCON client wrapper opening a short-lived session per command.
     
@@ -114,35 +136,61 @@ class RconClient:
             return []
     
     def get_player_data(self, player: str = "@p", path: Optional[str] = None) -> dict:
-        """Get player NBT directly via data get (reliable with RCON).
-        Resolves @p → single online player if possible.
+        """Get player NBT via data get ensuring output returns to RCON.
+        Tries robust patterns and extracts Pos/Rotation. Also tries path-specific calls
+        when full compound parsing yields nothing, then merges results.
         """
         target = player
+        # If @p and single online player, resolve to exact name to avoid selector ambiguity
         if player == '@p':
             online = self.get_online_players()
             if len(online) == 1:
                 target = online[0]
-        # Direct command (no execute/@s indirection)
-        cmd = f"data get entity {target}"
-        if path:
-            cmd += f" {path}"
+        # Ensure feedback
         try:
-            response = self.execute(cmd)
-            return self._parse_nbt_response(response)
-        except Exception as e:
-            logger.warning(f"Failed to get player data for {target}: {e}")
-            return {}
+            _ = self.execute('gamerule sendCommandFeedback true')
+        except Exception:
+            pass
+        # Try a set of variants
+        variants: List[str] = []
+        if path:
+            variants.append(f"data get entity {target} {path}")
+        variants.append(f"data get entity {target}")
+        if path:
+            variants.append(f"execute as {target} run data get entity @s {path}")
+        variants.append(f"execute as {target} run data get entity @s")
+        # Execute variants and parse
+        parsed: dict = {}
+        for cmd in variants:
+            try:
+                response = self.execute(cmd)
+                part = self._parse_nbt_response(response)
+                parsed.update({k: v for k, v in part.items() if v is not None})
+                if parsed.get('Pos') and parsed.get('Rotation'):
+                    return parsed
+            except Exception as e:
+                logger.debug(f"get_player_data variant failed: {cmd} -> {e}")
+        # If still missing, attempt direct paths
+        try:
+            rpos = self.execute(f"data get entity {target} Pos")
+            rrot = self.execute(f"data get entity {target} Rotation")
+            parsed.update(self._parse_nbt_response(rpos))
+            parsed.update(self._parse_nbt_response(rrot))
+        except Exception:
+            pass
+        return parsed
     
     def _parse_nbt_response(self, response: str) -> dict:
+        body = _extract_top_compound(response or '')
         result = {}
-        pos_match = re.search(r'Pos:\s*\[([-\d.]+)d?,\s*([-\d.]+)d?,\s*([-\d.]+)d?\]', response)
+        pos_match = _POS_RE.search(body)
         if pos_match:
             result['Pos'] = {
                 'x': float(pos_match.group(1)),
                 'y': float(pos_match.group(2)),
                 'z': float(pos_match.group(3))
             }
-        rot_match = re.search(r'Rotation:\s*\[([-\d.]+)f?,\s*([-\d.]+)f?\]', response)
+        rot_match = _ROT_RE.search(body)
         if rot_match:
             result['Rotation'] = {
                 'yaw': float(rot_match.group(1)),
