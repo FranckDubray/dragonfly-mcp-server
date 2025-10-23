@@ -7,25 +7,6 @@
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # Start/Stop operations (module <7KB)
 
 import json
@@ -102,12 +83,13 @@ def start(params: dict) -> dict:
         set_state_kv(db_path, worker_name, 'debug.mode', 'step')
         set_state_kv(db_path, worker_name, 'debug.pause_request', 'immediate')
     else:
-        # Reset stale debug flags from previous runs
+        # Reset stale debug flags from previous runs AND clear last_error
         set_state_kv(db_path, worker_name, 'debug.enabled', 'false')
         for key in [
             'debug.mode','debug.pause_request','debug.until','debug.breakpoints','debug.command',
             'debug.paused_at','debug.next_node','debug.cycle_id','debug.last_step','debug.ctx_diff',
-            'debug.watches','debug.watches_values','debug.response_id','debug.req_id','debug.executing_node'
+            'debug.watches','debug.watches_values','debug.response_id','debug.req_id','debug.executing_node',
+            'last_error'  # clear stale last_error at fresh start
         ]:
             set_state_kv(db_path, worker_name, key, '')
 
@@ -171,83 +153,3 @@ def stop(params: dict) -> dict:
         return {"accepted": True, "status": "ok", "message": message, "pid": pid, "db_path": db_path, "truncated": False}
     except Exception as e:
         return {"accepted": False, "status": "error", "message": f"Failed to send signal: {str(e)[:200]}", "pid": pid, "db_path": db_path, "truncated": False}
-
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 

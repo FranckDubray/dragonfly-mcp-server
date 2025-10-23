@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.55.3 — 2025-10-23
+
+Improvements
+- Decisions: clearer errors with operand values and types
+  - `compare` now reports both operands and their Python types when numeric operators are used on non-numeric values.
+  - `enum_from_field` error includes original value + type before normalization.
+- Failure logs enriched with IO context
+  - On step failure, we now include a debug preview of resolved inputs for io/transform and resolved decision spec + input for decisions.
+- Status: remove misleading last_error
+  - `status` no longer exposes `last_error` (stale). Errors should be read from `job_steps` (failed steps) and `crash_logs`.
+  - `start` clears `last_error` to avoid stale error carry-over between runs.
+
 ## 1.55.2 — 2025-10-23
 
 New

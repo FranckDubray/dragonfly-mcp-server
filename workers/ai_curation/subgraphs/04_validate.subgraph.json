@@ -1,7 +1,7 @@
 {
   "id": "VALIDATE",
   "version": "1.0",
-  "description": "Quality validation with Sonar (retry loop until score \u2265${worker.quality_threshold} or max ${worker.max_retries} attempts)",
+  "description": "Quality validation with Sonar (retry loop until score ≥${worker.quality_threshold} or max ${worker.max_retries} attempts)",
   "interface": {
     "entry": "get_validation_timestamp",
     "exits": {
@@ -13,6 +13,7 @@
   "nodes": [
     {"name": "get_validation_timestamp", "type": "io", "handler": "http_tool", "inputs": {"tool": "date", "operation": "now", "format": "iso", "timezone": "UTC"}, "outputs": {"result": "cycle.validation.timestamp", "content": "cycle.validation.timestamp"}, "timeout_sec": 5},
     {"name": "llm_sonar_validate", "type": "io", "handler": "http_tool", "inputs": {"tool": "call_llm", "model": "${worker.sonar_model}", "messages": {"$import": "../prompts/sonar_validation.json"}, "temperature": 0.1, "response_format": "json", "require_keys": ["content"]}, "outputs": {"content": "cycle.validation.raw"}, "timeout_sec": 90, "retry": {"max": 2, "delay_sec": 5}},
+
     {"name": "normalize_sonar_validation", "type": "transform", "handler": "normalize_llm_output", "inputs": {"content": "${cycle.validation.raw}"}, "outputs": {"parsed": "cycle.validation.parsed"}},
     {"name": "stringify_parsed", "type": "transform", "handler": "json_stringify", "inputs": {"value": "${cycle.validation.parsed}"}, "outputs": {"json_string": "cycle.validation.debug_parsed"}},
 
@@ -26,7 +27,9 @@
     {"name": "extract_feedback", "type": "transform", "handler": "json_ops", "inputs": {"op": "get", "data": "${cycle.validation.parsed}", "path": "feedback", "default": "No feedback"}, "outputs": {"result": "cycle.validation.feedback"}},
     {"name": "insert_validation_log", "type": "io", "handler": "http_tool", "inputs": {"tool": "sqlite_db", "operation": "execute", "db": "${worker.db_file}", "query": "INSERT INTO validation_logs (timestamp, attempt, score, feedback, top10_json) VALUES (?, ?, ?, ?, ?)", "params": ["${cycle.validation.timestamp}", "${cycle.meta.retry_count}", "${cycle.validation.score}", "${cycle.validation.feedback}", "${cycle.scoring.top10_json}"]}, "outputs": {"success": "cycle.validation.logged"}, "timeout_sec": 10},
 
-    {"name": "check_score_threshold", "type": "decision", "decision": {"kind": "compare", "input": "${cycle.validation.score}", "operator": ">=", "value": "${worker.quality_threshold}"}},
+    {"name": "load_threshold", "type": "transform", "handler": "set_value", "inputs": {"value": "${worker.quality_threshold}"}, "outputs": {"result": "cycle.validation.threshold"}},
+
+    {"name": "check_score_threshold", "type": "decision", "decision": {"kind": "compare", "input": "${cycle.validation.score}", "operator": ">=", "value": "${cycle.validation.threshold}"}},
     {"name": "increment_retry", "type": "transform", "handler": "increment", "inputs": {"value": "${cycle.meta.retry_count}", "step": 1}, "outputs": {"result": "cycle.meta.retry_count"}},
     {"name": "check_retry_limit", "type": "decision", "decision": {"kind": "compare", "input": "${cycle.meta.retry_count}", "operator": "<", "value": "${worker.max_retries}"}},
 
@@ -52,7 +55,8 @@
     {"from": "stringify_score_raw", "to": "normalize_score"},
     {"from": "normalize_score", "to": "extract_feedback"},
     {"from": "extract_feedback", "to": "insert_validation_log"},
-    {"from": "insert_validation_log", "to": "check_score_threshold"},
+    {"from": "insert_validation_log", "to": "load_threshold"},
+    {"from": "load_threshold", "to": "check_score_threshold"},
 
     {"from": "check_score_threshold", "to": "format_validation_log_message_success", "when": "true"},
     {"from": "format_validation_log_message_success", "to": "validate_exit_success"},
