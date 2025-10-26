@@ -4,6 +4,15 @@
 
 
 
+
+
+
+
+
+
+
+
+
 from typing import Dict, Any, Tuple
 import sys
 import json as _json
@@ -40,8 +49,8 @@ def _persist_success_inspect(db_path: str, worker: str, env: Any):
         # Store compact previews in KV for status consumption
         set_state_kv(db_path, worker, 'py.last_call', _safe_preview(call))
         set_state_kv(db_path, worker, 'py.last_result_preview', _safe_preview(last_res))
-        # Also accumulate LLM usage if present
-        _accumulate_llm_usage(db_path, worker, last_res)
+        # Also accumulate LLM usage if present (pass call for model fallback)
+        _accumulate_llm_usage(db_path, worker, last_res, call)
         return details
     except Exception:
         return {}
@@ -65,11 +74,16 @@ def _norm_model_key(name: Any) -> str:
     return s or "unknown"
 
 
-def _accumulate_llm_usage(db_path: str, worker: str, last_res: Any):
+def _accumulate_llm_usage(db_path: str, worker: str, last_res: Any, call_ctx: Dict[str, Any] | None = None):
     try:
         if not isinstance(last_res, dict):
             return
-        usage = last_res.get('usage') or last_res.get('token_usage') or {}
+        # Sometimes usage/model live under an inner 'result'
+        src = last_res
+        if 'usage' not in src and isinstance(last_res.get('result'), dict):
+            src = last_res.get('result') or {}
+
+        usage = src.get('usage') or src.get('token_usage') or {}
         if not isinstance(usage, dict):
             return
         in_tok = _to_int(usage.get('input_tokens') or usage.get('prompt_tokens') or 0)
@@ -77,7 +91,12 @@ def _accumulate_llm_usage(db_path: str, worker: str, last_res: Any):
         tot_tok = _to_int(usage.get('total_tokens') or (in_tok + out_tok))
         if (in_tok + out_tok + tot_tok) <= 0:
             return
-        model = _norm_model_key(last_res.get('model') or usage.get('model') or '')
+        # Prefer explicit model fields; fallback to call params
+        model = src.get('model') or usage.get('model')
+        if not model and isinstance(call_ctx, dict):
+            params = call_ctx.get('params') or {}
+            model = params.get('model')
+        model = _norm_model_key(model)
         # Global counters
         cur_tot = _to_int(get_state_kv(db_path, worker, 'usage.llm.total_tokens') or 0)
         cur_in = _to_int(get_state_kv(db_path, worker, 'usage.llm.input_tokens') or 0)
@@ -170,6 +189,7 @@ def execute_step(
 
     # Success path: persist cycle AFTER, compute diff if debug enabled, and persist last_call/preview
     details_success: Dict[str, Any] = {}
+    acc_done = False
     try:
         if get_state_kv(db_path, worker, 'debug.enabled') == 'true':
             set_state_kv(db_path, worker, 'debug.cycle_snapshot_after', _safe_preview(cycle))
@@ -180,7 +200,26 @@ def execute_step(
             if before != after:
                 diff = {"changed": True, "before": before[:200], "after": after[:200]}
             set_state_kv(db_path, worker, 'debug.ctx_diff', _safe_preview(diff))
-            details_success = _persist_success_inspect(db_path, worker, env)
+            # also persist inspect + accumulate LLM usage
+            try:
+                call = env.last_call() if hasattr(env, 'last_call') else {}
+                last_res = env.last_result() if hasattr(env, 'last_result') else {}
+                set_state_kv(db_path, worker, 'py.last_call', _safe_preview(call))
+                set_state_kv(db_path, worker, 'py.last_result_preview', _safe_preview(last_res))
+                _accumulate_llm_usage(db_path, worker, last_res, call)
+                acc_done = True
+                details_success = {"call": call, "last_result_preview": _safe_preview(last_res)}
+            except Exception:
+                details_success = _persist_success_inspect(db_path, worker, env)
+    except Exception:
+        pass
+
+    # Always accumulate usage best-effort (even when debug disabled), without double-counting
+    try:
+        if not acc_done:
+            call2 = env.last_call() if hasattr(env, 'last_call') else {}
+            last_res2 = env.last_result() if hasattr(env, 'last_result') else {}
+            _accumulate_llm_usage(db_path, worker, last_res2, call2)
     except Exception:
         pass
 
@@ -193,3 +232,16 @@ def execute_step(
 
     set_state_kv(db_path, worker, 'debug.phase_trace', f"end:{full_node}")
     return res, ""
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

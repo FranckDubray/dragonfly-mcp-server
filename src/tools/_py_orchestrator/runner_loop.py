@@ -1,5 +1,22 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 from typing import Dict, Any
 import time
+import json as _json
 
 from .db import get_state_kv, set_state_kv, set_phase, heartbeat
 from .runtime import Next, Exit
@@ -19,6 +36,51 @@ from .runner_parts.reloader import maybe_hot_reload
 from src.tools._orchestrator.logging.crash_logger import log_crash
 from src.tools._orchestrator.debug_loop import debug_wait_loop
 from .runner_parts.loop_core import execute_step
+
+
+def _merge_worker_config(root, process):
+    """Optional worker config merge: if workers/<name>/config.py exists and defines CONFIG or WORKER_CONFIG,
+    merge its dict into process.metadata. Best-effort, no crash.
+
+    Also supports a description map: CONFIG_DOC|CONFIG_DESC|DOC|DESCRIPTIONS (var -> text).
+    Stores values in KV: py.process_metadata and py.process_config_docs.
+    """
+    try:
+        cfg_mod = load_module(f"{getattr(process, 'name', 'pyworker')}__config", root / 'config.py')
+        cfg = None
+        docs = None
+        for key in ('CONFIG', 'WORKER_CONFIG', 'config'):
+            if hasattr(cfg_mod, key):
+                val = getattr(cfg_mod, key)
+                if isinstance(val, dict):
+                    cfg = val
+                    break
+        for key in ('CONFIG_DOC', 'CONFIG_DESC', 'DOC', 'DESCRIPTIONS'):
+            if hasattr(cfg_mod, key):
+                val = getattr(cfg_mod, key)
+                if isinstance(val, dict):
+                    docs = val
+                    break
+        if isinstance(cfg, dict):
+            md = getattr(process, 'metadata', {}) or {}
+            # Prefer values from config for ctx variables; keep other static metadata
+            merged = dict(md)
+            merged.update(cfg)
+            process.metadata = merged
+            # Persist in KV for config/status consumers
+            try:
+                set_state_kv(str(root.parent.parent / 'sqlite3' / f"worker_{getattr(process,'name','__')}.db"), getattr(process,'name','__'), 'py.process_metadata', _json.dumps(merged))
+            except Exception:
+                pass
+        if isinstance(docs, dict):
+            try:
+                set_state_kv(str(root.parent.parent / 'sqlite3' / f"worker_{getattr(process,'name','__')}.db"), getattr(process,'name','__'), 'py.process_config_docs', _json.dumps(docs))
+            except Exception:
+                pass
+        return bool(cfg)
+    except Exception:
+        pass
+    return False
 
 
 def run_loop(db_path: str, worker: str):
@@ -44,6 +106,14 @@ def run_loop(db_path: str, worker: str):
         return
     process = proc_mod.PROCESS
 
+    # Optional external config merge (workers/<name>/config.py)
+    merged = _merge_worker_config(root, process)
+    try:
+        # Persist merged metadata for config/status consumers
+        set_state_kv(db_path, worker, 'py.process_metadata', _json.dumps(process.metadata or {}))
+    except Exception:
+        pass
+
     submods: Dict[str, Any] = {}
     try:
         for ref in process.parts:
@@ -67,7 +137,8 @@ def run_loop(db_path: str, worker: str):
     current_step = submods[current_sub].SUBGRAPH.entry
 
     cycle: Dict[str, Any] = {}
-    env = PyEnv(lambda: is_canceled(db_path, worker))
+    # Pass process.metadata as worker_ctx so PyEnv can pick http_timeout_sec, etc.
+    env = PyEnv(lambda: is_canceled(db_path, worker), worker_ctx=(process.metadata or {}))
 
     cycle_num = 1
     cycle_id = f"cycle_{cycle_num:03d}"
@@ -98,6 +169,12 @@ def run_loop(db_path: str, worker: str):
             if new_graph is not None:
                 graph = new_graph
                 process = new_process
+                # Merge config again on hot reload (best effort)
+                _merge_worker_config(root, process)
+                try:
+                    set_state_kv(db_path, worker, 'py.process_metadata', _json.dumps(process.metadata or {}))
+                except Exception:
+                    pass
                 submods = new_submods
                 order = new_order
                 subgraph_infos = new_subgraph_infos

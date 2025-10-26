@@ -1,5 +1,42 @@
 # Changelog
 
+## 1.6.3 — 2025-10-26
+
+New
+- Worker config file (single source of truth): `workers/<worker_name>/config.py`
+  - CONFIG (valeurs) + CONFIG_DOC (descriptions lisibles)
+  - Priorité: `config.py` > `PROCESS.metadata` (shallow merge)
+  - Hot-reload support (les changements sont pris en compte au vol)
+  - Nouvelle variable supportée: `http_timeout_sec` (timeout HTTP des calls MCP au niveau worker)
+- Tool `py_orchestrator`: nouvelle opération `config`
+  - Lecture: retourne `metadata` (valeurs fusionnées) + `docs`
+  - Écriture: `set: {key, value}` met à jour la valeur en live (KV) ET persiste dans `workers/<name>/config.py` (bloc CONFIG)
+
+Improvements
+- LLM usage & modèles
+  - Unwrap non destructif des réponses tool (`env.tool`) — préserve `usage`/`model` autour de `result`
+  - Accumulation robuste: support `prompt_tokens`/`completion_tokens`/`total_tokens` (et alias input/output)
+  - Fallback modèle sur `params.model` si la réponse tool n’inclut pas `model`
+  - `status`: reflète `llm_usage` dans `metrics.llm_tokens` et `metrics.token_llm`
+  - Reset des compteurs LLM à chaque `start` (pas d’héritage inter‑run)
+- `normalize_llm_output`
+  - Tolérant aux JSON partiels/fencés (```json …``` et ``` … ```), réparation des échappements/contrôles, troncature safe, fallback au lieu d’exception
+- Transforms catalogue
+  - Ajout des headers `TRANSFORM_META` manquants (uci_*, board_coords, pos_to_square, compare_positions, format_template, filter_multi_by_date, dedupe_by_url, idempotency_guard, to_text_list…)
+  - Suppression des doublons inutiles (répertoire générique) au profit des variantes `transforms_domain`
+- Isolation par run
+  - `start`: enregistre `run_id`/`run_started_at`, reset counters LLM
+  - Migration DB: `job_steps.run_id` + index + trigger d’auto‑rattachement + backfill (best‑effort)
+
+Fixes
+- Timeout LLM: `http_timeout_sec` lu depuis le contexte worker (configurable par worker)
+- Statut métriques: plus de désynchronisation entre `llm_usage` et `metrics.llm_tokens`
+
+Docs
+- README: section “Worker config (config.py)” + exemples et appel `py_orchestrator.config`
+
+---
+
 ## 1.6.2 — 2025-10-26
 
 Improvements (Py Orchestrator: Graph, Debug, Worker DX)
@@ -46,7 +83,7 @@ Notes
 Improvements (Minecraft Control / list_entities)
 - Robust SNBT parsing and automatic fallback:
   - When full SNBT is not available or braces are unbalanced, the tool now switches to per-field queries (Pos, Rotation, CustomName, id, Tags, Dimension, UUID) and reassembles entities by index.
-  - Quote-aware multi-compound extraction supports concatenated outputs like "<name> has the following entity data: {…}" repeated on one line.
+  - Quote-aware multi-compound extraction supports concatenated outputs like "<name> has the following entity data: {...}" repeated on one line.
 - Output fidelity: raw output returned verbatim.
   - New field result.raw contains the full, unmodified server output (no client-side truncation or ellipsis).
   - Removed result.raw_lines (no longer needed).

@@ -34,3 +34,18 @@ class UciBuildHandler(AbstractHandler):
             raise
         except Exception as e:
             raise HandlerError(f"uci_build failed: {str(e)[:200]}", "UCI_BUILD_ERROR", "validation", False)
+
+# TRANSFORM_META_START
+{
+  "io_type": "object->object",
+  "description": "Build a UCI string from from/to squares, with pawn promotion handling",
+  "inputs": [
+    "- from|from_: string",
+    "- to: string",
+    "- piece_letter: string (optional — add 'q' when promoting a pawn to rank 1/8)"
+  ],
+  "outputs": [
+    "- uci: string"
+  ]
+}
+# TRANSFORM_META_END

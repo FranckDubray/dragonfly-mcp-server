@@ -4,6 +4,14 @@
 
 
 
+
+
+
+
+
+
+
+
 from typing import Any, Dict
 from .handlers import bootstrap_handlers as bootstrap_local, get_registry as get_registry_local
 from .http_tool import HttpToolHandler
@@ -31,12 +39,19 @@ def _sanitize(obj: Any, max_len: int = 400) -> Any:
         return obj
 
 class PyEnv:
-    def __init__(self, cancel_flag_fn):
+    def __init__(self, cancel_flag_fn, worker_ctx: Dict[str, Any] | None = None):
         # Bootstrap local, built-in transforms (tool autonomy)
         bootstrap_local(cancel_flag_fn)
         self._registry = get_registry_local()  # registry object with .get(kind)
+        # Configure HTTP tool handler timeout from worker context (fallback 30s)
+        http_timeout = 30.0
+        try:
+            if isinstance(worker_ctx, dict):
+                http_timeout = float(worker_ctx.get('http_timeout_sec', http_timeout))
+        except Exception:
+            pass
         # Autonomous HTTP tool handler to call MCP tools
-        self._http = HttpToolHandler()
+        self._http = HttpToolHandler(timeout=http_timeout)
         self._last_result: Dict[str, Any] = {}
         self._last_call: Dict[str, Any] = {}
 
@@ -47,9 +62,18 @@ class PyEnv:
         payload = {**kwargs, 'tool': tool}
         res = self._http.run(**payload)
         # Unwrap common MCP envelope {"result": ...} when no error/status fields are present
+        # but PRESERVE sibling metadata (e.g., model, usage) instead of dropping them.
         try:
             if isinstance(res, dict) and ('result' in res) and not any(k in res for k in ('accepted','status','error','message','details')):
-                res = res.get('result')
+                inner = res.get('result')
+                # Merge dict-like result with top-level siblings (except 'result')
+                if isinstance(inner, dict):
+                    base = {k: v for k, v in res.items() if k != 'result'}
+                    res = {**inner, **base}
+                else:
+                    # Keep scalar result as 'content' while preserving siblings
+                    res = {**res, 'content': inner}
+                    res.pop('result', None)
         except Exception:
             pass
         # Persist last result (best effort, sanitized preview)
@@ -105,3 +129,12 @@ class PyEnv:
 
     def last_call(self) -> Dict[str, Any]:
         return self._last_call or {}
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

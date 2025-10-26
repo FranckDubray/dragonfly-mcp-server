@@ -49,3 +49,17 @@ class FormatTemplateHandler(AbstractHandler):
                 category="validation",
                 retryable=False
             )
+
+# TRANSFORM_META_START
+{
+  "io_type": "object->string",
+  "description": "Format a template string with context variables ({{key}})",
+  "inputs": [
+    "- template: string with {{key}} placeholders",
+    "- context: object"
+  ],
+  "outputs": [
+    "- result: string"
+  ]
+}
+# TRANSFORM_META_END

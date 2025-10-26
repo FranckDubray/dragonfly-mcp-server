@@ -85,3 +85,22 @@ class PosToSquareHandler(AbstractHandler):
             return obj.get(key) if isinstance(obj, dict) else None
         except Exception:
             return None
+
+# TRANSFORM_META_START
+{
+  "io_type": "list->object(list,map,list)",
+  "description": "Project entity positions (x,z) to chessboard squares a1..h8 using origin/axis/case_size",
+  "inputs": [
+    "- items: list[object] (with piece_key, pos:{x,y,z})",
+    "- origin: object{x,y,z}",
+    "- axis: '+x'|'+z' (default '+x')",
+    "- case_size: number (default 1.0)",
+    "- epsilon: number (default 0.35)"
+  ],
+  "outputs": [
+    "- items: list[object] (each with 'square')",
+    "- map: object (piece_key->square)",
+    "- invalid: list[object]"
+  ]
+}
+# TRANSFORM_META_END

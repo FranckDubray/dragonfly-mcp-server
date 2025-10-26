@@ -78,3 +78,20 @@ class BoardCoordsHandler(AbstractHandler):
             return float(o.get("x", 0.0)), float(o.get("y", 0.0)), float(o.get("z", 0.0)) if isinstance(o, dict) else (0.0, 0.0, 0.0)
         except Exception:
             return 0.0, 0.0, 0.0
+
+# TRANSFORM_META_START
+{
+  "io_type": "object->list(object)",
+  "description": "Generate 8x8 chessboard coordinates (centers & AABBs) from origin/axis/case_size",
+  "inputs": [
+    "- origin: object{x,y,z}",
+    "- axis: '+x'|'+z'",
+    "- case_size: number",
+    "- y_level: number",
+    "- white_near_origin: boolean"
+  ],
+  "outputs": [
+    "- squares: list[object] (square,file_idx,rank_idx,color,center,aabb)"
+  ]
+}
+# TRANSFORM_META_END

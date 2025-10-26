@@ -1,4 +1,25 @@
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 from typing import Dict, Any
 import uuid
 from pathlib import Path
@@ -33,6 +54,15 @@ def start(params: dict) -> Dict[str, Any]:
             set_state_kv(db_path, worker_name, key, '')
         except Exception:
             pass
+
+    # Reset per-run LLM usage counters (avoid inheritance across runs)
+    try:
+        set_state_kv(db_path, worker_name, 'usage.llm.total_tokens', '0')
+        set_state_kv(db_path, worker_name, 'usage.llm.input_tokens', '0')
+        set_state_kv(db_path, worker_name, 'usage.llm.output_tokens', '0')
+        set_state_kv(db_path, worker_name, 'usage.llm.by_model', '{}')
+    except Exception:
+        pass
 
     set_state_kv(db_path, worker_name, 'cancel', 'false')
     set_state_kv(db_path, worker_name, 'worker_name', worker_name)
@@ -83,3 +113,37 @@ def start(params: dict) -> Dict[str, Any]:
         "debug": {"enabled": debug_enabled_out, "pause_request": debug_pause_req_out}
     }
     return result
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
