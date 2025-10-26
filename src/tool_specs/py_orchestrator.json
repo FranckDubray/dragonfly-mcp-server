@@ -1,15 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
 {
   "type": "function",
   "function": {
@@ -17,44 +5,109 @@
     "displayName": "Python Orchestrator",
     "category": "intelligence",
     "tags": ["process", "python", "debug"],
-    "description": "Run Python-defined workflows (Process/SubGraphs/Steps). Start/stop/status/debug; graph extraction (process/subgraph/current_subgraph); validate worker (AST+rules); list transforms; read worker config (metadata+docs).",
+    "description": "Run Python-defined workflows (Process/SubGraphs/Steps). Start/stop/status/debug; graph extraction (process/subgraph/current_subgraph); validate worker (AST+rules); list transforms; read/update worker config (directory-based: config/config.json + config/prompts/*.md).",
     "parameters": {
       "type": "object",
       "properties": {
         "operation": {
           "type": "string",
-          "enum": ["start", "stop", "status", "debug", "list", "graph", "validate", "transforms", "config"],
+          "enum": [
+            "start",
+            "stop",
+            "status",
+            "debug",
+            "list",
+            "graph",
+            "validate",
+            "transforms",
+            "config"
+          ],
           "description": "Control operation"
         },
-        "worker_name": {"type": "string", "description": "Logical worker name (used for DB)"},
-        "worker_file": {"type": "string", "description": "Entry file under .workers/<name>/process.py"},
-        "hot_reload": {"type": "boolean", "default": true, "description": "Reload worker modules when files change"},
+        "worker_name": {
+          "type": "string",
+          "description": "Logical worker name (used for DB)"
+        },
+        "worker_file": {
+          "type": "string",
+          "description": "Entry file under workers/<name>/process.py"
+        },
+        "hot_reload": {
+          "type": "boolean",
+          "default": true,
+          "description": "Reload worker modules when files change"
+        },
         "stop": {
           "type": "object",
           "description": "Stop options",
           "properties": {
-            "mode": {"type": "string", "enum": ["soft", "term", "kill"], "default": "soft"}
+            "mode": {
+              "type": "string",
+              "enum": ["soft", "term", "kill"],
+              "default": "soft"
+            }
           },
           "additionalProperties": false
         },
         "debug": {
           "type": "object",
           "properties": {
-            "action": {"type": "string", "enum": ["enable", "enable_now", "step", "continue", "run_until", "break_add", "break_remove", "break_clear", "break_list", "inspect", "disable"]},
-            "pause_at_start": {"type": "boolean"},
-            "enable_on_start": {"type": "boolean"},
-            "timeout_sec": {"type": "number", "description": "Blocking ACK: wait up to N seconds (default: 60, max: 300)", "minimum": 0.1, "maximum": 300, "default": 60},
-            "target": {"type": "object", "properties": {"node": {"type": "string"}, "when": {"type": "string"}}, "additionalProperties": false},
-            "breakpoint": {"type": "object", "properties": {"node": {"type": "string"}, "when": {"type": "string"}}, "additionalProperties": false}
+            "action": {
+              "type": "string",
+              "enum": [
+                "enable",
+                "enable_now",
+                "step",
+                "continue",
+                "run_until",
+                "break_add",
+                "break_remove",
+                "break_clear",
+                "break_list",
+                "inspect",
+                "disable"
+              ]
+            },
+            "pause_at_start": { "type": "boolean" },
+            "enable_on_start": { "type": "boolean" },
+            "timeout_sec": {
+              "type": "number",
+              "description": "Blocking ACK: wait up to N seconds (default: 60, max: 300)",
+              "minimum": 0.1,
+              "maximum": 300,
+              "default": 60
+            },
+            "target": {
+              "type": "object",
+              "properties": {
+                "node": { "type": "string" },
+                "when": { "type": "string" }
+              },
+              "additionalProperties": false
+            },
+            "breakpoint": {
+              "type": "object",
+              "properties": {
+                "node": { "type": "string" },
+                "when": { "type": "string" }
+              },
+              "additionalProperties": false
+            }
           },
           "additionalProperties": false
         },
-        "include_metrics": {"type": "boolean", "description": "Include metrics for the current run in status response"},
+        "include_metrics": {
+          "type": "boolean",
+          "description": "Include metrics for the current run in status response"
+        },
         "metrics": {
           "type": "object",
           "properties": {
-            "include": {"type": "boolean"},
-            "window": {"type": "string", "description": "Metrics window (e.g., '5m', '15m', '1h')"}
+            "include": { "type": "boolean" },
+            "window": {
+              "type": "string",
+              "description": "Metrics window (e.g., '5m', '15m', '1h')"
+            }
           },
           "additionalProperties": false
         },
@@ -62,23 +115,53 @@
           "type": "object",
           "description": "Extract process/subgraph graph (semantic graph for rendering). No server-side highlight/styling.",
           "properties": {
-            "kind": {"type": "string", "enum": ["process", "subgraph", "current_subgraph"], "default": "process"},
-            "subgraphs": {"type": "array", "items": {"type": "string"}, "description": "Subgraph names when kind=subgraph"},
-            "recursive": {"type": "boolean", "default": true, "description": "Include referenced subgraphs recursively (when relevant)"},
+            "kind": {
+              "type": "string",
+              "enum": ["process", "subgraph", "current_subgraph"],
+              "default": "process"
+            },
+            "subgraphs": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Subgraph names when kind=subgraph"
+            },
+            "recursive": {
+              "type": "boolean",
+              "default": true,
+              "description": "Include referenced subgraphs recursively (when relevant)"
+            },
             "include": {
               "type": "object",
               "properties": {
-                "shapes": {"type": "boolean", "default": true, "description": "Add suggested shapes (diamond for cond, rect for steps)"},
-                "emojis": {"type": "boolean", "default": true, "description": "Add emojis for categories (tools) and gear for transforms"},
-                "labels": {"type": "boolean", "default": true, "description": "Include edge labels (when)"}
+                "shapes": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "Add suggested shapes (diamond for cond, rect for steps)"
+                },
+                "emojis": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "Add emojis for categories (tools) and gear for transforms"
+                },
+                "labels": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "Include edge labels (when)"
+                }
               },
               "additionalProperties": false
             },
-            "include_position": {"type": "boolean", "description": "Include current/next nodes and subgraphs (position) in the response"},
+            "include_position": {
+              "type": "boolean",
+              "description": "Include current/next nodes and subgraphs (position) in the response"
+            },
             "render": {
               "type": "object",
               "properties": {
-                "mermaid": {"type": "boolean", "description": "Return plain Mermaid representation (no server-side highlight)."}
+                "mermaid": {
+                  "type": "boolean",
+                  "description": "Return plain Mermaid representation (no server-side highlight)."
+                }
               },
               "additionalProperties": false
             }
@@ -89,7 +172,50 @@
           "type": "object",
           "description": "Validate worker code (AST) and enforce readability rules.",
           "properties": {
-            "limit_steps": {"type": "integer", "minimum": 1, "maximum": 200, "default": 20, "description": "Maximum steps allowed per subgraph (readability)."}
+            "limit_steps": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20,
+              "description": "Maximum steps allowed per subgraph (readability)."
+            }
+          },
+          "additionalProperties": false
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Optional limit for transforms listing (operation=transforms)",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "set": {
+          "type": "object",
+          "description": "Config writer (operation=config). Supports nested updates via dot/bracket path and file writes in config/.",
+          "properties": {
+            "key": {
+              "type": "string",
+              "description": "Shallow key at metadata root (back-compat)."
+            },
+            "key_path": {
+              "type": "string",
+              "description": "Nested path with dot/bracket syntax. Examples: prompts.collect_sonar, primary_site_caps[\"https://x.ai/blog\"], features[0].limits[2]"
+            },
+            "value": {
+              "description": "New value (any JSON-compatible type)"
+            },
+            "storage": {
+              "type": "string",
+              "enum": ["file", "inline"],
+              "description": "file: persist under workers/<name>/config (prompts/*.md auto-routed or config.json deep-merge). inline: KV only."
+            },
+            "file": {
+              "type": "string",
+              "description": "Direct file write under workers/<name>/config (e.g., prompts/x.md, vars/y.json)."
+            },
+            "create": {
+              "type": "boolean",
+              "description": "When set.file is used, create the file if it does not exist (default true)."
+            }
           },
           "additionalProperties": false
         }

@@ -1,3 +1,7 @@
+
+
+
+
 from py_orch import SubGraph, step, cond, Next, Exit
 
 SUBGRAPH = SubGraph(
@@ -13,7 +17,8 @@ def STEP_ENSURE_TABLE(worker, cycle, env):
         query=("CREATE TABLE IF NOT EXISTS sources ("
                "id INTEGER PRIMARY KEY AUTOINCREMENT,"
                "report_from TEXT, report_to TEXT, item_index INTEGER, "
-               "topic_title TEXT, sources_json TEXT, inserted_at TEXT)")
+               "topic_title TEXT, sources_json TEXT, inserted_at TEXT)"
+    )
     )
     return Next("STEP_INIT_INDEX")
 
@@ -58,9 +63,10 @@ def STEP_BUILD_QUERY(worker, cycle, env):
 
 @step
 def STEP_SEARCH_PRIMARY(worker, cycle, env):
+    sites = list((worker.get("primary_site_caps") or {}).keys())
     out = env.tool(
         "universal_doc_scraper", operation="search_across_sites",
-        sites=worker.get("primary_sites", []), query=cycle.get("enrich", {}).get("query", ""),
+        sites=sites, query=cycle.get("enrich", {}).get("query", ""),
         max_results=5, max_pages=2
     )
     cycle["enrich"]["primary"] = out.get("results") or []
@@ -128,3 +134,18 @@ def STEP_INC_INDEX(worker, cycle, env):
     out = env.transform("set_value", value=i)
     cycle["enrich"]["i"] = out.get("result")
     return Next("STEP_SLICE_SKIP")
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

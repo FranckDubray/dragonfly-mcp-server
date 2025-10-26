@@ -1,3 +1,5 @@
+
+
 from py_orch import SubGraph, step, cond, Next, Exit
 
 SUBGRAPH = SubGraph(
@@ -34,17 +36,23 @@ def STEP_DEDUPE_BY_URL(worker, cycle, env):
 
 @step
 def STEP_GPT_SCORE(worker, cycle, env):
-    # Build a compact prompt; expect JSON array with top-scored items
+    # Build prompt from config.prompts.score_gpt
     dates = cycle.get("dates", {})
     items = cycle.get("scoring", {}).get("unique_items", [])
-    msg = (
-        "You are an expert AI/LLM curator. STRICT JSON ONLY.\n"
-        f"Cutoff (ISO): {str(dates.get('from') or '')}\nNow (ISO): {str(dates.get('now') or '')}\n\n"
-        "Score and rank ALL these items (keep only >= cutoff). Return up to 10 as JSON array.\n"
-        f"ITEMS:\n{str(items)[:5000]}"
+    prompts = worker.get("prompts", {})
+    tpl = str(prompts.get("score_gpt") or "")
+    msg_text = tpl.format(
+        FROM_ISO=str(dates.get("from") or ""),
+        NOW_ISO=str(dates.get("now") or ""),
+        ITEMS=str(items)[:5000]
     )
-    out = env.tool("call_llm", model=worker.get("llm_model"), messages=[{"role":"user","content": msg}],
-                   temperature=worker.get("llm_temperature", 0.3), response_format="json")
+    out = env.tool(
+        "call_llm",
+        model=worker.get("llm_model"),
+        messages=[{"role":"user","content": msg_text}],
+        temperature=worker.get("llm_temperature", 0.3),
+        response_format="json"
+    )
     cycle.setdefault("scoring", {})["raw"] = out.get("content") or out.get("result") or "[]"
     return Next("STEP_NORMALIZE_SCORE")
 
@@ -60,3 +68,20 @@ def STEP_STRINGIFY_TOP10(worker, cycle, env):
     out = env.transform("json_stringify", value=cycle.get("scoring", {}).get("top10", []))
     cycle["scoring"]["top10_json"] = out.get("json_string") or "[]"
     return Exit("success")
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

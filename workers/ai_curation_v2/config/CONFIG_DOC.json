@@ -1,0 +1,11 @@
+{
+  "http_timeout_sec": "Timeout HTTP (sec) pour les appels MCP (call_llm, etc.). Défaut 30s.",
+  "llm_model": "Modèle LLM principal utilisé pour le scoring et le formatage du rapport.",
+  "sonar_model": "Modèle Sonar utilisé pour la validation/collecte.",
+  "llm_temperature": "Température de génération LLM.",
+  "quality_threshold": "Seuil de score minimal pour considérer la curation satisfaisante.",
+  "max_retries": "Nombre maximal de tentatives de re‑scoring si la validation échoue.",
+  "primary_site_caps": "Taille (octets) à récupérer par URL de listing officielle (blog/news) — viser 5–8 KB.",
+  "prompts": "Prompts stockés dans config/prompts/*.md; injectés dans metadata.prompts au runtime.",
+  "db_file": "Nom du fichier SQLite pour persister l’état et les rapports."
+}

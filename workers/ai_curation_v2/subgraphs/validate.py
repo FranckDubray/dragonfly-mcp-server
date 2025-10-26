@@ -1,4 +1,6 @@
 
+
+
 from py_orch import SubGraph, step, cond, Next, Exit
 
 SUBGRAPH = SubGraph(
@@ -15,13 +17,9 @@ def STEP_GET_TS(worker, cycle, env):
 
 @step
 def STEP_SONAR_VALIDATE(worker, cycle, env):
-    messages = [{
-        "role": "user",
-        "content": (
-            "Tu es un validateur CRITIQUE de qualité pour la curation IA/LLM. "
-            "Retourne STRICTEMENT du JSON: {\"score\":7.5,\"feedback\":\"...\"}"
-        )
-    }]
+    prompts = worker.get("prompts", {})
+    tpl = str(prompts.get("validate_json") or "")
+    messages = [{"role": "user", "content": tpl}]
     out = env.tool("call_llm", model=worker.get("sonar_model"), messages=messages, temperature=0.1, response_format="json")
     cycle.setdefault("validation", {})["raw"] = out.get("content") or out.get("result") or "{}"
     return Next("STEP_NORMALIZE")
@@ -105,3 +103,36 @@ def COND_RETRY_LEFT(worker, cycle, env):
     if rc < mr:
         return Exit("retry")
     return Exit("retry_exhausted")
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
