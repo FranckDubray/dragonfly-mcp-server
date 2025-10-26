@@ -40,3 +40,21 @@ class ComparePositionsHandler(AbstractHandler):
             }
         except Exception as e:
             raise HandlerError(f"compare_positions failed: {str(e)[:200]}", "COMPARE_POSITIONS_ERROR", "validation", False)
+
+# TRANSFORM_META_START
+{
+  "io_type": "object->object",
+  "description": "Compare two maps prev and curr (piece_key -> square) to detect a unique move",
+  "inputs": [
+    "- prev: object (map piece_key->square)",
+    "- curr: object (map piece_key->square)"
+  ],
+  "outputs": [
+    "- unique: boolean",
+    "- piece_key: string|null",
+    "- from: string|null",
+    "- to: string|null",
+    "- changed_count: integer"
+  ]
+}
+# TRANSFORM_META_END

@@ -40,3 +40,20 @@ class DedupeByUrlHandler(AbstractHandler):
             seen.add(url)
             out.append(it)
         return {"items": out, "removed": removed, "kept": len(out)}
+
+# TRANSFORM_META_START
+{
+  "io_type": "list->list",
+  "description": "Remove duplicates from a list of objects using a URL key (keep_first toggle)",
+  "inputs": [
+    "- items: list[object]",
+    "- url_key: string (default 'url')",
+    "- keep_first: boolean (default true)"
+  ],
+  "outputs": [
+    "- items: list[object] (deduplicated)",
+    "- removed: integer",
+    "- kept: integer"
+  ]
+}
+# TRANSFORM_META_END

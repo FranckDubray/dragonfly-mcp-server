@@ -1,58 +1,47 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+from ..base import AbstractHandler, HandlerError
 import json
 import re
-from ..base import AbstractHandler, HandlerError
+from typing import Any, Dict, List, Optional
+
+# Robust JSON normalizer for LLM outputs.
+# Goals:
+# - Accept fenced blocks (```json ... ``` or ``` ... ```), or raw text.
+# - Extract the first complete JSON object/array when possible.
+# - If content is truncated (unterminated), try to truncate to the last balanced bracket.
+# - Repair common escape/control char issues inside strings.
+# - Never raise on parse failure: return fallback_value (default: []).
 
 class NormalizeLlmOutputHandler(AbstractHandler):
     @property
     def kind(self) -> str:
         return "normalize_llm_output"
 
-    def _strip_fences(self, text: str) -> str:
-        t = text.strip()
-        if t.startswith("```"):
-            lines = t.split("\n")
-            if lines and lines[0].startswith("```"):
-                lines = lines[1:]
-            # strip trailing code fence if present
-            if lines and lines[-1].strip().startswith("```"):
-                lines = lines[:-1]
-            t = "\n".join(lines).strip()
+    # ---------- helpers ----------
+    def _strip_fences_any(self, text: str) -> str:
+        t = (text or "").strip()
+        # Prefer ```json ... ``` fenced block
+        m = re.search(r"```json\s*(.+?)\s*```", t, flags=re.IGNORECASE | re.DOTALL)
+        if m:
+            return m.group(1).strip()
+        # Fallback: any ``` ... ```
+        m = re.search(r"```\s*(.+?)\s*```", t, flags=re.DOTALL)
+        if m:
+            return m.group(1).strip()
+        # No explicit fences → keep original
         return t
 
-    def _extract_first_json(self, text: str) -> str:
-        # Robust extraction: find first '{' or '[' and then walk to matching '}' or ']'
-        start_idx = None
-        for i, ch in enumerate(text):
-            if ch in "[{":
-                start_idx = i
-                break
-        if start_idx is None:
-            raise HandlerError("No JSON object found in content", "INVALID_JSON", "validation", False)
-        stack = []
+    def _first_complete_json_span(self, s: str) -> Optional[str]:
+        # Return substring for the first complete {...} or [...] encountered.
+        start = None
+        stack: List[str] = []
         in_str = False
         esc = False
-        for j in range(start_idx, len(text)):
-            ch = text[j]
+        last_balanced = None  # index after last fully balanced close
+        for i, ch in enumerate(s):
             if in_str:
                 if esc:
                     esc = False
-                elif ch == "\\":
+                elif ch == '\\':
                     esc = True
                 elif ch == '"':
                     in_str = False
@@ -61,23 +50,33 @@ class NormalizeLlmOutputHandler(AbstractHandler):
                 if ch == '"':
                     in_str = True
                     continue
-                if ch in "[{":
+                if ch in '[{':
+                    if start is None:
+                        start = i
                     stack.append(ch)
-                elif ch in "]}":
+                elif ch in ']}':
                     if not stack:
-                        break
+                        continue
                     top = stack.pop()
-                    if (top == "[" and ch != "]") or (top == "{" and ch != "}"):
-                        raise HandlerError("Mismatched JSON brackets", "INVALID_JSON", "validation", False)
-                    if not stack:
-                        return text[start_idx:j+1]
-        raise HandlerError("Unterminated JSON in content", "INVALID_JSON", "validation", False)
+                    if (top == '[' and ch != ']') or (top == '{' and ch != '}'):
+                        return None
+                    if not stack and start is not None:
+                        last_balanced = i + 1
+                        # we can return first complete JSON block found
+                        return s[start:last_balanced]
+        # If never fully balanced, try best-effort truncation to last closing brace/bracket
+        if start is not None:
+            j = max(s.rfind('}'), s.rfind(']'))
+            if j >= start:
+                return s[start:j+1]
+        return None
 
     def _repair_invalid_escapes(self, s: str) -> str:
-        return re.sub(r'\\(?!["\\/bfnrtu])', r'\\\\', s)
+        # Replace lone backslashes not followed by a valid escape with double backslash
+        return re.sub(r"\\(?![\\/\"bfnrtu])", r"\\\\", s)
 
-    def _escape_control_chars_in_strings(self, s: str) -> str:
-        """Escape raw control characters (\n, \r, \t, etc.) only when inside JSON strings."""
+    def _escape_ctrls_in_strings(self, s: str) -> str:
+        # Encode raw control chars inside JSON strings
         out = []
         in_str = False
         esc = False
@@ -88,11 +87,9 @@ class NormalizeLlmOutputHandler(AbstractHandler):
                     esc = False
                 else:
                     if ch == '\\':
-                        out.append(ch)
-                        esc = True
+                        out.append(ch); esc = True
                     elif ch == '"':
-                        out.append(ch)
-                        in_str = False
+                        out.append(ch); in_str = False
                     elif ch == '\n':
                         out.append('\\n')
                     elif ch == '\r':
@@ -109,76 +106,51 @@ class NormalizeLlmOutputHandler(AbstractHandler):
                     in_str = True
         return ''.join(out)
 
-    def _extract_from_fenced_block(self, text: str) -> str | None:
-        """
-        Try to extract JSON from a ```json ... ``` fenced block anywhere in the text.
-        Returns the inner content if found, else None.
-        """
-        # Look for ```json ... ``` ... ``` patterns lazily
-        m = re.search(r"```json\s*(.+?)\s*```", text, flags=re.DOTALL | re.IGNORECASE)
-        if not m:
-            return None
-        inner = m.group(1).strip()
-        return inner
-
-    def run(self, content=None, fallback_value=None, **kwargs):
+    # ---------- main ----------
+    def run(self, content=None, fallback_value=None, **kwargs) -> Dict[str, Any]:
         try:
-            # Pass-through if already parsed
-            if isinstance(content, (dict, list)):
+            # Pass-through: already structured
+            if isinstance(content, (list, dict)):
                 return {"parsed": content}
-            if not content:
-                if fallback_value is not None:
-                    return {"parsed": fallback_value}
-                raise HandlerError("Empty content", "EMPTY_INPUT", "validation", False)
+            if content is None:
+                return {"parsed": fallback_value if fallback_value is not None else []}
 
-            raw = str(content)
+            s = str(content)
+            s = self._strip_fences_any(s)
 
-            # 1) Direct JSON if possible
+            # Fast path: direct parse
             try:
-                return {"parsed": json.loads(raw)}
-            except json.JSONDecodeError:
+                return {"parsed": json.loads(s)}
+            except Exception:
                 pass
 
-            # 2) If a fenced ```json block exists anywhere, parse inside it
-            fenced = self._extract_from_fenced_block(raw)
-            if fenced:
+            # Try extracting a complete span
+            span = self._first_complete_json_span(s)
+            if span:
+                txt = self._escape_ctrls_in_strings(self._repair_invalid_escapes(span))
                 try:
-                    return {"parsed": json.loads(fenced)}
-                except json.JSONDecodeError:
-                    # Try repairs on fenced content
-                    repaired = self._repair_invalid_escapes(fenced)
+                    return {"parsed": json.loads(txt)}
+                except Exception:
+                    # Try one more time after trimming trailing commas
+                    txt2 = re.sub(r",\s*([}\]])", r"\1", txt)
                     try:
-                        return {"parsed": json.loads(repaired)}
-                    except json.JSONDecodeError:
-                        repaired2 = self._escape_control_chars_in_strings(repaired)
-                        return {"parsed": json.loads(repaired2)}
+                        return {"parsed": json.loads(txt2)}
+                    except Exception:
+                        pass
 
-            # 3) Extract the first JSON object/array from anywhere in the text
-            snippet = self._extract_first_json(raw)
-            try:
-                return {"parsed": json.loads(snippet)}
-            except json.JSONDecodeError:
-                repaired = self._repair_invalid_escapes(snippet)
-                try:
-                    return {"parsed": json.loads(repaired)}
-                except json.JSONDecodeError:
-                    repaired2 = self._escape_control_chars_in_strings(repaired)
-                    return {"parsed": json.loads(repaired2)}
-
-        except HandlerError:
-            raise
-        except json.JSONDecodeError as e:
-            raise HandlerError(f"Invalid JSON: {str(e)[:200]}", "INVALID_JSON", "validation", False)
-        except Exception as e:
-            raise HandlerError(f"normalize_llm_output failed: {str(e)[:200]}", "PARSE_ERROR", "validation", False)
+            # Fallback
+            return {"parsed": fallback_value if fallback_value is not None else []}
+        except Exception:
+            # Never raise; always fallback
+            return {"parsed": fallback_value if fallback_value is not None else []}
 
 # TRANSFORM_META_START
 {
-  "io_type": "text/json->json",
-  "description": "Parse tolerant LLM text/JSON into structured JSON (normalize output)",
+  "io_type": "text->json",
+  "description": "Robustly parse LLM outputs into JSON (handles fences, partial JSON, escapes; never raises)",
   "inputs": [
-    "- content: string|json",
-    "- fallback_value: any (optional)"
+    "- content: string|object",
+    "- fallback_value: any (optional; default: [])"
   ],
   "outputs": [
     "- parsed: any"

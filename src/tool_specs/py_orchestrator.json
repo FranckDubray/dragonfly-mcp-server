@@ -1,3 +1,15 @@
+
+
+
+
+
+
+
+
+
+
+
+
 {
   "type": "function",
   "function": {
@@ -5,13 +17,13 @@
     "displayName": "Python Orchestrator",
     "category": "intelligence",
     "tags": ["process", "python", "debug"],
-    "description": "Run Python-defined workflows (Process/SubGraphs/Steps). Start/stop/status/debug; graph extraction (process/subgraph/current_subgraph); validate worker (AST+rules).",
+    "description": "Run Python-defined workflows (Process/SubGraphs/Steps). Start/stop/status/debug; graph extraction (process/subgraph/current_subgraph); validate worker (AST+rules); list transforms; read worker config (metadata+docs).",
     "parameters": {
       "type": "object",
       "properties": {
         "operation": {
           "type": "string",
-          "enum": ["start", "stop", "status", "debug", "list", "graph", "validate", "transforms"],
+          "enum": ["start", "stop", "status", "debug", "list", "graph", "validate", "transforms", "config"],
           "description": "Control operation"
         },
         "worker_name": {"type": "string", "description": "Logical worker name (used for DB)"},

@@ -14,3 +14,18 @@ class IdempotencyGuardHandler(AbstractHandler):
             completed_actions = []
         skip = action_id in completed_actions
         return {"skip": skip, "action_id": action_id}
+
+# TRANSFORM_META_START
+{
+  "io_type": "object->object",
+  "description": "Check if an action has already been executed (idempotency guard)",
+  "inputs": [
+    "- action_id: string",
+    "- completed_actions: list[string] (optional)"
+  ],
+  "outputs": [
+    "- skip: boolean",
+    "- action_id: string"
+  ]
+}
+# TRANSFORM_META_END

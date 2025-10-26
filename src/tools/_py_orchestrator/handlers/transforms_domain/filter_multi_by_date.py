@@ -99,3 +99,21 @@ class FilterMultiByDateHandler(AbstractHandler):
             return datetime.fromtimestamp(sec, tz=timezone.utc)
         except Exception:
             return None
+
+# TRANSFORM_META_START
+{
+  "io_type": "object->object",
+  "description": "Filter multiple named lists by date cutoff in one pass (per-name metrics)",
+  "inputs": [
+    "- cutoff_iso: string (ISO8601, e.g. '2025-10-15T22:36:34Z')",
+    "- items_map: object name->list[object]",
+    "- date_paths: object name->string (dotted path to date field)",
+    "- unix_seconds: object name->boolean (interpret field as epoch seconds)"
+  ],
+  "outputs": [
+    "- {name}_items_recent: list[object]",
+    "- {name}_kept: integer",
+    "- {name}_dropped: integer"
+  ]
+}
+# TRANSFORM_META_END
