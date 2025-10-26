@@ -1,19 +1,4 @@
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 from typing import Dict, Any
 import time
 import json as _json
@@ -36,48 +21,72 @@ from .runner_parts.reloader import maybe_hot_reload
 from src.tools._orchestrator.logging.crash_logger import log_crash
 from src.tools._orchestrator.debug_loop import debug_wait_loop
 from .runner_parts.loop_core import execute_step
+from pathlib import Path
+
+
+def _deep_update(dst: Dict[str, Any], src: Dict[str, Any]) -> Dict[str, Any]:
+    for k, v in (src or {}).items():
+        if isinstance(v, dict) and isinstance(dst.get(k), dict):
+            _deep_update(dst[k], v)
+        else:
+            dst[k] = v
+    return dst
 
 
 def _merge_worker_config(root, process):
-    """Optional worker config merge: if workers/<name>/config.py exists and defines CONFIG or WORKER_CONFIG,
-    merge its dict into process.metadata. Best-effort, no crash.
-
-    Also supports a description map: CONFIG_DOC|CONFIG_DESC|DOC|DESCRIPTIONS (var -> text).
-    Stores values in KV: py.process_metadata and py.process_config_docs.
+    """Worker config merge (directory-only). No root config.py support.
+    - config/config.json → deep-merge into metadata
+    - config/prompts/*.md|*.txt → metadata.prompts[stem] = file content
+    - config/CONFIG_DOC.json (optional) → docs
     """
     try:
-        cfg_mod = load_module(f"{getattr(process, 'name', 'pyworker')}__config", root / 'config.py')
-        cfg = None
-        docs = None
-        for key in ('CONFIG', 'WORKER_CONFIG', 'config'):
-            if hasattr(cfg_mod, key):
-                val = getattr(cfg_mod, key)
-                if isinstance(val, dict):
-                    cfg = val
-                    break
-        for key in ('CONFIG_DOC', 'CONFIG_DESC', 'DOC', 'DESCRIPTIONS'):
-            if hasattr(cfg_mod, key):
-                val = getattr(cfg_mod, key)
-                if isinstance(val, dict):
-                    docs = val
-                    break
-        if isinstance(cfg, dict):
-            md = getattr(process, 'metadata', {}) or {}
-            # Prefer values from config for ctx variables; keep other static metadata
-            merged = dict(md)
-            merged.update(cfg)
-            process.metadata = merged
+        # Directory-based config only
+        cfg_dir = root / 'config'
+        if cfg_dir.is_dir():
+            # config.json
+            json_path = cfg_dir / 'config.json'
+            if json_path.is_file():
+                try:
+                    add = _json.loads(json_path.read_text(encoding='utf-8'))
+                    if isinstance(add, dict):
+                        if not isinstance(process.metadata, dict):
+                            process.metadata = {}
+                        _deep_update(process.metadata, add)
+                except Exception:
+                    pass
+            # prompts/*.md|*.txt
+            prompts_dir = cfg_dir / 'prompts'
+            if prompts_dir.is_dir():
+                for p in sorted(prompts_dir.glob('*')):
+                    if p.suffix.lower() in {'.md', '.txt'} and p.is_file():
+                        try:
+                            txt = p.read_text(encoding='utf-8')
+                        except Exception:
+                            txt = ''
+                        if not isinstance(process.metadata, dict):
+                            process.metadata = {}
+                        if 'prompts' not in process.metadata or not isinstance(process.metadata.get('prompts'), dict):
+                            process.metadata['prompts'] = {}
+                        process.metadata['prompts'][p.stem] = txt
+            # CONFIG_DOC.json (optional)
+            docs_path = cfg_dir / 'CONFIG_DOC.json'
+            docs = None
+            if docs_path.is_file():
+                try:
+                    docs = _json.loads(docs_path.read_text(encoding='utf-8'))
+                except Exception:
+                    docs = None
             # Persist in KV for config/status consumers
             try:
-                set_state_kv(str(root.parent.parent / 'sqlite3' / f"worker_{getattr(process,'name','__')}.db"), getattr(process,'name','__'), 'py.process_metadata', _json.dumps(merged))
+                set_state_kv(str(root.parent.parent / 'sqlite3' / f"worker_{getattr(process,'name','__')}.db"), getattr(process,'name','__'), 'py.process_metadata', _json.dumps(process.metadata or {}))
             except Exception:
                 pass
-        if isinstance(docs, dict):
-            try:
-                set_state_kv(str(root.parent.parent / 'sqlite3' / f"worker_{getattr(process,'name','__')}.db"), getattr(process,'name','__'), 'py.process_config_docs', _json.dumps(docs))
-            except Exception:
-                pass
-        return bool(cfg)
+            if isinstance(docs, dict):
+                try:
+                    set_state_kv(str(root.parent.parent / 'sqlite3' / f"worker_{getattr(process,'name','__')}.db"), getattr(process,'name','__'), 'py.process_config_docs', _json.dumps(docs))
+                except Exception:
+                    pass
+            return True
     except Exception:
         pass
     return False
@@ -106,10 +115,9 @@ def run_loop(db_path: str, worker: str):
         return
     process = proc_mod.PROCESS
 
-    # Optional external config merge (workers/<name>/config.py)
-    merged = _merge_worker_config(root, process)
+    # Directory-based config merge only (config/)
+    _merge_worker_config(root, process)
     try:
-        # Persist merged metadata for config/status consumers
         set_state_kv(db_path, worker, 'py.process_metadata', _json.dumps(process.metadata or {}))
     except Exception:
         pass
@@ -137,13 +145,11 @@ def run_loop(db_path: str, worker: str):
     current_step = submods[current_sub].SUBGRAPH.entry
 
     cycle: Dict[str, Any] = {}
-    # Pass process.metadata as worker_ctx so PyEnv can pick http_timeout_sec, etc.
     env = PyEnv(lambda: is_canceled(db_path, worker), worker_ctx=(process.metadata or {}))
 
     cycle_num = 1
     cycle_id = f"cycle_{cycle_num:03d}"
 
-    # Pause immédiate: exposer next_node et bloquer réellement
     if (get_state_kv(db_path, worker, 'debug.pause_request') or '') == 'immediate':
         set_state_kv(db_path, worker, 'debug.pause_request', '')
         next_full = f"{current_sub}::{current_step}"
@@ -169,7 +175,6 @@ def run_loop(db_path: str, worker: str):
             if new_graph is not None:
                 graph = new_graph
                 process = new_process
-                # Merge config again on hot reload (best effort)
                 _merge_worker_config(root, process)
                 try:
                     set_state_kv(db_path, worker, 'py.process_metadata', _json.dumps(process.metadata or {}))
@@ -184,7 +189,6 @@ def run_loop(db_path: str, worker: str):
         set_phase(db_path, worker, 'running')
         heartbeat(db_path, worker)
 
-        # Pause on until target / breakpoints (before executing the node)
         maybe_pause_on_until(db_path, worker, current_sub, current_step, cycle_id)
         maybe_pause_on_breakpoint(db_path, worker, current_sub, current_step, cycle_id)
 

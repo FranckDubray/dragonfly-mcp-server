@@ -1,0 +1,20 @@
+{
+  "http_timeout_sec": 150,
+  "llm_model": "gpt-4o-mini",
+  "sonar_model": "sonar",
+  "llm_temperature": 0.3,
+  "quality_threshold": 7,
+  "max_retries": 3,
+  "primary_site_caps": {
+    "https://ai.meta.com/blog/": 8000,
+    "https://about.fb.com/news/topic/technology/ai/": 6000,
+    "https://blogs.nvidia.com/blog/category/generative-ai/": 7000,
+    "https://blogs.nvidia.com/": 6000,
+    "https://azure.microsoft.com/en-us/blog/topics/ai/": 7000,
+    "https://azure.microsoft.com/en-us/blog/tag/azure-ai-foundry/": 6000,
+    "https://mistral.ai/news/": 5000,
+    "https://x.ai/blog": 7000,
+    "https://blog.perplexity.ai/": 5000
+  },
+  "db_file": "worker_ai_curation_v2.db"
+}

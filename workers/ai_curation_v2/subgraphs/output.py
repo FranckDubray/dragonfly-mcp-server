@@ -1,3 +1,6 @@
+
+
+
 from py_orch import SubGraph, step, Next, Exit
 
 SUBGRAPH = SubGraph(
@@ -13,11 +16,9 @@ def STEP_LLM_FORMAT_FR(worker, cycle, env):
         "score": float(cycle.get("validation", {}).get("score") or 0.0),
         "retry_count": int(cycle.get("meta", {}).get("retry_count", 0))
     }
-    msg = (
-        "IMPÉRATIF : Réponds UNIQUEMENT en français. Génère un rapport markdown Top 10 IA/LLM.\n\n"
-        f"Top10 JSON: {str(top10)[:4000]}\n"
-        f"Validation: {str(val)}\n"
-    )
+    prompts = worker.get("prompts", {})
+    tpl = str(prompts.get("output_fr") or "")
+    msg = tpl.format(TOP10=str(top10)[:4000], VALIDATION=str(val))
     out = env.tool(
         "call_llm",
         model=worker.get("llm_model"),
@@ -89,7 +90,8 @@ def STEP_BUILD_CFG_JSON(worker, cycle, env):
         "llm_model": worker.get("llm_model"),
         "quality_threshold": worker.get("quality_threshold"),
         "providers_news": ["guardian"],
-        "primary_sites": worker.get("primary_sites", []),
+        # Traçabilité: liste dérivée depuis primary_site_caps
+        "primary_sites": list((worker.get("primary_site_caps") or {}).keys()),
     }
     out = env.transform("json_stringify", value=cfg)
     cycle.setdefault("audit", {})["cfg_json"] = out.get("json_string") or "{}"
@@ -148,7 +150,7 @@ def STEP_INSERT_AUDIT(worker, cycle, env):
         "sqlite_db", operation="execute", db=worker.get("db_file"),
         query=("INSERT INTO report_audit (run_id, ts, worker_name, pid, phase, config_json, report_count_after)"
                " VALUES (?, ?, ?, ?, ?, ?, ?)"),
-        params=[
+        params:[
             a.get("run_id") or "",
             a.get("ts_run") or "",
             a.get("worker_name") or "",
@@ -172,3 +174,18 @@ def STEP_INSERT_AUDIT(worker, cycle, env):
     )
     cycle["summary"] = summary
     return Exit("success")
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
