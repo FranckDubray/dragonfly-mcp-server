@@ -1,3 +1,9 @@
+
+
+
+
+
+
 # List workers operation (module <7KB)
 
 import os
@@ -24,14 +30,25 @@ def _read_last_step_time(db_path: str, worker: str) -> str:
     try:
         conn = sqlite3.connect(db_path)
         cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT COALESCE(MAX(finished_at), MAX(started_at))
-            FROM job_steps
-            WHERE worker=?
-            """,
-            (worker,)
-        )
+        run_started_at = _read_state(db_path, worker, 'run_started_at') or ''
+        if run_started_at:
+            cur.execute(
+                """
+                SELECT COALESCE(MAX(finished_at), MAX(started_at))
+                FROM job_steps
+                WHERE worker=? AND started_at>=?
+                """,
+                (worker, run_started_at)
+            )
+        else:
+            cur.execute(
+                """
+                SELECT COALESCE(MAX(finished_at), MAX(started_at))
+                FROM job_steps
+                WHERE worker=?
+                """,
+                (worker,)
+            )
         row = cur.fetchone()
         conn.close()
         return row[0] if row and row[0] else ""

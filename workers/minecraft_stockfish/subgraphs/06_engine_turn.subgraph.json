@@ -1,0 +1,66 @@
+{
+  "id":"ENGINE_TURN","version":"1.4",
+  "description":"Compute bestmove, animate black move, store last_turn_ts, loop. Guard when no bestmove.",
+  "interface":{"entry":"ET_BM_REQ","exits":{"loop":"ET_EXIT_LOOP"}},
+  "nodes":[
+    {"name":"ET_BM_REQ","type":"io","handler":"http_tool",
+     "inputs":{"tool":"stockfish_auto","operation":"evaluate_position",
+               "position":{"startpos":true,"moves":"${cycle.game.moves}"},
+               "quality":"${worker.stockfish.quality}","limit":"${worker.stockfish.limit}"},
+     "outputs":{"result":"cycle.sf.best"}},
+
+    {"name":"ET_BM_PARSE","type":"transform","handler":"json_ops",
+     "inputs":{"op":"get","data":"${cycle.sf.best}","path":"bestmove.move","default":""},
+     "outputs":{"result":"cycle.sf.best_uci"}},
+
+    {"name":"ET_HAS_BEST","type":"decision","decision":{"kind":"truthy","input":"${cycle.sf.best_uci}"}},
+    {"name":"ET_NO_BEST_MSG","type":"io","handler":"http_tool",
+     "inputs":{"tool":"minecraft_control","operation":"execute_command",
+               "command":"title @a[tag=chess_owner] actionbar {\"text\":\"Pas de coup noir (loop)\",\"color\":\"yellow\"}"}},
+
+    {"name":"ET_PUSH_MOVE","type":"transform","handler":"set_value",
+     "inputs":{"value":"${cycle.game.moves} ${cycle.move.uci}"},
+     "outputs":{"result":"cycle.game.moves"}},
+
+    {"name":"ET_PUSH_BLACK","type":"transform","handler":"set_value",
+     "inputs":{"value":"${cycle.game.moves} ${cycle.sf.best_uci}"},
+     "outputs":{"result":"cycle.game.moves"}},
+
+    {"name":"ET_AB_ANIM","type":"io","handler":"http_tool",
+     "inputs":{"tool":"minecraft_control","operation":"batch_commands","delay_ms":50,
+               "commands":[
+                 "say [MC] Animating black move (stub)."
+               ]}},
+
+    {"name":"ET_AB_MSG","type":"io","handler":"http_tool",
+     "inputs":{"tool":"minecraft_control","operation":"execute_command",
+               "command":"title @a[tag=chess_owner] actionbar {\"text\":\"Coup noir joué\",\"color\":\"green\"}"}},
+
+    {"name":"ET_SLEEP","type":"transform","handler":"sleep","inputs":{"ms":200}},
+
+    {"name":"ET_GET_NOW","type":"io","handler":"http_tool",
+     "inputs":{"tool":"date","operation":"now","format":"iso","timezone":"UTC"},
+     "outputs":{"result":"cycle.timer.now"}},
+
+    {"name":"ET_STORE_END","type":"transform","handler":"set_value",
+     "inputs":{"value":"${cycle.timer.now}"},"outputs":{"result":"cycle.game.last_turn_ts"}},
+
+    {"name":"ET_EXIT_LOOP","type":"transform","handler":"set_value","inputs":{"value":true}}
+  ],
+  "edges":[
+    {"from":"ET_BM_REQ","to":"ET_BM_PARSE"},
+    {"from":"ET_BM_PARSE","to":"ET_HAS_BEST"},
+
+    {"from":"ET_HAS_BEST","to":"ET_NO_BEST_MSG","when":"false"},
+    {"from":"ET_NO_BEST_MSG","to":"ET_EXIT_LOOP"},
+
+    {"from":"ET_HAS_BEST","to":"ET_PUSH_MOVE","when":"true"},
+    {"from":"ET_PUSH_MOVE","to":"ET_PUSH_BLACK"},
+    {"from":"ET_PUSH_BLACK","to":"ET_AB_ANIM"},
+    {"from":"ET_AB_ANIM","to":"ET_AB_MSG"},
+    {"from":"ET_AB_MSG","to":"ET_SLEEP"},
+    {"from":"ET_SLEEP","to":"ET_GET_NOW"},
+    {"from":"ET_GET_NOW","to":"ET_STORE_END"},
+    {"from":"ET_STORE_END","to":"ET_EXIT_LOOP"}
+  ]
+}

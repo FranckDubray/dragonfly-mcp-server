@@ -1,25 +1,4 @@
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # Per-node step logging (job_steps table)
 
 import sqlite3
@@ -30,6 +9,7 @@ from typing import Dict, Any, Optional
 # Centralized time + sanitation utilities
 from ..utils import utcnow_str
 from ..engine.debug_utils import sanitize_details_for_log
+from ..db import get_state_kv
 
 def begin_step(db_path: str, worker: str, cycle_id: str, node: str, handler_kind: Optional[str] = None) -> None:
     """
@@ -37,12 +17,13 @@ def begin_step(db_path: str, worker: str, cycle_id: str, node: str, handler_kind
     """
     conn = sqlite3.connect(db_path)
     try:
+        run_id = get_state_kv(db_path, worker, 'run_id') or ''
         conn.execute(
             """
-            INSERT INTO job_steps (worker, cycle_id, node, handler_kind, status, started_at)
-            VALUES (?, ?, ?, ?, 'running', ?)
+            INSERT INTO job_steps (worker, cycle_id, node, handler_kind, status, started_at, run_id)
+            VALUES (?, ?, ?, ?, 'running', ?, ?)
             """,
-            (worker, cycle_id, node, handler_kind, utcnow_str())
+            (worker, cycle_id, node, handler_kind, utcnow_str(), run_id)
         )
         conn.commit()
     finally:
@@ -127,13 +108,14 @@ def log_retry_attempt(
             """
             INSERT INTO job_steps (
                 worker, cycle_id, node, handler_kind, status,
-                started_at, finished_at, duration_ms, details_json
-            ) VALUES (?, ?, ?, ?, 'skipped', ?, ?, 0, ?)
+                started_at, finished_at, duration_ms, details_json, run_id
+            ) VALUES (?, ?, ?, ?, 'skipped', ?, ?, 0, ?, ?)
             """,
             (
                 worker, cycle_id, f"{node}_retry_{attempt}", None,
                 utcnow_str(), utcnow_str(),
-                details_json
+                details_json,
+                get_state_kv(db_path, worker, 'run_id') or ''
             )
         )
         conn.commit()

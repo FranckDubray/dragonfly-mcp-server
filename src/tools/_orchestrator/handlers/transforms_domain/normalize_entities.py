@@ -16,6 +16,8 @@ class NormalizeEntitiesHandler(AbstractHandler):
           uuid, custom_name_raw, custom_name, piece_key, color, letter,
           square_tag, pos:{x,y,z}, tags:[]
         }
+    Notes:
+      - piece_key is forced to uuid when available (stable key for tracking across moves).
     """
 
     @property
@@ -39,17 +41,21 @@ class NormalizeEntitiesHandler(AbstractHandler):
                 raw_name = it.get("custom_name") or it.get("name") or ""
                 clean_name = self._clean_name(raw_name)
                 tags = [t for t in (it.get("tags") or []) if isinstance(t, str)]
+                uid = it.get("uuid")
                 # piece_key
                 pk = None
-                for t in tags:
-                    if re_piece_key.match(t):
-                        pk = t
-                        break
-                if not pk:
-                    pk = clean_name or None
+                if uid:
+                    pk = uid
+                else:
+                    for t in tags:
+                        if re_piece_key.match(t):
+                            pk = t
+                            break
+                    if not pk:
+                        pk = clean_name or None
                 # color / letter
                 color, letter = None, None
-                if pk and re_piece_key.match(pk):
+                if pk and isinstance(pk, str) and re_piece_key.match(pk):
                     color = pk[0]
                     letter = pk[1]
                 else:
@@ -74,7 +80,7 @@ class NormalizeEntitiesHandler(AbstractHandler):
                 y = self._to_float(self._get(pos, "y"))
                 z = self._to_float(self._get(pos, "z"))
                 norm = {
-                    "uuid": it.get("uuid"),
+                    "uuid": uid,
                     "custom_name_raw": raw_name,
                     "custom_name": clean_name or None,
                     "piece_key": pk,
@@ -91,11 +97,9 @@ class NormalizeEntitiesHandler(AbstractHandler):
 
     def _clean_name(self, s: Any) -> str:
         txt = str(s or "").strip()
-        # strip outer quotes 'name' or "name"
         if len(txt) >= 2 and ((txt[0] == txt[-1] == '"') or (txt[0] == txt[-1] == "'")):
             txt = txt[1:-1]
-        # handle nested quotes like '"name"'
-        if len(txt) >= 2 and ((txt[0] == '"' and txt[-1] == '"') or (txt[0] == "'" and txt[-1] == "'")):
+        if len(txt) >= 2 and ((txt[0] == '"' and txt[-1] == '"') or (txt[0] == "'" and txt[-1] == "')):
             txt = txt[1:-1]
         return txt.strip()
 

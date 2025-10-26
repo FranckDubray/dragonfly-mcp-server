@@ -1,0 +1,2 @@
+# Stub selection via raycast (1..6 blocks), filter by owner color
+say [MC] Raycast selection executed (stub).

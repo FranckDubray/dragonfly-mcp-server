@@ -1,3 +1,7 @@
+
+
+
+
 # API errors helpers - Error reporting and debug status (<4KB)
 
 import json
@@ -42,21 +46,37 @@ def compact_errors_for_status(db_path: str, worker_name: str) -> Dict[str, Any]:
     try:
         conn = sqlite3.connect(db_path)
         cur = conn.cursor()
-        cur.execute("SELECT cycle_id FROM job_steps WHERE worker=? ORDER BY id DESC LIMIT 1", (worker_name,))
+        # Optional filter by current run
+        run_started_at = get_state_kv(db_path, worker_name, 'run_started_at') or ''
+        if run_started_at:
+            cur.execute("SELECT cycle_id FROM job_steps WHERE worker=? AND started_at>=? ORDER BY id DESC LIMIT 1", (worker_name, run_started_at))
+        else:
+            cur.execute("SELECT cycle_id FROM job_steps WHERE worker=? ORDER BY id DESC LIMIT 1", (worker_name,))
         row = cur.fetchone()
         if not row:
             conn.close()
             return info
         cycle_id = row[0]
-        cur.execute(
-            """
-            SELECT node, started_at, finished_at, duration_ms, details_json
-            FROM job_steps
-            WHERE worker=? AND cycle_id=? AND status='failed'
-            ORDER BY id DESC LIMIT 10
-            """,
-            (worker_name, cycle_id)
-        )
+        if run_started_at:
+            cur.execute(
+                """
+                SELECT node, started_at, finished_at, duration_ms, details_json
+                FROM job_steps
+                WHERE worker=? AND cycle_id=? AND status='failed' AND started_at>=?
+                ORDER BY id DESC LIMIT 10
+                """,
+                (worker_name, cycle_id, run_started_at)
+            )
+        else:
+            cur.execute(
+                """
+                SELECT node, started_at, finished_at, duration_ms, details_json
+                FROM job_steps
+                WHERE worker=? AND cycle_id=? AND status='failed'
+                ORDER BY id DESC LIMIT 10
+                """,
+                (worker_name, cycle_id)
+            )
         failed_rows = cur.fetchall()
         errors = []
         for n, s_at, f_at, dur, dj in failed_rows:
@@ -75,15 +95,26 @@ def compact_errors_for_status(db_path: str, worker_name: str) -> Dict[str, Any]:
                            'message': msg, 'code': code, 'category': category, 'attempts': attempts})
         if errors:
             info['errors'] = errors
-        cur.execute(
-            """
-            SELECT node, crashed_at, error_message, error_type, error_code, stack_trace
-            FROM crash_logs
-            WHERE worker=? AND cycle_id=?
-            ORDER BY id DESC LIMIT 1
-            """,
-            (worker_name, cycle_id)
-        )
+        if run_started_at:
+            cur.execute(
+                """
+                SELECT node, crashed_at, error_message, error_type, error_code, stack_trace
+                FROM crash_logs
+                WHERE worker=? AND cycle_id=? AND crashed_at>=?
+                ORDER BY id DESC LIMIT 1
+                """,
+                (worker_name, cycle_id, run_started_at)
+            )
+        else:
+            cur.execute(
+                """
+                SELECT node, crashed_at, error_message, error_type, error_code, stack_trace
+                FROM crash_logs
+                WHERE worker=? AND cycle_id=?
+                ORDER BY id DESC LIMIT 1
+                """,
+                (worker_name, cycle_id)
+            )
         c = cur.fetchone()
         if c:
             node, crashed_at, emsg, etype, ecode, trace = c
@@ -109,18 +140,22 @@ def debug_status_block(db_path: str, worker_name: str) -> Dict[str, Any]:
         if not enabled:
             return {}
         mode = get_state_kv(db_path, worker_name, 'debug.mode') or 'step'
+        paused = get_phase(db_path, worker_name) == 'debug_paused'
         paused_at = get_state_kv(db_path, worker_name, 'debug.paused_at') or ''
         next_node = get_state_kv(db_path, worker_name, 'debug.next_node') or ''
         previous_node = get_state_kv(db_path, worker_name, 'debug.previous_node') or ''
+        exec_node = get_state_kv(db_path, worker_name, 'debug.executing_node') or ''
         cycle_id = get_state_kv(db_path, worker_name, 'debug.cycle_id') or ''
         breaks = get_state_kv(db_path, worker_name, 'debug.breakpoints') or '[]'
         import json as _j
+        current_node = paused_at if paused else exec_node
         blk = {
             'debug': {
                 'enabled': True,
                 'mode': mode,
-                'paused': get_phase(db_path, worker_name) == 'debug_paused',
+                'paused': paused,
                 'paused_at': paused_at,
+                'current_node': current_node,  # NEW derived field
                 'previous_node': previous_node,
                 'next_node': next_node,
                 'cycle_id': cycle_id,

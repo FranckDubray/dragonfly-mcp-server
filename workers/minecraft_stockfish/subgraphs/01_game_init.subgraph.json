@@ -1,0 +1,169 @@
+
+{
+  "id": "GAME_INIT",
+  "version": "1.7",
+  "description": "Environment, full-area clear, entity purge, board, lever, fireworks rig, spawn pieces, lock, snapshot prev + owner/scoreboard/wand init (dynamic from worker config)",
+  "interface": { "entry": "INIT_START", "exits": { "done": "SNAP_INIT" } },
+  "nodes": [
+    { "name": "INIT_START",   "type": "transform", "handler": "set_value", "inputs": {"value": true} },
+    { "name": "INIT_ENV",     "type": "io", "handler": "http_tool", "inputs": {"tool":"minecraft_control","operation":"set_environment","weather":"${worker.env.weather}","time":"${worker.env.time}","difficulty":"${worker.env.difficulty}"} },
+
+    { "name": "CLR_X1", "type": "transform", "handler": "add", "inputs": {"a":"${worker.chess.origin_center.x}", "b": -50 }, "outputs": {"result": "cycle.clear.x1"} },
+    { "name": "CLR_X2", "type": "transform", "handler": "add", "inputs": {"a":"${worker.chess.origin_center.x}", "b": 50 },  "outputs": {"result": "cycle.clear.x2"} },
+    { "name": "CLR_Z1", "type": "transform", "handler": "add", "inputs": {"a":"${worker.chess.origin_center.z}", "b": -50 }, "outputs": {"result": "cycle.clear.z1"} },
+    { "name": "CLR_Z2", "type": "transform", "handler": "add", "inputs": {"a":"${worker.chess.origin_center.z}", "b": 50 },  "outputs": {"result": "cycle.clear.z2"} },
+    { "name": "CLR_Y1", "type": "transform", "handler": "add", "inputs": {"a":"${worker.chess.y_level}", "b": -5 },  "outputs": {"result": "cycle.clear.y1"} } ,
+    { "name": "CLR_Y2", "type": "transform", "handler": "add", "inputs": {"a":"${worker.chess.y_level}", "b": 4 },   "outputs": {"result": "cycle.clear.y2"} },
+
+    { "name": "FT_CLEAR_BIG",  "type": "transform", "handler": "format_template",
+      "inputs": {"template": "fill {{x1}} {{y1}} {{z1}} {{x2}} {{y2}} {{z2}} minecraft:air",
+                  "context": {"x1": "${cycle.clear.x1}", "y1": "${cycle.clear.y1}", "z1": "${cycle.clear.z1}",
+                               "x2": "${cycle.clear.x2}", "y2": "${cycle.clear.y2}", "z2": "${cycle.clear.z2}"}},
+      "outputs": {"result": "cycle.mc.clear.cmd"}
+    },
+    { "name": "DO_CLEAR_BIG", "type": "io", "handler": "http_tool", "inputs": {"tool":"minecraft_control","operation":"execute_command","command":"${cycle.mc.clear.cmd}"} },
+
+    { "name": "DEC_DX", "type": "transform", "handler": "decrement", "inputs": {"value":"${cycle.clear.x2}", "step":"${cycle.clear.x1}"}, "outputs": {"result":"cycle.clear.dx"} },
+    { "name": "DEC_DY", "type": "transform", "handler": "decrement", "inputs": {"value":"${cycle.clear.y2}", "step":"${cycle.clear.y1}"}, "outputs": {"result":"cycle.clear.dy"} },
+    { "name": "DEC_DZ", "type": "transform", "handler": "decrement", "inputs": {"value":"${cycle.clear.z2}", "step":"${cycle.clear.z1}"}, "outputs": {"result":"cycle.clear.dz"} },
+
+    { "name": "FT_KILL_BIG",  "type": "transform", "handler": "format_template",
+      "inputs": {"template": "kill @e[type=!player,x={{x1}},y={{y1}},z={{z1}},dx={{dx}},dy={{dy}},dz={{dz}}]",
+                  "context": {"x1": "${cycle.clear.x1}", "y1": "${cycle.clear.y1}", "z1": "${cycle.clear.z1}",
+                               "dx": "${cycle.clear.dx}", "dy": "${cycle.clear.dy}", "dz": "${cycle.clear.dz}"}},
+      "outputs": {"result": "cycle.mc.clear.kill_cmd"}
+    },
+    { "name": "DO_KILL_BIG", "type": "io", "handler": "http_tool", "inputs": {"tool":"minecraft_control","operation":"execute_command","command":"${cycle.mc.clear.kill_cmd}"} },
+
+    { "name": "FT_CLEAR_ZERO",  "type": "transform", "handler": "format_template",
+      "inputs": {"template": "fill {{x1}} -10 {{z1}} {{x2}} 10 {{z2}} minecraft:air",
+                  "context": {"x1": "${cycle.clear.x1}", "z1": "${cycle.clear.z1}",
+                               "x2": "${cycle.clear.x2}", "z2": "${cycle.clear.z2}"}},
+      "outputs": {"result": "cycle.mc.clear0.cmd"}
+    },
+    { "name": "DO_CLEAR_ZERO", "type": "io", "handler": "http_tool", "inputs": {"tool":"minecraft_control","operation":"execute_command","command":"${cycle.mc.clear0.cmd}"} },
+
+    { "name": "FT_KILL_ZERO",  "type": "transform", "handler": "format_template",
+      "inputs": {"template": "kill @e[type=!player,x={{x1}},y=-10,z={{z1}},dx={{dx}},dy=20,dz={{dz}}]",
+                  "context": {"x1": "${cycle.clear.x1}", "z1": "${cycle.clear.z1}",
+                               "dx": "${cycle.clear.dx}", "dz": "${cycle.clear.dz}"}},
+      "outputs": {"result": "cycle.mc.clear0.kill_cmd"}
+    },
+    { "name": "DO_KILL_ZERO", "type": "io", "handler": "http_tool", "inputs": {"tool":"minecraft_control","operation":"execute_command","command":"${cycle.mc.clear0.kill_cmd}"} },
+
+    { "name": "PLAT_X1", "type": "transform", "handler": "add", "inputs": {"a":"${worker.chess.origin_center.x}", "b": -1 }, "outputs": {"result": "cycle.plat.x1"} },
+    { "name": "PLAT_Z1", "type": "transform", "handler": "add", "inputs": {"a":"${worker.chess.origin_center.z}", "b": -1 }, "outputs": {"result": "cycle.plat.z1"} },
+
+    { "name": "INIT_PLATFORM","type": "io", "handler": "http_tool", "inputs": {"tool":"minecraft_control","operation":"build_structure","block_type":"black_concrete","start_pos":{"x":"${cycle.plat.x1}","y":"${worker.chess.y_level}","z":"${cycle.plat.z1}"},"dimensions":{"width":24,"depth":24,"height":1},"shape":"platform"} },
+
+    { "name": "BOARD_COORDS", "type": "transform", "handler": "board_coords", "inputs": {"origin":"${worker.chess.origin_center}", "axis":"${worker.chess.axis}", "case_size":"${worker.chess.case_size}", "y_level":"${worker.chess.y_level}", "white_near_origin":"${worker.chess.white_near_origin}"}, "outputs": {"squares":"cycle.mc.board.squares"} },
+
+    { "name": "PAINT_TPL", "type": "transform", "handler": "template_map",
+      "inputs": {
+        "items": "${cycle.mc.board.squares}",
+        "template": "execute positioned {{center.x}} {{center.y}} {{center.z}} run fill ~-1 ~ ~-1 ~1 ~ ~1 {{block}}",
+        "color_map": {"light": "white_concrete", "dark": "black_concrete"},
+        "round_coords": true
+      },
+      "outputs": {"commands": "cycle.mc.paint.cmds"}
+    },
+    { "name": "INIT_PAINT",   "type": "io", "handler": "http_tool", "inputs": {"tool":"minecraft_control","operation":"batch_commands","delay_ms":2,
+      "commands": "${cycle.mc.paint.cmds}"
+    } },
+
+    { "name": "INIT_LEVER",   "type": "io", "handler": "http_tool", "inputs": {"tool":"minecraft_control","operation":"execute_command","command":"setblock ${worker.lever.pos.x} ${worker.chess.y_level} ${worker.lever.pos.z} minecraft:lever[face=floor,facing=north,powered=false]"} },
+
+    { "name": "INIT_FW_RIG",  "type": "io", "handler": "http_tool", "inputs": {"tool":"minecraft_control","operation":"batch_commands","delay_ms":30,"commands": ["say [MC] Fireworks rig setup complete."]} },
+    { "name": "INIT_FW_TEST", "type": "io", "handler": "http_tool", "inputs": {"tool":"minecraft_control","operation":"execute_command","command":"say Fireworks rig ready"} },
+
+    { "name": "MC_TAG_OWNER", "type": "io", "handler": "http_tool", "inputs": {"tool":"minecraft_control","operation":"execute_command","command":"tag @p[x=${worker.chess.origin_center.x},y=${worker.chess.y_level},z=${worker.chess.origin_center.z},distance=..20] add chess_owner"} },
+
+    { "name": "MC_SCOREBOARD_INIT", "type": "io", "handler": "http_tool", "inputs": {"tool":"minecraft_control","operation":"batch_commands","delay_ms":10,
+      "commands":[
+        "scoreboard objectives add wand_uses dummy",
+        "scoreboard objectives add wand_state dummy",
+        "scoreboard players set @a[tag=chess_owner] wand_uses 0",
+        "scoreboard players set @a[tag=chess_owner] wand_state 0"
+      ]
+    } },
+
+    { "name": "MC_GIVE_WAND", "type": "io", "handler": "http_tool", "inputs": {"tool":"minecraft_control","operation":"batch_commands","delay_ms":5,
+      "commands": [
+        "item replace entity @a[tag=chess_owner] weapon.mainhand with minecraft:stick 1",
+        "replaceitem entity @a[tag=chess_owner] weapon.mainhand minecraft:stick 1",
+        "give @a[tag=chess_owner] minecraft:stick 1"
+      ]} },
+
+    { "name": "SPAWN_TPL", "type": "transform", "handler": "template_map",
+      "inputs": {
+        "items": "${cycle.mc.board.squares}",
+        "template": "summon minecraft:sheep {{center.x}} {{center.y}} {{center.z}} {NoAI:1b,Color:{{block}}b,Tags:[\"chess_piece\",\"{{square}}\"]}",
+        "color_map": {"light": "0", "dark": "15"},
+        "round_coords": true
+      },
+      "outputs": {"commands": "cycle.mc.spawn.cmds"}
+    },
+    { "name": "INIT_SPAWN",   "type": "io", "handler": "http_tool", "inputs": {"tool":"minecraft_control","operation":"batch_commands","delay_ms":2,
+      "commands": "${cycle.mc.spawn.cmds}"
+    } },
+
+    { "name": "INIT_LOCK",    "type": "io", "handler": "http_tool", "inputs": {"tool":"minecraft_control","operation":"execute_command","command":"execute as @e[tag=chess_piece] run data merge entity @s {NoAI:1b,NoGravity:1b,Invulnerable:1b}"} },
+    { "name": "LIST_INIT",    "type": "io", "handler": "http_tool", "inputs": {"tool":"minecraft_control","operation":"list_entities","selector":"@e[tag=chess_piece]","fields":["uuid","custom_name","pos","tags"],"limit":64} ,"outputs": {"result":"cycle.mc.raw"}},
+    { "name": "NORM_INIT",    "type": "transform", "handler": "normalize_entities", "inputs": {"items":"${cycle.mc.raw}"}, "outputs": {"items":"cycle.mc.norm"} },
+    { "name": "STABLE_INIT",  "type": "transform", "handler": "json_ops", "inputs": {"op":"set","data":"${cycle.mc.norm}","set_values":{}}, "outputs": {} },
+    { "name": "SORT_INIT",    "type": "transform", "handler": "array_ops", "inputs": {"op":"sort_by","items":"${cycle.mc.norm}","key":"pos.y","order":"desc"}, "outputs": {"items":"cycle.mc.sorted"} },
+    { "name": "UNIQ_INIT",    "type": "transform", "handler": "array_ops", "inputs": {"op":"unique_by","items":"${cycle.mc.sorted}","key":"piece_key"}, "outputs": {"items":"cycle.mc.dedup"} },
+    { "name": "SNAP_INIT",    "type": "transform", "handler": "pos_to_square", "inputs": {"items":"${cycle.mc.dedup}","origin":"${worker.chess.origin_center}","axis":"${worker.chess.axis}","case_size":"${worker.chess.case_size}","epsilon":"${worker.chess.epsilon_snap}"}, "outputs": {"map":"cycle.prev.positions"} }
+  ],
+  "edges": [
+    {"from":"INIT_START","to":"INIT_ENV"},
+
+    {"from":"INIT_ENV","to":"CLR_X1"},
+    {"from":"CLR_X1","to":"CLR_X2"},
+    {"from":"CLR_X2","to":"CLR_Z1"},
+    {"from":"CLR_Z1","to":"CLR_Z2"},
+    {"from":"CLR_Z2","to":"CLR_Y1"},
+    {"from":"CLR_Y1","to":"CLR_Y2"},
+    {"from":"CLR_Y2","to":"FT_CLEAR_BIG"},
+    {"from":"FT_CLEAR_BIG","to":"DO_CLEAR_BIG"},
+
+    {"from":"DO_CLEAR_BIG","to":"DEC_DX"},
+    {"from":"DEC_DX","to":"DEC_DY"},
+    {"from":"DEC_DY","to":"DEC_DZ"},
+    {"from":"DEC_DZ","to":"FT_KILL_BIG"},
+    {"from":"FT_KILL_BIG","to":"DO_KILL_BIG"},
+
+    {"from":"DO_KILL_BIG","to":"FT_CLEAR_ZERO"},
+    {"from":"FT_CLEAR_ZERO","to":"DO_CLEAR_ZERO"},
+
+    {"from":"DO_CLEAR_ZERO","to":"FT_KILL_ZERO"},
+    {"from":"FT_KILL_ZERO","to":"DO_KILL_ZERO"},
+
+    {"from":"DO_KILL_ZERO","to":"PLAT_X1"},
+    {"from":"PLAT_X1","to":"PLAT_Z1"},
+    {"from":"PLAT_Z1","to":"INIT_PLATFORM"},
+
+    {"from":"INIT_PLATFORM","to":"BOARD_COORDS"},
+    {"from":"BOARD_COORDS","to":"PAINT_TPL"},
+    {"from":"PAINT_TPL","to":"INIT_PAINT"},
+
+    {"from":"INIT_PAINT","to":"INIT_LEVER"},
+    {"from":"INIT_LEVER","to":"INIT_FW_RIG"},
+    {"from":"INIT_FW_RIG","to":"INIT_FW_TEST"},
+
+    {"from":"INIT_FW_TEST","to":"MC_TAG_OWNER"},
+    {"from":"MC_TAG_OWNER","to":"MC_SCOREBOARD_INIT"},
+    {"from":"MC_SCOREBOARD_INIT","to":"MC_GIVE_WAND"},
+
+    {"from":"MC_GIVE_WAND","to":"SPAWN_TPL"},
+    {"from":"SPAWN_TPL","to":"INIT_SPAWN"},
+
+    {"from":"INIT_SPAWN","to":"INIT_LOCK"},
+    {"from":"INIT_LOCK","to":"LIST_INIT"},
+    {"from":"LIST_INIT","to":"NORM_INIT"},
+    {"from":"NORM_INIT","to":"STABLE_INIT"},
+    {"from":"STABLE_INIT","to":"SORT_INIT"},
+    {"from":"SORT_INIT","to":"UNIQ_INIT"},
+    {"from":"UNIQ_INIT","to":"SNAP_INIT"}
+  ]
+}

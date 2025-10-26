@@ -1,3 +1,4 @@
+
 # Metrics computation helpers (<7KB)
 
 import json
@@ -55,14 +56,44 @@ def compute_metrics_window(db_path: str, worker: str, minutes: int = 60) -> Dict
     try:
         conn = sqlite3.connect(db_path, timeout=3.0)
         try:
-            cur = conn.execute(
-                """
-                SELECT node, status, duration_ms, details_json
-                FROM job_steps
-                WHERE worker=? AND started_at >= ?
-                """,
-                (worker, cutoff)
-            )
+            # Filter by current run when possible
+            run_started_at = None
+            run_id = ''
+            try:
+                cur2 = conn.execute("SELECT svalue FROM job_state_kv WHERE worker=? AND skey=?", (worker, 'run_started_at'))
+                r = cur2.fetchone()
+                run_started_at = r[0] if r and r[0] else None
+            except Exception:
+                run_started_at = None
+            try:
+                cur3 = conn.execute("SELECT svalue FROM job_state_kv WHERE worker=? AND skey=?", (worker, 'run_id'))
+                r3 = cur3.fetchone()
+                run_id = r3[0] if r3 and r3[0] else ''
+            except Exception:
+                run_id = ''
+
+            # Check if run_id column exists
+            has_run_col = False
+            try:
+                cinfo = conn.execute("PRAGMA table_info(job_steps)")
+                cols = {row[1] for row in cinfo.fetchall()}
+                has_run_col = 'run_id' in cols
+            except Exception:
+                has_run_col = False
+
+            base_sql = "SELECT node, status, duration_ms, details_json FROM job_steps WHERE worker=?"
+            params = [worker]
+            if has_run_col and run_id:
+                base_sql += " AND run_id=?"
+                params.append(run_id)
+            elif run_started_at:
+                base_sql += " AND started_at >= ?"
+                params.append(run_started_at)
+            else:
+                base_sql += " AND started_at >= ?"
+                params.append(cutoff)
+
+            cur = conn.execute(base_sql, tuple(params))
             for node, status, duration_ms, details_json in cur:
                 nodes_executed += 1
                 if isinstance(duration_ms, int):
