@@ -20,6 +20,9 @@
 
 
 
+
+
+
 # Runner loop: executes the JSON FSM with debug integration (refactored <7KB)
 from .db import get_state_kv, set_state_kv, set_phase, heartbeat
 from .handlers import bootstrap_handlers
@@ -36,13 +39,22 @@ from .utils import utcnow_str
 def _persist_debug_pause(db_path: str, worker: str, cycle_id: str, last_step: dict, next_node: str) -> None:
     """Persist debug pause state to DB."""
     import json
+    # NEW: keep previous paused_at as previous_node for better UI
+    try:
+        prev_paused = get_state_kv(db_path, worker, 'debug.paused_at') or ''
+        if prev_paused:
+            set_state_kv(db_path, worker, 'debug.previous_node', prev_paused)
+    except Exception:
+        pass
+
     set_phase(db_path, worker, 'debug_paused')
     set_state_kv(db_path, worker, 'debug.cycle_id', cycle_id)
     paused_at = last_step.get('node') or ''
     set_state_kv(db_path, worker, 'debug.paused_at', paused_at)
     set_state_kv(db_path, worker, 'debug.next_node', next_node or '')
     set_state_kv(db_path, worker, 'debug.last_step', json.dumps(last_step))
-    # NOTE: do NOT overwrite debug.ctx_diff here; it is set by the caller with the actual diff
+    # Mark pause hook for observability
+    set_state_kv(db_path, worker, 'debug.pause_hook', 'paused')
     # Handshake for sync wait
     req_id = get_state_kv(db_path, worker, 'debug.req_id') or ''
     set_state_kv(db_path, worker, 'debug.response_id', req_id)
@@ -151,11 +163,14 @@ def run_loop(db_path: str, worker: str, worker_ctx: dict, graph: dict, worker_fi
         # Handle immediate pause at START if requested
         start_from = None
         if is_debug_enabled(db_path, worker) and (get_state_kv(db_path, worker, 'debug.pause_request') or '') == 'immediate':
+            # For observability, mark the hook
+            set_state_kv(db_path, worker, 'debug.pause_hook', 'immediate_requested')
             start_node = (engine.find_start() or {}).get('name', 'START')
             # Create fake DebugPause for START
             fake_pause = DebugPause(start_node)
             fake_pause.next_node = start_node
             set_state_kv(db_path, worker, 'debug.pause_request', '')
+            set_state_kv(db_path, worker, 'debug.pause_hook', 'immediate_consumed')
             
             # Use unified handler
             try:

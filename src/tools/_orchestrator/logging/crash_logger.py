@@ -1,3 +1,4 @@
+
 # Crash logger: logs complete context snapshots on errors
 # Critical for debugging production issues
 
@@ -49,13 +50,20 @@ def log_crash(db_path: str, worker: str, cycle_id: str, node: str,
 
         conn = sqlite3.connect(db_path, timeout=5.0)
         try:
+            run_id = None
+            try:
+                c2 = conn.execute("SELECT svalue FROM job_state_kv WHERE worker=? AND skey=?", (worker, 'run_id'))
+                r2 = c2.fetchone()
+                run_id = r2[0] if r2 and r2[0] else ''
+            except Exception:
+                run_id = ''
             conn.execute(
                 """
                 INSERT INTO crash_logs (
                   worker, cycle_id, node, crashed_at,
                   error_message, error_type, error_code,
-                  worker_ctx_json, cycle_ctx_json, stack_trace
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                  worker_ctx_json, cycle_ctx_json, stack_trace, run_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     worker or '__global__',
@@ -67,7 +75,8 @@ def log_crash(db_path: str, worker: str, cycle_id: str, node: str,
                     err_code if err_code is not None else '',
                     worker_ctx_json,
                     cycle_ctx_json,
-                    stack
+                    stack,
+                    run_id or ''
                 )
             )
             conn.commit()

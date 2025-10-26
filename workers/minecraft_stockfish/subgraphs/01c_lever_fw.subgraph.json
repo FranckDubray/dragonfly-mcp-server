@@ -1,0 +1,15 @@
+{
+  "id": "LEVER_FW",
+  "version": "1.0",
+  "description": "Place lever on platform level + fireworks rig/test",
+  "interface": {"entry": "INIT_LEVER", "exits": {"success": "INIT_FW_TEST"}},
+  "nodes": [
+    { "name": "INIT_LEVER",   "type": "io", "handler": "http_tool", "inputs": {"tool":"minecraft_control","operation":"execute_command","command":"setblock ${worker.lever.pos.x} ${worker.chess.y_level} ${worker.lever.pos.z} minecraft:lever[face=floor,facing=north,powered=false]"} },
+    { "name": "INIT_FW_RIG",  "type": "io", "handler": "http_tool", "inputs": {"tool":"minecraft_control","operation":"batch_commands","delay_ms":30,"commands": ["say [MC] Fireworks rig setup complete."]} },
+    { "name": "INIT_FW_TEST", "type": "io", "handler": "http_tool", "inputs": {"tool":"minecraft_control","operation":"execute_command","command":"say Fireworks rig ready"} }
+  ],
+  "edges": [
+    {"from":"INIT_LEVER","to":"INIT_FW_RIG"},
+    {"from":"INIT_FW_RIG","to":"INIT_FW_TEST"}
+  ]
+}

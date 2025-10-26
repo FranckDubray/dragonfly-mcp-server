@@ -1,3 +1,4 @@
+
 # Debug control helpers (<7KB)
 
 import json
@@ -9,14 +10,31 @@ from pathlib import Path
 from .validators import validate_params
 from .api_common import db_path_for_worker
 from .db import get_state_kv, set_state_kv, get_phase
+from .logging.crash_logger import get_recent_crashes
 
 
 def _write_json_kv(db_path: str, worker: str, key: str, value: Any):
     set_state_kv(db_path, worker, key, json.dumps(value))
 
 
+def _collect_failure_snapshot(db_path: str, worker: str) -> Dict[str, Any]:
+    snap: Dict[str, Any] = {
+        'phase': get_phase(db_path, worker) or 'unknown',
+        'last_error': get_state_kv(db_path, worker, 'last_error') or '',
+        'phase_trace': get_state_kv(db_path, worker, 'debug.phase_trace') or ''
+    }
+    try:
+        crashes = get_recent_crashes(db_path, worker, limit=1)
+        if crashes:
+            snap['crash'] = crashes[0]
+    except Exception:
+        pass
+    return snap
+
+
 def _wait_for_debug_pause(db_path: str, worker: str, req_id: str, timeout_sec: float = 10.0) -> Dict[str, Any]:
     t0 = time.time()
+    poll = 0.03  # tighter poll to catch very fast nodes
     while time.time() - t0 < timeout_sec:
         phase = get_phase(db_path, worker)
         resp_id = get_state_kv(db_path, worker, 'debug.response_id') or ''
@@ -29,7 +47,10 @@ def _wait_for_debug_pause(db_path: str, worker: str, req_id: str, timeout_sec: f
             diff = json.loads(ctx_diff) if ctx_diff else {"added":{},"changed":{},"deleted":[]}
             return { 'ready': True, 'step': step, 'ctx_cycle_diff': diff,
                      'next_node': next_node, 'cycle_id': cycle_id }
-        time.sleep(0.15)
+        # Detect terminal/failure phases early and surface info
+        if phase in {'failed','completed','canceled'}:
+            return {'ready': False, 'terminal': True, 'phase': phase, 'snapshot': _collect_failure_snapshot(db_path, worker)}
+        time.sleep(poll)
     return {'ready': False}
 
 
@@ -51,9 +72,19 @@ def debug_control(params: dict) -> dict:
         set_state_kv(db_path, worker_name, 'debug.mode', 'step')
         pause_req = 'immediate' if action == 'enable_now' else 'next_boundary'
         set_state_kv(db_path, worker_name, 'debug.pause_request', pause_req)
+        # Optional breakpoints set
         bps = dbg.get('breakpoints')
         if bps is not None:
             _write_json_kv(db_path, worker_name, 'debug.breakpoints', bps)
+        # Normalize transient state to avoid stale handshake
+        set_state_kv(db_path, worker_name, 'debug.command', 'none')
+        set_state_kv(db_path, worker_name, 'debug.req_id', '')
+        set_state_kv(db_path, worker_name, 'debug.response_id', '')
+        for key in ['debug.paused_at','debug.last_step','debug.ctx_diff','debug.executing_node','debug.next_node','debug.previous_node']:
+            try:
+                set_state_kv(db_path, worker_name, key, '')
+            except Exception:
+                pass
         return {"accepted": True, "status": "ok", "message": f"debug enabled ({pause_req})"}
 
     # Synchronous step/continue/run_until with timeout
@@ -65,11 +96,30 @@ def debug_control(params: dict) -> dict:
         req_id = str(uuid.uuid4())
         set_state_kv(db_path, worker_name, 'debug.req_id', req_id)
         set_state_kv(db_path, worker_name, 'debug.command', action)
+        # Optional small trace for diagnosis
+        try:
+            set_state_kv(db_path, worker_name, 'debug.step_trace', f"issued:{action}:{req_id}")
+        except Exception:
+            pass
         result = _wait_for_debug_pause(db_path, worker_name, req_id, timeout_sec)
         if result.get('ready'):
             out = {"accepted": True, "status": "ok", "in_progress": False}
             out.update({k: v for k, v in result.items() if k != 'ready'})
             return out
+        # Terminal or failure detected
+        if result.get('terminal'):
+            snap = result.get('snapshot') or {}
+            return {
+                "accepted": False,
+                "status": result.get('phase') or 'failed',
+                "error": {
+                    "message": snap.get('last_error') or f"runner in terminal phase: {result.get('phase')}",
+                    "phase": result.get('phase'),
+                    "phase_trace": snap.get('phase_trace',''),
+                    "crash": snap.get('crash')
+                },
+                "truncated": False
+            }
         # Not ready yet
         prev = get_state_kv(db_path, worker_name, 'debug.paused_at') or ''
         exec_node = get_state_kv(db_path, worker_name, 'debug.executing_node') or ''

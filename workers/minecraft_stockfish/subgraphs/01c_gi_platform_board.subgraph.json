@@ -1,0 +1,44 @@
+{
+  "id": "GI_PLATFORM_BOARD",
+  "version": "1.3",
+  "description": "Compute board squares, then paint 8x8 (no extra clear here; clear is only in GI_CLEAR_AREA). + end message",
+  "interface": { "entry": "PLAT_START", "exits": { "done": "BOARD_DONE" } },
+  "nodes": [
+    { "name": "PLAT_START", "type": "transform", "handler": "set_value", "inputs": {"value": true} },
+
+    { "name": "PLAT_X1", "type": "transform", "handler": "add", "inputs": {"a":"${worker.chess.origin_center.x}", "b": -1 }, "outputs": {"result": "cycle.plat.x1"} },
+    { "name": "PLAT_Z1", "type": "transform", "handler": "add", "inputs": {"a":"${worker.chess.origin_center.z}", "b": -1 }, "outputs": {"result": "cycle.plat.z1"} },
+    { "name": "PLAT_X2", "type": "transform", "handler": "add", "inputs": {"a":"${cycle.plat.x1}", "b": 23 }, "outputs": {"result": "cycle.plat.x2"} },
+    { "name": "PLAT_Z2", "type": "transform", "handler": "add", "inputs": {"a":"${cycle.plat.z1}", "b": 23 }, "outputs": {"result": "cycle.plat.z2"} },
+
+    { "name": "BOARD_COORDS", "type": "transform", "handler": "board_coords", "inputs": {"origin":"${worker.chess.origin_center}", "axis":"${worker.chess.axis}", "case_size":"${worker.chess.case_size}", "y_level":"${worker.chess.y_level}", "white_near_origin":"${worker.chess.white_near_origin}"}, "outputs": {"squares":"cycle.mc.board.squares"} },
+
+    { "name": "PAINT_TPL", "type": "transform", "handler": "template_map",
+      "inputs": {
+        "items": "${cycle.mc.board.squares}",
+        "template": "execute positioned {{center.x}} {{center.y}} {{center.z}} run fill ~-1 ~ ~-1 ~1 ~ ~1 {{block}}",
+        "color_map": {"light": "white_concrete", "dark": "black_concrete"},
+        "round_coords": true
+      },
+      "outputs": {"commands": "cycle.mc.paint.cmds"}
+    },
+    { "name": "INIT_PAINT",   "type": "io", "handler": "http_tool", "inputs": {"tool":"minecraft_control","operation":"batch_commands","delay_ms":2,
+      "commands": "${cycle.mc.paint.cmds}"
+    } },
+
+    { "name": "MSG_BOARD_DONE", "type": "io", "handler": "http_tool", "inputs": {"tool":"minecraft_control","operation":"execute_command","command":"say [INIT] Board painted"} },
+
+    { "name": "BOARD_DONE",   "type": "transform", "handler": "set_value", "inputs": {"value": true} }
+  ],
+  "edges": [
+    {"from":"PLAT_START","to":"PLAT_X1"},
+    {"from":"PLAT_X1","to":"PLAT_Z1"},
+    {"from":"PLAT_Z1","to":"PLAT_X2"},
+    {"from":"PLAT_X2","to":"PLAT_Z2"},
+    {"from":"PLAT_Z2","to":"BOARD_COORDS"},
+    {"from":"BOARD_COORDS","to":"PAINT_TPL"},
+    {"from":"PAINT_TPL","to":"INIT_PAINT"},
+    {"from":"INIT_PAINT","to":"MSG_BOARD_DONE"},
+    {"from":"MSG_BOARD_DONE","to":"BOARD_DONE"}
+  ]
+}

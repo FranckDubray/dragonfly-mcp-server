@@ -1,4 +1,5 @@
 
+
 # Handlers registry bootstrap (IO + transforms)
 from .base import AbstractHandler, HandlerError
 from .registry import HandlerRegistry, get_registry
@@ -60,8 +61,47 @@ def bootstrap_handlers(cancel_flag_fn=None):
                     file=sys.stderr,
                 )
 
-# Explicit import to ensure coerce_number is discoverable in transforms_domain
-try:
-    from .transforms_domain.coerce_number import CoerceNumberHandler  # noqa: F401
-except Exception:
-    pass
+    # Explicit import to ensure specific handlers are importable even if scan misses files
+    try:
+        from .transforms_domain.coerce_number import CoerceNumberHandler  # noqa: F401
+        from .transforms_domain.normalize_entities import NormalizeEntitiesHandler  # noqa: F401
+        from .transforms_domain.pos_to_square import PosToSquareHandler  # noqa: F401
+        from .transforms_domain.compare_positions import ComparePositionsHandler  # noqa: F401
+        from .transforms_domain.uci_build import UciBuildHandler  # noqa: F401
+        from .transforms_domain.uci_parse import UciParseHandler  # noqa: F401
+        from .transforms_domain.board_coords import BoardCoordsHandler  # noqa: F401
+        from .transforms_domain.template_map import TemplateMapHandler  # noqa: F401
+        from .transforms_domain.array_concat import ArrayConcatHandler  # noqa: F401
+    except Exception:
+        pass
+
+    # Explicit registration for critical transforms (in case dynamic scan missed them)
+    try:
+        from .transforms_domain.coerce_number import CoerceNumberHandler
+        from .transforms_domain.normalize_entities import NormalizeEntitiesHandler
+        from .transforms_domain.pos_to_square import PosToSquareHandler
+        from .transforms_domain.compare_positions import ComparePositionsHandler
+        from .transforms_domain.uci_build import UciBuildHandler
+        from .transforms_domain.uci_parse import UciParseHandler
+        from .transforms_domain.board_coords import BoardCoordsHandler
+        from .transforms_domain.template_map import TemplateMapHandler
+        from .transforms_domain.array_concat import ArrayConcatHandler
+        for cls in (
+            BoardCoordsHandler,
+            TemplateMapHandler,
+            NormalizeEntitiesHandler,
+            PosToSquareHandler,
+            ComparePositionsHandler,
+            UciBuildHandler,
+            UciParseHandler,
+            CoerceNumberHandler,
+            ArrayConcatHandler,
+        ):
+            try:
+                inst = cls()
+                if not registry.has(inst.kind):
+                    registry.register(inst)
+            except Exception as e:
+                print(f"[orchestrator.handlers] failed to register {getattr(cls,'__name__','?')}: {e}", file=sys.stderr)
+    except Exception as e:
+        print(f"[orchestrator.handlers] warning: explicit import/register block failed: {e}", file=sys.stderr)

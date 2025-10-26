@@ -1,0 +1,72 @@
+
+{
+  "id": "SANCTION_TNT",
+  "version": "1.3",
+  "description": "Sanction: clear owner inventory/equipment, forceload far chunk, prepare area from worker config, ignite TNT at configured coords and TP owner, then EXIT (all context writes under cycle.*)",
+  "interface": { "entry": "ST_ENTRY", "exits": { "exit": "ST_EXIT" } },
+  "nodes": [
+    {"name":"ST_ENTRY","type":"transform","handler":"set_value","inputs":{"value":true}},
+
+    {"name":"TNT_MSG","type":"io","handler":"http_tool","inputs":{"tool":"minecraft_control","operation":"execute_command","command":"title @a[tag=chess_owner] actionbar {\"text\":\"Sanction TNT\",\"color\":\"red\"}"}},
+    {"name":"TNT_SURV","type":"io","handler":"http_tool","inputs":{"tool":"minecraft_control","operation":"execute_command","command":"gamemode survival @a[tag=chess_owner]"}},
+    {"name":"TNT_FIRE","type":"io","handler":"http_tool","inputs":{"tool":"minecraft_control","operation":"execute_command","command":"execute as @a[tag=chess_owner] run data merge entity @s {Fire:200}"}},
+    {"name":"TNT_CLEAR_INV","type":"io","handler":"http_tool","inputs":{"tool":"minecraft_control","operation":"batch_commands","delay_ms":5,
+      "commands":[
+        "clear @a[tag=chess_owner]",
+        "effect clear @a[tag=chess_owner]"
+      ]
+    }},
+
+    {"name":"TNT_FORCELOAD","type":"io","handler":"http_tool","inputs":{"tool":"minecraft_control","operation":"execute_command","command":"forceload add ${worker.sanction.tnt_chunk.cx} ${worker.sanction.tnt_chunk.cz}"}},
+
+    {"name":"FT_CLEAR_CMD","type":"transform","handler":"format_template",
+     "inputs":{"template":"fill {{x1}} {{y1}} {{z1}} {{x2}} {{y2}} {{z2}} minecraft:air","context":{"x1":"${worker.sanction.area.min.x}","y1":"${worker.sanction.area.min.y}","z1":"${worker.sanction.area.min.z}","x2":"${worker.sanction.area.max.x}","y2":"${worker.sanction.area.max.y}","z2":"${worker.sanction.area.max.z}"}},
+     "outputs":{"result":"cycle.mc.tnt.clear_cmd"}},
+
+    {"name":"TNT_CLEAR","type":"io","handler":"http_tool","inputs":{"tool":"minecraft_control","operation":"execute_command","command":"${cycle.mc.tnt.clear_cmd}"}},
+
+    {"name":"FT_TNT0","type":"transform","handler":"format_template",
+     "inputs":{"template":"summon minecraft:tnt {{x}} {{y}} {{z}} {Fuse:80b}","context":{"x":"${worker.sanction.tnt[0].x}","y":"${worker.sanction.tnt[0].y}","z":"${worker.sanction.tnt[0].z}"}},
+     "outputs":{"result":"cycle.mc.tnt.cmd0"}},
+    {"name":"FT_TNT1","type":"transform","handler":"format_template",
+     "inputs":{"template":"summon minecraft:tnt {{x}} {{y}} {{z}} {Fuse:80b}","context":{"x":"${worker.sanction.tnt[1].x}","y":"${worker.sanction.tnt[1].y}","z":"${worker.sanction.tnt[1].z}"}},
+     "outputs":{"result":"cycle.mc.tnt.cmd1"}},
+    {"name":"FT_TNT2","type":"transform","handler":"format_template",
+     "inputs":{"template":"summon minecraft:tnt {{x}} {{y}} {{z}} {Fuse:80b}","context":{"x":"${worker.sanction.tnt[2].x}","y":"${worker.sanction.tnt[2].y}","z":"${worker.sanction.tnt[2].z}"}},
+     "outputs":{"result":"cycle.mc.tnt.cmd2"}},
+
+    {"name":"BUILD_TNT_LIST","type":"transform","handler":"set_value",
+     "inputs":{"value":["${cycle.mc.tnt.cmd0}","${cycle.mc.tnt.cmd1}","${cycle.mc.tnt.cmd2}"]},
+     "outputs":{"result":"cycle.mc.tnt.cmds_raw"}},
+
+    {"name":"FILTER_TNT_LIST","type":"transform","handler":"array_ops",
+     "inputs":{"op":"filter","items":"${cycle.mc.tnt.cmds_raw}","predicate":{"kind":"truthy"}},
+     "outputs":{"items":"cycle.mc.tnt.cmds"}},
+
+    {"name":"TNT_IGNITE","type":"io","handler":"http_tool","inputs":{"tool":"minecraft_control","operation":"batch_commands","delay_ms":0,"commands":"${cycle.mc.tnt.cmds}"}},
+
+    {"name":"TNT_TP","type":"io","handler":"http_tool","inputs":{"tool":"minecraft_control","operation":"control_player","player_action":"teleport","relative_to_player":false,"player_name":"@a[tag=chess_owner]","target_position":{"x":"${worker.sanction.tnt[0].x}","y":"${worker.sanction.tnt[0].y}","z":"${worker.sanction.tnt[0].z}"}}},
+
+    {"name":"ST_EXIT","type":"transform","handler":"set_value","inputs":{"value":true}}
+  ],
+  "edges": [
+    {"from":"ST_ENTRY","to":"TNT_MSG"},
+    {"from":"TNT_MSG","to":"TNT_SURV"},
+    {"from":"TNT_SURV","to":"TNT_FIRE"},
+    {"from":"TNT_FIRE","to":"TNT_CLEAR_INV"},
+    {"from":"TNT_CLEAR_INV","to":"TNT_FORCELOAD"},
+
+    {"from":"TNT_FORCELOAD","to":"FT_CLEAR_CMD"},
+    {"from":"FT_CLEAR_CMD","to":"TNT_CLEAR"},
+
+    {"from":"TNT_CLEAR","to":"FT_TNT0"},
+    {"from":"FT_TNT0","to":"FT_TNT1"},
+    {"from":"FT_TNT1","to":"FT_TNT2"},
+    {"from":"FT_TNT2","to":"BUILD_TNT_LIST"},
+    {"from":"BUILD_TNT_LIST","to":"FILTER_TNT_LIST"},
+    {"from":"FILTER_TNT_LIST","to":"TNT_IGNITE"},
+
+    {"from":"TNT_IGNITE","to":"TNT_TP"},
+    {"from":"TNT_TP","to":"ST_EXIT"}
+  ]
+}

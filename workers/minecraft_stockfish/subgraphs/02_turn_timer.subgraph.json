@@ -1,0 +1,56 @@
+
+{
+  "id":"TURN_TIMER","version":"1.6",
+  "description": "Turn timer. Initialize last_turn_ts if null, compute elapsed, lever polling (5s backoff) and branch to timeout or ok.",
+  "interface":{"entry":"TT_GET_NOW","exits":{"timeout":"TT_EXIT_TIMEOUT","ok":"TT_EXIT_OK"}},
+  "nodes":[
+    {"name":"TT_GET_NOW","type":"io","handler":"http_tool",
+     "inputs":{"tool":"date","operation":"now","format":"iso","timezone":"UTC"},
+     "outputs":{"result":"cycle.timer.now"}},
+
+    {"name":"TT_GET_LAST","type":"transform","handler":"json_ops",
+     "inputs":{"op":"get","data":"${cycle.game}","path":"last_turn_ts","default":null},
+     "outputs":{"result":"cycle.timer.last"}},
+
+    {"name":"TT_LAST_EXISTS","type":"decision","decision":{"kind":"truthy","input":"${cycle.timer.last}"}},
+
+    {"name":"TT_STORE_START","type":"transform","handler":"set_value",
+     "inputs":{"value":"${cycle.timer.now}"},
+     "outputs":{"result":"cycle.game.last_turn_ts"}},
+
+    {"name":"TT_DIFF","type":"transform","handler":"date_ops",
+     "inputs":{"ops":[{"op":"diff","a":"${cycle.timer.now}","b":"${cycle.game.last_turn_ts}","unit":"seconds","save_as":"elapsed"}]},
+     "outputs":{"elapsed":"cycle.timer.elapsed_s"}},
+
+    {"name":"TT_DECIDE","type":"decision",
+     "decision":{"kind":"compare","input":"${cycle.timer.elapsed_s}","operator":">","value":"${worker.turns.max_seconds}"}},
+
+    {"name":"TT_CHECK_LEVER","type":"io","handler":"http_tool",
+     "inputs":{"tool":"minecraft_control","operation":"execute_command",
+               "command":"execute if block ${cycle.lever.x} ${worker.chess.y_level + 1} ${cycle.lever.z} minecraft:lever[powered=true] run say LEVER_ON"},
+     "outputs":{"result":"cycle.timer.lever_check"}},
+
+    {"name":"TT_LEVER_ON","type":"decision","decision":{"kind":"regex_match","input":"${cycle.timer.lever_check}","pattern":".*LEVER_ON.*"}},
+
+    {"name":"TT_WAIT_LEVER","type":"transform","handler":"sleep","inputs":{"ms":5000}},
+
+    {"name":"TT_EXIT_TIMEOUT","type":"transform","handler":"set_value","inputs":{"value":true}},
+    {"name":"TT_EXIT_OK","type":"transform","handler":"set_value","inputs":{"value":true}}
+  ],
+  "edges":[
+    {"from":"TT_GET_NOW","to":"TT_GET_LAST"},
+    {"from":"TT_GET_LAST","to":"TT_LAST_EXISTS"},
+    {"from":"TT_LAST_EXISTS","to":"TT_DIFF","when":"true"},
+    {"from":"TT_LAST_EXISTS","to":"TT_STORE_START","when":"false"},
+    {"from":"TT_STORE_START","to":"TT_DIFF"},
+    {"from":"TT_DIFF","to":"TT_DECIDE"},
+
+    {"from":"TT_DECIDE","to":"TT_EXIT_TIMEOUT","when":"true"},
+
+    {"from":"TT_DECIDE","to":"TT_CHECK_LEVER","when":"false"},
+    {"from":"TT_CHECK_LEVER","to":"TT_LEVER_ON"},
+    {"from":"TT_LEVER_ON","to":"TT_EXIT_OK","when":"true"},
+    {"from":"TT_LEVER_ON","to":"TT_WAIT_LEVER","when":"false"},
+    {"from":"TT_WAIT_LEVER","to":"TT_GET_NOW"}
+  ]
+}

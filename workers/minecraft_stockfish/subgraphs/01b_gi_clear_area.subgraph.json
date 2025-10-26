@@ -1,0 +1,63 @@
+{
+  "id": "GI_CLEAR_AREA",
+  "version": "1.2",
+  "description": "Clear exactly the board AABB on 2 layers with air, then remove all non-player entities in the same AABB. + end message",
+  "interface": { "entry": "CLR_START", "exits": { "done": "CLR_DONE" } },
+  "nodes": [
+    { "name": "CLR_START", "type": "transform", "handler": "set_value", "inputs": {"value": true} },
+
+    { "name": "X1", "type": "transform", "handler": "add", "inputs": {"a": "${worker.chess.origin_center.x}", "b": -1}, "outputs": {"result": "cycle.plat.x1"} },
+    { "name": "Z1", "type": "transform", "handler": "add", "inputs": {"a": "${worker.chess.origin_center.z}", "b": -1}, "outputs": {"result": "cycle.plat.z1"} },
+    { "name": "X2", "type": "transform", "handler": "add", "inputs": {"a": "${cycle.plat.x1}", "b": 23}, "outputs": {"result": "cycle.plat.x2"} },
+    { "name": "Z2", "type": "transform", "handler": "add", "inputs": {"a": "${cycle.plat.z1}", "b": 23}, "outputs": {"result": "cycle.plat.z2"} },
+
+    { "name": "Y_MIN", "type": "transform", "handler": "set_value", "inputs": {"value": "${worker.chess.y_level}"}, "outputs": {"result": "cycle.plat.y_min"} },
+    { "name": "Y_MAX", "type": "transform", "handler": "add", "inputs": {"a": "${worker.chess.y_level}", "b": 1}, "outputs": {"result": "cycle.plat.y_max"} },
+
+    { "name": "FT_CLEAR_2L", "type": "transform", "handler": "format_template",
+      "inputs": {"template": "fill {{x1}} {{ymin}} {{z1}} {{x2}} {{ymax}} {{z2}} minecraft:air",
+                  "context": {"x1": "${cycle.plat.x1}", "ymin": "${cycle.plat.y_min}", "z1": "${cycle.plat.z1}",
+                              "x2": "${cycle.plat.x2}", "ymax": "${cycle.plat.y_max}", "z2": "${cycle.plat.z2}"}},
+      "outputs": {"result": "cycle.clear.air2_cmd"}
+    },
+    { "name": "DO_CLEAR_2L", "type": "io", "handler": "http_tool", "inputs": {"tool": "minecraft_control", "operation": "execute_command", "command": "${cycle.clear.air2_cmd}"} },
+
+    { "name": "DX", "type": "transform", "handler": "decrement", "inputs": {"value": "${cycle.plat.x2}", "step": "${cycle.plat.x1}"}, "outputs": {"result": "cycle.plat.dx"} },
+    { "name": "DY", "type": "transform", "handler": "decrement", "inputs": {"value": "${cycle.plat.y_max}", "step": "${cycle.plat.y_min}"}, "outputs": {"result": "cycle.plat.dy"} },
+    { "name": "DZ", "type": "transform", "handler": "decrement", "inputs": {"value": "${cycle.plat.z2}", "step": "${cycle.plat.z1}"}, "outputs": {"result": "cycle.plat.dz"} },
+
+    { "name": "FT_KILL_AABB", "type": "transform", "handler": "format_template",
+      "inputs": {"template": "kill @e[type=!player,x={{x1}},y={{ymin}},z={{z1}},dx={{dx}},dy={{dy}},dz={{dz}}]",
+                  "context": {"x1": "${cycle.plat.x1}", "ymin": "${cycle.plat.y_min}", "z1": "${cycle.plat.z1}",
+                              "dx": "${cycle.plat.dx}", "dy": "${cycle.plat.dy}", "dz": "${cycle.plat.dz}"}},
+      "outputs": {"result": "cycle.clear.kill_cmd"}
+    },
+    { "name": "DO_KILL_AABB", "type": "io", "handler": "http_tool", "inputs": {"tool": "minecraft_control", "operation": "execute_command", "command": "${cycle.clear.kill_cmd}"} },
+
+    { "name": "MSG_CLEAR_DONE", "type": "io", "handler": "http_tool", "inputs": {"tool":"minecraft_control","operation":"execute_command","command":"say [INIT] Clear done"} },
+
+    { "name": "CLR_DONE", "type": "transform", "handler": "set_value", "inputs": {"value": true} }
+  ],
+  "edges": [
+    {"from": "CLR_START", "to": "X1"},
+    {"from": "X1", "to": "Z1"},
+    {"from": "Z1", "to": "X2"},
+    {"from": "X2", "to": "Z2"},
+
+    {"from": "Z2", "to": "Y_MIN"},
+    {"from": "Y_MIN", "to": "Y_MAX"},
+
+    {"from": "Y_MAX", "to": "FT_CLEAR_2L"},
+    {"from": "FT_CLEAR_2L", "to": "DO_CLEAR_2L"},
+
+    {"from": "DO_CLEAR_2L", "to": "DX"},
+    {"from": "DX", "to": "DY"},
+    {"from": "DY", "to": "DZ"},
+
+    {"from": "DZ", "to": "FT_KILL_AABB"},
+    {"from": "FT_KILL_AABB", "to": "DO_KILL_AABB"},
+
+    {"from": "DO_KILL_AABB", "to": "MSG_CLEAR_DONE"},
+    {"from": "MSG_CLEAR_DONE", "to": "CLR_DONE"}
+  ]
+}

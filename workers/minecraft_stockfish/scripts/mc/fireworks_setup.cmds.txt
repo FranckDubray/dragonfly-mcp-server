@@ -1,0 +1,2 @@
+# Stub fireworks rig setup
+say [MC] Fireworks rig setup complete.

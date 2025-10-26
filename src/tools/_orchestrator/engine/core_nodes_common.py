@@ -1,3 +1,7 @@
+
+
+
+
 # Orchestrator engine — common helpers for node execution
 from typing import Dict, Optional
 from ..logging import begin_step, end_step
@@ -17,6 +21,13 @@ def exec_start_node(core, cycle_id: str, node: Dict, cycle_ctx: Dict) -> str:
     apply_scopes_at_start(cycle_ctx, core.scopes)
     details = {"node": name, "type": 'start', "scopes_applied": len(core.scopes)}
     end_step(core.db_path, core.worker, cycle_id, name, 'succeeded', utcnow_str(), details)
+    # NEW: expose a minimal last_step so first debug pause is not empty
+    try:
+        from .debug_utils import mk_step_summary
+        core._last_step = mk_step_summary(details, utcnow_str(), inputs={}, outputs={}, cycle_ctx=cycle_ctx)
+        core._last_ctx_diff = {"added": {}, "changed": {}, "deleted": []}
+    except Exception:
+        pass
     return 'always'
 
 

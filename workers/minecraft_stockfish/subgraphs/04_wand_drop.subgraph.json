@@ -1,0 +1,57 @@
+{
+  "id": "WAND_DROP",
+  "version": "1.1",
+  "description": "Vanilla drop: depuis la visée (1..6), si case blanche/noire, kill occupant @e[tag=chess_piece] dans un petit rayon, playsound+particle, tp animé (lift + snap) de @e[tag=chess_selected]. Exits: dropped.",
+  "interface": {"entry": "DROP_CAPTURE_SNAP", "exits": {"dropped": "EXIT_DROPPED"}},
+  "nodes": [
+    {"name": "DROP_CAPTURE_SNAP", "type": "io", "handler": "http_tool",
+     "inputs": {"tool": "minecraft_control", "operation": "batch_commands", "delay_ms": 60,
+                 "commands": [
+                   "execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^1 if block ~ ~-1 ~ minecraft:white_concrete run execute align xz positioned ~0.5 ~ ~0.5 run kill @e[tag=chess_piece,distance=..0.49,limit=1,sort=nearest]",
+                   "execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^1 if block ~ ~-1 ~ minecraft:white_concrete run playsound minecraft:block.note_block.pling master @a[tag=chess_owner] ~ ~ ~ 1 1.8",
+                   "execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^1 if block ~ ~-1 ~ minecraft:white_concrete run particle minecraft:happy_villager ~ ~ ~ 0.2 0.2 0.2 0.02 10 force",
+                   "execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^1 if block ~ ~-1 ~ minecraft:white_concrete run execute align xz positioned ~0.5 ~1.2 ~0.5 run tp @e[tag=chess_selected,limit=1,sort=nearest] ~ ~ ~",
+                   "execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^1 if block ~ ~-1 ~ minecraft:white_concrete run execute align xz positioned ~0.5 ~ ~0.5 run tp @e[tag=chess_selected,limit=1,sort=nearest] ~ ~ ~",
+
+                   "execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^1 if block ~ ~-1 ~ minecraft:black_concrete run execute align xz positioned ~0.5 ~ ~0.5 run kill @e[tag=chess_piece,distance=..0.49,limit=1,sort=nearest]",
+                   "execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^1 if block ~ ~-1 ~ minecraft:black_concrete run playsound minecraft:block.note_block.pling master @a[tag=chess_owner] ~ ~ ~ 1 1.5",
+                   "execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^1 if block ~ ~-1 ~ minecraft:black_concrete run particle minecraft:happy_villager ~ ~ ~ 0.2 0.2 0.2 0.02 10 force",
+                   "execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^1 if block ~ ~-1 ~ minecraft:black_concrete run execute align xz positioned ~0.5 ~1.2 ~0.5 run tp @e[tag=chess_selected,limit=1,sort=nearest] ~ ~ ~",
+                   "execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^1 if block ~ ~-1 ~ minecraft:black_concrete run execute align xz positioned ~0.5 ~ ~0.5 run tp @e[tag=chess_selected,limit=1,sort=nearest] ~ ~ ~",
+
+                   "execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^2 if block ~ ~-1 ~ minecraft:white_concrete run execute align xz positioned ~0.5 ~ ~0.5 run kill @e[tag=chess_piece,distance=..0.49,limit=1,sort=nearest]",
+                   "execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^2 if block ~ ~-1 ~ minecraft:white_concrete run playsound minecraft:block.note_block.pling master @a[tag=chess_owner] ~ ~ ~ 1 1.8",
+                   "execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^2 if block ~ ~-1 ~ minecraft:white_concrete run particle minecraft:happy_villager ~ ~ ~ 0.2 0.2 0.2 0.02 10 force",
+                   "execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^2 if block ~ ~-1 ~ minecraft:white_concrete run execute align xz positioned ~0.5 ~1.2 ~0.5 run tp @e[tag=chess_selected,limit=1,sort=nearest] ~ ~ ~",
+                   "execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^2 if block ~ ~-1 ~ minecraft:white_concrete run execute align xz positioned ~0.5 ~ ~0.5 run tp @e[tag=chess_selected,limit=1,sort=nearest] ~ ~ ~",
+
+                   "execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^2 if block ~ ~-1 ~ minecraft:black_concrete run execute align xz positioned ~0.5 ~ ~0.5 run kill @e[tag=chess_piece,distance=..0.49,limit=1,sort=nearest]",
+                   "execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^2 if block ~ ~-1 ~ minecraft:black_concrete run playsound minecraft:block.note_block.pling master @a[tag=chess_owner] ~ ~ ~ 1 1.5",
+                   "execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^2 if block ~ ~-1 ~ minecraft:black_concrete run particle minecraft:happy_villager ~ ~ ~ 0.2 0.2 0.2 0.02 10 force",
+                   "execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^2 if block ~ ~-1 ~ minecraft:black_concrete run execute align xz positioned ~0.5 ~1.2 ~0.5 run tp @e[tag=chess_selected,limit=1,sort=nearest] ~ ~ ~",
+                   "execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^2 if block ~ ~-1 ~ minecraft:black_concrete run execute align xz positioned ~0.5 ~ ~0.5 run tp @e[tag=chess_selected,limit=1,sort=nearest] ~ ~ ~",
+
+                   "execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^3 if block ~ ~-1 ~ minecraft:white_concrete run execute align xz positioned ~0.5 ~ ~0.5 run kill @e[tag=chess_piece,distance=..0.49,limit=1,sort=nearest]",
+                   "execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^3 if block ~ ~-1 ~ minecraft:white_concrete run playsound minecraft:block.note_block.pling master @a[tag=chess_owner] ~ ~ ~ 1 1.8",
+                   "execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^3 if block ~ ~-1 ~ minecraft:white_concrete run particle minecraft:happy_villager ~ ~ ~ 0.2 0.2 0.2 0.02 10 force",
+                   "execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^3 if block ~ ~-1 ~ minecraft:white_concrete run execute align xz positioned ~0.5 ~1.2 ~0.5 run tp @e[tag=chess_selected,limit=1,sort=nearest] ~ ~ ~",
+                   "execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^3 if block ~ ~-1 ~ minecraft:white_concrete run execute align xz positioned ~0.5 ~ ~0.5 run tp @e[tag=chess_selected,limit=1,sort=nearest] ~ ~ ~",
+
+                   "execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^3 if block ~ ~-1 ~ minecraft:black_concrete run execute align xz positioned ~0.5 ~ ~0.5 run kill @e[tag=chess_piece,distance=..0.49,limit=1,sort=nearest]",
+                   "execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^3 if block ~ ~-1 ~ minecraft:black_concrete run playsound minecraft:block.note_block.pling master @a[tag=chess_owner] ~ ~ ~ 1 1.5",
+                   "execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^3 if block ~ ~-1 ~ minecraft:black_concrete run particle minecraft:happy_villager ~ ~ ~ 0.2 0.2 0.2 0.02 10 force",
+                   "execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^3 if block ~ ~-1 ~ minecraft:black_concrete run execute align xz positioned ~0.5 ~1.2 ~0.5 run tp @e[tag=chess_selected,limit=1,sort=nearest] ~ ~ ~",
+                   "execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^3 if block ~ ~-1 ~ minecraft:black_concrete run execute align xz positioned ~0.5 ~ ~0.5 run tp @e[tag=chess_selected,limit=1,sort=nearest] ~ ~ ~"
+                 ]}},
+
+    {"name": "WH_MSG_DROPPED", "type": "io", "handler": "http_tool",
+     "inputs": {"tool": "minecraft_control", "operation": "execute_command",
+                 "command": "title @a[tag=chess_owner] actionbar {\"text\":\"Pièce déposée\",\"color\":\"green\"}"}},
+
+    {"name": "EXIT_DROPPED", "type": "transform", "handler": "set_value", "inputs": {"value": true}}
+  ],
+  "edges": [
+    {"from": "DROP_CAPTURE_SNAP", "to": "WH_MSG_DROPPED"},
+    {"from": "WH_MSG_DROPPED", "to": "EXIT_DROPPED"}
+  ]
+}

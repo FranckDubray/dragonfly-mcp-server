@@ -1,5 +1,46 @@
 # Changelog
 
+## 1.6.2 — 2025-10-26
+
+Improvements (Py Orchestrator: Graph, Debug, Worker DX)
+- Graph tool (py_orchestrator.graph)
+  - IDs des arêtes désormais toujours qualifiés (SG::STEP) → plus de “liste d’étapes sans flèches”.
+  - Conditionnelles rendues en diamant; flèches sortantes labellisées (success, fail, retry, retry_exhausted).
+  - Transforms: emoji engrenage (⚙️) systématique; Tools: emojis par catégorie (📊 intelligence, 🗄️ data, 📄 documents, 🎮 entertainment, 🔢 utilities, …).
+  - START/END stylés en vert (fill:#d9fdd3, stroke:#2e7d32).
+  - render.mermaid=true → renvoie uniquement { mermaid: "..." } (sans nodes/edges verbeux).
+- Runner debug/observability
+  - execute_step persiste désormais, en cas d’échec, `call` et `last_result_preview` dans job_steps.details_json et en KV (`py.last_call`, `py.last_result_preview`) pour la page status.
+  - runner_loop délègue à execute_step (logs et phases cohérents; meilleure traçabilité step-by-step).
+- Transforms
+  - Nouveau transform `set_value` (utilitaire scalaire).
+- Worker ai_curation_v2
+  - INIT::STEP_GET_NOW: extraction tolérante de `date.now` (result|content|iso|datetime, imbriqué ou non).
+  - COLLECT::STEP_FETCH_NEWS: from_date/to_date au format `YYYY-MM-DD` (conformité Guardian/news_aggregator).
+  - Run validé E2E: rapport et audit (report_audit) écrits.
+
+Docs
+- README mis à jour: « Python Orchestrator — Guide ultra‑concis pour LLM (worker parfait) » (règles, conventions Mermaid, debug/observabilité, patterns).
+
+## 1.6.1 — 2025-10-25
+
+Fixes / Improvements (Orchestrator debug & stability)
+- Deterministic debug on start (enable_on_start): purge transient debug state before enabling step mode to prevent stale handshakes (command/req_id/response_id/last_step/etc.).
+- Debug enable/enable_now normalization: clear ephemeral fields to avoid ghost states when enabling at runtime.
+- First pause is informative: START now populates a minimal last_step so inspect() doesn’t return an empty step at first pause.
+- Previous/current node clarity:
+  - Persist previous_node at each pause (previous paused_at),
+  - Expose current_node in status: paused → paused_at, running → executing_node.
+- Current run filtering:
+  - start records run_started_at (and run_id),
+  - status error/crash compact view and worker list last_step_at are filtered to the current run when available,
+  - metrics also consider run_started_at in addition to the time window.
+- Refactor: split api_start_stop into api_start (start) and api_stop (stop) with a thin compatibility wrapper to avoid breaking imports.
+
+Notes
+- No DB migration. No API breaking changes.
+- stop/kill do not purge debug state (not required with deterministic start); behavior unchanged.
+
 ## 1.6.0 — 2025-10-23
 
 Improvements (Minecraft Control / list_entities)

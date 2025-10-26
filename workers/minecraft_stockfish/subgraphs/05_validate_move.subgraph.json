@@ -1,0 +1,49 @@
+{
+  "id":"VALIDATE_MOVE","version":"1.1",
+  "description":"Validate move with Stockfish before/after, compute delta cp via decrement, branch to bad/ok.",
+  "interface":{"entry":"VP_BEFORE","exits":{"bad":"EXIT_BAD","ok":"EXIT_OK"}},
+  "nodes":[
+    {"name":"VP_BEFORE","type":"io","handler":"http_tool",
+     "inputs":{"tool":"stockfish_auto","operation":"evaluate_position",
+               "position":{"startpos":true,"moves":"${cycle.game.moves}"},
+               "quality":"${worker.stockfish.quality}","limit":"${worker.stockfish.limit}"},
+     "outputs":{"result":"cycle.sf.before"}},
+
+    {"name":"VP_AFTER","type":"io","handler":"http_tool",
+     "inputs":{"tool":"stockfish_auto","operation":"evaluate_position",
+               "position":{"startpos":true,"moves":"${cycle.game.moves} ${move.uci}"},
+               "quality":"${worker.stockfish.quality}","limit":"${worker.stockfish.limit}"},
+     "outputs":{"result":"cycle.sf.after"}},
+
+    {"name":"VB_BEFORE_CP","type":"transform","handler":"json_ops",
+     "inputs":{"op":"get","data":"${cycle.sf.before}","path":"result.lines.0.score.value","default":0},
+     "outputs":{"result":"cycle.sf.before_cp_raw"}},
+
+    {"name":"VB_AFTER_CP","type":"transform","handler":"json_ops",
+     "inputs":{"op":"get","data":"${cycle.sf.after}","path":"result.lines.0.score.value","default":0},
+     "outputs":{"result":"cycle.sf.after_cp_raw"}},
+
+    {"name":"VB_BEFORE_CP_NUM","type":"transform","handler":"coerce_number","inputs":{"value":"${cycle.sf.before_cp_raw}"},"outputs":{"number":"cycle.sf.before_cp"}},
+    {"name":"VB_AFTER_CP_NUM","type":"transform","handler":"coerce_number","inputs":{"value":"${cycle.sf.after_cp_raw}"},"outputs":{"number":"cycle.sf.after_cp"}},
+
+    {"name":"VB_DELTA","type":"transform","handler":"decrement",
+     "inputs":{"value":"${cycle.sf.after_cp}","step":"${cycle.sf.before_cp}"},
+     "outputs":{"result":"cycle.sf.delta_cp"}},
+
+    {"name":"VP_DEC_BAD","type":"decision","decision":{"kind":"compare","input":"${cycle.sf.delta_cp}","operator":"<","value":"${worker.turns.bad_move_threshold_cp}"}},
+
+    {"name":"EXIT_BAD","type":"transform","handler":"set_value","inputs":{"value":true}},
+    {"name":"EXIT_OK","type":"transform","handler":"set_value","inputs":{"value":true}}
+  ],
+  "edges":[
+    {"from":"VP_BEFORE","to":"VP_AFTER"},
+    {"from":"VP_AFTER","to":"VB_BEFORE_CP"},
+    {"from":"VB_BEFORE_CP","to":"VB_AFTER_CP"},
+    {"from":"VB_AFTER_CP","to":"VB_BEFORE_CP_NUM"},
+    {"from":"VB_BEFORE_CP_NUM","to":"VB_AFTER_CP_NUM"},
+    {"from":"VB_AFTER_CP_NUM","to":"VB_DELTA"},
+    {"from":"VB_DELTA","to":"VP_DEC_BAD"},
+    {"from":"VP_DEC_BAD","to":"EXIT_BAD","when":"true"},
+    {"from":"VP_DEC_BAD","to":"EXIT_OK","when":"false"}
+  ]
+}

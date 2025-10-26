@@ -1,0 +1,29 @@
+{
+  "id": "OWNER_WAND",
+  "version": "1.0",
+  "description": "Tag owner near origin, scoreboard init, force wand in main hand",
+  "interface": {"entry": "MC_TAG_OWNER", "exits": {"success": "MC_GIVE_WAND"}},
+  "nodes": [
+    { "name": "MC_TAG_OWNER", "type": "io", "handler": "http_tool", "inputs": {"tool":"minecraft_control","operation":"execute_command","command":"tag @p[x=${worker.chess.origin_center.x},y=${worker.chess.y_level},z=${worker.chess.origin_center.z},distance=..20] add chess_owner"} },
+
+    { "name": "MC_SCOREBOARD_INIT", "type": "io", "handler": "http_tool", "inputs": {"tool":"minecraft_control","operation":"batch_commands","delay_ms":10,
+      "commands":[
+        "scoreboard objectives add wand_uses dummy",
+        "scoreboard objectives add wand_state dummy",
+        "scoreboard players set @a[tag=chess_owner] wand_uses 0",
+        "scoreboard players set @a[tag=chess_owner] wand_state 0"
+      ]
+    } },
+
+    { "name": "MC_GIVE_WAND", "type": "io", "handler": "http_tool", "inputs": {"tool":"minecraft_control","operation":"batch_commands","delay_ms":5,
+      "commands": [
+        "item replace entity @a[tag=chess_owner] weapon.mainhand with minecraft:stick 1",
+        "replaceitem entity @a[tag=chess_owner] weapon.mainhand minecraft:stick 1",
+        "give @a[tag=chess_owner] minecraft:stick 1"
+      ]} }
+  ],
+  "edges": [
+    {"from":"MC_TAG_OWNER","to":"MC_SCOREBOARD_INIT"},
+    {"from":"MC_SCOREBOARD_INIT","to":"MC_GIVE_WAND"}
+  ]
+}
