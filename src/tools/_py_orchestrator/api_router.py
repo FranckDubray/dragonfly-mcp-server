@@ -2,6 +2,7 @@
 
 
 
+
 from __future__ import annotations
 from typing import Dict, Any
 import importlib
@@ -10,7 +11,7 @@ from .api_stop import stop
 from .api_debug import debug_control
 from .api_list import list_workers
 from .api_transforms import list_transforms as list_transforms_op
-from .api_config import config_op
+# from .api_config import config_op  # replaced by dynamic reload below
 
 
 def route(params: dict) -> Dict[str, Any]:
@@ -34,15 +35,13 @@ def route(params: dict) -> Dict[str, Any]:
     if op == 'debug':
         return debug_control(params)
     if op == 'observe':
-        # Thin alias for UI observation: convert observe{} -> debug{action:'stream', ...}
-        dbg = {'action': 'stream'}
-        obs = (params or {}).get('observe') or {}
-        if isinstance(obs, dict):
-            if 'timeout_sec' in obs:
-                dbg['timeout_sec'] = obs.get('timeout_sec')
-            if 'max_events' in obs:
-                dbg['max_events'] = obs.get('max_events')
-        return debug_control({**params, 'operation': 'debug', 'debug': dbg})
+        # Passive observation, DO NOT enable step mode
+        from . import api_observe as _obs
+        try:
+            _obs = importlib.reload(_obs)
+        except Exception:
+            pass
+        return _obs.observe_tool(params)
     if op == 'list':
         return list_workers()
     if op == 'graph':
@@ -62,5 +61,27 @@ def route(params: dict) -> Dict[str, Any]:
     if op == 'transforms':
         return list_transforms_op(params)
     if op == 'config':
-        return config_op(params)
+        from . import api_config as _cfg
+        try:
+            _cfg = importlib.reload(_cfg)
+        except Exception:
+            pass
+        return _cfg.config_op(params)
     return {"accepted": False, "status": "error", "message": f"Invalid operation: {op}", "truncated": False}
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

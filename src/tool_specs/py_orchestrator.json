@@ -1,3 +1,4 @@
+
 {
   "type": "function",
   "function": {
@@ -171,6 +172,18 @@
                 "mermaid": {
                   "type": "boolean",
                   "description": "Return plain Mermaid representation (no server-side highlight)."
+                },
+                "hide_start": {
+                  "type": "boolean",
+                  "description": "Hide START node in Mermaid"
+                },
+                "hide_end": {
+                  "type": "boolean",
+                  "description": "Hide END node in Mermaid"
+                },
+                "overview_subgraphs": {
+                  "type": "boolean",
+                  "description": "Render an overview graph with one node per subgraph and edges from exits mapping."
                 }
               },
               "additionalProperties": false

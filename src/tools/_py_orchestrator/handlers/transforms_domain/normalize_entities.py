@@ -118,3 +118,17 @@ class NormalizeEntitiesHandler(AbstractHandler):
             return float(v)
         except Exception:
             return None
+
+# TRANSFORM_META_START
+{
+  "io_type": "list->list(object)",
+  "description": "Normalize raw entities from Minecraft list_entities into a chess-friendly schema.",
+  "inputs": [
+    "- items: list[object]",
+    "- piece_tag_map: object (optional)"
+  ],
+  "outputs": [
+    "- items: list[object]"
+  ]
+}
+# TRANSFORM_META_END

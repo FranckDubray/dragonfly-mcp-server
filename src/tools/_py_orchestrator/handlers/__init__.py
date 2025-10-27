@@ -1,3 +1,4 @@
+
 # Handlers registry bootstrap (IO + transforms) — Python Orchestrator AUTONOME
 from .base import AbstractHandler, HandlerError
 from .registry import HandlerRegistry, get_registry
@@ -115,4 +116,18 @@ def bootstrap_handlers(cancel_flag_fn=None):
         except Exception as e:
             print(f"[py_orch.handlers] warning: could not register shim normalize_llm_output: {e}", file=sys.stderr)
     except Exception as e:
-        print(f"[py_orch.handlers] warning: explicit import block failed: {e}", file=sys.stderr)
+        print(f"[py_orch.handlers] warning: explicit import/register block failed: {e}", file=sys.stderr)
+
+    # Nouveau: fallback explicite pour transforms/json_schema_validate et transforms/objects_lookup
+    try:
+        from .transforms.json_schema_validate import JsonSchemaValidateHandler
+        from .transforms.objects_lookup import ObjectsLookupHandler
+        for cls in (JsonSchemaValidateHandler, ObjectsLookupHandler):
+            try:
+                inst = cls()
+                if not registry.has(inst.kind):
+                    registry.register(inst)
+            except Exception as e:
+                print(f"[py_orch.handlers] explicit register {getattr(cls,'__name__','?')} failed: {e}", file=sys.stderr)
+    except Exception as e:
+        print(f"[py_orch.handlers] warning: could not import transforms (json_schema_validate/objects_lookup): {e}", file=sys.stderr)

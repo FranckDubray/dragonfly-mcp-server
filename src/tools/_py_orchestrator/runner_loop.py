@@ -1,4 +1,25 @@
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 from typing import Dict, Any
 import time
 import json as _json
@@ -33,63 +54,64 @@ def _deep_update(dst: Dict[str, Any], src: Dict[str, Any]) -> Dict[str, Any]:
     return dst
 
 
-def _merge_worker_config(root, process):
+def _merge_worker_config(root: Path, process: Any, db_path: str, worker: str) -> bool:
     """Worker config merge (directory-only). No root config.py support.
     - config/config.json → deep-merge into metadata
     - config/prompts/*.md|*.txt → metadata.prompts[stem] = file content
     - config/CONFIG_DOC.json (optional) → docs
+
+    Persist both metadata and docs into the correct KV (db_path, worker).
     """
     try:
-        # Directory-based config only
         cfg_dir = root / 'config'
-        if cfg_dir.is_dir():
-            # config.json
-            json_path = cfg_dir / 'config.json'
-            if json_path.is_file():
-                try:
-                    add = _json.loads(json_path.read_text(encoding='utf-8'))
-                    if isinstance(add, dict):
-                        if not isinstance(process.metadata, dict):
-                            process.metadata = {}
-                        _deep_update(process.metadata, add)
-                except Exception:
-                    pass
-            # prompts/*.md|*.txt
-            prompts_dir = cfg_dir / 'prompts'
-            if prompts_dir.is_dir():
-                for p in sorted(prompts_dir.glob('*')):
-                    if p.suffix.lower() in {'.md', '.txt'} and p.is_file():
-                        try:
-                            txt = p.read_text(encoding='utf-8')
-                        except Exception:
-                            txt = ''
-                        if not isinstance(process.metadata, dict):
-                            process.metadata = {}
-                        if 'prompts' not in process.metadata or not isinstance(process.metadata.get('prompts'), dict):
-                            process.metadata['prompts'] = {}
-                        process.metadata['prompts'][p.stem] = txt
-            # CONFIG_DOC.json (optional)
-            docs_path = cfg_dir / 'CONFIG_DOC.json'
-            docs = None
-            if docs_path.is_file():
-                try:
-                    docs = _json.loads(docs_path.read_text(encoding='utf-8'))
-                except Exception:
-                    docs = None
-            # Persist in KV for config/status consumers
+        merged_any = False
+        docs = None
+        # Start from current metadata dict
+        if not isinstance(getattr(process, 'metadata', None), dict):
+            process.metadata = {}
+        # config.json
+        json_path = cfg_dir / 'config.json'
+        if json_path.is_file():
             try:
-                set_state_kv(str(root.parent.parent / 'sqlite3' / f"worker_{getattr(process,'name','__')}.db"), getattr(process,'name','__'), 'py.process_metadata', _json.dumps(process.metadata or {}))
+                add = _json.loads(json_path.read_text(encoding='utf-8'))
+                if isinstance(add, dict):
+                    _deep_update(process.metadata, add)
+                    merged_any = True
             except Exception:
                 pass
-            if isinstance(docs, dict):
-                try:
-                    set_state_kv(str(root.parent.parent / 'sqlite3' / f"worker_{getattr(process,'name','__')}.db"), getattr(process,'name','__'), 'py.process_config_docs', _json.dumps(docs))
-                except Exception:
-                    pass
-            return True
+        # prompts/*.md|*.txt
+        prompts_dir = cfg_dir / 'prompts'
+        if prompts_dir.is_dir():
+            for p in sorted(prompts_dir.glob('*')):
+                if p.suffix.lower() in {'.md', '.txt'} and p.is_file():
+                    try:
+                        txt = p.read_text(encoding='utf-8')
+                    except Exception:
+                        txt = ''
+                    if 'prompts' not in process.metadata or not isinstance(process.metadata.get('prompts'), dict):
+                        process.metadata['prompts'] = {}
+                    process.metadata['prompts'][p.stem] = txt
+                    merged_any = True
+        # CONFIG_DOC.json (optional)
+        docs_path = cfg_dir / 'CONFIG_DOC.json'
+        if docs_path.is_file():
+            try:
+                docs = _json.loads(docs_path.read_text(encoding='utf-8'))
+            except Exception:
+                docs = None
+        # Persist in KV (correct db_path/worker)
+        try:
+            set_state_kv(db_path, worker, 'py.process_metadata', _json.dumps(process.metadata or {}))
+        except Exception:
+            pass
+        if isinstance(docs, dict):
+            try:
+                set_state_kv(db_path, worker, 'py.process_config_docs', _json.dumps(docs))
+            except Exception:
+                pass
+        return merged_any
     except Exception:
-        pass
-    return False
+        return False
 
 
 def run_loop(db_path: str, worker: str):
@@ -116,7 +138,7 @@ def run_loop(db_path: str, worker: str):
     process = proc_mod.PROCESS
 
     # Directory-based config merge only (config/)
-    _merge_worker_config(root, process)
+    _merge_worker_config(root, process, db_path, worker)
     try:
         set_state_kv(db_path, worker, 'py.process_metadata', _json.dumps(process.metadata or {}))
     except Exception:
@@ -175,7 +197,7 @@ def run_loop(db_path: str, worker: str):
             if new_graph is not None:
                 graph = new_graph
                 process = new_process
-                _merge_worker_config(root, process)
+                _merge_worker_config(root, process, db_path, worker)
                 try:
                     set_state_kv(db_path, worker, 'py.process_metadata', _json.dumps(process.metadata or {}))
                 except Exception:
