@@ -1,4 +1,3 @@
-
 from typing import Dict, Any
 import uuid
 from pathlib import Path
@@ -58,6 +57,13 @@ def start(params: dict) -> Dict[str, Any]:
     set_state_kv(db_path, worker_name, 'worker_name', worker_name)
     set_state_kv(db_path, worker_name, 'worker_file', worker_file)
     set_state_kv(db_path, worker_name, 'hot_reload', str(hot_reload).lower())
+
+    # Also set __global__ context to the current worker (source of truth for runner bootstrap)
+    try:
+        set_state_kv(db_path, '__global__', 'worker_name', worker_name)
+        set_state_kv(db_path, '__global__', 'worker_file', worker_file)
+    except Exception:
+        pass
 
     # Record the start of a new run (for filtering status/metrics)
     try:

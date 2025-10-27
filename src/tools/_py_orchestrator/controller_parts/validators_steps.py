@@ -1,3 +1,4 @@
+
 import ast
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -42,6 +43,12 @@ def ast_validate_step(file_path: Path, func_name: str, kind: str) -> Tuple[List[
                 if isinstance(n, ast.Try):
                     raise _err("Forbidden try", code="E203", file_path=file_path, lineno=n.lineno,
                                rule="Let orchestrator handle", fix="Split logic", example="Exit('warn')")
+                # Steps cannot contain conditionals — branching must be explicit via @cond
+                if kind == 'step' and isinstance(n, (ast.If, ast.IfExp)):
+                    raise _err("Forbidden conditional in step", code="E204", file_path=file_path, lineno=getattr(n, 'lineno', node.lineno),
+                               rule="No 'if/elif/else' or ternary inside @step. Use a separate @cond for branching.",
+                               fix="Move the decision into an @cond function that returns Next/Exit.",
+                               example="@cond\ndef DECIDE(worker, cycle, env):\n    return Next('A') if cond else Next('B')")
                 if isinstance(n, ast.Call):
                     f = n.func
                     if isinstance(f, ast.Attribute) and isinstance(f.value, ast.Name) and f.value.id == 'env':
@@ -49,23 +56,42 @@ def ast_validate_step(file_path: Path, func_name: str, kind: str) -> Tuple[List[
                             raise _err("Forbidden env attr", code="E210", file_path=file_path, lineno=n.lineno,
                                        rule="Only env.tool/transform", fix="Use env.tool/transform", example="env.tool('date')")
                         call_count += 1
+                        # Enforce literal tool/transform kind for explicit graphs
+                        if not (n.args and isinstance(n.args[0], ast.Constant) and isinstance(n.args[0].value, str)):
+                            raise _err("Dynamic env.tool/transform target", code="E232", file_path=file_path, lineno=n.lineno,
+                                       rule="env.tool/transform first argument must be a string literal.",
+                                       fix="Hardcode the tool/transform kind and branch via @cond if needed.",
+                                       example="env.tool('date', operation='now')")
                         if call_kind is None:
                             call_kind = f.attr
-                            if n.args and isinstance(n.args[0], ast.Constant) and isinstance(n.args[0].value, str):
-                                call_target = n.args[0].value
+                            call_target = n.args[0].value
                     elif isinstance(f, ast.Name) and f.id in {'open','eval','exec','__import__'}:
                         raise _err("Forbidden call", code="E220", file_path=file_path, lineno=n.lineno,
                                    rule="No low-level/eval", fix="Use MCP tools", example="env.tool('date')")
                 if isinstance(n, ast.Return) and isinstance(n.value, ast.Call) and isinstance(n.value.func, ast.Name):
                     fn = n.value.func.id
+                    # Enforce literal static target for Next/Exit (avoid hidden branching)
+                    if fn in {'Next','Exit'}:
+                        if len(n.value.args) != 1 or not isinstance(n.value.args[0], ast.Constant) or not isinstance(n.value.args[0].value, str):
+                            raise _err("Dynamic Next/Exit target", code="E242", file_path=file_path, lineno=n.lineno,
+                                       rule="Next/Exit must use a string literal target.", fix="Use @cond to compute target", example="Next('STEP_B')")
                     if fn == 'Next' and len(n.value.args) == 1 and isinstance(n.value.args[0], ast.Constant):
                         next_targets.append(str(n.value.args[0].value))
                     if fn == 'Exit' and len(n.value.args) == 1 and isinstance(n.value.args[0], ast.Constant):
                         exit_targets.append(str(n.value.args[0].value))
+            # Cardinality rules
             if kind == 'step' and call_count != 1:
                 raise _err(f"Step '{func_name}' must call exactly one env.tool/env.transform (found {call_count}).",
                            code="E230", file_path=file_path, lineno=getattr(node, 'lineno', 0),
                            rule="1 call per step", fix="Split into steps", example="env.tool('date'); Next('B')")
+            if kind == 'step' and (len(next_targets) + len(exit_targets)) != 1:
+                raise _err(
+                    f"Step '{func_name}' must have exactly one outgoing transition (found Next:{len(next_targets)} Exit:{len(exit_targets)}).",
+                    code="E241", file_path=file_path, lineno=getattr(node, 'lineno', 0),
+                    rule="1 outgoing edge for steps",
+                    fix="Move any branching into an @cond function placed before or after the step.",
+                    example="@cond\ndef DECIDE(...): return Next('X') if cond else Next('Y')",
+                )
             if kind == 'cond' and call_count != 0:
                 raise _err(f"Conditional '{func_name}' must not call env.tool/env.transform (found {call_count}).",
                            code="E231", file_path=file_path, lineno=getattr(node, 'lineno', 0),

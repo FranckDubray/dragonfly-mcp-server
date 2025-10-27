@@ -164,3 +164,17 @@ class NormalizeLlmOutputHandler(AbstractHandler):
         return None
 
 # End
+
+# TRANSFORM_META_START
+{
+  "io_type": "text->json",
+  "description": "Robustly extract JSON (array/object) from LLM output with optional prose/code fences before/after; tolerant repairs",
+  "inputs": [
+    "- content: string|json",
+    "- fallback_value: any (optional)"
+  ],
+  "outputs": [
+    "- parsed: any"
+  ]
+}
+# TRANSFORM_META_END

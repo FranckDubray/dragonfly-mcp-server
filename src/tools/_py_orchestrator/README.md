@@ -1,228 +1,268 @@
-# Python Orchestrator — Guide ultra‑concis pour LLM (worker parfait)
+# Python Orchestrator — Guide LLM pour développer des workers (à jour)
 
 Objectif
 - Écrire des workers Python lisibles, traçables et robustes, sans code d’infrastructure.
-- L’orchestrateur gère: validation AST, logs riches, erreurs, graphe Mermaid, debug step‑by‑step, audit DB.
+- L’orchestrateur gère: validation AST, logs riches, erreurs, graphe Mermaid, debug step‑by‑step, audit DB, hot‑reload, config dossier.
 
 Sommaire
-- 0) Pré‑tests tools (obligatoire)
-- 1) Structure minimale (DSL)
-- 2) Règles absolues (AST)
-- 3) I/O et transforms utiles
-- 4) Graphe Mermaid (rendu propre)
-- 5) Debug & Observabilité (TOP pour LLM)
-- 6) Patterns et pièges courants (fixes concrets)
-- 7) Checklist avant run
+- 0) Pré‑tests Tools (obligatoire)
+- 1) DSL minimale (Process/SubGraphs/Steps)
+- 2) Règles ABSOLUES (AST) + erreurs fréquentes (E2xx/E24x)
+- 3) Cookbook “sans if en step” (patterns tolérants)
+- 4) Transforms & Tools utiles (sur étagère)
+- 5) Graphe & Mermaid (process/subgraph/overview)
+- 6) Debug/Observe & Observabilité
+- 7) Config worker (config/)
+- 8) Validation & Checklist
 
 ---
 
-## 0) Pré‑tests tools (obligatoire)
-Avant d’écrire le process, valider les tools appelés (en vrai):
-- Appelle chaque tool avec des paramètres réels (petits volumes, `limit` raisonnable).
-- Note la forme exacte des sorties (chemins JSON stables), des erreurs et contraintes (formats de date, types, etc.).
-- Exemple: Guardian via `news_aggregator` exige `from_date`/`to_date` au format `YYYY-MM-DD` (pas d’heure!).
-- Utilise ces I/O confirmées pour choisir les transforms (ou en créer si besoin).
+## 0) Pré‑tests Tools (obligatoire)
+Avant d’écrire le process, appelle réellement chaque tool avec de petits volumes pour connaître:
+- les entrées/erreurs exactes, les sorties stables (chemins JSON), :
+- formats attendus (dates, identifiants…), limites (`limit`, `max_results`).
 
-Découvrir les transforms disponibles (via le tool orchestrator)
-- Le tool `py_orchestrator` expose l’opération `transforms` qui liste les transforms disponibles avec leur contrat I/O (parfait pour un LLM):
+Lister les transforms disponibles (auto‑doc I/O)
 ```json
-{
-  "tool": "py_orchestrator",
-  "params": { "operation": "transforms", "limit": 100 }
-}
+{"tool":"py_orchestrator","params":{"operation":"transforms","limit":100}}
 ```
-Réponse (extrait):
-```json
-{
-  "accepted": true,
-  "status": "ok",
-  "total": 18,
-  "returned": 18,
-  "transforms": [
-    {
-      "kind": "array_ops",
-      "io_type": "list->list",
-      "description": "Parametric list operations (filter, map, ...)",
-      "inputs": ["- op: string ...", "- items: list[any]", ...],
-      "outputs": ["- items: list[any]"]
-    },
-    { "kind": "json_ops", ... },
-    { "kind": "coerce_number", ... },
-    { "kind": "normalize_llm_output", ... }
-  ]
-}
-```
-- Un LLM peut s’auto‑documenter en lisant `io_type`, `description`, `inputs`, `outputs` pour choisir la bonne transform.
+Chaque transform expose: kind, io_type, description, inputs, outputs.
 
-Tester les tools dans le contexte MCP (exemples prêts à l’emploi)
-- Toujours fixer un `limit` raisonnable et vérifier les erreurs.
-- `date.now` (garantir une string utilisable):
+Exemples d’appels de tools
 ```json
-{"tool":"date","params":{"operation":"now","format":"%Y-%m-%dT%H:%M:%S","tz":"UTC"}}
+{ "tool":"date", "params": {"operation":"now","format":"%Y-%m-%dT%H:%M:%S","tz":"UTC"} }
+{ "tool":"news_aggregator", "params": {"operation":"search_news","providers":["guardian"],"query":"AI","from_date":"2025-10-23","to_date":"2025-10-26","limit":10} }
+{ "tool":"reddit_intelligence", "params": {"operation":"multi_search","subreddits":["MachineLearning"],"query":"LLM","limit_per_sub":5,"time_filter":"week"} }
+{ "tool":"academic_research_super", "params": {"operation":"search_papers","sources":["arxiv"],"query":"large language model","include_abstracts":false,"max_results":10} }
 ```
-- `news_aggregator.search_news` (Guardian attend `YYYY-MM-DD`):
-```json
-{
-  "tool":"news_aggregator",
-  "params":{
-    "operation":"search_news",
-    "providers":["guardian"],
-    "query":"AI OR LLM",
-    "from_date":"2025-10-23",
-    "to_date":"2025-10-26",
-    "limit":10
-  }
-}
-```
-- `reddit_intelligence.multi_search`:
-```json
-{
-  "tool":"reddit_intelligence",
-  "params":{
-    "operation":"multi_search",
-    "subreddits":["MachineLearning","LocalLLaMA"],
-    "query":"AI OR LLM",
-    "limit_per_sub":5,
-    "time_filter":"week"
-  }
-}
-```
-- `academic_research_super.search_papers`:
-```json
-{
-  "tool":"academic_research_super",
-  "params":{
-    "operation":"search_papers",
-    "sources":["arxiv"],
-    "query":"large language model",
-    "include_abstracts":false,
-    "max_results":10
-  }
-}
-```
-
-Tips rapides
-- `py_orchestrator.transforms` → liste les transforms (contrats I/O).
-- Tool `date`: si tu veux une string sûre → donne un `format` explicite (ex: `%Y-%m-%dT%H:%M:%S`).
 
 ---
 
-## 1) Structure minimale (DSL)
+## 1) DSL minimale (Process/SubGraphs/Steps)
 - process.py:
-  ```python
-  from py_orch import Process, SubGraphRef
-  PROCESS = Process(
-    name="...", entry="INIT",
-    parts=[SubGraphRef("INIT", module="subgraphs.init", next={"success":"COLLECT"}), ...],
-    metadata={"db_file":"worker_...db", "llm_model":"...", ...}
-  )
-  ```
+```python
+from py_orch import Process, SubGraphRef
+PROCESS = Process(
+  name="...", entry="INIT",
+  parts=[SubGraphRef("INIT", module="subgraphs.init", next={"success":"COLLECT"}), ...],
+  metadata={"db_file":"worker_x.db","llm_model":"..."}
+)
+```
 - subgraphs/*:
-  ```python
-  from py_orch import SubGraph, step, cond, Next, Exit
-  SUBGRAPH = SubGraph(name="...", entry="STEP_A", exits={"success":"...", "fail":"..."})
-  @step
+```python
+from py_orch import SubGraph, step, cond, Next, Exit
+SUBGRAPH = SubGraph(name="...", entry="STEP_A", exits={"success":"...","fail":"..."})
+@step
 def STEP_A(worker, cycle, env):
-      out = env.tool("date", operation="now", format="%Y-%m-%dT%H:%M:%S", tz="UTC")
-      cycle.setdefault("dates",{})["now"] = out.get("result")
-      return Next("STEP_B")
-  @cond
-def STEP_OK(worker, cycle, env):
-      return Exit("success") if cycle.get("ok") else Exit("fail")
-  ```
+    out = env.tool("date", operation="now", format="%Y-%m-%dT%H:%M:%S", tz="UTC")
+    cycle.setdefault("dates",{})["now"] = out.get("result")
+    return Next("STEP_B")
+@cond
+def DECIDE(worker, cycle, env):
+    return Exit("success") if cycle.get("ok") else Exit("fail")
+```
 
 ---
 
-## 2) Règles absolues (AST)
-- 1 appel par step: exactement un `env.tool(...)` OU un `env.transform(...)`.
-- 0 appel dans un cond: `@cond` décide et retourne `Exit('label')` ou `Next('STEP')`.
-- Interdits dans steps/conds: `import`, `for`, `while`, `with`, `try`, `open/eval/exec/__import__`.
-- Transitions obligatoires: chaque fonction retourne `Next(...)` ou `Exit(...)`.
-- Lisibilité: ≤ 20 steps par sous‑graphe (sinon scinder).
+## 2) Règles ABSOLUES (AST) + erreurs fréquentes
+- Dans un @step:
+  - EXACTEMENT 1 appel à env.tool OU env.transform (E230 si ≠ 1).
+  - AUCUN conditionnel (pas de if/elif/else, ni ternaire) (E204).
+  - Retour OBLIGATOIRE: Next("...") ou Exit("...") (E240 si absent).
+- Dans un @cond:
+  - 0 appel à env.tool/env.transform (E231 si >0).
+  - Libre de brancher (Next/Exit). Toujours retourner explicitement (E240 sinon).
+- Importations interdites en steps/conds (sauf py_orch/typing) (E110/E111).
+- Pas de boucles/try/with/eval/open… en step/cond (E200–E220).
+
+Erreurs fréquentes et fixes
+- E204 “Forbidden conditional in step”: déplace la décision dans un @cond ou utilise un pattern tolérant (cf. §3).
+- E240 “Must return Next/Exit”: assure un return explicite dans chaque @cond/@step.
 
 ---
 
-## 3) I/O et transforms utiles
-- Listes → `array_ops` (filter/map/sort_by/unique_by/take/skip), `array_concat` (fusion)
-- Objets → `json_ops` (get/set/merge/rename/remove), `json_stringify` (to string)
-- Numérique → `coerce_number` (tolérant, %), `arithmetic`
-- Texte → `sanitize_text`, `normalize_llm_output` (parser JSON LLM robuste)
-- Date → `date_ops` (format/add/diff) ou tool `date` (with format)
-- Utilitaires → `set_value` (setter scalaire), `sleep` (coop)
+## 3) Cookbook “sans if en step” (patterns tolérants)
+Principe: en step, pas d’if/ternaire. Utilise des fallback tolérants + déporte la décision sur un @cond dédié.
 
-Bonnes pratiques I/O
-- Tolerant extraction: si une step lit un résultat tool, gère `result|content|iso|datetime` et objets imbriqués.
-- Provider‑specific: adapte le format (ex: Guardian `YYYY-MM-DD`).
+- Sélectionner la 1re ligne ou valeur par défaut
+```python
+rows = q.get("rows") or []
+row = (rows[:1] or [{}])[0]
+cycle.setdefault("ctx", {})["row"] = row
+return Next("COND_HAS_ROW")
+```
+
+- @cond qui branche
+```python
+@cond
+def COND_HAS_ROW(worker, cycle, env):
+    return Exit("success") if not (cycle.get("ctx") or {}).get("row") else Next("STEP_NEXT")
+```
+
+- Fallback pour scalaires
+```python
+uid = ((rows[:1] or [{}])[0]).get("email_uid") or ""
+number = (out or {}).get("number") or 60
+result = ((out or {}).get("result")) or (idx + 1)
+```
+
+- Interdiction du ternaire en step — variante sans IfExp
+```python
+# Mauvais (E204)
+cycle["ctx"]["row"] = rows[0] if rows else {}
+# Bon
+cycle["ctx"]["row"] = (rows[:1] or [{}])[0]
+```
+
+- Compteurs (COUNT/…) en 1 call/step, sans if
+```python
+q = env.tool("sqlite_db", operation="query", db=worker.get("db_file"), query="SELECT COUNT(*) AS n FROM t WHERE ...")
+rows = q.get("rows") or []
+r0 = dict((rows[:1] or [{}])[0])
+n = int((r0.get("n") or 0))
+```
+
+- Incrément
+```python
+out = env.transform("arithmetic", op="inc", a=idx, step=1)
+imap["idx"] = ((out or {}).get("result")) or (idx + 1)
+```
+
+- Chaînage step→cond systématique
+```python
+# step écrit les données et Next("COND_X") ; cond décide Next/Exit.
+```
 
 ---
 
-## 4) Graphe Mermaid (rendu propre)
-- Obtenir le graphe processus:
-  ```json
-  {
-    "tool":"py_orchestrator",
-    "params":{ "operation":"graph", "worker_name":"<name>",
-      "graph":{ "kind":"process", "include":{"shapes":true,"emojis":true,"labels":true},
-                 "render":{ "mermaid":true } }
+## 4) Transforms & Tools utiles
+Transforms (extraits) et usages typiques:
+- array_concat: fusionne des listes.
+- json_ops: get/pick/set/rename/remove/merge.
+- json_stringify: JSON → string.
+- set_value: retour direct d’un scalaire/objet (pattern de persistance sans if).
+- arithmetic: add/sub/mul/div/inc/dec avec fallback.
+- date_ops: from_datetime_to_ymd_rfc, today_ymd_rfc.
+- format_template: template {{KEY}} et {KEY}.
+- template_map: mappe un template sur une liste → commands.
+- normalize_llm_output: parsing JSON robuste depuis contenu LLM (code fences, échappements…).
+- json_schema_validate: sous‑ensemble JSON Schema (type, properties, required, enum, min/max, items).
+- objects_lookup: normalise une clé et mappe via dictionnaire (synonymes/domains → nom société). 
+- sleep: pause coopérative (respecte cancel flag).
+
+Découvrir la liste complète:
+```json
+{"tool":"py_orchestrator","params":{"operation":"transforms","limit":100}}
+```
+
+---
+
+## 5) Graphe & Mermaid
+Obtenir le graphe process (nodes/edges) ou Mermaid prêt à afficher:
+```json
+{
+  "tool":"py_orchestrator",
+  "params":{
+    "operation":"graph","worker_name":"<name>",
+    "graph":{
+      "kind":"process",
+      "include":{"shapes":true,"emojis":true,"labels":true},
+      "render":{"mermaid":true}
     }
   }
-  ```
-- Convention de rendu:
-  - Transforms: engrenage ⚙️ (toujours), rectangle bleu.
-  - Tools: emoji selon catégorie (📊 intelligence, 🗄️ data, 📄 documents, 🎮 entertainment, 🔢 utilities, …), rectangle vert.
-  - Conditionnelles: diamant `{Label}`; flèches sortantes labellisées (`success`, `fail`, `retry`, …).
-  - START/END: stylés en vert (fond #d9fdd3, bord #2e7d32).
-  - IDs d’arêtes qualifiés `SG::STEP` (pas de doublon “liste sans flèches”).
+}
+```
+- current_subgraph: extrait le sous‑graphe de la position courante (si runner actif).
+- overview_subgraphs: vue d’ensemble SG→SG via exits mapping.
+
+Convention visuelle
+- Steps transform: rectangle bleu (⚙️).
+- Steps tool: rectangle violet (emoji selon catégorie du tool).
+- Conds: diamant.
+- START/END: verts (fond #d9fdd3, bord #2e7d32).
 
 ---
 
-## 5) Debug & Observabilité (TOP pour LLM)
-Démarrer en debug (pause immédiate)
+## 6) Debug/Observe & Observabilité
+Démarrer en debug (pause immédiate):
 ```json
 {"tool":"py_orchestrator","params":{
-  "operation":"start","worker_name":"<name>","worker_file":"workers/<name>/process.py",
-  "hot_reload":true,
+  "operation":"start","worker_name":"<name>","worker_file":"workers/<name>/process.py","hot_reload":true,
   "debug":{"enable_on_start":true,"pause_at_start":true,"action":"enable_now"}
 }}
 ```
-Pilotage
-- `debug.step`, `debug.continue`, `debug.run_until` (avec `timeout_sec`).
-- `status` retourne la position courante, la timeline et le snapshot debug.
+Pilotage: debug.step, debug.continue, debug.run_until (avec timeout_sec).
 
-Logs riches (fail & success)
-- En cas d’erreur step: l’orchestrateur persiste automatiquement:
-  - KV: `py.last_call`, `py.last_result_preview`
-  - DB: `job_steps.details_json` = `{ error, call, last_result_preview }`
-- En succès (debug activé): mêmes aperçus persistés.
-- Audit de run: table `run_audit` (run_id, durée, last_error, last_node, last_call_json, last_result_preview…)
+Observation passive (n’avance pas le workflow):
+```json
+{"tool":"py_orchestrator","params":{"operation":"observe","worker_name":"<name>","observe":{"timeout_sec":30}}}
+```
+
+Status (incl. metrics et timeline récente):
+```json
+{"tool":"py_orchestrator","params":{"operation":"status","worker_name":"<name>","include_metrics":true}}
+```
+
+Erreurs/succès enrichis
+- En step, le runner persiste automatiquement (DB job_steps.details_json et KV):
+  - call (dernier appel tool/transform)
+  - last_result_preview
+  - error (si échec)
+- Audit de run (table run_audit): statut, durée, dernier nœud, last_call_json, last_result_preview…
 
 ---
 
-## 6) Patterns et pièges courants (fixes concrets)
-- Dates Guardian: passer `YYYY-MM-DD`. Ex: dériver `from_ymd/to_ymd` via `date_ops` ou `[:10]` si déjà en ISO.
-- `date.now`: garantir une string → passer `format="%Y-%m-%dT%H:%M:%S"` (et `tz="UTC"` si souhaité).
-- Normalisation LLM: `normalize_llm_output` pour tolérer les JSON encodés, balisés, ou semi‑valides.
-- Dédoublonnage: `array_ops` (`unique_by`), ou `dedupe_by_url` si besoin spécifique.
-- “1 call/step”: si tu as extraction+traitement, scinde en deux steps.
+## 7) Config worker (config/)
+Structure supportée (sous workers/<name>/config/):
+- config.json: fusion profonde (deep‑merge) dans metadata au démarrage/hot‑reload.
+- prompts/*.md ou *.txt: injecte metadata.prompts[stem] = contenu.
+- CONFIG_DOC.json: docs libres (surfacent dans status/config).
+
+Lecture/écriture via tool py_orchestrator (operation=config):
+- Lire (scan complet):
+```json
+{"tool":"py_orchestrator","params":{"operation":"config","worker_name":"<name>"}}
+```
+- Écrire un prompt (autorange vers prompts/<clé>.md):
+```json
+{"tool":"py_orchestrator","params":{
+  "operation":"config","worker_name":"<name>",
+  "set":{"key_path":"prompts.notify_email","value":"...","storage":"file"}
+}}
+```
+- Écrire une valeur JSON imbriquée (config.json):
+```json
+{"tool":"py_orchestrator","params":{
+  "operation":"config","worker_name":"<name>",
+  "set":{"key_path":"domain_to_company['acme.com']","value":"ACME","storage":"file"}
+}}
+```
 
 ---
 
-## 7) Checklist avant run
+## 8) Validation & Checklist
+Valider un worker (AST + structure):
+```json
+{"tool":"py_orchestrator","params":{"operation":"validate","worker_name":"<name>","validate":{"limit_steps":20}}}
+```
+- Enforce: 1 call/step, 0 call/cond, pas de conditionnel en step, Next/Exit obligatoires, noms uniques par subgraph, 1 edge sortant par step, edges valides.
+- Compte par sous‑graphe (steps/conds) et total (lisibilité, limite paramétrable `limit_steps`).
+
+Checklist avant run
 - [ ] 1 appel par step / 0 appel dans les conds.
-- [ ] Règles AST respectées (pas de `import/for/while/with/try`, etc.).
-- [ ] Formats provider‑specific gérés (ex: dates `YYYY-MM-DD`).
+- [ ] Pas de `if/elif/else` ni ternaire dans les steps (utiliser §3).
+- [ ] Formats provider‑specific gérés (ex: dates Guardian `YYYY-MM-DD`).
 - [ ] Transforms & tools testés (petits volumes, `limit`).
-- [ ] `validate` OK (≤ 20 steps/sous‑graphe):
-  ```json
-  {"tool":"py_orchestrator","params":{"operation":"validate","worker_name":"<name>"}}
-  ```
-- [ ] Graphe Mermaid propre (diamants, labels, emojis, START/END verts): `operation=graph` + `render.mermaid=true`.
-- [ ] Debug prêt: démarrage avec pause, `debug.step` OK.
-- [ ] Observabilité: en cas d’échec, vérifier `py.last_call`, `py.last_result_preview`, `job_steps.details_json`.
+- [ ] `validate` OK (≤ 20 steps/sous‑graphe recommandés).
+- [ ] Graphe Mermaid propre (`operation=graph`).
+- [ ] Debug prêt (pause au premier nœud si besoin). Observabilité OK (status/recent_steps).
+
+Notes avancées
+- Hot‑reload activable via `hot_reload:true` (les modifications de code et config/ sont prises en compte, avec UID de process mis à jour).
+- Politique tools stricte possible: `PY_ORCH_STRICT_TOOLS=true` → avertissements “unknown tools” deviennent bloquants en préflight.
 
 Résumé
-- Teste d’abord les tools (formats exacts).
-- Code des steps atomiques, tolérants côté parsing.
-- Utilise les transforms pour mapper/filtrer/nettoyer.
-- Appuie‑toi sur le graphe Mermaid (propre) et sur les logs enrichis du runner.
-- Le LLM peut diagnostiquer tout seul: chaque erreur expose l’appel et un aperçu du résultat.
+- Code des steps atomiques, “sans if”, 1 appel env.* par step.
+- Déporte les décisions dans des @cond.
+- Utilise les transforms pour mapper/filtrer/nettoyer et éviter la logique conditionnelle en step.
+- Appuie‑toi sur validate + graphe Mermaid + debug/observe pour un cycle de dev rapide et robuste.

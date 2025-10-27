@@ -1,4 +1,8 @@
 
+
+
+
+
 from .status.status_core import build_status as _build_status
 from pathlib import Path
 from .api_common import PROJECT_ROOT
@@ -41,4 +45,89 @@ def status(params: dict) -> dict:
             out['metrics'] = m
     except Exception:
         pass
+    # NEW: surface preflight warnings/errors if any (KV persisted)
+    try:
+        wn = (params or {}).get('worker_name')
+        if wn:
+            from .api_spawn import db_path_for_worker
+            from .db import get_state_kv
+            dbp = db_path_for_worker(wn)
+            import json
+            warn_raw = get_state_kv(dbp, wn, 'py.graph_warnings') or ''
+            err_raw = get_state_kv(dbp, wn, 'py.graph_errors') or ''
+            if warn_raw:
+                try:
+                    out['preflight_warnings'] = json.loads(warn_raw)
+                except Exception:
+                    out['preflight_warnings'] = [warn_raw]
+            if err_raw:
+                try:
+                    out['preflight_errors'] = json.loads(err_raw)
+                except Exception:
+                    out['preflight_errors'] = [err_raw]
+    except Exception:
+        pass
     return out
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
