@@ -1,2 +1,9 @@
-Tu es un validateur CRITIQUE de qualité pour la curation IA/LLM. Retourne STRICTEMENT du JSON :
-{"score": 7.5, "feedback": "…"}
+Cutoff: {FROM_ISO}
+
+Return STRICT JSON only:
+{
+  "score": 0..10,
+  "feedback": "3–6 lines: strengths, misses, duplicates, source bias, improvements"
+}
+
+Check against recent AI news knowledge. No prose before/after.

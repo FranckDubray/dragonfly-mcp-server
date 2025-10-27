@@ -1,6 +1,8 @@
 
 
 
+
+
 from py_orch import SubGraph, step, cond, Next, Exit
 
 SUBGRAPH = SubGraph(
@@ -11,7 +13,7 @@ SUBGRAPH = SubGraph(
 
 @step
 def STEP_GET_TS(worker, cycle, env):
-    out = env.tool("date", operation="now", format="iso", timezone="UTC")
+    out = env.tool("date", operation="now", format="iso", tz="UTC")
     cycle.setdefault("validation", {})["timestamp"] = out.get("result") or out.get("content") or str(out)
     return Next("STEP_SONAR_VALIDATE")
 
@@ -19,8 +21,10 @@ def STEP_GET_TS(worker, cycle, env):
 def STEP_SONAR_VALIDATE(worker, cycle, env):
     prompts = worker.get("prompts", {})
     tpl = str(prompts.get("validate_json") or "")
-    messages = [{"role": "user", "content": tpl}]
-    out = env.tool("call_llm", model=worker.get("sonar_model"), messages=messages, temperature=0.1, response_format="json")
+    dates = cycle.get("dates", {})
+    msg = tpl.format(FROM_ISO=str(dates.get("from") or ""))
+    messages = [{"role": "user", "content": msg}]
+    out = env.tool("call_llm", model=worker.get("sonar_validate_model") or worker.get("sonar_model"), messages=messages, temperature=0.1, response_format="json")
     cycle.setdefault("validation", {})["raw"] = out.get("content") or out.get("result") or "{}"
     return Next("STEP_NORMALIZE")
 
@@ -103,36 +107,3 @@ def COND_RETRY_LEFT(worker, cycle, env):
     if rc < mr:
         return Exit("retry")
     return Exit("retry_exhausted")
-
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
