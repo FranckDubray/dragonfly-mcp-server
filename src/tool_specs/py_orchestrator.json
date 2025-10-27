@@ -5,7 +5,7 @@
     "displayName": "Python Orchestrator",
     "category": "intelligence",
     "tags": ["process", "python", "debug"],
-    "description": "Run Python-defined workflows (Process/SubGraphs/Steps). Start/stop/status/debug; graph extraction (process/subgraph/current_subgraph); validate worker (AST+rules); list transforms; read/update worker config (directory-based: config/config.json + config/prompts/*.md).",
+    "description": "Run Python-defined workflows (Process/SubGraphs/Steps). Start/stop/status/debug; graph extraction (process/subgraph/current_subgraph); validate worker (AST+rules); list transforms; read/update worker config (directory-based: config/config.json + config/prompts/*.md). Includes a passive observation mode (observe) that tails DB steps and emits events (no interaction).",
     "parameters": {
       "type": "object",
       "properties": {
@@ -16,6 +16,7 @@
             "stop",
             "status",
             "debug",
+            "observe",
             "list",
             "graph",
             "validate",
@@ -51,6 +52,7 @@
         },
         "debug": {
           "type": "object",
+          "description": "Interactive debugging (active). Use to enable step mode, step/continue/run_until, manage breakpoints, or request a debug-oriented streaming (action='stream'). NOTE: action='stream' advances the workflow (step-by-step) and is different from 'observe' (read-only).",
           "properties": {
             "action": {
               "type": "string",
@@ -65,17 +67,15 @@
                 "break_clear",
                 "break_list",
                 "inspect",
-                "disable"
+                "disable",
+                "stream"
               ]
             },
             "pause_at_start": { "type": "boolean" },
             "enable_on_start": { "type": "boolean" },
             "timeout_sec": {
               "type": "number",
-              "description": "Blocking ACK: wait up to N seconds (default: 60, max: 300)",
-              "minimum": 0.1,
-              "maximum": 300,
-              "default": 60
+              "description": "Debug ACK timeout when action moves (step/continue/run_until)."
             },
             "target": {
               "type": "object",
@@ -92,7 +92,17 @@
                 "when": { "type": "string" }
               },
               "additionalProperties": false
-            }
+            },
+            "max_events": { "type": "integer", "minimum": 0 }
+          },
+          "additionalProperties": false
+        },
+        "observe": {
+          "type": "object",
+          "description": "Passive observation (read-only). Returns a single JSON response with the events captured during the window (tail of DB job_steps), without enabling debug nor issuing step/continue. Each event maps to a step INSERT (status='running') or an UPDATE (running→succeeded/failed). Event schema: { chunk_type:'step'|'error', node_executed, cycle_id, duration_ms, updated?:boolean, io:{ in:callObj, out_preview:string }, phase, heartbeat }. Status is 'ok' or 'timeout'. Does not alter the worker state.",
+          "properties": {
+            "timeout_sec": { "type": "number", "description": "Seconds before the server returns; <=0 or omitted means infinite (client-driven)." },
+            "max_events": { "type": "integer", "minimum": 0 }
           },
           "additionalProperties": false
         },

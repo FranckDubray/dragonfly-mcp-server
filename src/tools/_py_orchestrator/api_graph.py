@@ -2,7 +2,6 @@
 
 
 
-
 from pathlib import Path
 import json
 from typing import Dict, Any, List
@@ -26,6 +25,16 @@ CATEGORY_EMOJI = {
     "entertainment": "\U0001F3AE",   # 🎮
 }
 
+# Palette
+COLOR_TOOL_FILL = "#E9D5FF"   # violet 200
+COLOR_TOOL_STROKE = "#7C3AED" # violet 600
+COLOR_TRANS_FILL = "#D0E7FF"  # blue 200
+COLOR_TRANS_STROKE = "#1565C0"# blue 800
+COLOR_COND_FILL = "#FFE0B2"   # orange 200
+COLOR_COND_STROKE = "#EF6C00" # orange 800
+COLOR_TERM_FILL = "#d9fdd3"   # green bg
+COLOR_TERM_STROKE = "#2e7d32" # green border
+
 SPEC_ROOT = Path(__file__).resolve().parents[2] / "tool_specs"
 
 
@@ -46,7 +55,7 @@ def _shape_for(node: Dict[str, Any]) -> Dict[str, Any]:
     call_kind = node.get("call_kind")
     call_target = node.get("call_target")
     if t == "cond":
-        return {"shape": "diamond", "color": "default", "emoji": ""}
+        return {"shape": "diamond", "color": "orange", "emoji": ""}
     if t == "step":
         if call_kind == "transform":
             # Always gear emoji for transforms
@@ -55,13 +64,17 @@ def _shape_for(node: Dict[str, Any]) -> Dict[str, Any]:
             # Tool emoji based on canonical category
             cat = _tool_category(str(call_target or ""))
             em = CATEGORY_EMOJI.get(cat, "\U0001FAE9")
-            return {"shape": "rect", "color": "green", "emoji": em, "category": cat}
+            return {"shape": "rect", "color": "violet", "emoji": em, "category": cat}
     return {"shape": "rect", "color": "default", "emoji": ""}
 
 
 def _build_mermaid_plain(graph: Dict[str, Any], include: Dict[str, Any]) -> str:
-    """Build a plain Mermaid (no server-side styling). Ensure IDs are fully-qualified SG::STEP and
-    conditionals are diamonds with labeled outgoing edges."""
+    """Build a Mermaid diagram.
+    Defaults:
+      - Exclude symbolic SG exits (SG::success/fail/...) from nodes/edges
+      - Keep special START/END with rounded rect and green style + emoji labels
+      - Color code: tools violet, transforms blue, conds orange
+    """
     nodes = graph.get('nodes', [])
     edges = graph.get('edges', [])
     subgraphs = graph.get('subgraphs', {})
@@ -75,6 +88,9 @@ def _build_mermaid_plain(graph: Dict[str, Any], include: Dict[str, Any]) -> str:
         if node_id in {"START", "END"}:
             return node_id
         if "::" in node_id:
+            sg, step = node_id.split("::", 1)
+            if step in {"success","fail","retry","retry_exhausted"}:
+                return node_id
             return node_id
         if default_sg:
             return f"{default_sg}::{node_id}"
@@ -84,11 +100,14 @@ def _build_mermaid_plain(graph: Dict[str, Any], include: Dict[str, Any]) -> str:
         return node_id
 
     lines: List[str] = ["graph TD"]
+    style_lines: List[str] = []
 
-    # START at top if any
+    # START/END presence
     has_start = any(n.get('type') == 'start' for n in nodes)
     if has_start:
-        lines.append("  START")
+        # Rounded rect with green background and emoji label
+        lines.append("  START((🚀 START))")
+    # We will add END later if present
 
     # Group nodes by subgraph
     by_sg: Dict[str, List[Dict[str, Any]]] = {}
@@ -96,54 +115,67 @@ def _build_mermaid_plain(graph: Dict[str, Any], include: Dict[str, Any]) -> str:
         sg = n.get('subgraph') or '__ROOT__'
         by_sg.setdefault(sg, []).append(n)
 
-    # Subgraph clusters with fully-qualified node IDs and correct shapes
+    # Subgraph clusters with qualified node IDs and shapes
     for sg_name, info in subgraphs.items():
         label = sg_name
         lines.append(f"  subgraph {label}")
         for n in by_sg.get(sg_name, []):
             node_type = n.get('type')
-            node_id = f"{sg_name}::{n['name']}" if node_type not in {'start', 'end'} else n['name']
+            if node_type in {'start','end'}:
+                # Typically not inside subgraphs list; skip
+                continue
+            node_id = f"{sg_name}::{n['name']}"
             lab = n['name']
             if include.get('emojis', True):
-                shape = _shape_for(n)
-                em = shape.get('emoji') or ''
+                shape_meta = _shape_for(n)
+                em = shape_meta.get('emoji') or ''
                 if em:
                     lab = f"{em} {lab}"
-            # Diamond for conds
+            # Draw shape
             if node_type == 'cond':
                 lines.append(f"    {node_id}{{{lab}}}")
+                style_lines.append(f"  style {node_id} fill:{COLOR_COND_FILL},stroke:{COLOR_COND_STROKE},stroke-width:1px")
             else:
                 lines.append(f"    {node_id}[{lab}]")
+                # Style by kind
+                ck = n.get('call_kind')
+                if ck == 'transform':
+                    style_lines.append(f"  style {node_id} fill:{COLOR_TRANS_FILL},stroke:{COLOR_TRANS_STROKE},stroke-width:1px")
+                elif ck == 'tool':
+                    style_lines.append(f"  style {node_id} fill:{COLOR_TOOL_FILL},stroke:{COLOR_TOOL_STROKE},stroke-width:1px")
         lines.append("  end")
 
     # Nodes not in subgraphs: only END (avoid duplicate START)
     for n in by_sg.get('__ROOT__', []):
         if n.get('type') == 'end':
-            lines.append(f"  {n['name']}")
+            lines.append("  END((🏁 END))")
 
-    # Edges with qualification + labels for when != 'always'
+    # Edges: exclude any going to SG::exit pseudo-nodes; labels only when != 'always'
     add_labels = include.get('labels', True)
     for e in edges:
-        src_raw = e.get('from')
-        dst_raw = e.get('to')
+        src_raw = str(e.get('from'))
+        dst_raw = str(e.get('to'))
         when = e.get('when')
         default_sg = e.get('subgraph')
-        src = qual(str(src_raw), default_sg)
-        dst = qual(str(dst_raw), default_sg)
+        # Drop edges targeting SG::exit pseudo nodes
+        if '::' in dst_raw and dst_raw.split('::', 1)[1] in {"success","fail","retry","retry_exhausted"}:
+            continue
+        src = qual(src_raw, default_sg)
+        dst = qual(dst_raw, default_sg)
         if add_labels and when and when != 'always':
-            lines.append(f"  {src}-->|{when}|{dst}")
+            lines.append(f"  {src}-->|")
+            lines[-1] = lines[-1][:-1] + f"{when}|{dst}"
         else:
             lines.append(f"  {src}-->{dst}")
 
-    # Style symbolic nodes START/END in green
+    # Style START/END: rounded rect + green fill
     if has_start:
-        lines.append("  style START fill:#d9fdd3,stroke:#2e7d32,stroke-width:1px")
-    # Check if END exists among nodes
+        style_lines.append(f"  style START fill:{COLOR_TERM_FILL},stroke:{COLOR_TERM_STROKE},stroke-width:1px")
     has_end = any(n.get('type') == 'end' for n in nodes) or any(n.get('name') == 'END' for n in nodes)
     if has_end:
-        lines.append("  style END fill:#d9fdd3,stroke:#2e7d32,stroke-width:1px")
+        style_lines.append(f"  style END fill:{COLOR_TERM_FILL},stroke:{COLOR_TERM_STROKE},stroke-width:1px")
 
-    return "\n".join(lines)
+    return "\n".join(lines + style_lines)
 
 
 def graph(params: dict) -> dict:
@@ -175,7 +207,7 @@ def graph(params: dict) -> dict:
             return {"accepted": False, "status": "error", "message": "No valid subgraph specified"}
         keep_sg = set(wanted)
         nodes = [n for n in nodes if n.get("subgraph") in keep_sg or n.get("type") in {"start","end"}]
-        edges = [e for e in edges if (e.get("subgraph") in keep_sg) or ("::" in str(e.get("from","")) and str(e.get("from")).split("::")[0] in keep_sg)]
+        edges = [e for e in edges if (e.get("subgraph") in keep_sg) or ("::" in str(e.get("from","")) and str(e.get("from","")) .split("::",1)[0] == list(keep_sg)[0])]
 
     elif kind == "current_subgraph":
         # Derive current position from KV
@@ -194,7 +226,7 @@ def graph(params: dict) -> dict:
         if not cur_sg or cur_sg not in subgraphs:
             return {"accepted": False, "status": "error", "message": "Cannot determine current subgraph"}
         nodes = [n for n in nodes if n.get("subgraph") == cur_sg or n.get("type") in {"start","end"}]
-        edges = [e for e in edges if (e.get("subgraph") == cur_sg) or ("::" in str(e.get("from","")) and str(e.get("from")).split("::"))[0] == cur_sg]
+        edges = [e for e in edges if (e.get("subgraph") == cur_sg) or ("::" in str(e.get("from","")) and str(e.get("from","")) .split("::",1)[0] == cur_sg)]
 
     # Render Mermaid only when requested
     if (render or {}).get("mermaid") is True:
@@ -232,6 +264,9 @@ def graph(params: dict) -> dict:
         src = e.get("from")
         dst = e.get("to")
         when = e.get("when")
+        # drop SG::exit edges
+        if isinstance(dst, str) and '::' in dst and dst.split('::',1)[1] in {"success","fail","retry","retry_exhausted"}:
+            continue
         rec = {"from": src, "to": dst}
         if add_labels and when and when != "always":
             rec["label"] = when

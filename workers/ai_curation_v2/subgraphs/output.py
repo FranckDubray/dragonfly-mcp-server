@@ -1,6 +1,3 @@
-
-
-
 from py_orch import SubGraph, step, Next, Exit
 
 SUBGRAPH = SubGraph(
@@ -150,7 +147,7 @@ def STEP_INSERT_AUDIT(worker, cycle, env):
         "sqlite_db", operation="execute", db=worker.get("db_file"),
         query=("INSERT INTO report_audit (run_id, ts, worker_name, pid, phase, config_json, report_count_after)"
                " VALUES (?, ?, ?, ?, ?, ?, ?)"),
-        params:[
+        params=[
             a.get("run_id") or "",
             a.get("ts_run") or "",
             a.get("worker_name") or "",
@@ -174,18 +171,3 @@ def STEP_INSERT_AUDIT(worker, cycle, env):
     )
     cycle["summary"] = summary
     return Exit("success")
-
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 

@@ -1,10 +1,17 @@
 {
   "http_timeout_sec": 150,
   "llm_model": "gpt-4o-mini",
-  "sonar_model": "sonar",
+  "scoring_model": "gpt-5",
+  "scoring_max_output_tokens": 5000,
+  "sonar_model": "sonar-pro",
+  "sonar_validate_model": "sonar-reasoning-pro",
+  "validate_max_output_tokens": 400,
+  "collect_max_output_tokens": 1000,
   "llm_temperature": 0.3,
   "quality_threshold": 7,
   "max_retries": 3,
+  "max_items_for_scoring": 160,
+  "per_source_take": { "news": 30, "reddit": 30, "arxiv": 20, "sonar": 30 },
   "primary_site_caps": {
     "https://ai.meta.com/blog/": 8000,
     "https://about.fb.com/news/topic/technology/ai/": 6000,

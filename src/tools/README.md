@@ -19,7 +19,7 @@ Total tools: 54
   - Tokens: aucun
 
 - Python Orchestrator — Run Python-defined workflows (Process/SubGraphs/Steps). Start/stop/status/debug; graph extraction (process/subgraph/current_subgraph); va… · Tags: process, python, debug
-  - Opérations: start, stop, status, debug, list, graph …
+  - Opérations: start, stop, status, debug, observe, list …
   - Tokens: aucun
 
 - Research — Recherche académique multi-sources (PubMed, arXiv, HAL, CrossRef). · Tags: knowledge, research, external_sources

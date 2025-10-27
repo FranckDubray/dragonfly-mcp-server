@@ -1,4 +1,28 @@
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 from __future__ import annotations
 from typing import Any, Dict, Tuple, List
 import json
@@ -18,7 +42,7 @@ def _tokenize_path(path: str) -> List[Tuple[str, Any]]:
     Supports:
       - Dot notation for keys (no escaping)
       - Bracket numeric indices: [0]
-      - Bracket quoted keys: ["..."] or ['...'] with \-escaping inside quotes
+      - Bracket quoted keys: ["..."] or ['...'] with \\-escaping inside quotes
     """
     s = str(path or '')
     n = len(s)
@@ -353,3 +377,27 @@ def config_op(params: dict) -> dict:
         "file_persisted": bool(file_persisted),
         "truncated": False,
     }
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

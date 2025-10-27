@@ -1,7 +1,5 @@
 
 
-
-
 from py_orch import SubGraph, step, cond, Next, Exit
 
 SUBGRAPH = SubGraph(
@@ -49,30 +47,17 @@ def STEP_FETCH_ARXIV(worker, cycle, env):
         include_abstracts=False, max_results=25
     )
     cycle.setdefault("sources", {})["arxiv"] = out.get("results") or []
-    return Next("STEP_FETCH_PRIMARY_SITES")
-
-# NOUVEAU: Collecter les sites primaires dès la collecte (pas seulement en enrichissement)
-@step
-def STEP_FETCH_PRIMARY_SITES(worker, cycle, env):
-    # Requête générique pour actualités récentes IA/LLM. Le filtrage de fraicheur sera appliqué ensuite.
-    query = "AI OR LLM OR transformer OR research OR model OR release"
-    # Dériver la liste uniquement depuis primary_site_caps (source de vérité)
-    sites = list((worker.get("primary_site_caps") or {}).keys())
-    out = env.tool(
-        "universal_doc_scraper", operation="search_across_sites",
-        sites=sites, query=query,
-        max_results=10, max_pages=2
-    )
-    cycle.setdefault("sources", {})["primary"] = out.get("results") or []
+    # Passer directement à Sonar (Top 10 global, toutes sources confondues)
     return Next("STEP_FETCH_SONAR")
 
 @step
 def STEP_FETCH_SONAR(worker, cycle, env):
-    # Ask Sonar for primary sources in last 72h (JSON array expected)
+    # Ask Sonar-Pro for a global Top 10 across sources since {FROM_ISO}
     dates = cycle.get("dates", {})
     prompts = worker.get("prompts", {})
-    tpl = str(prompts.get("collect_sonar") or "").format(FROM_ISO=str(dates.get("from") or ""))
-    messages = [{"role": "user", "content": tpl}]
+    tpl = str(prompts.get("collect_sonar") or "")
+    msg = tpl.format(FROM_ISO=str(dates.get("from") or ""))
+    messages = [{"role": "user", "content": msg}]
     out = env.tool("call_llm", model=worker.get("sonar_model"), messages=messages, temperature=0.3)
     cycle.setdefault("sources", {})["sonar_raw"] = out.get("content") or out.get("result") or "[]"
     return Next("STEP_NORMALIZE_SONAR")
@@ -113,62 +98,40 @@ def STEP_FILTER_REDDIT(worker, cycle, env):
 @step
 def STEP_FILTER_ARXIV(worker, cycle, env):
     dates = cycle.get("dates", {})
+    # Tolerant: arXiv results often use 'published' (not 'publication_date')
     out = env.transform(
         "array_ops", op="filter",
         items=cycle.get("sources", {}).get("arxiv", []),
-        predicate={"kind":"date_gte", "path":"publication_date", "cutoff":str(dates.get("from") or "")}
+        predicate={"kind":"date_gte", "path":"published", "cutoff":str(dates.get("from") or "")}
     )
     fres = cycle.setdefault("fresh", {})
     fres["arxiv"] = out.get("items") or []
     fres.setdefault("metrics", {})["arxiv_kept"] = len(fres["arxiv"])
-    return Next("STEP_FILTER_PRIMARY")
-
-# NOUVEAU: filtrer les résultats primary par fraîcheur
-@step
-def STEP_FILTER_PRIMARY(worker, cycle, env):
-    dates = cycle.get("dates", {})
-    out = env.transform(
-        "array_ops", op="filter",
-        items=cycle.get("sources", {}).get("primary", []),
-        predicate={"kind":"date_gte", "path":"published_at", "cutoff":str(dates.get("from") or "")}
-    )
-    fres = cycle.setdefault("fresh", {})
-    fres["primary"] = out.get("items") or []
-    fres.setdefault("metrics", {})["primary_kept"] = len(fres["primary"])
-    return Next("STEP_FILTER_SONAR")
+    # Aller directement au traitement Sonar (ne pas filtrer Sonar par date ici: Sonar applique déjà la contrainte)
+    return Next("STEP_PASS_SONAR_TRUSTED")
 
 @step
-def STEP_FILTER_SONAR(worker, cycle, env):
-    dates = cycle.get("dates", {})
-    out = env.transform(
-        "array_ops", op="filter",
-        items=cycle.get("sources", {}).get("sonar", []),
-        predicate={"kind":"date_gte", "path":"published_at", "cutoff":str(dates.get("from") or "")}
-    )
+def STEP_PASS_SONAR_TRUSTED(worker, cycle, env):
+    # Conserve tous les items Sonar (on fait confiance au cutoff du prompt)
+    out = env.transform("set_value", value=cycle.get("sources", {}).get("sonar", []))
     fres = cycle.setdefault("fresh", {})
-    fres["sonar"] = out.get("items") or []
+    fres["sonar"] = out.get("result") or []
     fres.setdefault("metrics", {})["sonar_kept"] = len(fres["sonar"])
+    return Next("STEP_TAKE_ARXIV")
+
+@step
+def STEP_TAKE_ARXIV(worker, cycle, env):
+    # Limiter arXiv proprement (pas de coupe JSON) pour éviter de flooder le LLM
+    items = cycle.get("fresh", {}).get("arxiv", [])
+    n = int((worker.get("per_source_take") or {}).get("arxiv", 20))
+    out = env.transform("array_ops", op="take", items=items, count=n)
+    cycle.setdefault("fresh", {})["arxiv"] = out.get("items", [])
     return Next("STEP_HAS_DATA")
 
 @cond
 def STEP_HAS_DATA(worker, cycle, env):
     m = cycle.get("fresh", {}).get("metrics", {})
-    total = int(m.get("news_kept", 0)) + int(m.get("reddit_kept", 0)) + int(m.get("arxiv_kept", 0)) + int(m.get("sonar_kept", 0)) + int(m.get("primary_kept", 0))
+    total = int(m.get("news_kept", 0)) + int(m.get("reddit_kept", 0)) + int(m.get("arxiv_kept", 0)) + int(m.get("sonar_kept", 0))
     if total >= 1:
         return Exit("success")
     return Exit("fail")
-
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 

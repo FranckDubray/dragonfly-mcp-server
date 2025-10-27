@@ -1,6 +1,0 @@
-[
-  {
-    "role": "user",
-    "content": "Tu es Perplexity Sonar avec accès web temps réel.\n\nTÂCHE : Trouve UNIQUEMENT des SOURCES PRIMAIRES (blogs officiels, pages recherche, communiqués de presse, arXiv) liées aux développements IA/LLM des 3 derniers jours (depuis ${cycle.dates.from}).\n\nCONTRAINTES STRICTES :\n- Fraîcheur : published_at >= ${cycle.dates.from} (≤ 72h).\n- Exclure les agrégateurs : Reddit, HN, Medium, Substack, Slashdot, Towards Data Science.\n- Sortie JSON UNIQUEMENT (pas de texte libre).\n- Format : [{\"source\": \"blog|research|press|arxiv\", \"title\": \"...\", \"url\": \"...\", \"summary\": \"150-250 chars\", \"published_at\": \"ISO8601\"}].\n- Maximum 10 entrées.\n- Si la date n'est pas claire, rejeter l'item.\n\nOBJECTIF : fournir au journaliste des liens primaires, fiables, récents et variés, sans agrégateurs.\n"
-  }
-]
