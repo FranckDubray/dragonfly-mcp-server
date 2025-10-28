@@ -1,20 +1,7 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 from typing import Any, Dict
 from .handlers import bootstrap_handlers as bootstrap_local, get_registry as get_registry_local
 from .http_tool import HttpToolHandler
+import time
 
 _SENSITIVE_KEYS = {"api_key","apikey","authorization","auth","token","access_token","secret","password"}
 
@@ -50,6 +37,17 @@ class PyEnv:
                 http_timeout = float(worker_ctx.get('http_timeout_sec', http_timeout))
         except Exception:
             pass
+        # LLM retry count from worker context (default 0 = no retry)
+        self._llm_retry_count = 0
+        try:
+            if isinstance(worker_ctx, dict) and worker_ctx.get('llm_retry_count') is not None:
+                self._llm_retry_count = int(worker_ctx.get('llm_retry_count') or 0)
+                if self._llm_retry_count < 0:
+                    self._llm_retry_count = 0
+                if self._llm_retry_count > 5:
+                    self._llm_retry_count = 5
+        except Exception:
+            self._llm_retry_count = 0
         # Autonomous HTTP tool handler to call MCP tools
         self._http = HttpToolHandler(timeout=http_timeout)
         self._last_result: Dict[str, Any] = {}
@@ -59,62 +57,103 @@ class PyEnv:
         # record last call context (sanitized)
         call_params = dict(kwargs)
         self._last_call = {"kind": "tool", "name": tool, "params": _sanitize(call_params)}
-        payload = {**kwargs, 'tool': tool}
-        res = self._http.run(**payload)
-        # Unwrap common MCP envelope {"result": ...} when no error/status fields are present
-        # but PRESERVE sibling metadata (e.g., model, usage) instead of dropping them.
-        try:
-            if isinstance(res, dict) and ('result' in res) and not any(k in res for k in ('accepted','status','error','message','details')):
-                inner = res.get('result')
-                # Merge dict-like result with top-level siblings (except 'result')
-                if isinstance(inner, dict):
-                    base = {k: v for k, v in res.items() if k != 'result'}
-                    res = {**inner, **base}
-                else:
-                    # Keep scalar result as 'content' while preserving siblings
-                    res = {**res, 'content': inner}
-                    res.pop('result', None)
-        except Exception:
-            pass
-        # Persist last result (best effort, sanitized preview)
-        self._last_result = res if isinstance(res, dict) else {'content': res}
-        # Auto-fail fast if MCP returned an error envelope so the runner logs it
-        try:
-            if isinstance(res, dict):
-                status = str(res.get('status') or '').lower()
-                accepted = res.get('accepted')
-                # Also catch tools that return an 'error' field instead of accepted/status
-                raw_error = res.get('error')
-                if raw_error:
-                    msg = str(res.get('message') or raw_error)
-                    details = res.get('details')
-                    d = ''
-                    if isinstance(details, (str, bytes)):
-                        d = (details.decode('utf-8', 'ignore') if isinstance(details, bytes) else details)[:400]
-                    elif isinstance(details, dict):
-                        try:
-                            import json as _json
-                            d = _json.dumps(_sanitize(details))[:400]
-                        except Exception:
-                            d = str(details)[:400]
-                    raise RuntimeError(f"TOOL({tool}) error: {msg} | details: {d}")
-                if accepted is False or status in {'error', 'failed'}:
-                    msg = str(res.get('message') or 'Tool error')
-                    details = res.get('details')
-                    d = ''
-                    if isinstance(details, (str, bytes)):
-                        d = (details.decode('utf-8', 'ignore') if isinstance(details, bytes) else details)[:400]
-                    elif isinstance(details, dict):
-                        try:
-                            import json as _json
-                            d = _json.dumps(_sanitize(details))[:400]
-                        except Exception:
-                            d = str(details)[:400]
-                    raise RuntimeError(f"TOOL({tool}) error: {msg} | details: {d}")
-        except Exception:
-            # Re-raise to be caught by runner and properly logged as failed step
-            raise
-        return res
+
+        # Helper to actually invoke HTTP tool and unwrap
+        def _invoke_once() -> Dict[str, Any]:
+            payload = {**kwargs, 'tool': tool}
+            res = self._http.run(**payload)
+            # Unwrap common MCP envelope {"result": ...} when no error/status fields are present
+            # but PRESERVE sibling metadata (e.g., model, usage) instead of dropping them.
+            try:
+                if isinstance(res, dict) and ('result' in res) and not any(k in res for k in ('accepted','status','error','message','details')):
+                    inner = res.get('result')
+                    # Merge dict-like result with top-level siblings (except 'result')
+                    if isinstance(inner, dict):
+                        base = {k: v for k, v in res.items() if k != 'result'}
+                        res = {**inner, **base}
+                    else:
+                        # Keep scalar result as 'content' while preserving siblings
+                        res = {**res, 'content': inner}
+                        res.pop('result', None)
+            except Exception:
+                pass
+            return res
+
+        # Retry policy: only for call_llm, up to llm_retry_count on transient tool errors
+        attempts = 1
+        if str(tool) == 'call_llm':
+            attempts = max(1, int(self._llm_retry_count) + 1)
+
+        last_exc: Exception | None = None
+        last_res: Dict[str, Any] | None = None
+        for i in range(attempts):
+            try:
+                res = _invoke_once()
+                last_res = res if isinstance(res, dict) else {'content': res}
+                # Auto-fail fast if MCP returned an error envelope so the runner logs it
+                try:
+                    if isinstance(res, dict):
+                        status = str(res.get('status') or '').lower()
+                        accepted = res.get('accepted')
+                        # Also catch tools that return an 'error' field instead of accepted/status
+                        raw_error = res.get('error')
+                        if raw_error:
+                            msg = str(res.get('message') or raw_error)
+                            details = res.get('details')
+                            d = ''
+                            if isinstance(details, (str, bytes)):
+                                d = (details.decode('utf-8', 'ignore') if isinstance(details, bytes) else details)[:400]
+                            elif isinstance(details, dict):
+                                try:
+                                    import json as _json
+                                    d = _json.dumps(_sanitize(details))[:400]
+                                except Exception:
+                                    d = str(details)[:400]
+                            raise RuntimeError(f"TOOL({tool}) error: {msg} | details: {d}")
+                        if accepted is False or status in {'error', 'failed'}:
+                            msg = str(res.get('message') or 'Tool error')
+                            details = res.get('details')
+                            d = ''
+                            if isinstance(details, (str, bytes)):
+                                d = (details.decode('utf-8', 'ignore') if isinstance(details, bytes) else details)[:400]
+                            elif isinstance(details, dict):
+                                try:
+                                    import json as _json
+                                    d = _json.dumps(_sanitize(details))[:400]
+                                except Exception:
+                                    d = str(details)[:400]
+                            raise RuntimeError(f"TOOL({tool}) error: {msg} | details: {d}")
+                except Exception:
+                    # propagate to outer except to apply retry policy
+                    raise
+                # Success path: persist last result and return
+                self._last_result = last_res
+                return res
+            except Exception as e:
+                last_exc = e
+                # Decide if retryable
+                retryable = False
+                emsg = str(e)
+                if str(tool) == 'call_llm':
+                    # Typical transient patterns
+                    if (
+                        'HTTP 5' in emsg or
+                        'URLError' in emsg or
+                        'Unexpected error calling /execute' in emsg or
+                        'No tool_calls, no text, and no media in streaming response' in emsg
+                    ):
+                        retryable = True
+                if i < attempts - 1 and retryable:
+                    # small backoff
+                    time.sleep(0.5 * (i + 1))
+                    continue
+                # Non-retryable or last attempt: persist last result as error preview and re-raise
+                self._last_result = last_res if last_res is not None else {'error': str(e)[:200]}
+                raise
+
+        # Should not reach here
+        self._last_result = last_res or {}
+        return last_res or {}
 
     def transform(self, kind: str, **kwargs) -> Dict[str, Any]:
         # record last call context (sanitized)
@@ -129,12 +168,3 @@ class PyEnv:
 
     def last_call(self) -> Dict[str, Any]:
         return self._last_call or {}
-
- 
- 
- 
- 
- 
- 
- 
- 

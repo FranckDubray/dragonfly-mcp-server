@@ -5,27 +5,31 @@ import time
 import json as _json
 
 from .validators import validate_params
-from .._orchestrator.api_debug import debug_control as json_debug_control
 from .api_spawn import db_path_for_worker
 from .db import get_state_kv, set_state_kv
 from .api_debug_helpers import (
     long_timeout_or_default, db_max_rowid, db_rows_since, db_recent_window,
     read_step_snapshot,
 )
+from .api_debug_core import debug_movement_ack
+
 
 def debug_stream(params: dict) -> dict:
     p = validate_params({**params, 'operation': 'debug'})
     wn = p['worker_name']
     db_path = db_path_for_worker(wn)
 
-    # Enable debug step mode immediately
-    json_debug_control({'operation': 'debug', 'worker_name': wn, 'debug': {'action': 'enable_now'}})
+    # Enable debug step mode immediately (KV-only)
+    try:
+        set_state_kv(db_path, wn, 'debug.enabled', 'true')
+        set_state_kv(db_path, wn, 'debug.mode', 'step')
+        set_state_kv(db_path, wn, 'debug.pause_request', 'immediate')
+    except Exception:
+        pass
 
     dbg_req = (params or {}).get('debug') or {}
     timeout_sec = long_timeout_or_default(dbg_req.get('timeout_sec'))
     deadline = (time.time() + timeout_sec) if (timeout_sec is not None) else None
-
-    set_state_kv(db_path, wn, 'debug.mode', 'step')
 
     events = []
     tick = 0.2
@@ -86,12 +90,6 @@ def debug_stream(params: dict) -> dict:
                 last_rowid = int(rid)
                 if max_events and len(events) >= max_events:
                     return {'accepted': True, 'status': 'ok', 'events': events, 'count': len(events), 'truncated': True}
-                try:
-                    dbg_enabled = (get_state_kv(db_path, wn, 'debug.enabled') == 'true')
-                    if dbg_enabled:
-                        json_debug_control({'operation': 'debug', 'worker_name': wn, 'debug': {'action': 'step', 'timeout_sec': 0.1}})
-                except Exception:
-                    pass
         else:
             time.sleep(tick)
 
@@ -121,7 +119,7 @@ def debug_stream(params: dict) -> dict:
                     'node_executed': node,
                     'node_next': '',
                     'io': {'in': call, 'out_preview': lrp},
-                    'error': ({'message': (get_state_kv(db_path, wn, 'last_error') or '')} if str(status).lower()=='failed' else None),
+                    'error': ({'message': (get_state_kv(db_path, wn, 'last_error') or '')} if str(status).lower()== 'failed' else None),
                     'phase': get_state_kv(db_path, wn, 'phase') or '',
                     'heartbeat': get_state_kv(db_path, wn, 'heartbeat') or '',
                     'cycle_id': cycle_id,

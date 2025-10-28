@@ -1,8 +1,8 @@
 {
-  "http_timeout_sec": 150,
+  "http_timeout_sec": 600,
   "llm_model": "gpt-4o-mini",
-  "scoring_model": "gpt-5",
-  "scoring_max_output_tokens": 5000,
+  "scoring_model": "gpt-5-mini",
+  "scoring_max_output_tokens": 2000,
   "sonar_model": "sonar-pro",
   "sonar_validate_model": "sonar-reasoning-pro",
   "validate_max_output_tokens": 400,
@@ -11,7 +11,12 @@
   "quality_threshold": 7,
   "max_retries": 3,
   "max_items_for_scoring": 160,
-  "per_source_take": { "news": 30, "reddit": 30, "arxiv": 20, "sonar": 30 },
+  "per_source_take": {
+    "news": 30,
+    "reddit": 30,
+    "arxiv": 20,
+    "sonar": 30
+  },
   "primary_site_caps": {
     "https://ai.meta.com/blog/": 8000,
     "https://about.fb.com/news/topic/technology/ai/": 6000,
@@ -20,8 +25,10 @@
     "https://azure.microsoft.com/en-us/blog/topics/ai/": 7000,
     "https://azure.microsoft.com/en-us/blog/tag/azure-ai-foundry/": 6000,
     "https://mistral.ai/news/": 5000,
-    "https://x.ai/blog": 7000,
-    "https://blog.perplexity.ai/": 5000
+    "https://x.ai/blog": 7000
   },
-  "db_file": "worker_ai_curation_v2.db"
+  "db_file": "worker_ai_curation_v2.db",
+  "max_primary_pages": 8,
+  "scrape_max_items": 18,
+  "llm_retry_count": 2
 }

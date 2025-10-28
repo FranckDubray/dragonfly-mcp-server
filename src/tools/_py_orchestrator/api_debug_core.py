@@ -1,10 +1,15 @@
 
+
+
+
+
+
+
 from __future__ import annotations
 from typing import Dict, Any
 import time
 
 from .validators import validate_params
-from .._orchestrator.api_debug import debug_control as json_debug_control
 from .api_spawn import db_path_for_worker
 from .db import get_state_kv
 from .api_debug_helpers import clamp_timeout
@@ -23,9 +28,6 @@ def debug_movement_ack(params: dict, base_res: Dict[str, Any]) -> Dict[str, Any]
         if action in {'step','continue','run_until'} and timeout > 0:
             deadline = time.time() + timeout
             tick = 0.2
-            long_hint = (get_state_kv(dbp, wn, 'debug.executing_node') or '').endswith('STEP_SLEEP')
-            if long_hint and timeout < 65:
-                deadline = time.time() + 65
             last_seen_exec = get_state_kv(dbp, wn, 'debug.executing_node') or ''
             while time.time() < deadline:
                 paused_at = get_state_kv(dbp, wn, 'debug.paused_at') or ''

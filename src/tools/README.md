@@ -2,9 +2,9 @@
 
 Ce fichier est généré automatiquement par `scripts/generate_tools_catalog.py`. Ne pas éditer à la main.
 
-Total tools: 54
+Total tools: 53
 
-## 📊 Intelligence & Orchestration (6)
+## 📊 Intelligence & Orchestration (5)
 
 - Call LLM+tools — Appelle un modèle LLM en streaming. Orchestration tool_calls (MCP) en 2 phases. Supporte l'entrée multi-modale (images) via messages Open… · Tags: llm, orchestration, vision, multimodal
   - Opérations: N/A
@@ -24,13 +24,6 @@ Total tools: 54
 
 - Research — Recherche académique multi-sources (PubMed, arXiv, HAL, CrossRef). · Tags: knowledge, research, external_sources
   - Opérations: search_papers, get_paper_details, search_authors, get_citations
-  - Tokens: aucun
-
-- Worker Orchestrator — Start/stop/status/debug/list a JSON-driven worker that executes a process graph (FSM).
-
-Debug mode (quick guide):
-- Pauses occur at node… · Tags: automation, workflows, state_machine, long_running
-  - Opérations: start, stop, status, debug, list
   - Tokens: aucun
 
 ## 🔧 Development (7)
@@ -89,7 +82,7 @@ Debug mode (quick guide):
   - Opérations: send_message, send_photo, send_document, send_location, send_video, get_updates …
   - Tokens: aucun
 
-## 🗄️ Data & Storage (5)
+## 🗄️ Data & Storage (4)
 
 - CoinGecko — Complete cryptocurrency data via CoinGecko API. Prices, market data, historical charts, trending coins, exchanges. Free tier: 50 calls/mi… · Tags: crypto, cryptocurrency, prices, market_data
   - Opérations: get_price, get_coin_info, search_coins, get_market_chart, get_trending, get_global_data …
@@ -107,17 +100,13 @@ Debug mode (quick guide):
   - Opérations: ensure_dir, list_dbs, create_db, delete_db, get_tables, describe …
   - Tokens: aucun
 
-- Worker Query (Read-Only) — Execute read-only SQL queries on your personal worker database. Only SELECT queries are allowed. You have access to tables like job_steps… · Tags: sqlite, introspection, monitoring, read_only
-  - Opérations: N/A
-  - Tokens: aucun
-
 ## 📄 Documents (5)
 
 - Doc Scraper — Universal documentation scraper supporting GitBook, Notion, Confluence, ReadTheDocs, Docusaurus, and other doc platforms. Discover, extra…
   - Opérations: discover_docs, extract_page, search_across_sites, detect_platform
   - Tokens: aucun
 
-- Office to PDF Converter — Convert Microsoft Office documents (Word, PowerPoint) to PDF using the Office suite installed on the laptop. Supports .docx, .doc, .pptx,…
+- Office to PDF Converter — Convert Microsoft Office documents (Word, PowerPoint) to PDF using either the Office suite installed on the laptop (via docx2pdf) or a he…
   - Opérations: convert, get_info
   - Tokens: aucun
 
@@ -133,7 +122,7 @@ Debug mode (quick guide):
   - Opérations: N/A
   - Tokens: aucun
 
-## 🎬 Media (5)
+## 🎬 Media (6)
 
 - FFmpeg Frames — Extraction d'images d'une vidéo: détection automatique des plans (similarité) + début/fin + samples intraplans.
   - Opérations: extract_frames
@@ -141,6 +130,10 @@ Debug mode (quick guide):
 
 - Gemini Image Studio — Génère ou édite des images avec gemini-2.5-flash-image-preview. Entrées: URLs http(s), fichiers locaux (./docs), data URLs, ou base64 bru…
   - Opérations: generate, edit
+  - Tokens: aucun
+
+- OBS Control — Contrôle OBS via une seule fonction multi-actions en appels courts (ou sessions courtes). Pas d’API fichiers: si un média local est requi…
+  - Opérations: N/A
   - Tokens: aucun
 
 - Video Transcription — Extract audio from video and transcribe using Whisper API. Supports time-based segmentation for large videos. Parallel processing (3 chun… · Tags: video, audio, transcription, whisper

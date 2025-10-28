@@ -1,8 +1,6 @@
 
 
 
-
-
 from py_orch import SubGraph, step, cond, Next, Exit
 
 SUBGRAPH = SubGraph(
@@ -13,8 +11,10 @@ SUBGRAPH = SubGraph(
 
 @step
 def STEP_GET_TS(worker, cycle, env):
-    out = env.tool("date", operation="now", format="iso", tz="UTC")
-    cycle.setdefault("validation", {})["timestamp"] = out.get("result") or out.get("content") or str(out)
+    # Utiliser la date stockée (début de cycle) mais respecter la règle 1 call/step
+    ts = str((cycle.get("dates") or {}).get("now") or "")
+    out = env.transform("set_value", value=ts)
+    cycle.setdefault("validation", {})["timestamp"] = out.get("result") or ts
     return Next("STEP_SONAR_VALIDATE")
 
 @step
@@ -22,9 +22,25 @@ def STEP_SONAR_VALIDATE(worker, cycle, env):
     prompts = worker.get("prompts", {})
     tpl = str(prompts.get("validate_json") or "")
     dates = cycle.get("dates", {})
-    msg = tpl.format(FROM_ISO=str(dates.get("from") or ""))
+    # Inclure le Top10 courant dans le prompt (JSON string déjà construit en SCORE::STEP_STRINGIFY_TOP10)
+    top10_json = str(cycle.get("scoring", {}).get("top10_json") or "[]")
+    # Eviter str.format pour ne pas interpréter les accolades du JSON d'exemple → remplacements directs
+    msg = (
+        tpl.replace("{FROM_ISO}", str(dates.get("from") or ""))
+           .replace("{NOW_ISO}", str(dates.get("now") or ""))
+           .replace("{TOP10}", top10_json)
+    )
     messages = [{"role": "user", "content": msg}]
-    out = env.tool("call_llm", model=worker.get("sonar_validate_model") or worker.get("sonar_model"), messages=messages, temperature=0.1, response_format="json")
+    max_out = int(worker.get("validate_max_output_tokens", 400))
+    out = env.tool(
+        "call_llm",
+        model=worker.get("sonar_validate_model") or worker.get("sonar_model"),
+        messages=messages,
+        temperature=0.1,
+        response_format="text",
+        max_output_tokens=max_out,
+        max_tokens=max_out,
+    )
     cycle.setdefault("validation", {})["raw"] = out.get("content") or out.get("result") or "{}"
     return Next("STEP_NORMALIZE")
 
@@ -55,7 +71,6 @@ def STEP_EXTRACT_FEEDBACK(worker, cycle, env):
     cycle["validation"]["feedback"] = out.get("result")
     return Next("STEP_PREP_LOG_PARAMS")
 
-# Nouveau: PREP avant INSERT → transforme les params en strings
 @step
 def STEP_PREP_LOG_PARAMS(worker, cycle, env):
     v = cycle.get("validation", {})

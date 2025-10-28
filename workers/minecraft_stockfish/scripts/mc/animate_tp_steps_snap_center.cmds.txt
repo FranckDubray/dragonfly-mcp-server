@@ -1,2 +1,0 @@
-# Stub animation: teleport piece along steps and snap to square center
-say [MC] Animating black move (stub).

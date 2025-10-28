@@ -1,0 +1,66 @@
+{
+  "env": { "time": "day", "weather": "clear", "difficulty": "peaceful" },
+  "lever": { "pos": { "x": 16, "y": 64, "z": 0 } },
+  "chess": {
+    "origin_center": { "x": 0, "y": 64, "z": 0 },
+    "axis": "+x",
+    "case_size": 3,
+    "y_level": 64,
+    "epsilon_snap": 0.8,
+    "white_near_origin": true,
+    "scan_y_min_offset": -1,
+    "scan_y_max_offset": 3,
+    "clear_y_min_offset": -5,
+    "clear_y_max_offset": 5
+  },
+  "wand": {
+    "uses_objective": "wand_uses",
+    "state_objective": "wand_state",
+    "select_max_blocks": 6,
+    "select_distance_threshold": 1.4,
+    "drop_max_blocks": 3,
+    "drop_capture_radius": 0.49,
+    "drop_lift_height": 1.2,
+    "sfx": {
+      "sound": "minecraft:block.note_block.pling",
+      "volume": 1.0,
+      "pitch": 1.8,
+      "particle": "minecraft:happy_villager",
+      "particle_count": 10,
+      "particle_spread": 0.2,
+      "particle_speed": 0.02
+    }
+  },
+  "turns": {
+    "max_seconds": 120,
+    "bad_move_threshold_cp": -300,
+    "lever_poll_ms": 5000,
+    "move_poll_ms": 5000,
+    "select_poll_ms": 5000
+  },
+  "sanction": {
+    "tnt_chunk": { "cx": 128, "cz": 128 },
+    "area": { "min": { "x": 2046, "y": 79, "z": 2046 }, "max": { "x": 2050, "y": 85, "z": 2050 } },
+    "tnt": [ { "x": 2048, "y": 80, "z": 2048 }, { "x": 2049, "y": 80, "z": 2048 }, { "x": 2048, "y": 80, "z": 2049 } ],
+    "tnt_fuse_ticks": 80
+  },
+  "stockfish": { "quality": "strong", "depth": 16, "limit": { "movetime": 300 } },
+  "engine": {
+    "anim": {
+      "select_from_distance": 0.9,
+      "target_capture_radius": 0.49,
+      "lift_height": 1.2,
+      "sleep_ms_after_anim": 200
+    },
+    "sfx": {
+      "sound": "minecraft:block.note_block.pling",
+      "volume": 1.0,
+      "pitch": 1.4,
+      "particle": "minecraft:happy_villager",
+      "particle_count": 10,
+      "particle_spread": 0.2,
+      "particle_speed": 0.02
+    },
+    "ep_direction_strict": true
+  }
+}

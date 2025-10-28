@@ -1,2 +1,0 @@
-# Stub drop/capture pipeline then snap to center
-say [MC] Dropping selected piece and snapping (stub).

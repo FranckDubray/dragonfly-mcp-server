@@ -1,29 +1,43 @@
-#!/usr/bin/env pwsh
-$ErrorActionPreference = "Stop"
+#Requires -Version 5.1
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
 
-# Always operate from repo root (relative paths only)
-$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-Set-Location (Join-Path $scriptDir "..")
+# Always run from repo root
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+Set-Location (Join-Path $ScriptDir '..')
 
-# Detect venv python
-if ($env:VIRTUAL_ENV) {
-  $py = (Get-Command python).Source
-} else {
-  Write-Warning "[dev.ps1] No venv detected (VIRTUAL_ENV empty)."
-  $py = "python"
+# Detect Python
+function Get-Python {
+  try {
+    $v = & python --version 2>$null
+    if ($LASTEXITCODE -eq 0) { return 'python' }
+  } catch {}
+  try {
+    $v = & py -3 --version 2>$null
+    if ($LASTEXITCODE -eq 0) { return 'py -3' }
+  } catch {}
+  return 'python'
 }
 
-Write-Host "[dev.ps1] 🔧 Python: " -NoNewline; & $py --version
+$PY = Get-Python
+Write-Host "[dev.ps1] 🔧 Python version:" (& $PY --version)
 
-Write-Host "[dev.ps1] 📦 Installing Playwright browsers (scoped to ./playwright/browsers)"
-$env:PLAYWRIGHT_BROWSERS_PATH = "playwright/browsers"
-try { & $py -m playwright install chromium } catch { Write-Warning $_ }
+# Ensure deps (idempotent)
+Write-Host "[dev.ps1] 📦 Installation des dépendances (pyproject)"
+try { & $PY -m pip install -U pip setuptools wheel *> $null } catch {}
+try { & $PY -m pip install -e . } catch { & $PY -m pip install . }
 
-# Generate tools catalog if present
-if (Test-Path "scripts/generate_tools_catalog.py") {
-  Write-Host "[dev.ps1] 🧠 Generating tools catalog"
-  try { & $py scripts/generate_tools_catalog.py } catch { Write-Warning $_ }
+# Playwright browsers (scoped in ./playwright/browsers)
+Write-Host "[dev.ps1] 📦 Installation navigateurs Playwright (scopés dans ./playwright/browsers)"
+$env:PLAYWRIGHT_BROWSERS_PATH = 'playwright/browsers'
+try { & $PY -m playwright install chromium } catch {}
+
+# Generate tools catalog if script exists
+if (Test-Path 'scripts/generate_tools_catalog.py') {
+  Write-Host "[dev.ps1] 🧠 Génération catalogue tools"
+  try { & $PY scripts/generate_tools_catalog.py } catch {}
 }
 
-Write-Host "[dev.ps1] 🚀 Starting server"
-& $py src/server.py
+# Start server
+Write-Host "[dev.ps1] 🚀 Démarrage serveur"
+& $PY src/server.py

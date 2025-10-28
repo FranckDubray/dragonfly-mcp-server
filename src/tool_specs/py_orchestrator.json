@@ -1,4 +1,24 @@
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 {
   "type": "function",
   "function": {
@@ -201,6 +221,18 @@
               "maximum": 200,
               "default": 20,
               "description": "Maximum steps allowed per subgraph (readability)."
+            },
+            "include_preflight": {
+              "type": "boolean",
+              "description": "Include runtime checks (handlers/tools reachability)"
+            },
+            "strict_tools": {
+              "type": "boolean",
+              "description": "Treat missing tool_specs as errors (otherwise warnings)"
+            },
+            "persist": {
+              "type": "boolean",
+              "description": "Persist warnings/errors to KV (side effects), like start preflight"
             }
           },
           "additionalProperties": false

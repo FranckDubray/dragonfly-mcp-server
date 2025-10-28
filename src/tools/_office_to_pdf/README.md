@@ -1,26 +1,46 @@
+
 # 📄 Office to PDF Converter
 
-Convert Microsoft Office documents (Word, PowerPoint) to PDF using the **native Office suite installed on your laptop**.
+Convert Microsoft Office documents (Word, PowerPoint) to PDF using either:
+- the native Office suite installed on your laptop (via docx2pdf), or
+- a headless CLI engine (LibreOffice) that runs without opening any GUI.
 
 ## 🎯 Supported Formats
 
-| Type | Extensions | App Used |
-|------|-----------|----------|
-| Word | `.docx`, `.doc` | Microsoft Word |
-| PowerPoint | `.pptx`, `.ppt` | Microsoft PowerPoint |
+| Type | Extensions | Engine(s) |
+|------|-----------|-----------|
+| Word | `.docx`, `.doc` | Microsoft Word (docx2pdf) or LibreOffice (headless) |
+| PowerPoint | `.pptx`, `.ppt` | Microsoft PowerPoint (docx2pdf) or LibreOffice (headless) |
 
 ## ⚙️ How it works
 
-Uses **docx2pdf** library which launches the native Office application in the background:
-- **macOS**: Uses AppleScript to control Word/PowerPoint
-- **Windows**: Uses COM automation to control Word/PowerPoint
+Default engine is `docx2pdf`, which launches the native Office application in the background:
+- macOS: AppleScript to control Word/PowerPoint
+- Windows: COM automation to control Word/PowerPoint
 
-**Requires Microsoft Office installed on your laptop.**
+Headless/CLI mode uses `LibreOffice` (no window opens):
+- Cross-platform, requires `soffice`/`libreoffice` available on PATH
+- Use the environment variable `OFFICE_TO_PDF_ENGINE=libreoffice` to force headless mode
 
 ## 📦 Installation
 
+Minimal:
 ```bash
 pip install docx2pdf
+```
+
+Headless (no GUI windows):
+- macOS: `brew install --cask libreoffice`
+- Debian/Ubuntu: `sudo apt-get update && sudo apt-get install -y libreoffice`
+- Windows: Install LibreOffice and ensure `soffice` is on PATH
+
+Then set:
+```bash
+# macOS/Linux
+export OFFICE_TO_PDF_ENGINE=libreoffice
+
+# Windows (PowerShell)
+$env:OFFICE_TO_PDF_ENGINE = "libreoffice"
 ```
 
 ## 📋 Operations
@@ -39,12 +59,7 @@ pip install docx2pdf
 }
 ```
 
-**Parameters:**
-- `input_path` (required): Path to Office file (must be under `docs/office/`)
-- `output_path` (optional): Path to output PDF (auto-generated if not provided)
-- `overwrite` (optional): Overwrite existing file (default: false)
-
-**Response:**
+Response:
 ```json
 {
   "success": true,
@@ -53,9 +68,15 @@ pip install docx2pdf
   "output_size_bytes": 524288,
   "output_size_kb": 512.0,
   "output_size_mb": 0.5,
+  "duration_ms": 4235,
+  "engine": "docx2pdf",
   "message": "Conversion successful"
 }
 ```
+
+Notes:
+- If `overwrite` is false and the file exists, a suffix `_1`, `_2`, etc. is added automatically.
+- To run without opening Office GUIs, install LibreOffice and set `OFFICE_TO_PDF_ENGINE=libreoffice`.
 
 ---
 
@@ -71,7 +92,7 @@ pip install docx2pdf
 }
 ```
 
-**Response:**
+Response (enriched):
 ```json
 {
   "success": true,
@@ -82,9 +103,28 @@ pip install docx2pdf
   "extension": ".pptx",
   "file_type": "PowerPoint presentation",
   "app_type": "Microsoft PowerPoint",
-  "exists": true
+  "exists": true,
+  "page_count": 12,
+  "large_images_over_100px": 4,
+  "metadata": {
+    "title": "Q1 Update",
+    "creator": "Alice",
+    "company": "Acme Inc.",
+    "slides": 12,
+    "last_modified_by": "Bob",
+    "modified_utc": "2025-10-27T16:45:23Z"
+  }
 }
 ```
+
+How page_count is computed:
+- PPTX: number of slides from the OOXML package (no conversion required).
+- DOCX: prefers Pages from docProps/app.xml; if missing, tries a temporary PDF conversion and counts pages.
+- DOC/PPT (legacy): tries OLE properties (if `olefile` installed); else best-effort via temporary PDF conversion.
+
+Image counting (large_images_over_100px):
+- DOCX/PPTX: counts embedded images in `word/media/` or `ppt/media/` with width and height >= 100 px (supports PNG/JPEG/GIF).
+- DOC/PPT: not supported (returns null).
 
 ---
 
@@ -94,8 +134,7 @@ pip install docx2pdf
 docs/
 ├── office/          # Input files (Word, PowerPoint)
 │   ├── report.docx
-│   ├── budget.xlsx  # ⚠️ Not supported (use Excel separately)
-│   └── slides.pptx
+│   ├── slides.pptx
 └── pdfs/            # Output PDFs
     ├── report.pdf
     └── slides.pdf
@@ -103,7 +142,7 @@ docs/
 
 ## 🚀 Examples
 
-### Convert Word document
+Convert Word document (default engine):
 ```bash
 curl -X POST http://127.0.0.1:8000/execute \
   -H 'Content-Type: application/json' \
@@ -116,8 +155,9 @@ curl -X POST http://127.0.0.1:8000/execute \
   }'
 ```
 
-### Convert PowerPoint presentation
+Headless conversion (no GUI windows):
 ```bash
+export OFFICE_TO_PDF_ENGINE=libreoffice
 curl -X POST http://127.0.0.1:8000/execute \
   -H 'Content-Type: application/json' \
   -d '{
@@ -130,7 +170,7 @@ curl -X POST http://127.0.0.1:8000/execute \
   }'
 ```
 
-### Get file info
+Get file info:
 ```bash
 curl -X POST http://127.0.0.1:8000/execute \
   -H 'Content-Type: application/json' \
@@ -143,56 +183,25 @@ curl -X POST http://127.0.0.1:8000/execute \
   }'
 ```
 
-## 🔧 Troubleshooting
+## 🧰 Troubleshooting
 
-### Error: "docx2pdf library not installed"
-```bash
-pip install docx2pdf
-```
+- "docx2pdf library not installed": `pip install docx2pdf`
+- "PDF file was not created":
+  - Ensure Microsoft Office is installed (for docx2pdf) or install LibreOffice (headless)
+  - Close Word/PowerPoint if already running; try again
+  - Check the input file isn't corrupted
+- "LibreOffice conversion failed": ensure `soffice`/`libreoffice` is on PATH
+- "Permission error": verify write permissions to `docs/pdfs/`
 
-### Error: "PDF file was not created"
-- ✅ Check if Microsoft Office (Word/PowerPoint) is installed
-- ✅ Try opening the file manually in Word/PowerPoint first
-- ✅ Close Word/PowerPoint if already running
-- ✅ Check file isn't corrupted
+## 🔐 Security
 
-### Error: "Office application error"
-- ⚠️ Close all Office applications and retry
-- ⚠️ Check Office isn't running in protected mode
-- ⚠️ Verify Office license is active
-
-### Error: "Permission error"
-- Check file isn't read-only
-- Verify you have write permissions to `docs/pdfs/`
-
-## ⚡ Performance
-
-| Document Size | Conversion Time |
-|---------------|-----------------|
-| Small (< 1MB) | 2-5 seconds |
-| Medium (1-5MB) | 5-15 seconds |
-| Large (> 5MB) | 15-30 seconds |
-
-*Conversion time depends on document complexity and Office performance*
-
-## 🔒 Security
-
-- **Chroot**: Input files must be under `docs/office/`
-- **Output chroot**: PDFs saved under `docs/pdfs/`
-- **No network access**: Conversion is 100% local
-- **Native Office**: Uses your Office installation (trusted app)
+- Input chroot: files must be under `docs/office/`
+- Output chroot: PDFs saved under `docs/pdfs/`
+- No network access: conversion is 100% local
 
 ## ⚠️ Limitations
 
-- ❌ **Excel not supported** (`.xlsx`, `.xls`) - need separate implementation
-- ❌ **Requires Office installed** - won't work without Word/PowerPoint
-- ⚠️ **Synchronous** - blocks during conversion (can take 5-30s)
-- ⚠️ **One file at a time** - no batch processing yet
+- Excel (`.xlsx`, `.xls`) not supported (separate implementation needed)
+- docx2pdf requires Office installed (macOS/Windows)
+- Conversion time depends on document complexity
 
-## 🎯 Future Enhancements
-
-- [ ] Batch conversion (multiple files at once)
-- [ ] Excel support (`.xlsx` → PDF)
-- [ ] Progress feedback (for large files)
-- [ ] LibreOffice fallback (for Linux/systems without Office)
-- [ ] Async conversion (non-blocking)

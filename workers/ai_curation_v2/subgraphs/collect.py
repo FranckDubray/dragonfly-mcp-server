@@ -1,5 +1,4 @@
 
-
 from py_orch import SubGraph, step, cond, Next, Exit
 
 SUBGRAPH = SubGraph(
@@ -107,15 +106,19 @@ def STEP_FILTER_ARXIV(worker, cycle, env):
     fres = cycle.setdefault("fresh", {})
     fres["arxiv"] = out.get("items") or []
     fres.setdefault("metrics", {})["arxiv_kept"] = len(fres["arxiv"])
-    # Aller directement au traitement Sonar (ne pas filtrer Sonar par date ici: Sonar applique déjà la contrainte)
-    return Next("STEP_PASS_SONAR_TRUSTED")
+    # Filtrer Sonar après normalisation pour garantir la fenêtre temporelle
+    return Next("STEP_FILTER_SONAR")
 
 @step
-def STEP_PASS_SONAR_TRUSTED(worker, cycle, env):
-    # Conserve tous les items Sonar (on fait confiance au cutoff du prompt)
-    out = env.transform("set_value", value=cycle.get("sources", {}).get("sonar", []))
+def STEP_FILTER_SONAR(worker, cycle, env):
+    dates = cycle.get("dates", {})
+    out = env.transform(
+        "array_ops", op="filter",
+        items=cycle.get("sources", {}).get("sonar", []),
+        predicate={"kind":"date_gte", "path":"published_at", "cutoff":str(dates.get("from") or "")}
+    )
     fres = cycle.setdefault("fresh", {})
-    fres["sonar"] = out.get("result") or []
+    fres["sonar"] = out.get("items") or []
     fres.setdefault("metrics", {})["sonar_kept"] = len(fres["sonar"])
     return Next("STEP_TAKE_ARXIV")
 

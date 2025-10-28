@@ -1,3 +1,4 @@
+
 from typing import Dict, Any
 import uuid
 from pathlib import Path
@@ -5,8 +6,7 @@ from .validators import validate_params
 from .api_common import PROJECT_ROOT
 from .db import init_db, get_state_kv, set_state_kv, get_phase, set_phase, heartbeat
 from .api_spawn import spawn_runner, db_path_for_worker  # use py runner spawn
-from src.tools._orchestrator.process_loader_core import ProcessLoadError  # reuse error type for symmetry
-from src.tools._orchestrator.utils.time import utcnow_str
+from .utils.time import utcnow_str
 
 
 def _relpath_from_root(abs_path: str) -> str:
@@ -37,7 +37,9 @@ def start(params: dict) -> Dict[str, Any]:
         'debug.watches', 'debug.watches_values', 'debug.response_id', 'debug.req_id', 'debug.executing_node',
         'debug.previous_node',
         # new: also purge traces from a prior run
-        'debug.step_trace', 'debug.trace'
+        'debug.step_trace', 'debug.trace',
+        # also purge preflight artifacts from previous runs to avoid stale noise
+        'py.graph_warnings', 'py.graph_errors'
     ]:
         try:
             set_state_kv(db_path, worker_name, key, '')

@@ -1,18 +1,33 @@
+
 """Input validation for office_to_pdf operations."""
 
-import os
 from pathlib import Path
 from typing import Dict, Any
 
+from .utils import get_project_root
 
-def get_project_root() -> Path:
-    """Get project root directory."""
-    cur = Path(__file__).resolve()
-    while cur != cur.parent:
-        if (cur / 'pyproject.toml').exists() or (cur / '.git').exists():
-            return cur
-        cur = cur.parent
-    return Path.cwd()
+
+def _is_within(base: Path, target: Path) -> bool:
+    """Return True if target is within base (no path traversal)."""
+    try:
+        target.relative_to(base)
+        return True
+    except ValueError:
+        return False
+
+
+_ALLOWED_ENGINES = {"auto", "docx2pdf", "libreoffice"}
+
+
+def _normalize_engine(value: Any) -> str:
+    if value is None or (isinstance(value, str) and value.strip() == ""):
+        return "auto"
+    if not isinstance(value, str):
+        raise ValueError("Parameter 'engine' must be a string: 'auto', 'docx2pdf', or 'libreoffice'")
+    v = value.strip().lower()
+    if v not in _ALLOWED_ENGINES:
+        raise ValueError("Parameter 'engine' must be one of: auto, docx2pdf, libreoffice")
+    return v
 
 
 def validate_convert_params(params: Dict[str, Any]) -> Dict[str, Any]:
@@ -34,17 +49,22 @@ def validate_convert_params(params: Dict[str, Any]) -> Dict[str, Any]:
     
     # Normalize path
     input_path = input_path.replace("\\", "/")
-    
-    # Check chroot (must be under docs/office/)
-    if not input_path.startswith("docs/office/"):
+
+    project_root = get_project_root()
+
+    # Resolve absolute paths and enforce chroot under docs/office/
+    in_chroot = (project_root / "docs/office").resolve()
+    abs_input_path = (project_root / input_path).resolve()
+
+    if not _is_within(in_chroot, abs_input_path):
         raise ValueError(
-            "Parameter 'input_path' must be under 'docs/office/' directory. "
-            f"Example: 'docs/office/report.docx'"
+            "Parameter 'input_path' must be under 'docs/office/' directory (no path traversal). "
+            "Example: 'docs/office/report.docx'"
         )
     
     # Check file extension
     valid_extensions = [".docx", ".doc", ".pptx", ".ppt"]
-    file_ext = Path(input_path).suffix.lower()
+    file_ext = abs_input_path.suffix.lower()
     if file_ext not in valid_extensions:
         raise ValueError(
             f"Unsupported file extension '{file_ext}'. "
@@ -52,8 +72,6 @@ def validate_convert_params(params: Dict[str, Any]) -> Dict[str, Any]:
         )
     
     # Check file exists
-    project_root = get_project_root()
-    abs_input_path = project_root / input_path
     if not abs_input_path.exists():
         raise ValueError(f"Input file not found: {input_path}")
     
@@ -64,31 +82,43 @@ def validate_convert_params(params: Dict[str, Any]) -> Dict[str, Any]:
     output_path = params.get("output_path", "").strip()
     if output_path:
         output_path = output_path.replace("\\", "/")
-        
-        # Check chroot (must be under docs/pdfs/)
-        if not output_path.startswith("docs/pdfs/"):
+        abs_output_path = (project_root / output_path).resolve()
+        out_chroot = (project_root / "docs/pdfs").resolve()
+
+        # Enforce chroot for outputs
+        if not _is_within(out_chroot, abs_output_path):
             raise ValueError(
-                "Parameter 'output_path' must be under 'docs/pdfs/' directory. "
-                f"Example: 'docs/pdfs/report.pdf'"
+                "Parameter 'output_path' must be under 'docs/pdfs/' directory (no path traversal). "
+                "Example: 'docs/pdfs/report.pdf'"
             )
         
         # Check extension is .pdf
-        if not output_path.lower().endswith(".pdf"):
+        if not str(abs_output_path).lower().endswith(".pdf"):
             raise ValueError("Parameter 'output_path' must end with '.pdf'")
+
+        # Normalize to relative path from project root
+        output_path = str(abs_output_path.relative_to(project_root))
     else:
         # Auto-generate output path
-        input_name = Path(input_path).stem  # filename without extension
+        input_name = abs_input_path.stem  # filename without extension
         output_path = f"docs/pdfs/{input_name}.pdf"
     
     # Validate overwrite
     overwrite = params.get("overwrite", False)
     if not isinstance(overwrite, bool):
         raise ValueError("Parameter 'overwrite' must be a boolean")
+
+    # Validate engine (optional)
+    engine = _normalize_engine(params.get("engine", "auto"))
     
+    # Normalize input to relative path from project root
+    input_path = str(abs_input_path.relative_to(project_root))
+
     return {
         "input_path": input_path,
         "output_path": output_path,
-        "overwrite": overwrite
+        "overwrite": overwrite,
+        "engine": engine,
     }
 
 
@@ -111,17 +141,22 @@ def validate_get_info_params(params: Dict[str, Any]) -> Dict[str, Any]:
     
     # Normalize path
     input_path = input_path.replace("\\", "/")
-    
-    # Check chroot (must be under docs/office/)
-    if not input_path.startswith("docs/office/"):
+
+    project_root = get_project_root()
+
+    # Resolve absolute paths and enforce chroot under docs/office/
+    in_chroot = (project_root / "docs/office").resolve()
+    abs_input_path = (project_root / input_path).resolve()
+
+    if not _is_within(in_chroot, abs_input_path):
         raise ValueError(
-            "Parameter 'input_path' must be under 'docs/office/' directory. "
-            f"Example: 'docs/office/report.docx'"
+            "Parameter 'input_path' must be under 'docs/office/' directory (no path traversal). "
+            "Example: 'docs/office/report.docx'"
         )
     
     # Check file extension
     valid_extensions = [".docx", ".doc", ".pptx", ".ppt"]
-    file_ext = Path(input_path).suffix.lower()
+    file_ext = abs_input_path.suffix.lower()
     if file_ext not in valid_extensions:
         raise ValueError(
             f"Unsupported file extension '{file_ext}'. "
@@ -129,8 +164,6 @@ def validate_get_info_params(params: Dict[str, Any]) -> Dict[str, Any]:
         )
     
     # Check file exists
-    project_root = get_project_root()
-    abs_input_path = project_root / input_path
     if not abs_input_path.exists():
         raise ValueError(f"Input file not found: {input_path}")
     
@@ -138,5 +171,6 @@ def validate_get_info_params(params: Dict[str, Any]) -> Dict[str, Any]:
         raise ValueError(f"Input path is not a file: {input_path}")
     
     return {
-        "input_path": input_path
+        "input_path": str(abs_input_path.relative_to(project_root))
     }
+

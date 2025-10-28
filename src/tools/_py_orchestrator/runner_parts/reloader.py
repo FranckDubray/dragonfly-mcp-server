@@ -1,9 +1,10 @@
+
 from typing import Dict, Any, Tuple
 from pathlib import Path
 from ..hash_utils import compute_dir_uid
 from ..controller import validate_and_extract_graph
 from ..db import set_state_kv, set_phase
-from src.tools._orchestrator.logging.crash_logger import log_crash
+from ..logging.crash_logger import log_crash
 from .loader import load_module
 from .preflight import set_graph_metadata
 
