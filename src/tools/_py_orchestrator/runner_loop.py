@@ -20,6 +20,45 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 from typing import Dict, Any
 import time
 import json as _json
@@ -215,6 +254,13 @@ def run_loop(db_path: str, worker: str):
         maybe_pause_on_breakpoint(db_path, worker, current_sub, current_step, cycle_id)
 
         full_node = f"{current_sub}::{current_step}"
+        # NEW: record previous_node -> executing transition, even when debug is off
+        try:
+            prev_exec = get_state_kv(db_path, worker, 'debug.executing_node') or ''
+            if prev_exec:
+                set_state_kv(db_path, worker, 'debug.previous_node', prev_exec)
+        except Exception:
+            pass
         set_state_kv(db_path, worker, 'debug.executing_node', full_node)
         res, err = execute_step(
             db_path=db_path,
@@ -227,6 +273,11 @@ def run_loop(db_path: str, worker: str):
             cycle_id=cycle_id,
             env=env,
         )
+        # Mark the just-finished node as previous_node for status/inspect consumers
+        try:
+            set_state_kv(db_path, worker, 'debug.previous_node', full_node)
+        except Exception:
+            pass
         set_state_kv(db_path, worker, 'debug.executing_node', '')
         if err:
             heartbeat(db_path, worker)
@@ -269,3 +320,4 @@ def run_loop(db_path: str, worker: str):
 
     set_phase(db_path, worker, 'canceled')
     heartbeat(db_path, worker)
+

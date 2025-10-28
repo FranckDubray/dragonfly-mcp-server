@@ -44,8 +44,14 @@ def check_handlers_exist(graph: Dict[str, Any]) -> Tuple[List[str], List[str]]:
     reg = get_registry()
     tfs, tls = _collect_calls(graph)
 
+    # Known built-in transform that is registered later with a cancel-aware instance
+    BUILTIN_LATE = {'sleep'}
+
     missing_tfs: List[str] = []
     for k in sorted(tfs):
+        if k in BUILTIN_LATE:
+            # Defer to runtime; do not block preflight on sleep
+            continue
         if not reg.has(k):
             missing_tfs.append(k)
 
@@ -144,7 +150,7 @@ def check_unreachable(graph: Dict[str, Any]) -> Tuple[Dict[str, List[str]], List
 def run_all_checks(graph: Dict[str, Any], *, strict_tools: bool = False) -> Tuple[List[str], List[str]]:
     """Run all controller-level checks. Return (errors, warnings).
     Errors are blockers; warnings are informational.
-    - Missing transforms -> error
+    - Missing transforms -> error (except known built-ins like 'sleep')
     - Unknown tools (no spec) -> warning (unless strict_tools)
     - Unreachable nodes -> error
     - Unreachable subgraphs -> error

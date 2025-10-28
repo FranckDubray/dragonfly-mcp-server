@@ -1,4 +1,59 @@
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import json
 from pathlib import Path
 from typing import Any, Dict
@@ -114,11 +169,13 @@ def build_status(params: dict) -> dict:
     except Exception:
         pass
 
-    # Debug block
+    # Debug block — never empty: include nodes from KV
     dbg_enabled = (read_kv(db_path, worker_name, 'debug.enabled') == 'true')
     dbg_mode = read_kv(db_path, worker_name, 'debug.mode') or ''
     paused_at = read_kv(db_path, worker_name, 'debug.paused_at') or ''
     next_node = read_kv(db_path, worker_name, 'debug.next_node') or ''
+    prev_node = read_kv(db_path, worker_name, 'debug.previous_node') or ''
+    exec_node = read_kv(db_path, worker_name, 'debug.executing_node') or ''
     cycle_id = read_kv(db_path, worker_name, 'debug.cycle_id') or ''
     paused_effective = bool(paused_at) or bool(next_node)
     if dbg_enabled and paused_effective:
@@ -128,8 +185,8 @@ def build_status(params: dict) -> dict:
         'mode': dbg_mode,
         'paused': paused_effective,
         'paused_at': paused_at or next_node or '',
-        'current_node': '',
-        'previous_node': '',
+        'current_node': exec_node or (paused_at or next_node or ''),
+        'previous_node': prev_node,
         'next_node': next_node,
         'cycle_id': cycle_id,
         'breakpoints_count': 0,
@@ -143,7 +200,7 @@ def build_status(params: dict) -> dict:
         try:
             m['structure'] = structure_counts(worker_name)
             # step-by-step navigation helpers
-            cur = paused_at or read_kv(db_path, worker_name, 'debug.executing_node') or ''
+            cur = exec_node or paused_at or read_kv(db_path, worker_name, 'debug.executing_node') or ''
             nxt = next_node
             if not cur and nxt:
                 cur = nxt

@@ -1,4 +1,32 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Changelog
+
+## 1.6.7 — 2025-10-28
+
+- Python Orchestrator (debug/status/inspect) — fiabilité et observabilité renforcées, découpage en modules < 7 Ko.
+  - Split du module debug en parties claires: api_debug.py (routeur), api_debug_stream.py (stream pas-à-pas), api_debug_inspect.py (inspect enrichi), api_debug_core.py (ACK robustes), api_debug_helpers.py (timeouts/DB tail/KV helpers).
+  - Status/Inspect « jamais vides »: current_node/previous_node/next_node toujours exposés; fallback KV pour last_call/last_result_preview si aucun recent_steps.
+  - ACK step/continue/run_until plus robuste: prise en compte des steps longs (ex: STEP_SLEEP) et extension auto du timeout minimal (~65s) pour garantir la pause.
+  - Persistance d’IO minimale même hors debug (succès): call + last_result_preview (prévisualisés, sanitizés) injectés dans job_steps.details_json et KV; améliore observe/status/inspect.
+  - Aucun changement de contrat d’API; pas de migration DB; rétro‑compatibilité préservée.
+- Runner: factorisations internes sans changement fonctionnel.
+  - Ajout runner_parts/config_merge.py et run_bootstrap.py (facilite maintenance/testing).
 
 ## 1.6.6 — 2025-10-27
 
