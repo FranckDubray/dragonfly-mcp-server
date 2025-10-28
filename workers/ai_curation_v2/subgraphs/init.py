@@ -1,4 +1,8 @@
 
+
+
+
+
 from py_orch import SubGraph, step, Next, Exit
 
 SUBGRAPH = SubGraph(
@@ -9,56 +13,22 @@ SUBGRAPH = SubGraph(
 
 @step
 def STEP_GET_NOW(worker, cycle, env):
-    # Get current time (let the tool choose defaults)
-    out = env.tool("date", operation="now")
-    # Tolerant extraction: handle nested result objects
-    val = out.get("result")
-    if isinstance(val, dict):
-        val = val.get("result") or val.get("iso") or val.get("datetime")
-    if not isinstance(val, str) or not val:
-        alt = out.get("content") or out.get("datetime") or out.get("iso") or out.get("now")
-        if isinstance(alt, dict):
-            alt = alt.get("result") or alt.get("iso") or alt.get("datetime")
-        if isinstance(alt, str):
-            val = alt
-        elif alt is not None:
-            val = str(alt)
-        else:
-            val = ""
-    if not isinstance(val, str) or not val:
-        raise RuntimeError("INIT.STEP_GET_NOW: date.now returned no result")
-    cycle.setdefault("dates", {})["now"] = val
-    return Next("STEP_TO_STRICT_ISO")
-
-@step
-def STEP_TO_STRICT_ISO(worker, cycle, env):
-    # Format 'now' to strict ISO 'YYYY-MM-DDTHH:%M:%S'
-    now = cycle.get("dates", {}).get("now")
-    if not isinstance(now, str) or not now:
-        raise RuntimeError("INIT.STEP_TO_STRICT_ISO: missing 'now'")
-    out = env.tool("date", operation="format", datetime=now, format="%Y-%m-%dT%H:%M:%S")
-    val = (
-        out.get("result")
-        or out.get("content")
-        or out.get("datetime")
-        or out.get("iso")
-    )
-    if not isinstance(val, str) or not val:
-        raise RuntimeError("INIT.STEP_TO_STRICT_ISO: date.format returned no result")
-    cycle["dates"]["now"] = val
+    # Get current time in strict ISO format (single call)
+    out = env.tool("date", operation="now", format="%Y-%m-%dT%H:%M:%S")
+    val = out.get("result") or out.get("content") or out.get("iso") or out.get("datetime") or out.get("now") or ""
+    cycle.setdefault("dates", {})["now"] = "" + str(val)
     return Next("STEP_COMPUTE_FROM")
 
 @step
 def STEP_COMPUTE_FROM(worker, cycle, env):
-    # Compute FROM = now - 3 days using strict input_format
-    now = cycle.get("dates", {}).get("now")
-    if not isinstance(now, str) or not now:
-        raise RuntimeError("INIT.STEP_COMPUTE_FROM: missing 'now'")
-    out = env.tool("date", operation="add", datetime=now, input_format="%Y-%m-%dT%H:%M:%S", days=-3)
-    val = out.get("result") or out.get("content")
-    if not isinstance(val, str) or not val:
-        raise RuntimeError("INIT.STEP_COMPUTE_FROM: date.add returned no result")
-    cycle["dates"]["from"] = val
+    # Compute FROM = now - window (hours from config, default 72) using strict input_format
+    window_h = int(worker.get("collect_window_hours", 72))
+    # Convert hours to days (floor, at least 1 day), subtract as negative days
+    days = -max(1, int(window_h // 24))
+    now = "" + str((cycle.get("dates") or {}).get("now") or "")
+    out = env.tool("date", operation="add", datetime=now, input_format="%Y-%m-%dT%H:%M:%S", days=days)
+    val = out.get("result") or out.get("content") or out.get("datetime") or out.get("iso") or ""
+    cycle.setdefault("dates", {})["from"] = "" + str(val)
     return Next("STEP_ENSURE_VALIDATION_TABLE")
 
 @step

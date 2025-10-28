@@ -1,21 +1,4 @@
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 from py_orch import Process, SubGraphRef
 
 PROCESS = Process(
@@ -23,10 +6,9 @@ PROCESS = Process(
     entry="INIT",
     parts=[
         SubGraphRef("INIT", module="subgraphs.init", next={"success": "COLLECT"}),
-        # Sur échec de COLLECT, on termine le process (pas de fallback OUTPUT)
-        SubGraphRef("COLLECT", module="subgraphs.collect", next={"success": "SCORE"}),
+        SubGraphRef("COLLECT", module="subgraphs.collect", next={"success": "SCRAPE_PRIMARY_EXTRACT"}),
+        SubGraphRef("SCRAPE_PRIMARY_EXTRACT", module="subgraphs.scrape_primary_extract", next={"success": "SCORE"}),
         SubGraphRef("SCORE", module="subgraphs.score", next={"success": "VALIDATE"}),
-        # ENRICH supprimé: on enchaîne directement vers OUTPUT après VALIDATE
         SubGraphRef("VALIDATE", module="subgraphs.validate", next={"success": "OUTPUT", "retry": "SCORE", "retry_exhausted": "OUTPUT"}),
         SubGraphRef("OUTPUT", module="subgraphs.output"),
     ],

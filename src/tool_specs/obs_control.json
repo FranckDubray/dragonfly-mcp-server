@@ -1,0 +1,145 @@
+{
+  "type": "function",
+  "function": {
+    "name": "obs_control",
+    "displayName": "OBS Control",
+    "category": "media",
+    "description": "Contrôle OBS via une seule fonction multi-actions en appels courts (ou sessions courtes). Pas d’API fichiers: si un média local est requis, fournir un chemin sous ./docs (./docs/images, ./docs/video). Auth OBS facultative en local.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "Nom de l’action à exécuter.",
+          "enum": [
+            "session_open",
+            "session_close",
+            "batch_execute",
+            "raw_request",
+            "get_version",
+
+            "status_snapshot",
+
+            "scenes_list",
+            "scenes_set_current",
+            "scenes_set_preview",
+            "scenes_transition_to_program",
+            "scenes_create",
+            "scenes_delete",
+            "scenes_rename",
+            "scenes_set_default_transition",
+            "scene_transition_override_get",
+            "scene_transition_override_set",
+
+            "scene_items_list",
+            "scene_items_set_enabled",
+            "scene_items_set_transform",
+            "scene_items_set_order",
+            "scene_items_add",
+            "scene_items_remove",
+            "scene_item_set_locked",
+
+            "inputs_list",
+            "inputs_kind_list",
+            "inputs_create",
+            "inputs_remove",
+            "inputs_rename",
+            "inputs_get_settings",
+            "inputs_set_settings",
+            "inputs_set_mute",
+            "inputs_set_volume",
+            "inputs_set_monitor_type",
+            "inputs_press_button",
+
+            "media_status",
+            "media_action",
+            "media_seek",
+
+            "audio_balance_set",
+            "audio_sync_offset_set",
+
+            "filters_list",
+            "filters_add",
+            "filters_remove",
+            "filters_rename",
+            "filters_set_enabled",
+            "filters_set_settings",
+
+            "transitions_get_list",
+            "transitions_get_current",
+            "transitions_get_duration",
+            "transitions_set_duration",
+            "transitions_set_current",
+
+            "outputs_stream_start",
+            "outputs_stream_stop",
+            "outputs_stream_status",
+
+            "outputs_record_start",
+            "outputs_record_stop",
+            "outputs_record_pause",
+            "outputs_record_resume",
+            "outputs_record_status",
+
+            "outputs_replay_start",
+            "outputs_replay_stop",
+            "outputs_replay_save",
+            "outputs_replay_status",
+
+            "outputs_virtualcam_start",
+            "outputs_virtualcam_stop",
+            "outputs_virtualcam_status",
+
+            "stream_service_get",
+            "stream_service_set",
+
+            "studio_set_enabled",
+
+            "profiles_list",
+            "profiles_set_current",
+
+            "scene_collections_list",
+            "scene_collections_set_current",
+
+            "hotkeys_list",
+            "hotkeys_trigger_by_name",
+            "hotkeys_trigger_by_keys",
+
+            "screenshot_take",
+
+            "sequence_schedule",
+            "sequence_cancel",
+            "sequence_status"
+          ]
+        },
+        "args": {
+          "type": "object",
+          "description": "Paramètres spécifiques à l’action choisie. Pour les actions de type liste, utiliser args.limit (défaut 50, max 500). Les chemins de fichiers doivent être sous ./docs.",
+          "additionalProperties": true
+        },
+        "session_id": {
+          "type": "string",
+          "description": "Optionnel. Exécuter dans une session courte existante (TTL ≤ 60 s)."
+        },
+        "wait": {
+          "type": "boolean",
+          "description": "Attendre l’état final lorsque pertinent (transition, stream, lecture média…).",
+          "default": true
+        },
+        "timeout_sec": {
+          "type": "integer",
+          "description": "Délai max pour l’action (prioritaire sur le délai de session).",
+          "minimum": 1,
+          "maximum": 60
+        },
+        "dry_run": {
+          "type": "boolean",
+          "description": "Simulation: valider et décrire ce qui serait fait, sans exécuter.",
+          "default": false
+        }
+      },
+      "required": ["action"],
+      "additionalProperties": false
+    }
+  }
+}

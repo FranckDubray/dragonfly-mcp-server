@@ -1,10 +1,11 @@
+
 {
   "type": "function",
   "function": {
     "name": "office_to_pdf",
     "displayName": "Office to PDF Converter",
     "category": "documents",
-    "description": "Convert Microsoft Office documents (Word, PowerPoint) to PDF using the Office suite installed on the laptop. Supports .docx, .doc, .pptx, .ppt. Uses docx2pdf library which leverages native Office apps (Word/PowerPoint via AppleScript on macOS or COM on Windows). Input from docs/office/, output to docs/pdfs/.",
+    "description": "Convert Microsoft Office documents (Word, PowerPoint) to PDF using either the Office suite installed on the laptop (via docx2pdf) or a headless LibreOffice CLI (no GUI). Supports .docx, .doc, .pptx, .ppt. When Microsoft Office/docx2pdf is unavailable or unsuitable (e.g., PPT on Linux), the tool attempts a headless fallback with LibreOffice if installed. You can force headless mode by setting the environment variable OFFICE_TO_PDF_ENGINE=libreoffice or by passing the 'engine' parameter. Clear errors are returned when neither engine is available. Input must be under docs/office/, output is written to docs/pdfs/.",
     "parameters": {
       "type": "object",
       "properties": {
@@ -24,6 +25,11 @@
         "overwrite": {
           "type": "boolean",
           "description": "Whether to overwrite existing PDF file (default: false). If false and file exists, adds suffix '_1', '_2', etc."
+        },
+        "engine": {
+          "type": "string",
+          "enum": ["auto", "docx2pdf", "libreoffice"],
+          "description": "Engine selection for conversion (convert op only). 'auto' (default) tries docx2pdf first then falls back to LibreOffice; 'docx2pdf' forces Microsoft Office/docx2pdf; 'libreoffice' forces headless CLI (no GUI)."
         }
       },
       "required": ["operation", "input_path"],

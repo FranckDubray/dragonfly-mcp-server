@@ -9,7 +9,7 @@ cd "${SCRIPT_DIR}/.."
 if [[ -n "${VIRTUAL_ENV:-}" ]]; then
   PYBIN="$(command -v python)"
 else
-  echo "[dev.sh] ⚠️ Avertissement: aucun venv activé (VIRTUAL_ENV vide)." >&2
+  echo "[dev.sh] ⚠️ Avertissement: aucun venv activé (VIRTUAL_ENV vide). Installation des dépendances sur l'interpréteur courant." >&2
   PYBIN="python"
 fi
 
@@ -17,6 +17,13 @@ fi
 PYVER="$("$PYBIN" --version 2>&1)"
 echo "[dev.sh] 🔧 Python: ${PYVER}"
 
+# Ensure deps from pyproject are installed (simple, idempotent)
+echo "[dev.sh] 📦 Installation des dépendances (pyproject)"
+"$PYBIN" -m pip install -U pip setuptools wheel >/dev/null 2>&1 || true
+# Mode editable si dispo (dev), sinon installation classique
+"$PYBIN" -m pip install -e . || "$PYBIN" -m pip install .
+
+# Playwright browsers (scopés dans ./playwright/browsers)
 echo "[dev.sh] 📦 Installation navigateurs Playwright (scopés dans ./playwright/browsers)"
 PLAYWRIGHT_BROWSERS_PATH="playwright/browsers" "$PYBIN" -m playwright install chromium || true
 

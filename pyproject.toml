@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dragonfly-mcp-server"
-version = "1.55.5"
+version = "1.55.6"
 description = "Dragonfly MCP server tools (orchestrator, handlers, utilities)"
 readme = "README.md"
 authors = [{ name = "orchestrator-team" }]
@@ -37,7 +37,8 @@ dependencies = [
   "websocket-client",
   "fastapi",
   "uvicorn",
-  "skyfield"
+  "skyfield",
+  "simpleobsws>=1.3.0,<2.0.0"
 ]
 
 [project.optional-dependencies]

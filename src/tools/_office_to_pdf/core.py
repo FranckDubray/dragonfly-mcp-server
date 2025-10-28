@@ -1,9 +1,11 @@
+
 """
 Core logic for office_to_pdf operations.
 """
 from typing import Dict, Any
 from .validators import validate_convert_params, validate_get_info_params
 from .utils import get_unique_output_path, get_file_info
+from .analyzers import analyze_office_file
 
 
 def handle_convert(**params) -> Dict[str, Any]:
@@ -14,6 +16,7 @@ def handle_convert(**params) -> Dict[str, Any]:
             - input_path (str): Path to input Office file (required)
             - output_path (str): Path to output PDF file (optional)
             - overwrite (bool): Overwrite existing file (default: False)
+            - engine (str): 'auto' | 'docx2pdf' | 'libreoffice' (optional)
     
     Returns:
         Conversion results
@@ -31,13 +34,25 @@ def handle_convert(**params) -> Dict[str, Any]:
             validated["overwrite"]
         )
         
-        # Convert using native Office apps
-        result = convert_to_pdf(validated["input_path"], output_path)
+        # Convert using native Office apps or headless fallback, depending on engine
+        result = convert_to_pdf(
+            validated["input_path"],
+            output_path,
+            engine=validated.get("engine", "auto"),
+        )
         
-        return result
+        # Harmonize response shape with README
+        return {
+            "success": True,
+            **result,
+            "message": result.get("message", "Conversion successful"),
+        }
         
     except ValueError as e:
         return {"error": f"Validation error: {str(e)}"}
+    except RuntimeError as e:
+        # Propagate clear engine/service errors as-is
+        return {"error": str(e)}
     except Exception as e:
         # Minimal error, no verbose metadata
         return {"error": f"Unexpected error: {str(e)}"}
@@ -59,12 +74,18 @@ def handle_get_info(**params) -> Dict[str, Any]:
         
         # Get file info
         info = get_file_info(validated["input_path"])
+        # Optional richer analysis: pages and large images
+        extra = analyze_office_file(validated["input_path"])
         
         return {
-            **info
+            "success": True,
+            **info,
+            **extra,
         }
         
     except ValueError as e:
         return {"error": f"Validation error: {str(e)}"}
     except Exception as e:
         return {"error": f"Unexpected error: {str(e)}"}
+
+ 

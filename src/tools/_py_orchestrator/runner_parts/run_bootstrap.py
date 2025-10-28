@@ -3,9 +3,8 @@ from __future__ import annotations
 from typing import Any
 from pathlib import Path
 from .loader import load_module
-from .config_merge import merge_worker_config
 from ..db import set_state_kv, set_phase
-from src.tools._orchestrator.logging.crash_logger import log_crash
+from ..logging.crash_logger import log_crash
 
 
 def bootstrap_process(root: Path, db_path: str, worker: str) -> tuple[Any, dict, dict]:
@@ -23,12 +22,5 @@ def bootstrap_process(root: Path, db_path: str, worker: str) -> tuple[Any, dict,
             pass
         raise
     process = proc_mod.PROCESS
-
-    # Directory-based config merge
-    merge_worker_config(root, process, db_path, worker)
-    try:
-        set_state_kv(db_path, worker, 'py.process_metadata', __import__('json').dumps(process.metadata or {}))
-    except Exception:
-        pass
 
     return process

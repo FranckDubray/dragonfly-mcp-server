@@ -1,5 +1,4 @@
 
-
 from py_orch import SubGraph, step, Next, Exit
 
 SUBGRAPH = SubGraph(
@@ -10,14 +9,13 @@ SUBGRAPH = SubGraph(
 
 @step
 def STEP_BUNDLE_SOURCES(worker, cycle, env):
-    # Build a complete bundle without pre-caps or pre-dedup; GPT-5 will deduplicate & rank
     fres = cycle.get("fresh", {})
-    # IMPORTANT: ensure Sonar and arXiv are first so they are never dropped by any downstream size limits
     bundle = {
-        "sonar": fres.get("sonar", []),
-        "arxiv": fres.get("arxiv", []),
-        "news":  fres.get("news", []),
-        "reddit":fres.get("reddit", []),
+        "primary": fres.get("primary_extracted", []),
+        "sonar":   fres.get("sonar", []),
+        "arxiv":   fres.get("arxiv", []),
+        "news":    fres.get("news", []),
+        "reddit":  fres.get("reddit", []),
     }
     out = env.transform("set_value", value=bundle)
     cycle.setdefault("scoring", {})["bundle"] = out.get("result") or bundle
@@ -43,7 +41,6 @@ def STEP_GPT_SCORE(worker, cycle, env):
     critique = cycle.get("scoring", {}).get("critique") or ""
     prompts = worker.get("prompts", {})
     tpl = str(prompts.get("score_gpt") or "")
-    # Remove naive character-level truncation to avoid cutting arXiv/Sonar blocks or breaking JSON
     msg_text = tpl.format(
         FROM_ISO=str(dates.get("from") or ""),
         NOW_ISO=str(dates.get("now") or ""),
@@ -68,6 +65,20 @@ def STEP_NORMALIZE_SCORE(worker, cycle, env):
     raw = cycle.get("scoring", {}).get("raw")
     out = env.transform("normalize_llm_output", content=raw)
     cycle["scoring"]["top10"] = out.get("parsed") or []
+    return Next("STEP_DEDUP_TOP10_BY_URL")
+
+@step
+def STEP_DEDUP_TOP10_BY_URL(worker, cycle, env):
+    # Déduplication sans boucle: utiliser array_ops unique_by=url (case-insensitive)
+    items = cycle.get("scoring", {}).get("top10", [])
+    out = env.transform(
+        "array_ops", op="unique_by",
+        items=items,
+        key="url",
+        case_insensitive=True,
+        trim=True
+    )
+    cycle["scoring"]["top10"] = out.get("items") or out.get("result") or items
     return Next("STEP_STRINGIFY_TOP10")
 
 @step

@@ -19,53 +19,13 @@
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #! /usr/bin/env python3
 import sys
 from pathlib import Path
 from .db import init_db, get_state_kv, set_state_kv, set_phase
-from src.tools._orchestrator.utils.time import utcnow_str
+from .utils.time import utcnow_str
 from .runner_loop import run_loop
 from .runner_parts.run_audit import persist_run_audit
-from .migrations import ensure_migrations
 
 _db_path = ""
 _worker_name = ""
@@ -77,12 +37,6 @@ def main():
         sys.exit(1)
     _db_path = sys.argv[1]
     init_db(_db_path)
-
-    # Run idempotent migrations (safe)
-    try:
-        ensure_migrations(_db_path)
-    except Exception:
-        pass
 
     # Resolve worker name: prefer __global__, but sanity-check the filesystem; fallback to DB filename
     try:

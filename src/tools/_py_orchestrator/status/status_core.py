@@ -21,39 +21,6 @@
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 import json
 from pathlib import Path
 from typing import Any, Dict
@@ -126,14 +93,12 @@ def build_status(params: dict) -> dict:
     if run_id:
         result['run_id'] = run_id
 
-    # Py-specific block (metadata + last_error, last_call/preview, crash)
+    # Py-specific block (lightweight): DO NOT include config/metadata nor graph here
     try:
-        meta_raw = read_kv(db_path, worker_name, 'py.process_metadata')
-        metadata = json.loads(meta_raw) if meta_raw else {}
         last_summary = read_kv(db_path, worker_name, 'py.last_summary')
         last_error = read_kv(db_path, worker_name, 'last_error')
         phase_trace = read_kv(db_path, worker_name, 'debug.phase_trace')
-        py_block = {"metadata": metadata}
+        py_block: Dict[str, Any] = {}
         if last_summary:
             py_block["summary"] = last_summary
         if last_error:
@@ -161,11 +126,12 @@ def build_status(params: dict) -> dict:
                 py_block['last_result_preview'] = kv_res
         except Exception:
             pass
-        # Crash packet
+        # Crash packet (keep for diagnostics)
         cp = crash_packet(db_path, worker_name)
         if cp:
             py_block['crash_packet'] = cp
-        result['py'] = py_block
+        if py_block:
+            result['py'] = py_block
     except Exception:
         pass
 
