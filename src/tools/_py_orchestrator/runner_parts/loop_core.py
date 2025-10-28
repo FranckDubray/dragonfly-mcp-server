@@ -13,6 +13,36 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 from typing import Dict, Any, Tuple
 import sys
 import json as _json
@@ -214,12 +244,18 @@ def execute_step(
     except Exception:
         pass
 
-    # Always accumulate usage best-effort (even when debug disabled), without double-counting
+    # Always persist minimal IO even when debug is off (best-effort)
     try:
         if not acc_done:
             call2 = env.last_call() if hasattr(env, 'last_call') else {}
             last_res2 = env.last_result() if hasattr(env, 'last_result') else {}
-            _accumulate_llm_usage(db_path, worker, last_res2, call2)
+            set_state_kv(db_path, worker, 'py.last_call', _safe_preview(call2))
+            set_state_kv(db_path, worker, 'py.last_result_preview', _safe_preview(last_res2))
+            if isinstance(details_success, dict):
+                if 'call' not in details_success:
+                    details_success['call'] = call2
+                if 'last_result_preview' not in details_success:
+                    details_success['last_result_preview'] = _safe_preview(last_res2)
     except Exception:
         pass
 
@@ -232,16 +268,3 @@ def execute_step(
 
     set_state_kv(db_path, worker, 'debug.phase_trace', f"end:{full_node}")
     return res, ""
-
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 

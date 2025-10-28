@@ -12,13 +12,13 @@ from .db import get_state_kv
 def _long_timeout_or_default(val):
     try:
         if val is None:
-            return None
+            return 30.0  # défaut non infini pour single-shot
         v = float(val)
         if v <= 0:
-            return None
+            return 30.0
         return min(v, 86400.0)
     except Exception:
-        return None
+        return 30.0
 
 
 def _db_max_rowid(dbp: str, wn: str, run_id: str) -> int:
@@ -80,11 +80,22 @@ def observe_tool(params: dict) -> dict:
     db_path = db_path_for_worker(wn)
     obs_req = (params or {}).get('observe') or {}
 
+    # Nouveaux paramètres optionnels
+    window_size = int(obs_req.get('window_size') or 10)
+    try:
+        window_size = max(1, min(500, window_size))
+    except Exception:
+        window_size = 10
+    tick = float(obs_req.get('tick_sec') or 0.2)
+    try:
+        tick = max(0.1, min(2.0, tick))
+    except Exception:
+        tick = 0.2
+
     timeout_sec = _long_timeout_or_default(obs_req.get('timeout_sec'))
     deadline = (time.time() + timeout_sec) if (timeout_sec is not None) else None
 
     events: List[Dict[str, Any]] = []
-    tick = 0.2
     max_events = int(obs_req.get('max_events') or 0)  # 0 = unlimited
 
     run_id = get_state_kv(db_path, wn, 'run_id') or ''
@@ -92,17 +103,18 @@ def observe_tool(params: dict) -> dict:
     # Track recent updates: rowid -> signature(status, finished_at, duration_ms, details_json_hash)
     seen_sig = {}
 
+    # Backoff adaptatif léger (si aucune activité)
+    idle_loops = 0
+
     while True:
         if deadline is not None and time.time() > deadline:
             return {"accepted": True, "status": "timeout", "events": events, "count": len(events)}
 
         phase = get_state_kv(db_path, wn, 'phase') or ''
         if phase in {'completed', 'failed', 'canceled'}:
-            # Emit a terminal snapshot chunk (without forcing any debug state)
             call = ''
             lrp = ''
             try:
-                # Optional: recent last call/preview from KV (best-effort)
                 call = get_state_kv(db_path, wn, 'py.last_call') or ''
                 lrp = get_state_kv(db_path, wn, 'py.last_result_preview') or ''
             except Exception:
@@ -123,6 +135,7 @@ def observe_tool(params: dict) -> dict:
         # New inserts since last_rowid
         rows = _db_rows_since(db_path, wn, run_id, last_rowid)
         if rows:
+            idle_loops = 0
             for rid, cycle_id, node, status, dur, dj, fin in rows:
                 call = {}
                 lrp = ''
@@ -153,10 +166,13 @@ def observe_tool(params: dict) -> dict:
                 if max_events and len(events) >= max_events:
                     return {"accepted": True, "status": "ok", "events": events, "count": len(events), "truncated": True}
         else:
-            time.sleep(tick)
+            idle_loops += 1
+            # Backoff léger après 5 tours inactifs
+            sleep_for = tick if idle_loops < 5 else min(1.0, tick * 2)
+            time.sleep(sleep_for)
 
         # Updates in recent window
-        recent = _db_recent_window(db_path, wn, run_id, window=10)
+        recent = _db_recent_window(db_path, wn, run_id, window=window_size)
         for rid, cycle_id, node, status, dur, dj, fin in reversed(recent):
             rid_i = int(rid)
             cur_sig = (str(status or ''), str(fin or ''), int(dur or 0), (dj[:120] if isinstance(dj, str) else str(dj)[:120]))
