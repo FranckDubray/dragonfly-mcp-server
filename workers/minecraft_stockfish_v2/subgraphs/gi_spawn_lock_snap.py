@@ -1,19 +1,4 @@
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 from py_orch import SubGraph, step, Next, Exit
 
 SUBGRAPH = SubGraph(
@@ -36,12 +21,21 @@ def STEP_FILTER_W_BACK(worker, cycle, env):
 @step
 def STEP_TPL_W_BACK(worker, cycle, env):
     items = cycle.get("spawn", {}).get("w_back_items", [])
+    wmap = (worker.get("pieces", {}) or {}).get("white_back", {}) or {}
+    enriched = []
+    for it in items:
+        sq = it.get("square")
+        disp = wmap.get(sq, sq)
+        e = dict(it)
+        e["display"] = disp
+        enriched.append(e)
     tpl = (
         'execute positioned {{center.x}} {{center.y}} {{center.z}} run '
         'summon minecraft:sheep ~ ~1.2 ~ {NoAI:1b,NoGravity:1b,Invulnerable:1b,PersistenceRequired:1b,Color:0b,'
+        'CustomName:\'"{{display}}"\',CustomNameVisible:1b,Rotation:[0f,0f],'
         'Tags:["chess_piece","w","{{square}}"]}'
     )
-    out = env.transform("template_map", items=items, template=tpl, round_coords=True)
+    out = env.transform("template_map", items=enriched, template=tpl, round_coords=True)
     cycle.setdefault("spawn", {})["w_back_cmds"] = out.get("commands", [])
     return Next("STEP_FILTER_W_PAWNS")
 
@@ -59,12 +53,19 @@ def STEP_FILTER_W_PAWNS(worker, cycle, env):
 @step
 def STEP_TPL_W_PAWNS(worker, cycle, env):
     items = cycle.get("spawn", {}).get("w_pawns_items", [])
+    pname = (worker.get("pieces", {}) or {}).get("white_pawn", "pion")
+    enriched = []
+    for it in items:
+        e = dict(it)
+        e["display"] = pname
+        enriched.append(e)
     tpl = (
         'execute positioned {{center.x}} {{center.y}} {{center.z}} run '
         'summon minecraft:sheep ~ ~1.2 ~ {NoAI:1b,NoGravity:1b,Invulnerable:1b,PersistenceRequired:1b,Color:0b,'
+        'CustomName:\'"{{display}}"\',CustomNameVisible:1b,Rotation:[0f,0f],'
         'Tags:["chess_piece","w","{{square}}"]}'
     )
-    out = env.transform("template_map", items=items, template=tpl, round_coords=True)
+    out = env.transform("template_map", items=enriched, template=tpl, round_coords=True)
     cycle.setdefault("spawn", {})["w_pawns_cmds"] = out.get("commands", [])
     return Next("STEP_FILTER_B_BACK")
 
@@ -82,12 +83,21 @@ def STEP_FILTER_B_BACK(worker, cycle, env):
 @step
 def STEP_TPL_B_BACK(worker, cycle, env):
     items = cycle.get("spawn", {}).get("b_back_items", [])
+    bmap = (worker.get("pieces", {}) or {}).get("black_back", {}) or {}
+    enriched = []
+    for it in items:
+        sq = it.get("square")
+        disp = bmap.get(sq, sq)
+        e = dict(it)
+        e["display"] = disp
+        enriched.append(e)
     tpl = (
         'execute positioned {{center.x}} {{center.y}} {{center.z}} run '
         'summon minecraft:sheep ~ ~1.2 ~ {NoAI:1b,NoGravity:1b,Invulnerable:1b,PersistenceRequired:1b,Color:15b,'
+        'CustomName:\'"{{display}}"\',CustomNameVisible:1b,Rotation:[180f,0f],'
         'Tags:["chess_piece","b","{{square}}"]}'
     )
-    out = env.transform("template_map", items=items, template=tpl, round_coords=True)
+    out = env.transform("template_map", items=enriched, template=tpl, round_coords=True)
     cycle.setdefault("spawn", {})["b_back_cmds"] = out.get("commands", [])
     return Next("STEP_FILTER_B_PAWNS")
 
@@ -105,12 +115,19 @@ def STEP_FILTER_B_PAWNS(worker, cycle, env):
 @step
 def STEP_TPL_B_PAWNS(worker, cycle, env):
     items = cycle.get("spawn", {}).get("b_pawns_items", [])
+    pname = (worker.get("pieces", {}) or {}).get("black_pawn", "pion")
+    enriched = []
+    for it in items:
+        e = dict(it)
+        e["display"] = pname
+        enriched.append(e)
     tpl = (
         'execute positioned {{center.x}} {{center.y}} {{center.z}} run '
         'summon minecraft:sheep ~ ~1.2 ~ {NoAI:1b,NoGravity:1b,Invulnerable:1b,PersistenceRequired:1b,Color:15b,'
+        'CustomName:\'"{{display}}"\',CustomNameVisible:1b,Rotation:[180f,0f],'
         'Tags:["chess_piece","b","{{square}}"]}'
     )
-    out = env.transform("template_map", items=items, template=tpl, round_coords=True)
+    out = env.transform("template_map", items=enriched, template=tpl, round_coords=True)
     cycle.setdefault("spawn", {})["b_pawns_cmds"] = out.get("commands", [])
     return Next("STEP_DO_SPAWN")
 
@@ -166,12 +183,3 @@ def STEP_SNAP_POS(worker, cycle, env):
 def STEP_MSG_SPAWN_DONE(worker, cycle, env):
     env.tool("minecraft_control", operation="execute_command", command="say [INIT] Pieces placed (start position)")
     return Exit("success")
-
- 
- 
- 
- 
- 
- 
- 
- 

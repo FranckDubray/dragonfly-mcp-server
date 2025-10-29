@@ -2,16 +2,40 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 from py_orch import SubGraph, step, cond, Next, Exit
 
 SUBGRAPH = SubGraph(
     name="ENGINE_B_CASTLING_DETECT",
-    entry="COND_KS",
+    entry="ENG_CD_KS_START",
     exits={"success": "DT_EXIT_OK"}
 )
 
 @cond
-def COND_KS(worker, cycle, env):
+def ENG_CD_KS_START(worker, cycle, env):
     best = str(cycle.get("eng", {}).get("best_uci") or "")
     if best.startswith("e8g8"):
         return Next("STEP_SET_SIDE_KS")
@@ -46,3 +70,59 @@ def STEP_CLEAR_SIDE(worker, cycle, env):
 def DT_EXIT_OK(worker, cycle, env):
     env.transform("set_value", value=True)
     return Exit("success")
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

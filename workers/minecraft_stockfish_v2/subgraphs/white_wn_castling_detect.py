@@ -1,15 +1,41 @@
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 from py_orch import SubGraph, step, cond, Next, Exit
 
 SUBGRAPH = SubGraph(
     name="WHITE_WN_CASTLING_DETECT",
-    entry="COND_KS",
+    entry="WN_CD_KS_START",
     exits={"success": "DT_EXIT_OK"}
 )
 
 @cond
-def COND_KS(worker, cycle, env):
+def WN_CD_KS_START(worker, cycle, env):
     uci = str(cycle.get("move", {}).get("uci") or "")
     if uci.startswith("e1g1"):
         return Next("STEP_SET_SIDE_KS")
@@ -44,3 +70,68 @@ def STEP_CLEAR_SIDE(worker, cycle, env):
 def DT_EXIT_OK(worker, cycle, env):
     env.transform("set_value", value=True)
     return Exit("success")
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

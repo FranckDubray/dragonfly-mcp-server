@@ -15,7 +15,7 @@ from py_orch import SubGraph, step, cond, Next, Exit
 SUBGRAPH = SubGraph(
     name="GAME_END_UI",
     entry="COND_STATUS",
-    exits={"fail": "GEU_LOST", "reinit": "GEU_REINIT"}
+    exits={"success": "GEU_CONTINUE", "fail": "GEU_LOST"}
 )
 
 @cond
@@ -25,7 +25,7 @@ def COND_STATUS(worker, cycle, env):
         return Next("GEU_LOST")
     if st == "win":
         return Next("GEU_WIN")
-    return Next("GEU_REINIT")
+    return Next("GEU_CONTINUE")
 
 @step
 def GEU_WIN(worker, cycle, env):
@@ -40,7 +40,7 @@ def GEU_WIN(worker, cycle, env):
         "title @a[tag=chess_owner] subtitle {\"text\":\"Bien joué\",\"color\":\"green\"}",
         cmd, cmd, cmd
     ])
-    return Exit("reinit")
+    return Exit("success")
 
 @step
 def GEU_LOST(worker, cycle, env):
@@ -49,7 +49,7 @@ def GEU_LOST(worker, cycle, env):
     return Exit("fail")
 
 @step
-def GEU_REINIT(worker, cycle, env):
+def GEU_CONTINUE(worker, cycle, env):
     env.transform("set_value", value=True)
-    return Exit("reinit")
+    return Exit("success")
 

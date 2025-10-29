@@ -15,26 +15,33 @@
 
 
 
+
+
+
+
+
+
+
 from py_orch import SubGraph, step, cond, Next, Exit
 
 SUBGRAPH = SubGraph(
     name="MOVE_PIPELINE",
-    entry="STEP_GET_NOW",
+    entry="MP_STEP_GET_NOW",
     exits={"fail": "EXIT_TIMEOUT", "success": "EXIT_MOVED"}
 )
 
 @step
-def STEP_GET_NOW(worker, cycle, env):
+def MP_STEP_GET_NOW(worker, cycle, env):
     out = env.tool("date", operation="now", format="iso", timezone="UTC")
     cycle.setdefault("timer", {})["now"] = out.get("result")
     return Next("STEP_DIFF_FROM_LAST")
 
 @step
 def STEP_DIFF_FROM_LAST(worker, cycle, env):
-    now = cycle.get("timer", {}).get("now")
-    last = (cycle.get("game") or {}).get("last_turn_ts")
-    out = env.transform("date_ops", ops=[{"op":"diff","a":now,"b":last,"unit":"seconds","save_as":"elapsed"}])
-    cycle.setdefault("timer", {})["elapsed_s"] = out.get("elapsed")
+    # date_ops.diff not available in this runtime; keep accumulated elapsed_s
+    elapsed = float(cycle.get("timer", {}).get("elapsed_s") or 0)
+    out = env.transform("set_value", value=elapsed)
+    cycle.setdefault("timer", {})["elapsed_s"] = out.get("result")
     return Next("COND_TIMEOUT")
 
 @cond
@@ -111,9 +118,37 @@ def STEP_BUILD_UCI(worker, cycle, env):
 
 @step
 def STEP_WAIT(worker, cycle, env):
-    env.transform("sleep", ms=int(worker.get("turns", {}).get("move_poll_ms", 5000)))
-    return Next("STEP_GET_NOW")
+    ms = int(worker.get("turns", {}).get("move_poll_ms", 5000))
+    env.transform("sleep", ms=ms)
+    # accumulate elapsed time by poll interval
+    prev = float(cycle.get("timer", {}).get("elapsed_s") or 0)
+    cycle.setdefault("timer", {})["elapsed_s"] = prev + (ms / 1000.0)
+    return Next("MP_STEP_GET_NOW")
 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
  
  
  

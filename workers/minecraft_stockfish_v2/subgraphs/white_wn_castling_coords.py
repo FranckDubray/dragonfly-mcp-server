@@ -1,15 +1,41 @@
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 from py_orch import SubGraph, step, Next, Exit
 
 SUBGRAPH = SubGraph(
     name="WHITE_WN_CASTLING_COORDS",
-    entry="STEP_FETCH_SQUARES",
+    entry="WN_CC_FETCH_SQUARES",
     exits={"success": "CC_EXIT_OK"}
 )
 
 @step
-def STEP_FETCH_SQUARES(worker, cycle, env):
+def WN_CC_FETCH_SQUARES(worker, cycle, env):
     out = env.transform("set_value", value=cycle.get("mc", {}).get("board", {}).get("squares", []))
     cycle.setdefault("wn", {})["_squares"] = out.get("result") or []
     return Next("STEP_FILTER_A1_H1_F1_D1")
@@ -125,3 +151,67 @@ def STEP_D1_CZ(worker, cycle, env):
 def CC_EXIT_OK(worker, cycle, env):
     env.transform("set_value", value=True)
     return Exit("success")
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

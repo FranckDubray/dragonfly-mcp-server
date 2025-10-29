@@ -26,84 +26,6 @@
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 from py_orch import SubGraph, step, Next, Exit
 
 SUBGRAPH = SubGraph(
@@ -121,41 +43,10 @@ def STEP_SET_ENV(worker, cycle, env):
 
 @step
 def STEP_MSG_ENV_DONE(worker, cycle, env):
-    env.tool("minecraft_control", operation="execute_command",
-             command='title @a[tag=chess_owner] actionbar {"text":"Environnement prêt","color":"green"}')
+    # Une seule commande sûre (évite try/except et multi-calls): pas d'erreur si aucun joueur tagué
+    env.tool("minecraft_control", operation="execute_command", command="say [INIT] Environnement prêt")
     return Exit("success")
 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
  
  
  

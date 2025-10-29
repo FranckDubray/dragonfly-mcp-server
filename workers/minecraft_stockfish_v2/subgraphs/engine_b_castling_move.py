@@ -14,16 +14,28 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 from py_orch import SubGraph, step, cond, Next, Exit
 
 SUBGRAPH = SubGraph(
     name="ENGINE_B_CASTLING_MOVE",
-    entry="COND_SIDE",
+    entry="ENG_CM_SIDE",
     exits={"success": "CM_DONE"}
 )
 
 @cond
-def COND_SIDE(worker, cycle, env):
+def ENG_CM_SIDE(worker, cycle, env):
     side = str(cycle.get("eng", {}).get("_castle_side") or "").lower()
     if side == "ks":
         return Next("KS_CAPTURE_F8")
@@ -90,3 +102,67 @@ def QS_TP_A8_TO_D8_SNAP(worker, cycle, env):
 def CM_DONE(worker, cycle, env):
     env.transform("set_value", value=True)
     return Exit("success")
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

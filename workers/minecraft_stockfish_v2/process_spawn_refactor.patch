@@ -1,0 +1,9 @@
+PATCH PLAN:
+- Replace monolithic GI_SPAWN_LOCK_SNAP by 4 subgraphs:
+  * GI_SPAWN_WHITE_BACK (module subgraphs.gi_spawn_white_back) -> produces w_back_cmds
+  * GI_SPAWN_WHITE_PAWNS (module subgraphs.gi_spawn_white_pawns) -> produces w_pawns_cmds
+  * GI_SPAWN_BLACK_BACK (module subgraphs.gi_spawn_black_back) -> produces b_back_cmds
+  * GI_SPAWN_BLACK_PAWNS (module subgraphs.gi_spawn_black_pawns) -> produces b_pawns_cmds
+- Then add a tiny combiner subgraph GI_SPAWN_COMBINE_AND_SNAP that runs batch_commands and snapshot.
+- Wire process:
+  GI_PLATFORM_BOARD -> GI_SPAWN_WHITE_BACK -> GI_SPAWN_WHITE_PAWNS -> GI_SPAWN_BLACK_BACK -> GI_SPAWN_BLACK_PAWNS -> GI_SPAWN_COMBINE_AND_SNAP -> GI_LEVER_FW

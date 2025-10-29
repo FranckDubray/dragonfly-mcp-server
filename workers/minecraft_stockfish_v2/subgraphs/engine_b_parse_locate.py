@@ -1,16 +1,42 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 from py_orch import SubGraph, step, Next, Exit
 
 SUBGRAPH = SubGraph(
     name="ENGINE_B_PARSE_LOCATE",
-    entry="STEP_PARSE",
+    entry="ENG_PL_STEP_PARSE",
     exits={"success": "PL_DONE"}
 )
 
 @step
-def STEP_PARSE(worker, cycle, env):
+def ENG_PL_STEP_PARSE(worker, cycle, env):
     best = str(cycle.get("eng", {}).get("best_uci") or "")
     p = env.transform("uci_parse", uci=best)
     cycle.setdefault("eng", {}).update({"from": p.get("from"), "to": p.get("to"), "promo": p.get("promo")})
@@ -70,3 +96,68 @@ def STEP_TO_CZ(worker, cycle, env):
 def PL_DONE(worker, cycle, env):
     env.transform("set_value", value=True)
     return Exit("success")
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
