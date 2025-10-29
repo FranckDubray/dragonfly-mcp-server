@@ -1,15 +1,42 @@
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 from py_orch import SubGraph, step, Next, Exit
 
 SUBGRAPH = SubGraph(
     name="WHITE_WN_PARSE_LOCATE",
-    entry="STEP_PARSE",
+    entry="WN_PL_STEP_PARSE",
     exits={"success": "WN_PL_DONE"}
 )
 
 @step
-def STEP_PARSE(worker, cycle, env):
+def WN_PL_STEP_PARSE(worker, cycle, env):
     uci = str(cycle.get("move", {}).get("uci") or "")
     out = env.transform("uci_parse", uci=uci)
     wn = cycle.setdefault("wn", {})
@@ -72,3 +99,71 @@ def STEP_TO_CZ(worker, cycle, env):
 def WN_PL_DONE(worker, cycle, env):
     env.transform("set_value", value=True)
     return Exit("success")
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

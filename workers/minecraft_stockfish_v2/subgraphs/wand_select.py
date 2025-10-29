@@ -15,6 +15,14 @@
 
 
 
+
+
+
+
+
+
+
+
 from py_orch import SubGraph, step, cond, Next, Exit
 
 SUBGRAPH = SubGraph(
@@ -140,13 +148,10 @@ def STEP_WAIT(worker, cycle, env):
 
 @step
 def STEP_MSG_SELECTED(worker, cycle, env):
+    # Utiliser une commande sûre (say) pour éviter les erreurs de title
     env.tool(
         "minecraft_control",
         operation="execute_command",
-        command='title @a[tag=chess_owner] actionbar {"text":"Pièce sélectionnée","color":"aqua"}'
+        command='say [WAND] Piece sélectionnée'
     )
     return Exit("success")
-
- 
- 
- 

@@ -1,5 +1,3 @@
-
-
 from py_orch import SubGraph, step, Next, Exit
 
 SUBGRAPH = SubGraph(
@@ -15,8 +13,8 @@ def STEP_CLEAR_OWNERS(worker, cycle, env):
 
 @step
 def STEP_TAG_OWNER(worker, cycle, env):
-    o = worker.get("chess", {}).get("origin_center", {"x":0,"z":0}); y = int(worker.get("chess", {}).get("y_level", 64))
-    env.tool("minecraft_control", operation="execute_command", command=f"tag @p[x={o['x']},y={y},z={o['z']},distance=..20] add chess_owner")
+    # Tag the nearest player within 100 blocks anywhere (safer for init)
+    env.tool("minecraft_control", operation="execute_command", command="tag @p[distance=..100] add chess_owner")
     return Next("STEP_SCOREBOARD_INIT")
 
 @step
@@ -41,5 +39,9 @@ def STEP_GIVE_WAND(worker, cycle, env):
 
 @step
 def STEP_ADVENTURE(worker, cycle, env):
-    env.tool("minecraft_control", operation="execute_command", command=f"gamemode adventure @a[tag=chess_owner]")
+    env.tool(
+        "minecraft_control",
+        operation="execute_command",
+        command="execute as @a[tag=chess_owner] run gamemode adventure @s"
+    )
     return Exit("success")

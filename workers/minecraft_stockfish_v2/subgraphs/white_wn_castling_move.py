@@ -14,16 +14,28 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 from py_orch import SubGraph, step, cond, Next, Exit
 
 SUBGRAPH = SubGraph(
     name="WHITE_WN_CASTLING_MOVE",
-    entry="COND_SIDE",
+    entry="WN_CM_SIDE",
     exits={"success": "CM_DONE"}
 )
 
 @cond
-def COND_SIDE(worker, cycle, env):
+def WN_CM_SIDE(worker, cycle, env):
     side = str(cycle.get("wn", {}).get("_castle_side") or "").lower()
     if side == "ks":
         return Next("KS_CAPTURE_F1")
@@ -80,6 +92,78 @@ def CM_DONE(worker, cycle, env):
     env.transform("set_value", value=True)
     return Exit("success")
 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
  
  
  

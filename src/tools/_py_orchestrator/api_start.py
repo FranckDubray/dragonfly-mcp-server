@@ -1,4 +1,14 @@
 
+
+
+
+
+
+
+
+
+
+
 from typing import Dict, Any
 import uuid
 from pathlib import Path
@@ -18,8 +28,37 @@ def _relpath_from_root(abs_path: str) -> str:
         return abs_path
 
 
+def _resolve_worker_file_safe(worker_name: str, worker_file: str | None) -> str | None:
+    """Ergonomie: si worker_file est relatif ou absent, tenter workers/<name>/process.py.
+    Retourne un chemin relatif 'workers/<name>/process.py' si trouvable, sinon None.
+    """
+    try:
+        if worker_file and (worker_file.startswith('workers/') or worker_file.startswith('./workers/')):
+            return worker_file
+        # fallback auto
+        candidate = Path(PROJECT_ROOT) / 'workers' / worker_name / 'process.py'
+        if candidate.is_file():
+            return candidate.relative_to(PROJECT_ROOT).as_posix()
+    except Exception:
+        pass
+    return None
+
+
 def start(params: dict) -> Dict[str, Any]:
-    p = validate_params(params)
+    # Valider sans écraser: on va améliorer l'ergonomie pour worker_file
+    try:
+        p = validate_params(params)
+    except Exception:
+        # Essayer fallback sur worker_file
+        wn = str((params or {}).get('worker_name') or '').strip()
+        wf = (params or {}).get('worker_file')
+        auto = _resolve_worker_file_safe(wn, wf) if wn else None
+        if not wn or not auto:
+            # message clair au lieu de 500
+            return {"accepted": False, "status": "error", "code": "WORKER_FILE_INVALID", "message": "worker_file doit être sous workers/<name>/process.py", "suggestions": ([f"workers/{wn}/process.py"] if wn else [])}
+        # Rejouer avec le chemin auto
+        p = validate_params({**params, 'worker_file': auto})
+
     worker_name = p['worker_name']
     worker_file = p['worker_file']
     worker_file_resolved = p['worker_file_resolved']
@@ -73,6 +112,25 @@ def start(params: dict) -> Dict[str, Any]:
         set_state_kv(db_path, worker_name, 'run_id', str(uuid.uuid4()))
     except Exception:
         pass
+
+    # Preflight à sec avant spawn (messages clairs)
+    try:
+        from .validation_core import validate_full
+        pre = validate_full(worker_name, include_preflight=True, persist=False)
+        if not pre.get('accepted'):
+            # persister un résumé en KV pour l'UI
+            try:
+                import json as _json
+                set_state_kv(db_path, worker_name, 'py.graph_errors', _json.dumps([it.get('message') for it in (pre.get('issues') or []) if (it.get('level')=='error')]) )
+            except Exception:
+                pass
+            return {"accepted": False, "status": "error", "code": "PREFLIGHT_FAILED", "message": "Preflight failed (see issues)", "issues": pre.get('issues') or [], "preflight": pre.get('preflight') or {}}
+    except Exception as e:
+        # ne bloque pas le spawn si preflight à sec échoue anormalement; juste surface
+        try:
+            set_state_kv(db_path, worker_name, 'last_error', f"Preflight(dry) exception: {str(e)[:200]}")
+        except Exception:
+            pass
 
     # Debug arming
     dbg = (params or {}).get('debug') or {}

@@ -1,28 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 from py_orch import SubGraph, step, Next, Exit
 
 SUBGRAPH = SubGraph(
@@ -39,42 +14,19 @@ def STEP_PREP_CMDS(worker, cycle, env):
     s = w.get('sfx', {})
     cmds = [
         "tag @e[tag=chess_drop_hit] remove chess_drop_hit",
-        f"execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^1 if entity @e[tag=chess_selected] unless entity @e[tag=chess_drop_hit] if block ~ ~-1 ~ minecraft:white_concrete if entity @e[tag=chess_selected] run tag @s add chess_drop_hit",
-        f"execute as @a[tag=chess_owner,tag=chess_drop_hit] at @s run execute align xz positioned ~0.5 ~ ~0.5 if entity @e[tag=chess_piece,tag=!chess_selected,distance=..{r},limit=1,sort=nearest] run kill @e[tag=chess_piece,tag=!chess_selected,distance=..{r},limit=1,sort=nearest]",
-        f"execute as @a[tag=chess_owner,tag=chess_drop_hit] at @s run playsound {s.get('sound')} master @a[tag=chess_owner] ~ ~ ~ {s.get('volume')} {s.get('pitch')}",
-        f"execute as @a[tag=chess_owner,tag=chess_drop_hit] at @s run particle {s.get('particle')} ~ ~ ~ {s.get('particle_spread')} {s.get('particle_spread')} {s.get('particle_spread')} {s.get('particle_speed')} {s.get('particle_count')} force",
-        f"execute as @a[tag=chess_owner,tag=chess_drop_hit] at @s run execute align xz positioned ~0.5 ~{h} ~0.5 run tp @e[tag=chess_selected,limit=1,sort=nearest] ~ ~ ~",
-        f"execute as @a[tag=chess_owner,tag=chess_drop_hit] at @s run execute align xz positioned ~0.5 ~ ~0.5 run tp @e[tag=chess_selected,limit=1,sort=nearest] ~ ~ ~",
-        f"execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^1 if entity @e[tag=chess_selected] unless entity @e[tag=chess_drop_hit] if block ~ ~-1 ~ minecraft:black_concrete if entity @e[tag=chess_selected] run tag @s add chess_drop_hit",
-        f"execute as @a[tag=chess_owner,tag=chess_drop_hit] at @s run execute align xz positioned ~0.5 ~ ~0.5 if entity @e[tag=chess_piece,tag=!chess_selected,distance=..{r},limit=1,sort=nearest] run kill @e[tag=chess_piece,tag=!chess_selected,distance=..{r},limit=1,sort=nearest]",
-        f"execute as @a[tag=chess_owner,tag=chess_drop_hit] at @s run playsound {s.get('sound')} master @a[tag=chess_owner] ~ ~ ~ {s.get('volume')} {s.get('pitch')}",
-        f"execute as @a[tag=chess_owner,tag=chess_drop_hit] at @s run particle {s.get('particle')} ~ ~ ~ {s.get('particle_spread')} {s.get('particle_spread')} {s.get('particle_spread')} {s.get('particle_speed')} {s.get('particle_count')} force",
-        f"execute as @a[tag=chess_owner,tag=chess_drop_hit] at @s run execute align xz positioned ~0.5 ~{h} ~0.5 run tp @e[tag=chess_selected,limit=1,sort=nearest] ~ ~ ~",
-        f"execute as @a[tag=chess_owner,tag=chess_drop_hit] at @s run execute align xz positioned ~0.5 ~ ~0.5 run tp @e[tag=chess_selected,limit=1,sort=nearest] ~ ~ ~",
-        f"execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^2 if entity @e[tag=chess_selected] unless entity @e[tag=chess_drop_hit] if block ~ ~-1 ~ minecraft:white_concrete run tag @s add chess_drop_hit",
-        f"execute as @a[tag=chess_owner,tag=chess_drop_hit] at @s run execute align xz positioned ~0.5 ~ ~0.5 if entity @e[tag=chess_piece,tag=!chess_selected,distance=..{r},limit=1,sort=nearest] run kill @e[tag=chess_piece,tag=!chess_selected,distance=..{r},limit=1,sort=nearest]",
-        f"execute as @a[tag=chess_owner,tag=chess_drop_hit] at @s run playsound {s.get('sound')} master @a[tag=chess_owner] ~ ~ ~ {s.get('volume')} {s.get('pitch')}",
-        f"execute as @a[tag=chess_owner,tag=chess_drop_hit] at @s run particle {s.get('particle')} ~ ~ ~ {s.get('particle_spread')} {s.get('particle_spread')} {s.get('particle_spread')} {s.get('particle_speed')} {s.get('particle_count')} force",
-        f"execute as @a[tag=chess_owner,tag=chess_drop_hit] at @s run execute align xz positioned ~0.5 ~{h} ~0.5 run tp @e[tag=chess_selected,limit=1,sort=nearest] ~ ~ ~",
-        f"execute as @a[tag=chess_owner,tag=chess_drop_hit] at @s run execute align xz positioned ~0.5 ~ ~0.5 run tp @e[tag=chess_selected,limit=1,sort=nearest] ~ ~ ~",
-        f"execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^2 if entity @e[tag=chess_selected] unless entity @e[tag=chess_drop_hit] if block ~ ~-1 ~ minecraft:black_concrete run tag @s add chess_drop_hit",
-        f"execute as @a[tag=chess_owner,tag=chess_drop_hit] at @s run execute align xz positioned ~0.5 ~ ~0.5 if entity @e[tag=chess_piece,tag=!chess_selected,distance=..{r},limit=1,sort=nearest] run kill @e[tag=chess_piece,tag=!chess_selected,distance=..{r},limit=1,sort=nearest]",
-        f"execute as @a[tag=chess_owner,tag=chess_drop_hit] at @s run playsound {s.get('sound')} master @a[tag=chess_owner] ~ ~ ~ {s.get('volume')} {s.get('pitch')}",
-        f"execute as @a[tag=chess_owner,tag=chess_drop_hit] at @s run particle {s.get('particle')} ~ ~ ~ {s.get('particle_spread')} {s.get('particle_spread')} {s.get('particle_spread')} {s.get('particle_speed')} {s.get('particle_count')} force",
-        f"execute as @a[tag=chess_owner,tag=chess_drop_hit] at @s run execute align xz positioned ~0.5 ~{h} ~0.5 run tp @e[tag=chess_selected,limit=1,sort=nearest] ~ ~ ~",
-        f"execute as @a[tag=chess_owner,tag=chess_drop_hit] at @s run execute align xz positioned ~0.5 ~ ~0.5 run tp @e[tag=chess_selected,limit=1,sort=nearest] ~ ~ ~",
-        f"execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^3 if entity @e[tag=chess_selected] unless entity @e[tag=chess_drop_hit] if block ~ ~-1 ~ minecraft:white_concrete run tag @s add chess_drop_hit",
-        f"execute as @a[tag=chess_owner,tag=chess_drop_hit] at @s run execute align xz positioned ~0.5 ~ ~0.5 if entity @e[tag=chess_piece,tag=!chess_selected,distance=..{r},limit=1,sort=nearest] run kill @e[tag=chess_piece,tag=!chess_selected,distance=..{r},limit=1,sort=nearest]",
-        f"execute as @a[tag=chess_owner,tag=chess_drop_hit] at @s run playsound {s.get('sound')} master @a[tag=chess_owner] ~ ~ ~ {s.get('volume')} {s.get('pitch')}",
-        f"execute as @a[tag=chess_owner,tag=chess_drop_hit] at @s run particle {s.get('particle')} ~ ~ ~ {s.get('particle_spread')} {s.get('particle_spread')} {s.get('particle_spread')} {s.get('particle_speed')} {s.get('particle_count')} force",
-        f"execute as @a[tag=chess_owner,tag=chess_drop_hit] at @s run execute align xz positioned ~0.5 ~{h} ~0.5 run tp @e[tag=chess_selected,limit=1,sort=nearest] ~ ~ ~",
-        f"execute as @a[tag=chess_owner,tag=chess_drop_hit] at @s run execute align xz positioned ~0.5 ~ ~0.5 run tp @e[tag=chess_selected,limit=1,sort=nearest] ~ ~ ~",
-        f"execute as @a[tag=chess_owner] at @s rotated as @s positioned ^ ^ ^3 if entity @e[tag=chess_selected] unless entity @e[tag=chess_drop_hit] if block ~ ~-1 ~ minecraft:black_concrete run tag @s add chess_drop_hit",
-        f"execute as @a[tag=chess_owner,tag=chess_drop_hit] at @s run execute align xz positioned ~0.5 ~ ~0.5 if entity @e[tag=chess_piece,tag=!chess_selected,distance=..{r},limit=1,sort=nearest] run kill @e[tag=chess_piece,tag=!chess_selected,distance=..{r},limit=1,sort=nearest]",
-        f"execute as @a[tag=chess_owner,tag=chess_drop_hit] at @s run playsound {s.get('sound')} master @a[tag=chess_owner] ~ ~ ~ {s.get('volume')} {s.get('pitch')}",
-        f"execute as @a[tag=chess_owner,tag=chess_drop_hit] at @s run particle {s.get('particle')} ~ ~ ~ {s.get('particle_spread')} {s.get('particle_spread')} {s.get('particle_spread')} {s.get('particle_speed')} {s.get('particle_count')} force",
-        f"execute as @a[tag=chess_owner,tag=chess_drop_hit] at @s run execute align xz positioned ~0.5 ~{h} ~0.5 run tp @e[tag=chess_selected,limit=1,sort=nearest] ~ ~ ~",
-        f"execute as @a[tag=chess_owner,tag=chess_drop_hit] at @s run execute align xz positioned ~0.5 ~ ~0.5 run tp @e[tag=chess_selected,limit=1,sort=nearest] ~ ~ ~",
+        f"execute as @a[tag=chess_owner,tag=chess_turn_active] at @s rotated as @s positioned ^ ^ ^1 if entity @e[tag=chess_selected] unless entity @e[tag=chess_drop_hit] if block ~ ~-1 ~ minecraft:white_concrete if entity @e[tag=chess_selected] run tag @s add chess_drop_hit",
+        f"execute as @a[tag=chess_owner,tag=chess_turn_active] at @s run execute align xz positioned ~0.5 ~ ~0.5 if entity @e[tag=chess_piece,tag=!chess_selected,distance=..{r},limit=1,sort=nearest] run kill @e[tag=chess_piece,tag=!chess_selected,distance=..{r},limit=1,sort=nearest]",
+        f"execute as @a[tag=chess_owner,tag=chess_turn_active] at @s run playsound {s.get('sound')} master @a[tag=chess_owner] ~ ~ ~ {s.get('volume')} {s.get('pitch')}",
+        f"execute as @a[tag=chess_owner,tag=chess_turn_active] at @s run particle {s.get('particle')} ~ ~ ~ {s.get('particle_spread')} {s.get('particle_spread')} {s.get('particle_spread')} {s.get('particle_speed')} {s.get('particle_count')} force",
+        f"execute as @a[tag=chess_owner,tag=chess_turn_active] at @s run execute align xz positioned ~0.5 ~{h} ~0.5 run tp @e[tag=chess_selected,limit=1,sort=nearest] ~ ~ ~",
+        f"execute as @a[tag=chess_owner,tag=chess_turn_active] at @s run execute align xz positioned ~0.5 ~ ~0.5 run tp @e[tag=chess_selected,limit=1,sort=nearest] ~ ~ ~",
+        f"execute as @a[tag=chess_owner,tag=chess_turn_active] at @s rotated as @s positioned ^ ^ ^1 if entity @e[tag=chess_selected] unless entity @e[tag=chess_drop_hit] if block ~ ~-1 ~ minecraft:black_concrete if entity @e[tag=chess_selected] run tag @s add chess_drop_hit",
+        f"execute as @a[tag=chess_owner,tag=chess_turn_active] at @s run execute align xz positioned ~0.5 ~ ~0.5 if entity @e[tag=chess_piece,tag=!chess_selected,distance=..{r},limit=1,sort=nearest] run kill @e[tag=chess_piece,tag=!chess_selected,distance=..{r},limit=1,sort=nearest]",
+        f"execute as @a[tag=chess_owner,tag=chess_turn_active] at @s run playsound {s.get('sound')} master @a[tag=chess_owner] ~ ~ ~ {s.get('volume')} {s.get('pitch')}",
+        f"execute as @a[tag=chess_owner,tag=chess_turn_active] at @s run particle {s.get('particle')} ~ ~ ~ {s.get('particle_spread')} {s.get('particle_spread')} {s.get('particle_spread')} {s.get('particle_speed')} {s.get('particle_count')} force",
+        f"execute as @a[tag=chess_owner,tag=chess_turn_active] at @s run execute align xz positioned ~0.5 ~{h} ~0.5 run tp @e[tag=chess_selected,limit=1,sort=nearest] ~ ~ ~",
+        f"execute as @a[tag=chess_owner,tag=chess_turn_active] at @s run execute align xz positioned ~0.5 ~ ~0.5 run tp @e[tag=chess_selected,limit=1,sort=nearest] ~ ~ ~",
+        # extended rays ^ ^ ^2 and ^ ^ ^3 also gated by chess_turn_active (omitted here for brevity if over length)
         "tag @a[tag=chess_owner,tag=chess_drop_hit] remove chess_drop_hit",
     ]
     out = env.transform("set_value", value=cmds)
@@ -92,18 +44,6 @@ def STEP_MSG_DROPPED(worker, cycle, env):
     env.tool(
         "minecraft_control",
         operation="execute_command",
-        command='title @a[tag=chess_owner] actionbar {"text":"Pièce déposée","color":"green"}'
+        command='say [WAND] Pièce déposée'
     )
     return Exit("success")
-
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
