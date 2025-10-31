@@ -1,0 +1,48 @@
+{
+  "type": "function",
+  "function": {
+    "name": "openai_video",
+    "displayName": "OpenAI Video (Sora)",
+    "category": "media",
+    "tags": ["external_sources", "video", "generation"],
+    "description": "Create and manage video renders with OpenAI's Sora models (sora-2 / sora-2-pro). Supports create (with optional wait), get_status, download to docs/video, list, delete, remix, and auto_start (play video locally).",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": [
+            "create",
+            "get_status",
+            "download",
+            "list",
+            "delete",
+            "remix",
+            "auto_start"
+          ]
+        },
+        "prompt": { "type": "string", "description": "Creative description of the video to generate or the change to apply (for remix)." },
+        "model": { "type": "string", "enum": ["sora-2", "sora-2-pro"], "default": "sora-2" },
+        "size": { "type": "string", "description": "Resolution (Sora-supported only)", "enum": ["1280x720", "720x1280", "1792x1024", "1024x1792"], "default": "1280x720" },
+        "seconds": { "type": "integer", "minimum": 1, "maximum": 60, "default": 8 },
+        "input_reference_path": { "type": "string", "description": "Optional path under docs/images to an input reference image (jpeg/png/webp). Must match the target size." },
+        "wait": { "type": "boolean", "default": false, "description": "When true, poll until completion or timeout (max_attempts or timeout_seconds)." },
+        "max_attempts": { "type": "integer", "minimum": 1, "maximum": 600, "default": 60 },
+        "timeout_seconds": { "type": "integer", "minimum": 1, "maximum": 3600, "default": 600 },
+        "auto_download": { "type": "boolean", "default": false, "description": "When waiting, automatically download the final asset to docs/video (and a thumbnail to docs/images)." },
+        "auto_download_variant": { "type": "string", "enum": ["video", "thumbnail", "spritesheet"], "default": "video" },
+        "auto_download_spritesheet": { "type": "boolean", "default": false },
+        "filename": { "type": "string", "description": "Optional base filename to use when downloading. Video saved to docs/video, thumbnail/spritesheet to docs/images." },
+        "video_id": { "type": "string", "description": "ID of the target video (for get_status, download, delete, remix, auto_start)." },
+        "variant": { "type": "string", "enum": ["video", "thumbnail", "spritesheet"], "default": "video" },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 },
+        "after": { "type": "string", "description": "Cursor for pagination (video id)." },
+        "order": { "type": "string", "enum": ["asc", "desc"], "default": "desc" },
+        "overwrite": { "type": "boolean", "default": false },
+        "path": { "type": "string", "description": "Local path to an existing video file to auto start (plays with default OS player)." }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}

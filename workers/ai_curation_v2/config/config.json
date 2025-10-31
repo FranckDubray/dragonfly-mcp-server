@@ -22,8 +22,6 @@
     "https://about.fb.com/news/topic/technology/ai/": 6000,
     "https://blogs.nvidia.com/blog/category/generative-ai/": 7000,
     "https://blogs.nvidia.com/": 6000,
-    "https://azure.microsoft.com/en-us/blog/topics/ai/": 7000,
-    "https://azure.microsoft.com/en-us/blog/tag/azure-ai-foundry/": 6000,
     "https://mistral.ai/news/": 5000,
     "https://x.ai/blog": 7000
   },

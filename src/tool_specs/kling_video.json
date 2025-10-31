@@ -1,0 +1,85 @@
+{
+  "type": "function",
+  "function": {
+    "name": "kling_video",
+    "displayName": "Kling Video (Text/Image/Multi-Image)",
+    "category": "media",
+    "tags": ["external_sources", "video", "generation", "kling"],
+    "description": "Create and manage video renders with Kling API (text2video, image2video incl. start/end on v2.1 Pro, multi-image2video). Asynchronous create+status+download, optional wait with auto-download and local thumbnail (ffmpeg). Also supports auto_start to play a local file.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {"type": "string", "enum": ["create", "get_status", "list", "download", "auto_start"]},
+        "generation_mode": {"type": "string", "enum": ["text2video", "image2video", "multi_image2video"], "description": "Used for create; also for get_status/list/download to select the right endpoint. Defaults to text2video if omitted."},
+        "model_name": {
+          "type": "string",
+          "enum": ["kling-v1", "kling-v1-5", "kling-v1-6", "kling-v2-master", "kling-v2-1", "kling-v2-1-master", "kling-v2-5-turbo"],
+          "default": "kling-v1-6"
+        },
+        "mode": {"type": "string", "enum": ["std", "pro"], "default": "std"},
+        "duration": {"type": "integer", "enum": [5, 10], "default": 5},
+        "aspect_ratio": {"type": "string", "enum": ["16:9", "9:16", "1:1"], "default": "16:9"},
+        "prompt": {"type": "string", "description": "Positive text prompt (required for all modes). Max 2500 chars."},
+        "negative_prompt": {"type": "string"},
+        "cfg_scale": {"type": "number", "minimum": 0, "maximum": 1, "default": 0.5, "description": "Not supported on v2.x models."},
+        "camera_control": {
+          "type": "object",
+          "properties": {
+            "type": {"type": "string", "enum": ["simple", "down_back", "forward_up", "right_turn_forward", "left_turn_forward"]},
+            "config": {
+              "type": "object",
+              "properties": {
+                "horizontal": {"type": "number"},
+                "vertical": {"type": "number"},
+                "pan": {"type": "number"},
+                "tilt": {"type": "number"},
+                "roll": {"type": "number"},
+                "zoom": {"type": "number"}
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "image": {"type": "string", "description": "Path under docs/images to start image, or HTTP(S) URL. For local files, the tool will base64 encode without prefix."},
+        "image_tail": {"type": "string", "description": "Path under docs/images to end image (start/end). Only kling-v2-1 Pro with duration 5 or 10."},
+        "static_mask": {"type": "string", "description": "Static mask image (path under docs/images or URL). Only supported on kling-v1 (std/pro) with duration=5. Mutually exclusive with image_tail and camera_control."},
+        "dynamic_masks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "mask": {"type": "string", "description": "Dynamic mask image (path under docs/images or URL)."},
+              "trajectories": {
+                "type": "array",
+                "items": {"type": "object", "properties": {"x": {"type": "integer"}, "y": {"type": "integer"}}, "required": ["x","y"], "additionalProperties": false}
+              }
+            },
+            "required": [],
+            "additionalProperties": false
+          },
+          "description": "Dynamic masks list (up to 6). Only kling-v1 (std/pro) with duration=5. Mutually exclusive with image_tail and camera_control."
+        },
+        "image_list": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Multi-image list (up to 4). Each item is a path under docs/images or an HTTP(S) URL."
+        },
+        "callback_url": {"type": "string"},
+        "external_task_id": {"type": "string"},
+        "task_id": {"type": "string", "description": "ID for get_status, download or auto_start."},
+        "page": {"type": "integer", "minimum": 1, "default": 1},
+        "limit": {"type": "integer", "minimum": 1, "maximum": 100, "default": 20},
+        "wait": {"type": "boolean", "default": false},
+        "max_attempts": {"type": "integer", "minimum": 1, "maximum": 600, "default": 60},
+        "timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 3600, "default": 600},
+        "auto_download": {"type": "boolean", "default": false},
+        "filename": {"type": "string", "description": "Base filename for saved assets (video to docs/video, thumbnail to docs/images)."},
+        "overwrite": {"type": "boolean", "default": false},
+        "path": {"type": "string", "description": "Local path to an existing video file to auto start (opens with OS default player)."}
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}

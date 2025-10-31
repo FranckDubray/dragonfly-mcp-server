@@ -22,7 +22,6 @@ from config import (
 )
 from app_core.safe_json import SafeJSONResponse, sanitize_for_json, strip_surrogates
 from app_core.tool_discovery import get_registry, discover_tools, should_reload as should_reload_tools, get_last_errors
-from routes.workers import router as workers_router
 
 from .static_mount import mount_static_and_assets
 from .tools_routes import ExecuteRequest, head_tools, get_tools, post_debug, post_execute
@@ -49,10 +48,6 @@ def create_app() -> FastAPI:
     # Mount static and assets
     project_root = find_project_root()
     mount_static_and_assets(app, project_root)
-
-    # Workers router
-    app.include_router(workers_router)
-    logger.info("🎤 Workers Realtime routes included")
 
     # ----- Validation error handler -----
     from fastapi.exceptions import RequestValidationError
@@ -119,7 +114,6 @@ def create_app() -> FastAPI:
             </head><body>
             <h1>Control Panel (fallback)</h1>
             <p>Le template Control n'a pas pu être chargé.<br>Erreur: %s</p>
-            <p><a href='/workers/ui'>Ouvrir Workers UI</a></p>
             </body></html>
             """ % (str(e).replace('<','&lt;'))
             return HTMLResponse(content=fallback, status_code=200)
@@ -144,6 +138,5 @@ def create_app() -> FastAPI:
             logger.info("🔄 Auto-reload enabled - New tools will be detected automatically")
         else:
             logger.info("📎 Auto-reload disabled - Use ?reload=1 or restart server for new tools")
-        logger.info("🎤 Workers Realtime module loaded")
 
     return app
