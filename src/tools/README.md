@@ -2,7 +2,7 @@
 
 Ce fichier est généré automatiquement par `scripts/generate_tools_catalog.py`. Ne pas éditer à la main.
 
-Total tools: 53
+Total tools: 55
 
 ## 📊 Intelligence & Orchestration (5)
 
@@ -122,7 +122,7 @@ Total tools: 53
   - Opérations: N/A
   - Tokens: aucun
 
-## 🎬 Media (6)
+## 🎬 Media (8)
 
 - FFmpeg Frames — Extraction d'images d'une vidéo: détection automatique des plans (similarité) + début/fin + samples intraplans.
   - Opérations: extract_frames
@@ -132,8 +132,16 @@ Total tools: 53
   - Opérations: generate, edit
   - Tokens: aucun
 
+- Kling Video (Text/Image/Multi-Image) — Create and manage video renders with Kling API (text2video, image2video incl. start/end on v2.1 Pro, multi-image2video). Asynchronous cre… · Tags: external_sources, video, generation, kling
+  - Opérations: create, get_status, list, download, auto_start
+  - Tokens: aucun
+
 - OBS Control — Contrôle OBS via une seule fonction multi-actions en appels courts (ou sessions courtes). Pas d’API fichiers: si un média local est requi…
   - Opérations: N/A
+  - Tokens: aucun
+
+- OpenAI Video (Sora) — Create and manage video renders with OpenAI's Sora models (sora-2 / sora-2-pro). Supports create (with optional wait), get_status, downlo… · Tags: external_sources, video, generation
+  - Opérations: create, get_status, download, list, delete, remix …
   - Tokens: aucun
 
 - Video Transcription — Extract audio from video and transcribe using Whisper API. Supports time-based segmentation for large videos. Parallel processing (3 chun… · Tags: video, audio, transcription, whisper
