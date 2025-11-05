@@ -1,15 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
 from typing import Dict, Any, Tuple
 from pathlib import Path
 import json
@@ -49,6 +37,39 @@ def preflight_load_graph(root: Path, db_path: str, worker: str) -> Tuple[Dict[st
             set_state_kv(db_path, worker, 'last_error', 'Preflight internal error')
             return None, 'Preflight internal error'
         if not res.get('accepted'):
+            # Fallback: if root (template) exists, extract graph from it
+            if root.is_dir():
+                try:
+                    graph = validate_and_extract_graph(root)
+                    # Clear errors, persist warnings if any
+                    try:
+                        issues = res.get('issues') or []
+                        warns = [i.get('message') for i in issues if i.get('level') == 'warning']
+                        if warns:
+                            set_state_kv(db_path, worker, 'py.graph_warnings', json.dumps(warns, ensure_ascii=False))
+                        set_state_kv(db_path, worker, 'py.graph_errors', '')
+                    except Exception:
+                        pass
+                    return graph, ""
+                except ValidationError as e:
+                    set_phase(db_path, worker, 'failed')
+                    msg = f'Validation error: {str(e)[:300]}'
+                    set_state_kv(db_path, worker, 'last_error', msg)
+                    try:
+                        log_crash(db_path, worker, cycle_id='startup', node='controller_validate', error=e, worker_ctx={}, cycle_ctx={})
+                    except Exception:
+                        pass
+                    return None, msg
+                except Exception as e:
+                    set_phase(db_path, worker, 'failed')
+                    msg = f'Unexpected preflight error: {str(e)[:300]}'
+                    set_state_kv(db_path, worker, 'last_error', msg)
+                    try:
+                        log_crash(db_path, worker, cycle_id='startup', node='controller_validate', error=e, worker_ctx={}, cycle_ctx={})
+                    except Exception:
+                        pass
+                    return None, msg
+            # Root does not exist: fail
             msg = 'Preflight checks failed'
             set_phase(db_path, worker, 'failed')
             set_state_kv(db_path, worker, 'last_error', msg)

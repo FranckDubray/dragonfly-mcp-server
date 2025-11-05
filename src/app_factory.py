@@ -1,4 +1,15 @@
 
+
+
+
+
+
+
+
+
+
+
+
 from __future__ import annotations
 import logging
 from fastapi import FastAPI
@@ -12,9 +23,14 @@ logger = logging.getLogger(__name__)
 def create_app() -> FastAPI:
     app = create_app_compact()
     try:
-        # Register Python Orchestrator live observation streaming endpoints (SSE/NDJSON)
-        from src.tools._py_orchestrator.api_observe_stream import router as py_orch_observe_router
-        app.include_router(py_orch_observe_router)
+        # Register Workers API facade and pages
+        from src.app_server.workers_api.router import router as workers_api_router
+        app.include_router(workers_api_router)
     except Exception as e:
-        logger.warning("[py_orchestrator] observe stream router not registered: %s", e)
+        logger.warning("[workers_api] router not registered: %s", e)
+    try:
+        from src.app_server.workers_pages.router import router as workers_pages_router
+        app.include_router(workers_pages_router)
+    except Exception as e:
+        logger.warning("[workers_pages] router not registered: %s", e)
     return app

@@ -1,0 +1,48 @@
+/* Layout & Header */
+.top{display:flex;justify-content:space-between;align-items:end;border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:18px}
+.brand h1{margin:0 0 4px 0;font-size:28px;font-weight:700}
+.kpis{display:flex;gap:24px;font-variant-numeric:tabular-nums}
+.k{display:flex;flex-direction:column;text-align:right}
+.k .lab{font-size:11px;color:var(--muted);letter-spacing:.06em}
+.k .val{font-size:20px;font-weight:700}
+
+/* Panels */
+.panel{border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:12px;background:#fff;box-shadow:0 8px 24px rgba(0,0,0,.04)}
+.panel h3{margin:0 0 10px 0;font-size:14px;color:var(--muted);font-weight:600}
+
+/* Leader card */
+.leader{margin:14px 0 22px 0;border:1px solid var(--border);border-radius:12px;background:#fff;box-shadow:0 8px 24px rgba(0,0,0,.04);padding:14px;display:flex;gap:14px;align-items:center;min-width:0}
+.leader .avatar{width:48px;height:48px;border-radius:50%;overflow:hidden;background:#111;flex-shrink:0}
+.leader .avatar img{width:100%;height:100%;object-fit:cover}
+.leader .info{min-width:0;flex:1}
+.leader .title{font-weight:700;font-size:16px}
+.leader .sub{color:var(--muted);font-size:13px;margin-top:4px;overflow-wrap:anywhere}
+.leader .btn{margin-left:auto;display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 14px;border-radius:10px;border:1px solid #111827;font-weight:600;font-size:14px;color:#fff;background:#111827;text-decoration:none;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:transform .12s ease, box-shadow .18s ease}
+.leader .btn:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(0,0,0,.12)}
+
+/* Cards grid */
+.cards{display:grid;grid-template-columns:repeat(4, minmax(0,1fr));gap:16px}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.04)}
+
+/* Buttons */
+.btn{border:1px solid var(--border);background:#fff;border-radius:10px;padding:10px 12px;cursor:pointer;transition:transform .08s ease, box-shadow .12s ease}
+.btn.primary{background:#111827;color:#fff;border-color:#111827}
+.btn.danger{background:#fff;color:#b91c1c;border-color:#b91c1c}
+.btn.ghost{background:transparent;border-color:var(--border);color:var(--muted)}
+.btn.small{padding:6px 10px;font-size:12px}
+.btn:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(0,0,0,.08)}
+.btn:focus-visible{outline:2px solid var(--ring);outline-offset:1px}
+
+/* Intro spin Y 720° (optionnel, one-shot) */
+body.intro .card{opacity:0; transform:rotateY(0deg) scale(.985)}
+@keyframes spinY720{
+   0%  {opacity:.65; transform:rotateY(0deg)   scale(.985);  filter:blur(.1px)}
+   6%  {opacity:.88; transform:rotateY(140deg) rotateZ(.5deg) scale(1.006)}
+  12%  {opacity:.96; transform:rotateY(260deg) rotateZ(-.5deg)scale(1.006)}
+  18%  {opacity:1;   transform:rotateY(360deg) scale(1.004)}
+  24%  {transform:rotateY(460deg) rotateZ(.4deg) scale(1.003)}
+  36%  {transform:rotateY(600deg) scale(1.002)}
+  70%  {transform:rotateY(680deg) scale(1.001)}
+  88%  {transform:rotateY(705deg)}
+ 100%  {opacity:1;  transform:rotateY(720deg) scale(1.000); filter:none}
+}

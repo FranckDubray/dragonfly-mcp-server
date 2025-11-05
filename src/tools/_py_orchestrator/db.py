@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 # Autonomous SQLite helpers for Python Orchestrator
 import sqlite3
@@ -32,18 +34,26 @@ CREATE INDEX IF NOT EXISTS idx_job_steps_worker ON job_steps(worker);
 
 
 def init_db(db_path: str) -> None:
+    """Initialize DB with proper error handling and logging."""
     try:
-        conn = sqlite3.connect(db_path, timeout=5.0)
+        conn = sqlite3.connect(db_path, timeout=10.0)
         try:
             conn.execute("PRAGMA journal_mode=WAL;")
             conn.execute("PRAGMA foreign_keys=ON;")
             conn.executescript(SCHEMA_STATE)
             conn.executescript(SCHEMA_STEPS)
             conn.commit()
+            # Verify table exists
+            cur = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='job_state_kv'")
+            if not cur.fetchone():
+                raise RuntimeError("Table job_state_kv was not created")
         finally:
             conn.close()
-    except Exception:
-        pass
+    except Exception as e:
+        # Log to stderr for visibility
+        import sys
+        print(f"FATAL: init_db({db_path}) failed: {e}", file=sys.stderr)
+        raise RuntimeError(f"Failed to initialize database: {e}") from e
 
 
 def get_state_kv(db_path: str, worker: str, key: str) -> Optional[str]:
@@ -58,7 +68,9 @@ def get_state_kv(db_path: str, worker: str, key: str) -> Optional[str]:
             return row[0] if row and row[0] is not None else None
         finally:
             conn.close()
-    except Exception:
+    except Exception as e:
+        import sys
+        print(f"ERROR: get_state_kv({worker}, {key}) failed: {e}", file=sys.stderr)
         return None
 
 
@@ -74,8 +86,10 @@ def set_state_kv(db_path: str, worker: str, key: str, value: str) -> None:
             conn.commit()
         finally:
             conn.close()
-    except Exception:
-        pass
+    except Exception as e:
+        import sys
+        print(f"ERROR: set_state_kv({worker}, {key}) failed: {e}", file=sys.stderr)
+        raise
 
 
 def get_phase(db_path: str, worker: str) -> str:

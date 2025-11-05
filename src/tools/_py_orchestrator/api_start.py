@@ -1,50 +1,25 @@
-
-
-
-
-
-
-
-
-
-
-
 from typing import Dict, Any
 import uuid
 from pathlib import Path
+
 from .validators import validate_params
 from .api_common import PROJECT_ROOT
-from .db import init_db, get_state_kv, set_state_kv, get_phase, set_phase, heartbeat
-from .api_spawn import spawn_runner, db_path_for_worker  # use py runner spawn
+from .db import init_db, get_state_kv, set_state_kv, set_phase, heartbeat
+from .api_spawn import spawn_runner, db_path_for_worker
 from .utils.time import utcnow_str
 
-
-def _relpath_from_root(abs_path: str) -> str:
-    try:
-        p = Path(abs_path).resolve()
-        root = PROJECT_ROOT.resolve()
-        return p.relative_to(root).as_posix()
-    except Exception:
-        return abs_path
-
-
-def _resolve_worker_file_safe(worker_name: str, worker_file: str | None) -> str | None:
-    """Ergonomie: si worker_file est relatif ou absent, tenter workers/<name>/process.py.
-    Retourne un chemin relatif 'workers/<name>/process.py' si trouvable, sinon None.
-    """
-    try:
-        if worker_file and (worker_file.startswith('workers/') or worker_file.startswith('./workers/')):
-            return worker_file
-        # fallback auto
-        candidate = Path(PROJECT_ROOT) / 'workers' / worker_name / 'process.py'
-        if candidate.is_file():
-            return candidate.relative_to(PROJECT_ROOT).as_posix()
-    except Exception:
-        pass
-    return None
+# New split helpers
+from .start_helpers import relpath_from_root, resolve_worker_file_safe, slugify, derive_from_template
+from .start_identity import ensure_identity, ensure_leader_db
+from .start_prelude import reset_transients, reset_llm_usage
 
 
 def start(params: dict) -> Dict[str, Any]:
+    # Ergonomie: si new_worker:{first_name, template} est fourni, dériver automatiquement worker_name et worker_file
+    auto = derive_from_template(params)
+    if auto and (not params.get('worker_name') or not params.get('worker_file')):
+        params = {**params, **auto}
+
     # Valider sans écraser: on va améliorer l'ergonomie pour worker_file
     try:
         p = validate_params(params)
@@ -52,81 +27,102 @@ def start(params: dict) -> Dict[str, Any]:
         # Essayer fallback sur worker_file
         wn = str((params or {}).get('worker_name') or '').strip()
         wf = (params or {}).get('worker_file')
-        auto = _resolve_worker_file_safe(wn, wf) if wn else None
-        if not wn or not auto:
-            # message clair au lieu de 500
+        auto2 = resolve_worker_file_safe(wn, wf) if wn else None
+        if not wn or not auto2:
             return {"accepted": False, "status": "error", "code": "WORKER_FILE_INVALID", "message": "worker_file doit être sous workers/<name>/process.py", "suggestions": ([f"workers/{wn}/process.py"] if wn else [])}
-        # Rejouer avec le chemin auto
-        p = validate_params({**params, 'worker_file': auto})
+        p = validate_params({**params, 'worker_file': auto2})
 
     worker_name = p['worker_name']
     worker_file = p['worker_file']
-    worker_file_resolved = p['worker_file_resolved']
     hot_reload = p.get('hot_reload', True)
+
+    # Leader optionnel
+    leader = None
+    try:
+        leader_obj = (params or {}).get('leader') or {}
+        leader_name = str(leader_obj.get('name') or '').strip()
+        if leader_name:
+            ensure_leader_db(leader_name)
+            leader = slugify(leader_name)
+    except Exception:
+        pass
 
     db_path = db_path_for_worker(worker_name)
     init_db(db_path)
 
-    set_phase(db_path, worker_name, 'starting')
-    # Clear previous transient debug/py KV (extended purge)
-    for key in [
-        'cancel', 'last_error', 'py.last_summary', 'py.last_call', 'py.last_result_preview',
-        'debug.enabled', 'debug.mode', 'debug.pause_request', 'debug.until', 'debug.breakpoints', 'debug.command',
-        'debug.paused_at', 'debug.next_node', 'debug.cycle_id', 'debug.last_step', 'debug.ctx_diff',
-        'debug.watches', 'debug.watches_values', 'debug.response_id', 'debug.req_id', 'debug.executing_node',
-        'debug.previous_node',
-        # new: also purge traces from a prior run
-        'debug.step_trace', 'debug.trace',
-        # also purge preflight artifacts from previous runs to avoid stale noise
-        'py.graph_warnings', 'py.graph_errors'
-    ]:
-        try:
-            set_state_kv(db_path, worker_name, key, '')
-        except Exception:
-            pass
-
-    # Reset per-run LLM usage counters (avoid inheritance across runs)
+    # Inject instance DB name into metadata (will be merged by runner)
     try:
-        set_state_kv(db_path, worker_name, 'usage.llm.total_tokens', '0')
-        set_state_kv(db_path, worker_name, 'usage.llm.input_tokens', '0')
-        set_state_kv(db_path, worker_name, 'usage.llm.output_tokens', '0')
-        set_state_kv(db_path, worker_name, 'usage.llm.by_model', '{}')
+        instance_db_file = f"worker_{worker_name}.db"
+        import json as _json
+        md = {}
+        try:
+            md = _json.loads(get_state_kv(db_path, worker_name, 'py.process_metadata') or '{}')
+        except:
+            pass
+        md['db_file'] = instance_db_file
+        set_state_kv(db_path, worker_name, 'py.process_metadata', _json.dumps(md))
     except Exception:
         pass
 
+    # Créer/mettre à jour l'identité si new_worker fourni (inclure leader si présent)
+    try:
+        nw = (params or {}).get('new_worker') or {}
+        first = str(nw.get('first_name') or '').strip()
+        template = str(nw.get('template') or '').strip()
+        if first and template:
+            ensure_identity(db_path, worker_name, template, first, leader)
+    except Exception:
+        pass
+
+    set_phase(db_path, worker_name, 'starting')
+
+    # Reset transients + LLM usage counters
+    reset_transients(db_path, worker_name)
+    reset_llm_usage(db_path, worker_name)
+
+    # Persist basic KV
     set_state_kv(db_path, worker_name, 'cancel', 'false')
     set_state_kv(db_path, worker_name, 'worker_name', worker_name)
     set_state_kv(db_path, worker_name, 'worker_file', worker_file)
     set_state_kv(db_path, worker_name, 'hot_reload', str(hot_reload).lower())
 
-    # Also set __global__ context to the current worker (source of truth for runner bootstrap)
+    # Also set __global__ context
     try:
         set_state_kv(db_path, '__global__', 'worker_name', worker_name)
         set_state_kv(db_path, '__global__', 'worker_file', worker_file)
     except Exception:
         pass
 
-    # Record the start of a new run (for filtering status/metrics)
+    # Record new run
     try:
         set_state_kv(db_path, worker_name, 'run_started_at', utcnow_str())
         set_state_kv(db_path, worker_name, 'run_id', str(uuid.uuid4()))
     except Exception:
         pass
 
-    # Preflight à sec avant spawn (messages clairs)
+    # Preflight (tolérance root manquant si worker_file OK)
     try:
         from .validation_core import validate_full
         pre = validate_full(worker_name, include_preflight=True, persist=False)
         if not pre.get('accepted'):
-            # persister un résumé en KV pour l'UI
             try:
-                import json as _json
-                set_state_kv(db_path, worker_name, 'py.graph_errors', _json.dumps([it.get('message') for it in (pre.get('issues') or []) if (it.get('level')=='error')]) )
+                issues = pre.get('issues') or []
+                messages = [str(it.get('message') or '') for it in issues]
+                root_err = any('Worker root not found' in m for m in messages)
+                wf_ok = Path(PROJECT_ROOT / worker_file).is_file() or Path(worker_file).is_file()
+                if root_err and wf_ok:
+                    import json as _json
+                    set_state_kv(db_path, worker_name, 'py.graph_warnings', _json.dumps(messages, ensure_ascii=False))
+                else:
+                    try:
+                        import json as _json
+                        set_state_kv(db_path, worker_name, 'py.graph_errors', _json.dumps([it.get('message') for it in issues if (it.get('level')=='error')]))
+                    except Exception:
+                        pass
+                    return {"accepted": False, "status": "error", "code": "PREFLIGHT_FAILED", "message": "Preflight failed (see issues)", "issues": pre.get('issues') or [], "preflight": pre.get('preflight') or {}}
             except Exception:
-                pass
-            return {"accepted": False, "status": "error", "code": "PREFLIGHT_FAILED", "message": "Preflight failed (see issues)", "issues": pre.get('issues') or [], "preflight": pre.get('preflight') or {}}
+                return {"accepted": False, "status": "error", "code": "PREFLIGHT_FAILED", "message": "Preflight failed (unexpected)", "issues": pre.get('issues') or []}
     except Exception as e:
-        # ne bloque pas le spawn si preflight à sec échoue anormalement; juste surface
         try:
             set_state_kv(db_path, worker_name, 'last_error', f"Preflight(dry) exception: {str(e)[:200]}")
         except Exception:
@@ -167,8 +163,7 @@ def start(params: dict) -> Dict[str, Any]:
         "status": "starting",
         "worker_name": worker_name,
         "pid": pid,
-        # Return db_path relative to project root for clean UI
-        "db_path": _relpath_from_root(db_path),
+        "db_path": relpath_from_root(db_path),
         "heartbeat": get_state_kv(db_path, worker_name, 'heartbeat'),
         "truncated": False,
         "debug": {"enabled": debug_enabled_out, "pause_request": debug_pause_req_out}

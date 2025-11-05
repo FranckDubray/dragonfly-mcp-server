@@ -2,7 +2,7 @@
 
 Ce fichier est généré automatiquement par `scripts/generate_tools_catalog.py`. Ne pas éditer à la main.
 
-Total tools: 55
+Total tools: 57
 
 ## 📊 Intelligence & Orchestration (5)
 
@@ -18,7 +18,7 @@ Total tools: 55
   - Opérations: list_models, get_version, get_running_models, show_model, pull_model, push_model …
   - Tokens: aucun
 
-- Python Orchestrator — Run Python-defined workflows (Process/SubGraphs/Steps). Start/stop/status/debug; graph extraction (process/subgraph/current_subgraph); va… · Tags: process, python, debug
+- Python Orchestrator — Run Python-defined workflows (Process/SubGraphs/Steps). Start/stop/status/debug; graph extraction; validate; transforms; config. Nouveau… · Tags: process, python, debug
   - Opérations: start, stop, status, debug, observe, list …
   - Tokens: aucun
 
@@ -26,7 +26,7 @@ Total tools: 55
   - Opérations: search_papers, get_paper_details, search_authors, get_citations
   - Tokens: aucun
 
-## 🔧 Development (7)
+## 🔧 Development (8)
 
 - Dev Navigator — Couteau suisse LLM pour explorer un dépôt: overview, tree, search, outline, open (plan fs_requests uniquement — pas de contenu), endpoint… · Tags: knowledge
   - Opérations: compose, overview, tree, search, outline, open …
@@ -38,6 +38,10 @@ Total tools: 55
 
 - GitBook — Recherche et exploration de documentation GitBook. Découverte automatique de pages, recherche globale sans connaître les URLs. · Tags: knowledge, docs, search
   - Opérations: find_docs, extract_base_url, discover_site, search_site, read_page
+  - Tokens: aucun
+
+- I18n files manager — Liste les langues et gère les clés i18n (JSON et ES modules). Opérations en masse: ajout, modification, suppression et renommage de clés. · Tags: files, i18n
+  - Opérations: list_langs, get_keys, upsert_keys, delete_keys, rename_key, upsert_key_all_langs
   - Tokens: aucun
 
 - Playwright (Record & Play) — Enregistre une navigation via Playwright codegen (process.json live) et rejoue par ID (tout, jusqu’à une étape, ou une étape). Tous les f… · Tags: browser, record, replay
@@ -122,7 +126,7 @@ Total tools: 55
   - Opérations: N/A
   - Tokens: aucun
 
-## 🎬 Media (8)
+## 🎬 Media (9)
 
 - FFmpeg Frames — Extraction d'images d'une vidéo: détection automatique des plans (similarité) + début/fin + samples intraplans.
   - Opérations: extract_frames
@@ -130,6 +134,10 @@ Total tools: 55
 
 - Gemini Image Studio — Génère ou édite des images avec gemini-2.5-flash-image-preview. Entrées: URLs http(s), fichiers locaux (./docs), data URLs, ou base64 bru…
   - Opérations: generate, edit
+  - Tokens: aucun
+
+- Google Veo 3.1 Video — Créer et gérer des rendus vidéo avec Google Veo 3.1 (texte→vidéo, image→vidéo, images de référence ≤3, interpolation première/dernière im… · Tags: external_sources, video, generation
+  - Opérations: create, get_status, download, extend, auto_start
   - Tokens: aucun
 
 - Kling Video (Text/Image/Multi-Image) — Create and manage video renders with Kling API (text2video, image2video incl. start/end on v2.1 Pro, multi-image2video). Asynchronous cre… · Tags: external_sources, video, generation, kling

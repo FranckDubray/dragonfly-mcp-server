@@ -1,11 +1,10 @@
-
-
-
-
+"""Status API with comprehensive error details."""
 
 from .status.status_core import build_status as _build_status
+from .status.error_details import collect_error_details
 from pathlib import Path
 from .api_common import PROJECT_ROOT
+from .api_spawn import db_path_for_worker
 
 
 def _relpath_from_root(p: str) -> str:
@@ -21,6 +20,7 @@ def _relpath_from_root(p: str) -> str:
 
 def status(params: dict) -> dict:
     out = _build_status(params)
+    
     # Normalize paths to be relative to project root (db_path, log_path if present)
     try:
         if isinstance(out, dict):
@@ -30,6 +30,8 @@ def status(params: dict) -> dict:
                 out['log_path'] = _relpath_from_root(out.get('log_path'))
     except Exception:
         pass
+    
+    # LLM usage metrics
     try:
         m = out.get('metrics') or {}
         # llm_usage peut être soit top-level, soit imbriqué dans metrics
@@ -45,11 +47,11 @@ def status(params: dict) -> dict:
             out['metrics'] = m
     except Exception:
         pass
+    
     # NEW: surface preflight warnings/errors if any (KV persisted)
     try:
         wn = (params or {}).get('worker_name')
         if wn:
-            from .api_spawn import db_path_for_worker
             from .db import get_state_kv
             dbp = db_path_for_worker(wn)
             import json
@@ -67,67 +69,18 @@ def status(params: dict) -> dict:
                     out['preflight_errors'] = [err_raw]
     except Exception:
         pass
+    
+    # NEW: Comprehensive error details when worker is in error state
+    try:
+        wn = (params or {}).get('worker_name')
+        if wn and isinstance(out, dict):
+            phase = out.get('status') or out.get('phase') or ''
+            if phase in {'failed', 'canceled', 'error'}:
+                dbp = db_path_for_worker(wn)
+                error_details = collect_error_details(dbp, wn)
+                if error_details:
+                    out['error_details'] = error_details
+    except Exception:
+        pass
+    
     return out
-
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 

@@ -1,0 +1,166 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* Worker card core (split from components.css to keep files <7KB) */
+
+/* --- Cards: head + avatar + état --- */
+.card-head{
+  display:grid; grid-template-columns:56px 1fr 66px; align-items:center; gap:12px;
+  padding:14px; border-bottom:1px solid var(--border); min-width:0; position:relative;
+}
+.avatar{width:48px; height:48px; border-radius:50%; position:relative; overflow:hidden; border:2px solid var(--border); background:#f1f3f5; flex-shrink:0}
+.avatar .img{width:100%; height:100%; background-size:cover; background-position:center}
+.state-dot{position:absolute; right:-2px; bottom:-2px; width:14px; height:14px; border-radius:50%; border:2px solid #fff}
+.dot-running{background:var(--ok)} .dot-idle{background:var(--idle)} .dot-error{background:var(--err)}
+.who{min-width:0; display:flex; flex-direction:column; gap:2px}
+.name-line{display:flex; gap:6px; align-items:center; min-width:0; flex-wrap:wrap}
+.name{font-weight:700; font-size:16px; min-width:0; overflow-wrap:anywhere}
+.status-chip{font-size:11px; background:var(--chip); border:1px solid var(--border); border-radius:999px; padding:4px 8px}
+.tool-badge{font-size:10px; font-weight:800; letter-spacing:.06em; border-radius:999px; padding:2px 6px; border:1px solid #c7b8ff; background:#f4f0ff; color:#5b34ff}
+.role{font-size:13px; color:var(--muted); overflow-wrap:anywhere}
+.mission-sm{ font-size:12px; color:var(--muted); margin-top:4px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow-wrap:anywhere; }
+
+/* --- Gauge container + legend --- */
+.gwrap{display:flex; flex-direction:column; align-items:center; gap:2px; justify-self:end}
+.gleg{font-size:10px; color:var(--muted); line-height:1}
+
+/* --- Jauge circulaire --- */
+.gauge{--p:.0; --g:var(--ok); width:54px; height:54px; border-radius:50%; position:relative; justify-self:end; background:conic-gradient(var(--g) calc(var(--p)*1turn), #e5e7eb 0); transition: background .25s ease, opacity .25s ease;}
+.gauge::after{content:""; position:absolute; inset:7px; background:#fff; border-radius:50%; box-shadow:inset 0 0 0 1px var(--border)}
+.gval{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; font-variant-numeric:tabular-nums}
+.gnum{font-size:11px; font-weight:700; line-height:1}
+.glab{font-size:9px; color:var(--muted); transition: opacity .18s ease}
+/* Needle + hub */
+.gauge .needle{position:absolute; left:50%; top:50%; width:2px; height:44%; background:var(--g); transform-origin: bottom center; transform: translate(-50%, -100%) rotate(-90deg); transition: transform .25s ease, background-color .25s ease; filter: drop-shadow(0 0 2px rgba(0,0,0,.15));}
+.gauge .hub{position:absolute; left:50%; top:50%; width:8px; height:8px; background:#fff; border:1px solid var(--border); border-radius:50%; transform:translate(-50%,-50%);}
+/* Timeout pulse for long tool */
+@keyframes gaugePulse { 0%{ box-shadow: 0 0 0 0 rgba(139,92,246,.25);} 70%{ box-shadow: 0 0 0 8px rgba(139,92,246,0);} 100%{ box-shadow: 0 0 0 0 rgba(139,92,246,0);} }
+.gauge.pulse{ animation: gaugePulse 1.4s infinite; }
+
+/* Fancy ticks around gauge (visual speed effect) */
+.gauge::before{content:""; position:absolute; inset:0; border-radius:50%; background:
+  conic-gradient(
+    rgba(0,0,0,.06) 0 2deg, transparent 2deg 6deg,
+    rgba(0,0,0,.06) 6deg 8deg, transparent 8deg 12deg,
+    rgba(0,0,0,.06) 12deg 14deg, transparent 14deg 18deg
+  );
+  mask: radial-gradient(circle at center, transparent 66%, #000 67%);
+  pointer-events:none;
+  transform-origin: 50% 50%;
+}
+/* Active spin: rotate ticks to convey motion (duration via --spinDur) */
+@keyframes gaugeSpin { 0%{ transform: rotate(0deg);} 100%{ transform: rotate(360deg);} }
+.gauge.spin::before{ animation: gaugeSpin var(--spinDur, 1.8s) linear infinite; }
+
+/* Sleep (doze): slow drift of ticks and slight dim */
+@keyframes gaugeDrift { 0%{ transform: rotate(0deg);} 50%{ transform: rotate(6deg);} 100%{ transform: rotate(0deg);} }
+.gauge.doze{ opacity: .92; }
+.gauge.doze::before{ animation: gaugeDrift 6s ease-in-out infinite; }
+
+/* Spark flash (on step) */
+.gauge .spark{ position:absolute; left:50%; top:50%; width:6px; height:6px; border-radius:50%; background: var(--g); transform: translate(-50%,-50%) scale(1); opacity:.9; animation: gSpark .5s ease-out forwards; pointer-events:none; }
+@keyframes gSpark { to { transform: translate(-50%,-50%) scale(6); opacity:0; } }
+
+/* Combo +1 (on step burst) */
+@keyframes comboFade { 0%{ opacity:.0; transform: translateY(6px); } 30%{ opacity:1; transform: translateY(0); } 100%{ opacity:0; transform: translateY(-6px);} }
+.gauge .combo{ position:absolute; right:-6px; top:-6px; font-size:10px; color:#10b981; background:#ecfdf5; border:1px solid #a7f3d0; padding:2px 4px; border-radius:6px; animation: comboFade .35s ease-out forwards; pointer-events:none }
+
+/* --- Tools MCP row --- */
+.tools{display:flex; flex-wrap:wrap; gap:8px; padding:8px 14px; border-bottom:1px solid var(--border)}
+.tools .label{font-size:11px; color:var(--muted); margin-right:4px; align-self:center}
+.tool{ --tool-color:#111827; display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; background:var(--chip); border:1px solid var(--border); font-size:12px; line-height:1; color:#111; position:relative;}
+.tool::before{content:""; width:8px; height:8px; border-radius:50%; background:var(--tool-color)}
+.t-llm{--tool-color:#8b5cf6} .t-web{--tool-color:#0ea5e9} .t-scrape{--tool-color:#22c55e} .t-arxiv{--tool-color:#f59e0b} .t-gmail{--tool-color:#ef4444} .t-meteo{--tool-color:#06b6d4}
+/* Running tool highlight + chrono */
+.tool.running{border-color:#8b5cf6; background:#f7f2ff; box-shadow:0 0 0 2px rgba(139,92,246,.15) inset}
+.tool .chrono{font-size:10px; color:#6b7280; margin-left:auto}
+
+/* --- Chips "business" --- */
+.chips{display:flex; gap:8px; flex-wrap:wrap; margin-top:8px}
+.chip{font-size:12px; background:var(--chip); border:1px solid var(--border); border-radius:999px; padding:6px 10px; white-space:nowrap}
+
+/* --- Grille métriques --- */
+.kv-grid{ padding:14px; display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px; min-width:0; }
+@media (min-width:1280px){ .kv-grid{grid-template-columns:repeat(3, minmax(0,1fr))} }
+.kv{ background:var(--chip); border:1px solid var(--border); border-radius:10px; padding:8px 10px; display:flex; justify-content:space-between; gap:10px; min-width:0; }
+.kv .k{font-size:11px; color:var(--muted);} .kv .v{font-size:13px; font-weight:700; white-space:nowrap}
+
+/* Badge leader + meta */
+.leader-badge{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:#f9fafb;color:#6b7280;border-radius:999px;padding:4px 8px;font-size:12px}
+.leader-badge .at{color:#111827;font-weight:700}
+.leader-badge .open{margin-left:6px}
+.meta-sm{font-size:12px;color:var(--muted);margin-top:4px}
+
+/* Refinements */
+.card-head{ padding:12px; gap:10px }
+.name-line{ gap:6px; flex-wrap: wrap }
+.status-chip{ background:#f7f8fa; border:1px solid var(--border); color:#374151; font-weight:600 }
+.kv{ border-radius:8px; padding:8px 10px }
+.kv .k{ color:#6b7280 } .kv .v{ color:#111827; font-weight:700 }
+.tools{gap:6px}
+.name{ font-size:17px; overflow-wrap: normal; word-break: normal; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.card-head{border-bottom:1px solid var(--border)}
+
+/* Gauge size refinement */
+.gauge{--p:.0; --g:var(--ok); width:52px; height:52px}
+.gauge::after{inset:6px}
+
+/* Sleep Zzz animation */
+@keyframes zzFloat { 0%{ transform: translateY(0); opacity: .55 } 50%{ transform: translateY(-2px); opacity: .92 } 100%{ transform: translateY(0); opacity: .55 } }
+.sleep-zz{ margin-left:6px; font-size:12px; color:#9ca3af; animation: zzFloat 2.4s ease-in-out infinite; }
+
+/* ===== Avatar Aura by State ===== */
+.avatar.aura::after{
+  content:""; position:absolute; inset:-3px; border-radius:50%;
+  box-shadow:0 0 0 2px var(--aura-color, transparent), 0 0 18px var(--aura-shadow, transparent);
+  pointer-events:none; transition: box-shadow .18s ease, opacity .18s ease; opacity:.98;
+}
+.avatar.a--running  { --aura-color:#f59e0b; --aura-shadow:rgba(245,158,11,.35); }
+.avatar.a--tool     { --aura-color:#8b5cf6; --aura-shadow:rgba(139,92,246,.35); }
+.avatar.a--sleep    { --aura-color:#60a5fa; --aura-shadow:rgba(96,165,250,.32); }
+.avatar.a--stop-ok  { --aura-color:#10b981; --aura-shadow:rgba(16,185,129,.30); }
+.avatar.a--stop-err { --aura-color:#ef4444; --aura-shadow:rgba(239,68,68,.30); }
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

@@ -15,8 +15,16 @@
 
 
 
+
+
 from .validators import validate_params
-from .._orchestrator.api_debug import debug_control as json_debug_control
+try:
+    # JSON orchestrator (legacy) may be absent on some installs; provide a graceful fallback
+    from .._orchestrator.api_debug import debug_control as json_debug_control  # type: ignore
+except Exception:
+    def json_debug_control(params: dict) -> dict:  # minimal fallback
+        return {"accepted": False, "status": "error", "message": "JSON orchestrator debug module not available"}
+
 from .api_spawn import db_path_for_worker
 from .db import get_state_kv, set_state_kv
 
@@ -52,7 +60,7 @@ def debug_control(params: dict) -> dict:
         except Exception:
             pass
 
-    # Delegate to JSON orchestrator
+    # Delegate to JSON orchestrator (or graceful fallback above)
     res = json_debug_control({'operation':'debug','worker_name': p['worker_name'], 'debug': dbg_req})
 
     # Enrich inspect

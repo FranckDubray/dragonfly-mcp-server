@@ -1,0 +1,7 @@
+:root{--ink:#0b1220;--muted:#6b7280;--border:#e5e7eb;--ok:#10b981;--idle:#9ca3af;--err:#ef4444;--accent:#111827;--chip:#f7f8fa;--ring:#2563eb}
+body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;color:var(--ink);background:#fff}
+.workers-list,.worker-detail{max-width:1280px;margin:20px auto;padding:16px}
+@media (prefers-color-scheme: dark){
+  :root{--ink:#f9fafb;--muted:#9aa3b2;--border:#263043;--ring:#5b9aff}
+  body{background:#0b1220}
+}

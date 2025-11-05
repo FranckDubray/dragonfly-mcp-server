@@ -1,0 +1,104 @@
+{
+  "type": "function",
+  "function": {
+    "name": "i18n_manager",
+    "displayName": "I18n files manager",
+    "category": "development",
+    "tags": ["files", "i18n"],
+    "description": "Liste les langues et gère les clés i18n (JSON et ES modules). Opérations en masse: ajout, modification, suppression et renommage de clés.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["list_langs", "get_keys", "upsert_keys", "delete_keys", "rename_key", "upsert_key_all_langs"],
+          "description": "Action à exécuter."
+        },
+        "root_dir": {
+          "type": "string",
+          "description": "Répertoire des locales (relatif au chroot projet).",
+          "default": "src/web/static/workers/i18n"
+        },
+        "pattern": {
+          "type": "string",
+          "description": "Glob des fichiers langues.",
+          "default": "*.{json,js}"
+        },
+        "format": {
+          "type": "string",
+          "enum": ["auto", "json", "es_module"],
+          "description": "Format forçable; auto détecte.",
+          "default": "auto"
+        },
+        "lang": { "type": "string", "description": "Langue ciblée (ex: 'fr')." },
+        "languages": { "type": "array", "items": { "type": "string" }, "description": "Plusieurs langues ciblées." },
+        "entries": {
+          "type": "array",
+          "description": "Paires chemin/valeur pour upsert_keys.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": { "type": "string" },
+              "value": { "type": "string" }
+            },
+            "required": ["path", "value"],
+            "additionalProperties": false
+          }
+        },
+        "keys": { "type": "array", "items": { "type": "string" }, "description": "Clés à supprimer ou à lire." },
+        "from_key": { "type": "string", "description": "Ancienne clé pour rename_key." },
+        "to_key": { "type": "string", "description": "Nouvelle clé pour rename_key." },
+        "target_key": { "type": "string", "description": "Clé cible pour upsert_key_all_langs." },
+        "values_by_lang": {
+          "type": "array",
+          "description": "Valeurs par langue.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "lang": { "type": "string" },
+              "value": { "type": "string" }
+            },
+            "required": ["lang", "value"],
+            "additionalProperties": false
+          }
+        },
+        "default_lang": { "type": "string", "description": "Fallback si valeur manquante." },
+        "conflict": {
+          "type": "string",
+          "enum": ["abort", "overwrite", "skip"],
+          "description": "Stratégie en cas d'existence de clé.",
+          "default": "overwrite"
+        },
+        "remove_empty_objects": {
+          "type": "boolean",
+          "description": "Nettoie les objets vides après suppression.",
+          "default": true
+        },
+        "sort_keys": {
+          "type": "boolean",
+          "description": "Trie alphabétique pour stabilité des diffs.",
+          "default": true
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Max items retournés (list/get).",
+          "minimum": 1,
+          "maximum": 500,
+          "default": 50
+        },
+        "dry_run": {
+          "type": "boolean",
+          "description": "Ne modifie pas le disque, renvoie un diff.",
+          "default": false
+        },
+        "backup": {
+          "type": "boolean",
+          "description": "Sauvegarde .bak avant écriture.",
+          "default": true
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}

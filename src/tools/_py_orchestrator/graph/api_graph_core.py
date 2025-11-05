@@ -13,8 +13,19 @@ def filter_graph(g: Dict[str, Any], kind: str, subgraphs_req: List[str]) -> Dict
         if not wanted:
             return {"error": "No valid subgraph specified"}
         keep_sg = set(wanted)
+        # Keep only nodes in requested subgraphs (plus START/END if ever present at root)
         nodes = [n for n in nodes if n.get("subgraph") in keep_sg or n.get("type") in {"start","end"}]
-        edges = [e for e in edges if (e.get("subgraph") in keep_sg) or ("::" in str(e.get("from","")) and str(e.get("from","")) .split("::",1)[0] == list(keep_sg)[0])]
+        # Keep only edges within requested subgraphs or edges whose 'from' pseudo-exit originates from one of them
+        def _edge_in_scope(e: Dict[str, Any]) -> bool:
+            if e.get("subgraph") in keep_sg:
+                return True
+            src = str(e.get("from", ""))
+            if "::" in src and src.split("::", 1)[0] in keep_sg:
+                return True
+            return False
+        edges = [e for e in edges if _edge_in_scope(e)]
+        # Prune subgraphs map to the requested ones
+        subgraphs = {k: v for k, v in (subgraphs or {}).items() if k in keep_sg}
     return {"nodes": nodes, "edges": edges, "subgraphs": subgraphs}
 
 

@@ -10,8 +10,9 @@ Operations:
 - delete_db(name) -> delete a database file
 - get_tables(db) -> list tables
 - describe(db, table) -> columns for a table
-- execute(db, query, params?, many?, return_rows?, limit?) -> run SQL and return rows/metrics
-- executescript(db, script) -> run multiple statements in one call
+- execute(db, query, params?, many?, return_rows?, limit?, read_only?) -> run SQL and return rows/metrics
+- exec/ query are aliases of execute for convenience
+- executescript(db, script, read_only?) -> run multiple statements in one call
 
 Notes:
 - The parameter "db" and "name" refer to the logical DB name (with or without .db).
@@ -19,21 +20,23 @@ Notes:
 - LIMIT parameter (default: 100, max: 1000): For SELECT queries, automatically truncates results
   to avoid massive outputs. Add explicit LIMIT clause in your query for precise control.
 - Case-insensitive matching: "alain" will match both "worker_alain.db" and "worker_Alain.db"
+- read_only (bool, default False): when True, only SELECT/PRAGMA/WITH queries are allowed and the
+  connection is opened in SQLite RO mode (URI). executemany/executescript are disabled in read-only.
 """
 from __future__ import annotations
 
-import os
 import re
 import sqlite3
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 import json
 
 try:
     from config import find_project_root
 except Exception:
-    find_project_root = lambda: Path.cwd()  # type: ignore
+    from pathlib import Path as _P
+    find_project_root = lambda: _P.cwd()  # type: ignore
 
 PROJECT_ROOT = find_project_root()
 BASE_DIR = PROJECT_ROOT / "sqlite3"
@@ -42,12 +45,10 @@ _SPEC_DIR = Path(__file__).resolve().parent.parent / "tool_specs"
 
 _DB_NAME_RE = re.compile(r"^[A-Za-z0-9_-]+(\.db)?$")
 
-# Logging setup
 logger = logging.getLogger(__name__)
 
 
 def _load_spec_json(name: str) -> Dict[str, Any]:
-    """Load and return the canonical JSON spec (source of truth)."""
     p = _SPEC_DIR / f"{name}.json"
     with open(p, "r", encoding="utf-8") as f:
         return json.load(f)
@@ -65,51 +66,25 @@ def _normalize_name(name: str) -> str:
 
 
 def _db_path(name: str, must_exist: bool = False) -> Path:
-    """
-    Resolve database path with case-insensitive matching.
-    
-    Args:
-        name: Database name (with or without .db, with or without worker_ prefix)
-        must_exist: If True, raises FileNotFoundError if not found
-        
-    Returns:
-        Path to the database file
-        
-    Raises:
-        FileNotFoundError: If must_exist=True and no matching file found
-        ValueError: If name is invalid
-    """
+    """Resolve database path with case-insensitive matching."""
     norm = _normalize_name(name)
-    
-    # Try exact match first
     exact_path = (BASE_DIR / norm).resolve()
     if exact_path.exists():
         return exact_path
-    
-    # If name starts with "worker_", try case variations
     if norm.startswith("worker_"):
-        # Extract the worker name part (after "worker_")
-        worker_part = norm[7:-3]  # Remove "worker_" prefix and ".db" suffix
-        
-        # Try variations: original, lowercase, capitalize
-        variations = [
+        worker_part = norm[7:-3]
+        for variant in [
             f"worker_{worker_part}.db",
             f"worker_{worker_part.lower()}.db",
             f"worker_{worker_part.capitalize()}.db",
-            f"worker_{worker_part.upper()}.db"
-        ]
-        
-        for variant in variations:
+            f"worker_{worker_part.upper()}.db",
+        ]:
             test_path = (BASE_DIR / variant).resolve()
             if test_path.exists():
-                logger.info(f"📁 Matched '{name}' → '{variant}' (case-insensitive)")
+                logger.info("📁 Matched '%s' → '%s' (case-insensitive)", name, variant)
                 return test_path
-    
-    # If not found and must_exist, raise error
     if must_exist:
         raise FileNotFoundError(f"Database '{name}' not found in {BASE_DIR}")
-    
-    # Otherwise return the normalized path (for create operations)
     return exact_path
 
 
@@ -127,6 +102,22 @@ def _ensure_dir() -> Dict[str, Any]:
     return {"base_dir": str(BASE_DIR)}
 
 
+def _want_read_only(params: Dict[str, Any]) -> bool:
+    try:
+        v = params.get("read_only")
+        return bool(v) and str(v).lower() not in {"false","0","no","off"}
+    except Exception:
+        return False
+
+
+def _connect(path: Path, read_only: bool = False) -> sqlite3.Connection:
+    if read_only:
+        # Open with SQLite URI mode=ro
+        uri = f"file:{path.as_posix()}?mode=ro"
+        return sqlite3.connect(uri, uri=True)
+    return sqlite3.connect(str(path))
+
+
 def run(operation: str, **params) -> Dict[str, Any]:
     op = (operation or "").lower().strip()
 
@@ -140,32 +131,32 @@ def run(operation: str, **params) -> Dict[str, Any]:
 
     if op == "create_db":
         name = params.get("name")
-        schema = params.get("schema")  # optional SQL script
+        schema = params.get("schema")
         if not isinstance(name, str) or not name.strip():
             logger.warning("create_db: missing or invalid 'name' parameter")
             return {"error": "name is required (string)"}
         try:
             path = _db_path(name, must_exist=False)
         except Exception as e:
-            logger.warning(f"create_db: invalid name '{name}': {e}")
+            logger.warning("create_db: invalid name '%s': %s", name, e)
             return {"error": str(e)}
         _ensure_dir()
         try:
             must_init = not path.exists()
-            conn = sqlite3.connect(str(path))
+            conn = _connect(path, read_only=False)
             try:
                 if schema and isinstance(schema, str):
                     if len(schema) > 51200:
-                        logger.warning(f"create_db: schema too large ({len(schema)} bytes, max 50KB)")
+                        logger.warning("create_db: schema too large (%d bytes, max 50KB)", len(schema))
                         return {"error": "schema exceeds 50KB limit"}
                     conn.executescript(schema)
                     conn.commit()
             finally:
                 conn.close()
-            logger.info(f"create_db: {'created' if must_init else 'opened'} {path.name}")
+            logger.info("create_db: %s %s", 'created' if must_init else 'opened', path.name)
             return {"db": path.name, "path": str(path), "created": must_init}
         except Exception as e:
-            logger.error(f"create_db failed for '{name}': {e}")
+            logger.error("create_db failed for '%s': %s", name, e)
             return {"error": f"create_db failed: {e}"}
 
     if op == "delete_db":
@@ -176,17 +167,17 @@ def run(operation: str, **params) -> Dict[str, Any]:
         try:
             path = _db_path(name, must_exist=True)
         except FileNotFoundError as e:
-            logger.warning(f"delete_db: {e}")
+            logger.warning("delete_db: %s", e)
             return {"error": str(e)}
         except Exception as e:
-            logger.warning(f"delete_db: invalid name '{name}': {e}")
+            logger.warning("delete_db: invalid name '%s': %s", name, e)
             return {"error": str(e)}
         try:
             path.unlink()
-            logger.info(f"delete_db: deleted {path.name}")
+            logger.info("delete_db: deleted %s", path.name)
             return {"deleted": path.name}
         except Exception as e:
-            logger.error(f"delete_db failed for '{path.name}': {e}")
+            logger.error("delete_db failed for '%s': %s", path.name, e)
             return {"error": f"delete_db failed: {e}"}
 
     if op == "get_tables":
@@ -197,23 +188,23 @@ def run(operation: str, **params) -> Dict[str, Any]:
         try:
             path = _db_path(db, must_exist=True)
         except FileNotFoundError as e:
-            logger.warning(f"get_tables: {e}")
+            logger.warning("get_tables: %s", e)
             return {"error": str(e)}
         except Exception as e:
-            logger.warning(f"get_tables: invalid db '{db}': {e}")
+            logger.warning("get_tables: invalid db '%s': %s", db, e)
             return {"error": str(e)}
         try:
-            conn = sqlite3.connect(str(path))
+            conn = _connect(path, read_only=True)  # harmless read-only for introspection
             conn.row_factory = _row_factory
             cur = conn.cursor()
             cur.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
             rows = cur.fetchall()
             cur.close(); conn.close()
             tables = [r.get("name") for r in rows]
-            logger.info(f"get_tables: {len(tables)} tables in {path.name}")
+            logger.info("get_tables: %d tables in %s", len(tables), path.name)
             return {"db": path.name, "tables": tables, "count": len(tables)}
         except Exception as e:
-            logger.error(f"get_tables failed for '{path.name}': {e}")
+            logger.error("get_tables failed for '%s': %s", path.name, e)
             return {"error": f"get_tables failed: {e}"}
 
     if op == "describe":
@@ -227,153 +218,135 @@ def run(operation: str, **params) -> Dict[str, Any]:
         try:
             path = _db_path(db, must_exist=True)
         except FileNotFoundError as e:
-            logger.warning(f"describe: {e}")
+            logger.warning("describe: %s", e)
             return {"error": str(e)}
         except Exception as e:
-            logger.warning(f"describe: invalid db '{db}': {e}")
+            logger.warning("describe: invalid db '%s': %s", db, e)
             return {"error": str(e)}
         try:
-            conn = sqlite3.connect(str(path))
+            conn = _connect(path, read_only=True)
             conn.row_factory = _row_factory
             cur = conn.cursor()
             cur.execute(f"PRAGMA table_info({table})")
             rows = cur.fetchall()
             cur.close(); conn.close()
-            logger.info(f"describe: {len(rows)} columns in {table} ({path.name})")
+            logger.info("describe: %d columns in %s (%s)", len(rows), table, path.name)
             return {"db": path.name, "table": table, "columns": rows}
         except Exception as e:
-            logger.error(f"describe failed for '{table}' in '{path.name}': {e}")
+            logger.error("describe failed for '%s' in '%s': %s", table, path.name, e)
             return {"error": f"describe failed: {e}"}
 
     if op in ("execute", "exec", "query"):
-        db = params.get("db")
-        sql = params.get("query")
-        sql_params = params.get("params")  # list/tuple/dict or list of these when many=True
-        many = bool(params.get("many", False))
+        db = params.get("db"); sql = params.get("query"); many = bool(params.get("many", False))
+        sql_params = params.get("params")
         return_rows_param = params.get("return_rows")
-        limit_param = params.get("limit", 100)  # default 100
-
+        limit_param = params.get("limit", 100)
+        ro = _want_read_only(params)
         if not isinstance(db, str) or not db.strip():
             logger.warning("execute: missing or invalid 'db' parameter")
             return {"error": "db is required (string)"}
         if not isinstance(sql, str) or not sql.strip():
             logger.warning("execute: missing or invalid 'query' parameter")
             return {"error": "query is required (string)"}
-
-        # Validate query size
         if len(sql) > 51200:
-            logger.warning(f"execute: query too large ({len(sql)} bytes, max 50KB)")
+            logger.warning("execute: query too large (%d bytes, max 50KB)", len(sql))
             return {"error": "query exceeds 50KB limit"}
-
+        # Read-only enforcement per call
+        if ro:
+            if many:
+                return {"error": "read-only mode: executemany disabled"}
+            if not _is_select_like(sql):
+                return {"error": "read-only mode: only SELECT/PRAGMA/WITH allowed"}
         try:
             path = _db_path(db, must_exist=True)
         except FileNotFoundError as e:
-            logger.warning(f"execute: {e}")
+            logger.warning("execute: %s", e)
             return {"error": str(e)}
         except Exception as e:
-            logger.warning(f"execute: invalid db '{db}': {e}")
+            logger.warning("execute: invalid db '%s': %s", db, e)
             return {"error": str(e)}
-
         try:
-            conn = sqlite3.connect(str(path))
+            conn = _connect(path, read_only=ro)
             conn.row_factory = _row_factory
             cur = conn.cursor()
             try:
                 if many:
-                    # Expect sql_params to be a list of param sets
-                    if not isinstance(sql_params, (list, tuple)):
-                        logger.warning("execute: 'params' must be a list when many=True")
-                        return {"error": "params must be a list when many=True"}
-                    cur.executemany(sql, sql_params)  # type: ignore[arg-type]
+                    cur.executemany(sql, sql_params if isinstance(sql_params, (list, tuple)) else [])  # type: ignore[arg-type]
                     conn.commit()
-                    rows = []
-                    columns: List[str] = []
-                    logger.info(f"execute: executemany completed ({cur.rowcount} rows affected)")
+                    rows = []; columns: List[str] = []
+                    logger.info("execute: executemany completed (%d rows affected)", cur.rowcount)
                 else:
                     if sql_params is None:
                         cur.execute(sql)
                     else:
                         cur.execute(sql, sql_params)
-                    # SELECT-like returns rows; others return rowcount/lastrowid
-                    if return_rows_param is None:
-                        want_rows = _is_select_like(sql)
-                    else:
-                        want_rows = bool(return_rows_param)
-                    if want_rows and cur.description is not None:
+                    if (return_rows_param is None and _is_select_like(sql)) or bool(return_rows_param):
                         all_rows = cur.fetchall()
-                        columns = [c[0] for c in cur.description]
-                        
-                        # Apply limit and truncation warning
+                        columns = [c[0] for c in cur.description or []]
                         total_count = len(all_rows)
-                        actual_limit = min(limit_param, 1000)  # enforce max 1000
+                        actual_limit = min(limit_param, 1000)
+                        rows = all_rows[:actual_limit]
                         if total_count > actual_limit:
-                            rows = all_rows[:actual_limit]
-                            logger.warning(f"execute: truncated results from {total_count} to {actual_limit} rows")
+                            logger.warning("execute: truncated results from %d to %d rows", total_count, actual_limit)
+                            truncated = True
                         else:
-                            rows = all_rows
+                            truncated = False
                     else:
-                        rows = []
-                        columns = []
+                        rows = []; columns = []; truncated = False
                     conn.commit()
-                    logger.info(f"execute: query completed ({len(rows)} rows returned)")
-
+                    logger.info("execute: query completed (%d rows returned)", len(rows))
                 result: Dict[str, Any] = {"db": path.name}
                 if rows:
                     result.update({"columns": columns, "rows": rows, "returned_count": len(rows)})
-                    if total_count > len(rows):
-                        result["truncated"] = True
-                        result["total_count"] = total_count
-                        result["warning"] = f"Results truncated: {total_count} found, returning {len(rows)} (limit: {actual_limit})"
+                    if 'total_count' in locals() and total_count > len(rows):
+                        result.update({"truncated": True, "total_count": total_count, "warning": f"Results truncated: {total_count} found, returning {len(rows)} (limit: {actual_limit})"})
                 else:
-                    # For non-SELECT queries, include rowcount/lastrowid
-                    result.update({"rowcount": cur.rowcount, "lastrowid": cur.lastrowid})
+                    result.update({"rowcount": getattr(cur, 'rowcount', 0), "lastrowid": getattr(cur, 'lastrowid', None)})
                 return result
             finally:
                 cur.close(); conn.close()
         except Exception as e:
-            logger.error(f"execute failed: {e}")
+            logger.error("execute failed: %s", e)
             return {"error": f"execute failed: {e}"}
 
     if op == "executescript":
-        db = params.get("db"); script = params.get("script")
+        db = params.get("db"); script = params.get("script"); ro = _want_read_only(params)
+        if ro:
+            return {"error": "read-only mode: executescript disabled"}
         if not isinstance(db, str) or not db.strip():
             logger.warning("executescript: missing or invalid 'db' parameter")
             return {"error": "db is required (string)"}
         if not isinstance(script, str) or not script.strip():
             logger.warning("executescript: missing or invalid 'script' parameter")
             return {"error": "script is required (string)"}
-        
-        # Validate script size
         if len(script) > 51200:
-            logger.warning(f"executescript: script too large ({len(script)} bytes, max 50KB)")
+            logger.warning("executescript: script too large (%d bytes, max 50KB)", len(script))
             return {"error": "script exceeds 50KB limit"}
-        
         try:
             path = _db_path(db, must_exist=True)
         except FileNotFoundError as e:
-            logger.warning(f"executescript: {e}")
+            logger.warning("executescript: %s", e)
             return {"error": str(e)}
         except Exception as e:
-            logger.warning(f"executescript: invalid db '{db}': {e}")
+            logger.warning("executescript: invalid db '%s': %s", db, e)
             return {"error": str(e)}
         try:
-            conn = sqlite3.connect(str(path))
+            conn = _connect(path, read_only=False)
             cur = conn.cursor()
             try:
                 cur.executescript(script)
                 conn.commit()
-                logger.info(f"executescript: script executed successfully on {path.name}")
+                logger.info("executescript: script executed successfully on %s", path.name)
                 return {"db": path.name}
             finally:
                 cur.close(); conn.close()
         except Exception as e:
-            logger.error(f"executescript failed for '{path.name}': {e}")
+            logger.error("executescript failed for '%s': %s", path.name, e)
             return {"error": f"executescript failed: {e}"}
 
-    logger.warning(f"Unknown operation: {operation}")
+    logger.warning("Unknown operation: %s", operation)
     return {"error": f"Unknown operation: {operation}"}
 
 
 def spec() -> Dict[str, Any]:
-    # Load the canonical JSON spec (source of truth)
     return _load_spec_json("sqlite_db")

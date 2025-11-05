@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 from typing import Dict, Any
 import time
@@ -24,6 +23,7 @@ from ..logging.crash_logger import log_crash
 from ..debug_loop import debug_wait_loop
 from .loop_core import execute_step
 from .config_merge import merge_worker_config
+from ..api_common import PROJECT_ROOT
 
 
 def _load_process_and_subgraphs(root: Path, db_path: str, worker: str):
@@ -73,8 +73,27 @@ def _arm_initial_pause_if_requested(db_path: str, worker: str, current_sub: str,
         debug_wait_loop(db_path, worker)
 
 
+def _resolve_effective_root(db_path: str, worker: str, root: Path) -> Path:
+    """If instance directory does not exist, fallback to template directory from worker_file in DB."""
+    try:
+        if root.is_dir():
+            return root
+        wf = get_state_kv(db_path, worker, 'worker_file') or ''
+        if not wf:
+            return root
+        p = (Path(PROJECT_ROOT) / wf).resolve() if not Path(wf).is_absolute() else Path(wf).resolve()
+        cand = p.parent
+        if cand.is_dir():
+            return cand
+        return root
+    except Exception:
+        return root
+
+
 def run_loop(db_path: str, worker: str):
+    # Compute worker root, then fallback to template dir if instance dir missing
     root = load_worker_root(worker)
+    root = _resolve_effective_root(db_path, worker, root)
 
     graph, err = preflight_load_graph(root, db_path, worker)
     if graph is None:
@@ -90,6 +109,19 @@ def run_loop(db_path: str, worker: str):
 
     # Directory-based config merge only (config/)
     merge_worker_config(root, process, db_path, worker)
+    
+    # Merge KV-persisted metadata (db_file injection from api_start)
+    try:
+        kv_md = _json.loads(get_state_kv(db_path, worker, 'py.process_metadata') or '{}')
+        if isinstance(kv_md, dict):
+            process.metadata = {**(process.metadata or {}), **kv_md}
+    except Exception:
+        pass
+
+    # Ensure db_file is set (fallback to instance name if missing)
+    if 'db_file' not in (process.metadata or {}) or not process.metadata.get('db_file'):
+        process.metadata['db_file'] = f"worker_{worker}.db"
+
     try:
         set_state_kv(db_path, worker, 'py.process_metadata', _json.dumps(process.metadata or {}))
     except Exception:
@@ -124,6 +156,14 @@ def run_loop(db_path: str, worker: str):
                 graph = new_graph
                 process = new_process
                 merge_worker_config(root, process, db_path, worker)
+                try:
+                    kv_md = _json.loads(get_state_kv(db_path, worker, 'py.process_metadata') or '{}')
+                    if isinstance(kv_md, dict):
+                        process.metadata = {**(process.metadata or {}), **kv_md}
+                except Exception:
+                    pass
+                if 'db_file' not in (process.metadata or {}) or not process.metadata.get('db_file'):
+                    process.metadata['db_file'] = f"worker_{worker}.db"
                 try:
                     set_state_kv(db_path, worker, 'py.process_metadata', _json.dumps(process.metadata or {}))
                 except Exception:

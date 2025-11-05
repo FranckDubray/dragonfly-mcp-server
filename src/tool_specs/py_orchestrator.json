@@ -1,24 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 {
   "type": "function",
   "function": {
@@ -26,185 +5,83 @@
     "displayName": "Python Orchestrator",
     "category": "intelligence",
     "tags": ["process", "python", "debug"],
-    "description": "Run Python-defined workflows (Process/SubGraphs/Steps). Start/stop/status/debug; graph extraction (process/subgraph/current_subgraph); validate worker (AST+rules); list transforms; read/update worker config (directory-based: config/config.json + config/prompts/*.md). Includes a passive observation mode (observe) that tails DB steps and emits events (no interaction).",
+    "description": "Run Python-defined workflows (Process/SubGraphs/Steps). Start/stop/status/debug; graph extraction; validate; transforms; config. Nouveau flux de création: start avec new_worker {first_name, template} (obligatoire) — aucun chemin/DB requis côté appelant. L'outil dérive le worker_name, localise le template dans workers/<template>/process.py, crée la DB et l'identité.",
     "parameters": {
       "type": "object",
       "properties": {
         "operation": {
           "type": "string",
-          "enum": [
-            "start",
-            "stop",
-            "status",
-            "debug",
-            "observe",
-            "list",
-            "graph",
-            "validate",
-            "transforms",
-            "config"
-          ],
-          "description": "Control operation"
+          "enum": ["start", "stop", "status", "debug", "observe", "list", "graph", "validate", "transforms", "config"],
+          "description": "Contrôle de l'orchestrateur"
+        },
+        "new_worker": {
+          "type": "object",
+          "description": "Création d'un nouveau worker à partir d'un template (obligatoire pour operation=start). Plus d'ancien schéma: pas de worker_name/worker_file fournis par l'appelant.",
+          "properties": {
+            "first_name": { "type": "string", "minLength": 1, "description": "Prénom (utilisé pour dériver le worker_name)" },
+            "template": { "type": "string", "minLength": 1, "description": "Nom du template sous workers/<template>" }
+          },
+          "required": ["first_name", "template"],
+          "additionalProperties": false
         },
         "worker_name": {
           "type": "string",
-          "description": "Logical worker name (used for DB)"
+          "description": "Identifiant logique du worker (requis pour les opérations sur un worker existant: stop/status/debug/observe/graph/validate/transforms/config). Pour start, ne PAS fournir — utiliser new_worker."
         },
-        "worker_file": {
-          "type": "string",
-          "description": "Entry file under workers/<name>/process.py"
-        },
-        "hot_reload": {
-          "type": "boolean",
-          "default": true,
-          "description": "Reload worker modules when files change"
-        },
-        "stop": {
-          "type": "object",
-          "description": "Stop options",
-          "properties": {
-            "mode": {
-              "type": "string",
-              "enum": ["soft", "term", "kill"],
-              "default": "soft"
-            }
-          },
-          "additionalProperties": false
-        },
+        "hot_reload": { "type": "boolean", "default": true, "description": "Hot-reload code & config" },
+        "stop": { "type": "object", "properties": { "mode": { "type": "string", "enum": ["soft", "term", "kill"], "default": "soft" } }, "additionalProperties": false },
         "debug": {
           "type": "object",
-          "description": "Interactive debugging (active). Use to enable step mode, step/continue/run_until, manage breakpoints, or request a debug-oriented streaming (action='stream'). NOTE: action='stream' advances the workflow (step-by-step) and is different from 'observe' (read-only).",
+          "description": "Debug actif (step/continue/run_until, breakpoints, inspect).",
           "properties": {
-            "action": {
-              "type": "string",
-              "enum": [
-                "enable",
-                "enable_now",
-                "step",
-                "continue",
-                "run_until",
-                "break_add",
-                "break_remove",
-                "break_clear",
-                "break_list",
-                "inspect",
-                "disable",
-                "stream"
-              ]
-            },
+            "action": { "type": "string", "enum": ["enable", "enable_now", "step", "continue", "run_until", "break_add", "break_remove", "break_clear", "break_list", "inspect", "disable"] },
             "pause_at_start": { "type": "boolean" },
             "enable_on_start": { "type": "boolean" },
-            "timeout_sec": {
-              "type": "number",
-              "description": "Debug ACK timeout when action moves (step/continue/run_until)."
-            },
-            "target": {
-              "type": "object",
-              "properties": {
-                "node": { "type": "string" },
-                "when": { "type": "string" }
-              },
-              "additionalProperties": false
-            },
-            "breakpoint": {
-              "type": "object",
-              "properties": {
-                "node": { "type": "string" },
-                "when": { "type": "string" }
-              },
-              "additionalProperties": false
-            },
+            "timeout_sec": { "type": "number" },
+            "target": { "type": "object", "properties": { "node": { "type": "string" }, "when": { "type": "string" } }, "additionalProperties": false },
+            "breakpoint": { "type": "object", "properties": { "node": { "type": "string" }, "when": { "type": "string" } }, "additionalProperties": false },
             "max_events": { "type": "integer", "minimum": 0 }
           },
           "additionalProperties": false
         },
         "observe": {
           "type": "object",
-          "description": "Passive observation (read-only). Returns a single JSON response with the events captured during the window (tail of DB job_steps), without enabling debug nor issuing step/continue. Each event maps to a step INSERT (status='running') or an UPDATE (running→succeeded/failed). Event schema: { chunk_type:'step'|'error', node_executed, cycle_id, duration_ms, updated?:boolean, io:{ in:callObj, out_preview:string }, phase, heartbeat }. Status is 'ok' or 'timeout'. Does not alter the worker state.",
+          "description": "Observation passive (read-only). Retourne les évènements récents. NOTE: Le mode streaming (stream:true) est RÉSERVÉ aux apps clientes directes, PAS pour les appels LLM.",
           "properties": {
-            "timeout_sec": { "type": "number", "description": "Seconds before the server returns; <=0 or omitted means infinite (client-driven)." },
-            "max_events": { "type": "integer", "minimum": 0 }
+            "timeout_sec": { "type": "number", "description": "Durée maximale de l'observation (défaut: 30s, max: 86400s)" },
+            "max_events": { "type": "integer", "minimum": 0, "description": "Nombre maximum d'événements à retourner (0 = illimité)" },
+            "window_size": { "type": "integer", "minimum": 1, "maximum": 500, "default": 50, "description": "Taille de la fenêtre pour détecter les updates de steps (défaut: 50)" },
+            "tick_sec": { "type": "number", "minimum": 0.1, "maximum": 2.0, "default": 0.2, "description": "Fréquence de polling en secondes (défaut: 0.2s)" },
+            "from_rowid": { "type": "integer", "minimum": 0, "description": "Reprendre depuis un rowid spécifique (pour apps clientes uniquement)" }
           },
           "additionalProperties": false
         },
-        "include_metrics": {
-          "type": "boolean",
-          "description": "Include metrics for the current run in status response"
-        },
-        "metrics": {
-          "type": "object",
-          "properties": {
-            "include": { "type": "boolean" },
-            "window": {
-              "type": "string",
-              "description": "Metrics window (e.g., '5m', '15m', '1h')"
-            }
-          },
-          "additionalProperties": false
-        },
+        "include_metrics": { "type": "boolean", "description": "Inclure métriques dans status" },
+        "metrics": { "type": "object", "properties": { "include": { "type": "boolean" }, "window": { "type": "string" } }, "additionalProperties": false },
         "graph": {
           "type": "object",
-          "description": "Extract process/subgraph graph (semantic graph for rendering). No server-side highlight/styling.",
+          "description": "Extraction du graphe (process/subgraph/current_subgraph).",
           "properties": {
-            "kind": {
-              "type": "string",
-              "enum": ["process", "subgraph", "current_subgraph"],
-              "default": "process"
-            },
-            "subgraphs": {
-              "type": "array",
-              "items": { "type": "string" },
-              "description": "Subgraph names when kind=subgraph"
-            },
-            "recursive": {
-              "type": "boolean",
-              "default": true,
-              "description": "Include referenced subgraphs recursively (when relevant)"
-            },
+            "kind": { "type": "string", "enum": ["process", "subgraph", "current_subgraph"], "default": "process" },
+            "subgraphs": { "type": "array", "items": { "type": "string" } },
+            "recursive": { "type": "boolean", "default": true },
             "include": {
               "type": "object",
               "properties": {
-                "shapes": {
-                  "type": "boolean",
-                  "default": true,
-                  "description": "Add suggested shapes (diamond for cond, rect for steps)"
-                },
-                "emojis": {
-                  "type": "boolean",
-                  "default": true,
-                  "description": "Add emojis for categories (tools) and gear for transforms"
-                },
-                "labels": {
-                  "type": "boolean",
-                  "default": true,
-                  "description": "Include edge labels (when)"
-                }
+                "shapes": { "type": "boolean", "default": true },
+                "emojis": { "type": "boolean", "default": true },
+                "labels": { "type": "boolean", "default": true }
               },
               "additionalProperties": false
             },
-            "include_position": {
-              "type": "boolean",
-              "description": "Include current/next nodes and subgraphs (position) in the response"
-            },
+            "include_position": { "type": "boolean" },
             "render": {
               "type": "object",
               "properties": {
-                "mermaid": {
-                  "type": "boolean",
-                  "description": "Return plain Mermaid representation (no server-side highlight)."
-                },
-                "hide_start": {
-                  "type": "boolean",
-                  "description": "Hide START node in Mermaid"
-                },
-                "hide_end": {
-                  "type": "boolean",
-                  "description": "Hide END node in Mermaid"
-                },
-                "overview_subgraphs": {
-                  "type": "boolean",
-                  "description": "Render an overview graph with one node per subgraph and edges from exits mapping."
-                }
+                "mermaid": { "type": "boolean" },
+                "hide_start": { "type": "boolean" },
+                "hide_end": { "type": "boolean" },
+                "overview_subgraphs": { "type": "boolean" }
               },
               "additionalProperties": false
             }
@@ -213,64 +90,29 @@
         },
         "validate": {
           "type": "object",
-          "description": "Validate worker code (AST) and enforce readability rules.",
+          "description": "Validation AST + règles.",
           "properties": {
-            "limit_steps": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 200,
-              "default": 20,
-              "description": "Maximum steps allowed per subgraph (readability)."
-            },
-            "include_preflight": {
-              "type": "boolean",
-              "description": "Include runtime checks (handlers/tools reachability)"
-            },
-            "strict_tools": {
-              "type": "boolean",
-              "description": "Treat missing tool_specs as errors (otherwise warnings)"
-            },
-            "persist": {
-              "type": "boolean",
-              "description": "Persist warnings/errors to KV (side effects), like start preflight"
-            }
+            "limit_steps": { "type": "integer", "minimum": 1, "maximum": 200, "default": 20 },
+            "include_preflight": { "type": "boolean" },
+            "strict_tools": { "type": "boolean" },
+            "persist": { "type": "boolean" }
           },
           "additionalProperties": false
         },
-        "limit": {
-          "type": "integer",
-          "description": "Optional limit for transforms listing (operation=transforms)",
-          "minimum": 1,
-          "maximum": 1000
-        },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 1000, "description": "Limite pour transforms listing" },
         "set": {
           "type": "object",
-          "description": "Config writer (operation=config). Supports nested updates via dot/bracket path and file writes in config/.",
+          "description": "Config writer (operation=config).",
           "properties": {
-            "key": {
-              "type": "string",
-              "description": "Shallow key at metadata root (back-compat)."
-            },
-            "key_path": {
-              "type": "string",
-              "description": "Nested path with dot/bracket syntax. Examples: prompts.collect_sonar, primary_site_caps[\"https://x.ai/blog\"], features[0].limits[2]"
-            },
+            "key": { "type": "string" },
+            "key_path": { "type": "string" },
             "value": {
-              "description": "New value (any JSON-compatible type)"
-            },
-            "storage": {
               "type": "string",
-              "enum": ["file", "inline"],
-              "description": "file: persist under workers/<name>/config (prompts/*.md auto-routed or config.json deep-merge). inline: KV only."
+              "description": "Valeur JSON sérialisée (string). Exemples: \"true\", \"123\", \"\\\"hello\\\"\", \"{\\\"a\\\":1}\", \"[1,2,3]\""
             },
-            "file": {
-              "type": "string",
-              "description": "Direct file write under workers/<name>/config (e.g., prompts/x.md, vars/y.json)."
-            },
-            "create": {
-              "type": "boolean",
-              "description": "When set.file is used, create the file if it does not exist (default true)."
-            }
+            "storage": { "type": "string", "enum": ["file", "inline"] },
+            "file": { "type": "string" },
+            "create": { "type": "boolean" }
           },
           "additionalProperties": false
         }

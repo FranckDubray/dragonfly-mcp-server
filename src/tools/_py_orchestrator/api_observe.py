@@ -1,6 +1,7 @@
+"""Observation API with streaming support."""
 
 from __future__ import annotations
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Iterator
 import time
 import json as _json
 import sqlite3
@@ -25,9 +26,12 @@ def _db_max_rowid(dbp: str, wn: str, run_id: str) -> int:
     try:
         conn = sqlite3.connect(dbp, timeout=3.0)
         try:
+            # ✅ FIX: Filtrage strict par run_id (pas de OR fallback)
+            if not run_id:
+                return 0
             cur = conn.execute(
-                "SELECT COALESCE(MAX(rowid),0) FROM job_steps WHERE worker=? AND (run_id=? OR ?='')",
-                (wn, run_id, run_id),
+                "SELECT COALESCE(MAX(rowid),0) FROM job_steps WHERE worker=? AND run_id=?",
+                (wn, run_id),
             )
             row = cur.fetchone()
             return int(row[0] or 0)
@@ -41,10 +45,13 @@ def _db_rows_since(dbp: str, wn: str, run_id: str, last_rowid: int):
     try:
         conn = sqlite3.connect(dbp, timeout=3.0)
         try:
+            # ✅ FIX: Filtrage strict par run_id (pas de OR fallback)
+            if not run_id:
+                return []
             cur = conn.execute(
                 "SELECT rowid, cycle_id, node, status, duration_ms, details_json, finished_at "
-                "FROM job_steps WHERE worker=? AND (run_id=? OR ?='') AND rowid>? ORDER BY rowid ASC",
-                (wn, run_id, run_id, int(last_rowid)),
+                "FROM job_steps WHERE worker=? AND run_id=? AND rowid>? ORDER BY rowid ASC",
+                (wn, run_id, int(last_rowid)),
             )
             return cur.fetchall()
         finally:
@@ -57,10 +64,13 @@ def _db_recent_window(dbp: str, wn: str, run_id: str, window: int = 10):
     try:
         conn = sqlite3.connect(dbp, timeout=3.0)
         try:
+            # ✅ FIX: Filtrage strict par run_id (pas de OR fallback)
+            if not run_id:
+                return []
             cur = conn.execute(
                 "SELECT rowid, cycle_id, node, status, duration_ms, details_json, finished_at "
-                "FROM job_steps WHERE worker=? AND (run_id=? OR ?='') ORDER BY rowid DESC LIMIT ?",
-                (wn, run_id, run_id, int(window)),
+                "FROM job_steps WHERE worker=? AND run_id=? ORDER BY rowid DESC LIMIT ?",
+                (wn, run_id, int(window)),
             )
             return cur.fetchall()
         finally:
@@ -69,23 +79,32 @@ def _db_recent_window(dbp: str, wn: str, run_id: str, window: int = 10):
         return []
 
 
-def observe_tool(params: dict) -> dict:
+def observe_tool(params: dict) -> dict | Iterator[Dict[str, Any]]:
     """Passive observation window. Does NOT enable debug nor step/continue.
-    Returns a single JSON response with events captured in the window.
+    
+    If params.observe.stream=true, returns a generator that yields events one by one.
+    Otherwise, returns a single JSON response with events captured in the window.
     """
+    # 🆕 Check if streaming mode requested
+    obs_req = (params or {}).get('observe') or {}
+    if obs_req.get('stream'):
+        # Delegate to streaming implementation
+        from .api_observe_stream import observe_stream
+        return observe_stream(params)
+    
+    # Original batch mode (returns all events at once)
     wn = str((params or {}).get('worker_name') or '').strip()
     if not wn:
         return {"accepted": False, "status": "error", "message": "worker_name required", "truncated": False}
 
     db_path = db_path_for_worker(wn)
-    obs_req = (params or {}).get('observe') or {}
 
-    # Nouveaux paramètres optionnels
-    window_size = int(obs_req.get('window_size') or 10)
+    # Config
+    window_size = int(obs_req.get('window_size') or 50)  # Augmenté de 10 à 50
     try:
         window_size = max(1, min(500, window_size))
     except Exception:
-        window_size = 10
+        window_size = 50
     tick = float(obs_req.get('tick_sec') or 0.2)
     try:
         tick = max(0.1, min(2.0, tick))
@@ -99,7 +118,17 @@ def observe_tool(params: dict) -> dict:
     max_events = int(obs_req.get('max_events') or 0)  # 0 = unlimited
 
     run_id = get_state_kv(db_path, wn, 'run_id') or ''
-    last_rowid = _db_max_rowid(db_path, wn, run_id)
+    
+    # ✅ FIX: Valider le run_id avant d'utiliser from_rowid
+    from_rowid = obs_req.get('from_rowid')
+    if from_rowid is not None and run_id:
+        try:
+            last_rowid = int(from_rowid)
+        except Exception:
+            last_rowid = _db_max_rowid(db_path, wn, run_id)
+    else:
+        last_rowid = _db_max_rowid(db_path, wn, run_id)
+    
     # Track recent updates: rowid -> signature(status, finished_at, duration_ms, details_json_hash)
     seen_sig = {}
 
@@ -108,7 +137,7 @@ def observe_tool(params: dict) -> dict:
 
     while True:
         if deadline is not None and time.time() > deadline:
-            return {"accepted": True, "status": "timeout", "events": events, "count": len(events)}
+            return {"accepted": True, "status": "timeout", "events": events, "count": len(events), "last_rowid": last_rowid}
 
         phase = get_state_kv(db_path, wn, 'phase') or ''
         if phase in {'completed', 'failed', 'canceled'}:
@@ -130,7 +159,7 @@ def observe_tool(params: dict) -> dict:
                 'cycle_id': get_state_kv(db_path, wn, 'debug.cycle_id') or '',
                 'terminal': True,
             })
-            return {"accepted": True, "status": phase, "events": events, "count": len(events)}
+            return {"accepted": True, "status": phase, "events": events, "count": len(events), "last_rowid": last_rowid}
 
         # New inserts since last_rowid
         rows = _db_rows_since(db_path, wn, run_id, last_rowid)
@@ -147,8 +176,9 @@ def observe_tool(params: dict) -> dict:
                             lrp_val = obj.get('last_result_preview')
                             if lrp_val is not None:
                                 lrp = lrp_val if isinstance(lrp_val, str) else str(lrp_val)
-                except Exception:
-                    pass
+                except Exception as e:
+                    # Log parsing errors instead of silent fail
+                    lrp = f"[JSON parse error: {str(e)[:100]}]"
                 events.append({
                     'chunk_type': ('error' if str(status).lower()=='failed' else 'step'),
                     'node_executed': node,
@@ -164,10 +194,10 @@ def observe_tool(params: dict) -> dict:
                 seen_sig[int(rid)] = sig
                 last_rowid = int(rid)
                 if max_events and len(events) >= max_events:
-                    return {"accepted": True, "status": "ok", "events": events, "count": len(events), "truncated": True}
+                    return {"accepted": True, "status": "ok", "events": events, "count": len(events), "truncated": True, "last_rowid": last_rowid}
         else:
-            idle_loops += 1
             # Backoff léger après 5 tours inactifs
+            idle_loops += 1
             sleep_for = tick if idle_loops < 5 else min(1.0, tick * 2)
             time.sleep(sleep_for)
 
@@ -191,14 +221,14 @@ def observe_tool(params: dict) -> dict:
                             lrp_val = obj.get('last_result_preview')
                             if lrp_val is not None:
                                 lrp = lrp_val if isinstance(lrp_val, str) else str(lrp_val)
-                except Exception:
-                    pass
+                except Exception as e:
+                    lrp = f"[JSON parse error: {str(e)[:100]}]"
                 events.append({
-                    'chunk_type': ('error' if str(status).lower()=='failed' else 'step'),
+                    'chunk_type': ('error' if str(status).lower()== 'failed' else 'step'),
                     'node_executed': node,
                     'node_next': '',
                     'io': {'in': call, 'out_preview': lrp},
-                    'error': ({'message': (get_state_kv(db_path, wn, 'last_error') or '')} if str(status).lower()=='failed' else None),
+                    'error': ({'message': (get_state_kv(db_path, wn, 'last_error') or '')} if str(status).lower()== 'failed' else None),
                     'phase': get_state_kv(db_path, wn, 'phase') or '',
                     'heartbeat': get_state_kv(db_path, wn, 'heartbeat') or '',
                     'cycle_id': cycle_id,
@@ -207,4 +237,4 @@ def observe_tool(params: dict) -> dict:
                 })
                 seen_sig[rid_i] = cur_sig
                 if max_events and len(events) >= max_events:
-                    return {"accepted": True, "status": "ok", "events": events, "count": len(events), "truncated": True}
+                    return {"accepted": True, "status": "ok", "events": events, "count": len(events), "truncated": True, "last_rowid": last_rowid}

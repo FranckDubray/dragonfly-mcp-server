@@ -1,0 +1,42 @@
+/* Chat UI refinements (modale + panneau) */
+.chat-list {
+  font-size: 14px;
+  line-height: 1.45;
+  background: #f9fafb;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+}
+.chat-bubble {
+  padding: 10px 12px;
+  border-radius: 10px;
+  max-width: 78%;
+  box-shadow: 0 4px 12px rgba(0,0,0,.05);
+}
+.chat-bubble.user { background: #eef2ff; }
+.chat-bubble.assistant { background: #f0f9ff; }
+.chat-bubble .who { font-size: 11.5px; color: var(--muted); margin-bottom: 4px; }
+.chat-bubble .content.markdown { font-size: 14px; }
+.chat-bubble .content.markdown h2 { font-size: 16px; margin: 6px 0 4px; font-weight: 700; }
+.chat-bubble .content.markdown h3 { font-size: 15px; margin: 6px 0 4px; font-weight: 700; }
+.chat-bubble .content.markdown p { margin: 6px 0; }
+.chat-bubble .content.markdown ul { padding-left: 18px; margin: 6px 0; }
+.chat-bubble .content.markdown code { background: #0b1422; color: #f8fafc; border-radius: 6px; padding: 0 4px; }
+
+.code-toolbar { border: 1px solid var(--border); background: #0b1422; border-radius: 8px; padding: 8px 8px 6px 8px; }
+.code-toolbar pre { margin: 0; }
+.code-toolbar .copy-btn { position: relative; float: right; margin-top: 6px; font-size: 12px; padding: 4px 8px; }
+
+/* Formulaire input compact */
+.chat-form { gap: 8px; padding-top: 8px; }
+.chat-form textarea { min-height: 44px; max-height: 120px; font-size: 14px; }
+
+/* Panneau "Leader Chat Panel" (page worker) */
+.panel .chat-bubble { border-radius: 10px; padding: 9px 11px; }
+
+/* Traces outils (collapsible) plus sobres */
+.panel .collapsible .io-pre { font-size: 12px; border-radius: 8px; }
+
+/* Typographie générale des markdowns dans chat */
+.markdown a { color: #2563eb; text-decoration: none; }
+.markdown a:hover { text-decoration: underline; }
