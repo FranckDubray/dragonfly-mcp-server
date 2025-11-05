@@ -103,15 +103,24 @@ def create_app() -> FastAPI:
     async def control_dashboard(request: Request):
         try:
             from ui_html import CONTROL_HTML
-            return HTMLResponse(content=CONTROL_HTML)
+            html = CONTROL_HTML
+            # Replace remote logo with local /assets/logo.svg to avoid CORS
+            try:
+                import re
+                html = re.sub(r"https?://ai\.dragonflygroup\.fr/assets/[^'\"]*mobile-logo\.svg(?:\?[^'\"]*)?", "/assets/logo.svg", html)
+            except Exception:
+                pass
+            return HTMLResponse(content=html)
         except Exception as e:
             logger.exception("Failed to import CONTROL_HTML; serving fallback control page")
             fallback = """
             <!doctype html>
             <html><head><meta charset='utf-8'><title>Control Panel</title>
+            <link rel='icon' href='/assets/logo.svg' type='image/svg+xml'>
             <style>body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;padding:24px}</style>
             </head><body>
             <h1>Control Panel (fallback)</h1>
+            <img src='/assets/logo.svg' alt='Logo' width='96' height='96' style='vertical-align:middle;margin:8px 0'>
             <p>Le template Control n'a pas pu être chargé.<br>Erreur: %s</p>
             </body></html>
             """ % (str(e).replace('<','&lt;'))
@@ -132,7 +141,7 @@ def create_app() -> FastAPI:
         load_env_file()
         discover_tools()
         logger.info(f"🔧 Server ready with {len(get_registry())} tools")
-        logger.info(f"📁 Project root: {find_project_root()}")
+        logger.info(f"🗁 Project root: {find_project_root()}")
         if AUTO_RELOAD_TOOLS:
             logger.info("🔄 Auto-reload enabled - New tools will be detected automatically")
         else:

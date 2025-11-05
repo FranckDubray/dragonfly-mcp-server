@@ -3,8 +3,6 @@
 
 
 
-
-
 (function(global){
   const Core = global.WorkersGridCore || {};
   const LiveCore = global.WorkersGridLiveCore || {};
@@ -61,7 +59,7 @@
       Core.setAvatarAura(card, { phase:p, running_kind:String(ev.running_kind||''), sleeping });
     }catch{}
 
-    // Tools chips live
+    // Tools chips live (use label+tooltip from /tools, with fallback on operation)
     try{
       let toolsRow = card.querySelector('.tools');
       if (!toolsRow){
@@ -75,12 +73,35 @@
       toolsRow.querySelectorAll('.tool.running').forEach(el => el.classList.remove('running'));
       const rk = String(ev.running_kind||'');
       const rstarted = ev.running_started_at || '';
-      const toolName = String(ev?.last_io_call?.tool || ev?.last_io_call?.tool_name || '').trim();
-      if (rk==='tool' && toolName){
-        let chip = toolsRow.querySelector(`.tool[data-tool="${CSS.escape(toolName)}"]`);
-        if (!chip){ chip = document.createElement('div'); chip.className='tool'; chip.setAttribute('data-tool', toolName); chip.textContent=toolName; toolsRow.appendChild(chip); LiveCore.dbg('created chip for', wn, toolName); }
-        chip.classList.add('running');
-        let chrono = chip.querySelector('.chrono'); if (!chrono){ chrono = document.createElement('span'); chrono.className='chrono'; chip.appendChild(chrono); }
+
+      // derive tool name from last_io_call (with operation fallback)
+      const call = ev?.last_io_call || {};
+      let rawName = String(call.tool || call.tool_name || '').trim();
+      if (!rawName){
+        const op = String(call.operation || '').trim();
+        if (op) rawName = `${call.tool || 'py_orchestrator'}:${op}`;
+      }
+
+      if (rk==='tool' && rawName){
+        let chipEl = toolsRow.querySelector(`.tool[data-tool="${CSS.escape(rawName)}"]`);
+        if (!chipEl){
+          chipEl = document.createElement('div');
+          chipEl.className='tool tooltip';
+          chipEl.setAttribute('data-tool', rawName);
+          toolsRow.appendChild(chipEl);
+          LiveCore.dbg('created chip for', wn, rawName);
+        }
+        try{
+          if (LiveCore.resolveToolLabel){
+            const { text, tip } = await LiveCore.resolveToolLabel(rawName);
+            chipEl.textContent = text || rawName;
+            if (tip) chipEl.setAttribute('data-tip', tip);
+          } else {
+            chipEl.textContent = rawName;
+          }
+        }catch{ chipEl.textContent = rawName; }
+        chipEl.classList.add('running');
+        let chrono = chipEl.querySelector('.chrono'); if (!chrono){ chrono = document.createElement('span'); chrono.className='chrono'; chipEl.appendChild(chrono); }
         const started = Date.parse(rstarted || '');
         if (Number.isFinite(started)){
           const elapsed = Math.max(0, Math.floor((Date.now() - started)/1000));
@@ -88,11 +109,11 @@
           chrono.textContent = `${mm}:${ss}`;
           card.dataset.toolStarted = rstarted || '';
           LiveCore.ensureChronoTick();
-          LiveCore.dbg('running tool', wn, toolName, 'started', rstarted);
+          LiveCore.dbg('running tool', wn, rawName, 'started', rstarted);
         } else {
           chrono.textContent = '';
           delete card.dataset.toolStarted;
-          LiveCore.dbg('running tool without valid started_at', wn, toolName, rstarted);
+          LiveCore.dbg('running tool without valid started_at', wn, rawName, rstarted);
         }
       } else {
         if (card.dataset.toolStarted) LiveCore.dbg('clear toolStarted for', wn);
@@ -112,5 +133,8 @@
  
  
  
+ 
+ 
+
  
  

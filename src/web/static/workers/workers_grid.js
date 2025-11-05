@@ -15,13 +15,18 @@
       const bust = `v=${Date.now()}`;
       await import(`./workers_grid_core.js?${bust}`);
       await import(`./workers_grid_card.js?${bust}`);
-      await import(`./workers_grid_live.js?${bust}`);
+      // Load split live modules (core/observe/boot)
+      await import(`./workers_grid_live_core.js?${bust}`);
+      await import(`./workers_grid_live_observe.js?${bust}`);
+      await import(`./workers_grid_live_boot.js?${bust}`);
     }catch(e){
       try{ console.error('[WG] dynamic import error', e); }catch{}
       // Fallback without busting
       await import('./workers_grid_core.js');
       await import('./workers_grid_card.js');
-      await import('./workers_grid_live.js');
+      await import('./workers_grid_live_core.js');
+      await import('./workers_grid_live_observe.js');
+      await import('./workers_grid_live_boot.js');
     }
     // Delegate to live builder
     if (global.WorkersGridLive && typeof global.WorkersGridLive.buildWorkersGrid === 'function'){

@@ -3,8 +3,6 @@
 
 
 
-
-
 (function(global){
   const Core = global.WorkersGridCore || {};
   const LiveCore = {};
@@ -20,6 +18,62 @@
   }catch{}
   function dbg(){ try{ console.log('[WG]', ...arguments); }catch{} }
 
+  // ===== Tools registry cache (/tools) + helpers =====
+  let __toolsIdx = null, __toolsTs = 0;
+  const TOOLS_TTL = 15*60*1000;
+
+  async function ensureToolsIndex(){
+    const now = Date.now();
+    if (__toolsIdx && (now - __toolsTs) < TOOLS_TTL) { dbg('tools idx cache hit', __toolsIdx.size); return __toolsIdx; }
+    try{
+      const r = await fetch('/tools');
+      const js = await r.json().catch(()=>({}));
+      const arr = Array.isArray(js?.tools) ? js.tools : [];
+      const idx = new Map();
+      for (const t of arr){
+        const key = String(t.name||'').trim().toLowerCase();
+        if (!key) continue;
+        const label = String(t.display_name || t.title || t.name || key).trim();
+        const desc  = String(t.description || '').trim();
+        idx.set(key, { label, desc });
+      }
+      __toolsIdx = idx; __toolsTs = now;
+      dbg('tools index loaded', idx.size);
+    }catch(e){ dbg('tools index error', e); __toolsIdx = new Map(); __toolsTs = now; }
+    return __toolsIdx;
+  }
+
+  function resolveToolLabelSync(raw, idx){
+    try{
+      const s = String(raw||'').trim(); if (!s) return { text:'', tip:'' };
+      const [base, op] = s.split(':', 2);
+      const rec = idx && idx.get(String(base||'').toLowerCase());
+      if (!rec) return { text: s, tip: '' };
+      const text = op ? `${rec.label}` : rec.label;
+      const tip  = op ? `${rec.desc||''}${rec.desc?'\n':''}operation: ${op}` : (rec.desc||'');
+      return { text, tip };
+    }catch{ return { text:String(raw||''), tip:'' }; }
+  }
+
+  async function resolveToolLabel(raw){
+    const idx = await ensureToolsIndex();
+    const res = resolveToolLabelSync(raw, idx);
+    dbg('resolveToolLabel', raw, '=>', res.text);
+    return res;
+  }
+
+  // Normalisation du nom de tool à partir d'un call
+  function deriveToolName(call){
+    try{
+      if (!call || typeof call !== 'object') return '';
+      const t  = String(call.tool || call.tool_name || '').trim();
+      const op = String(call.operation || '').trim();
+      const name = (t && op) ? `${t}:${op}` : (t || (op ? `py_orchestrator:${op}` : ''));
+      dbg('deriveToolName', {t, op, name});
+      return name;
+    }catch{ return ''; }
+  }
+
   // Tools chips helpers
   function addToolChip(toolsRow, name){
     try{
@@ -27,21 +81,44 @@
       const n = String(name).trim(); if (!n) return;
       if (toolsRow.querySelector(`.tool[data-tool="${CSS.escape(n)}"]`)) { dbg('tool chip exists', n); return; }
       const chip = document.createElement('div');
-      chip.className = 'tool';
+      chip.className = 'tool tooltip';
       chip.setAttribute('data-tool', n);
+      // Temporary text until we resolve labels
       chip.textContent = n;
       toolsRow.appendChild(chip);
+      // Async resolve displayName + tooltip (non bloquant)
+      ensureToolsIndex().then(idx=>{
+        try{ const res = resolveToolLabelSync(n, idx); if (res.text) chip.textContent = res.text; if (res.tip) chip.setAttribute('data-tip', res.tip); dbg('chip resolved', n, '->', res.text); }catch{}
+      }).catch(()=>{});
       dbg('tool chip created', n);
     }catch(e){ dbg('addToolChip error', e); }
   }
-  function populateTools(card, list){
+
+  async function populateTools(card, list){
     try{
+      dbg('populateTools IN', card?.getAttribute?.('data-worker'), list);
       const toolsRow = card && card.querySelector && card.querySelector('.tools');
       if (!toolsRow) { dbg('populateTools: toolsRow missing'); return; }
       Array.from(toolsRow.querySelectorAll('.tool')).forEach(el=> el.remove());
       const names = Array.from(new Set((Array.isArray(list)? list : []).map(x=> String(x||'').trim()).filter(Boolean)));
-      dbg('populateTools with', names);
-      names.forEach(n => addToolChip(toolsRow, n));
+      dbg('populateTools names', names);
+      // Load tools index once (non fatal if fails)
+      const idx = await ensureToolsIndex().catch(()=>null);
+      dbg('populateTools idx', idx && idx.size);
+      for (const n of names){
+        const chip = document.createElement('div');
+        chip.className = 'tool tooltip';
+        chip.setAttribute('data-tool', n);
+        if (idx){
+          const { text, tip } = resolveToolLabelSync(n, idx);
+          chip.textContent = text || n;
+          if (tip) chip.setAttribute('data-tip', tip);
+        } else {
+          chip.textContent = n;
+        }
+        toolsRow.appendChild(chip);
+        dbg('populateTools add chip', n, '=>', chip.textContent);
+      }
     }catch(e){ dbg('populateTools error', e); }
   }
 
@@ -71,17 +148,21 @@
       const js = await r.json().catch(()=>({}));
       const res = (js && js.result) ? js.result : js;
       const out = new Set();
+      let scanned = 0;
       function visit(obj, depth){
-        if (!obj || depth>4) return;
+        if (!obj || depth>6) return;
         if (Array.isArray(obj)) { obj.forEach(v=>visit(v, depth+1)); return; }
         if (typeof obj==='object'){
-          for (const [k,v] of Object.entries(obj)){
-            const kl = String(k||'').toLowerCase();
-            if ((kl==='tool' || kl==='tool_name') && typeof v==='string'){
-              const s = v.trim(); if (s) out.add(s);
+          scanned++;
+          try{
+            const t  = String(obj.tool || obj.tool_name || '').trim();
+            const op = String(obj.operation || '').trim();
+            if (t || op){
+              const name = (t && op) ? `${t}:${op}` : (t || (op ? `py_orchestrator:${op}` : ''));
+              if (name) out.add(name);
             }
-            if (typeof v==='object') visit(v, depth+1);
-          }
+          }catch{}
+          for (const v of Object.values(obj)){ if (v && typeof v==='object') visit(v, depth+1); }
         }
       }
       if (res && typeof res==='object'){
@@ -90,7 +171,7 @@
         visit(res, 0);
       }
       const arr = Array.from(out);
-      dbg('prefill(graph)', wn, arr);
+      dbg('prefill(graph)', wn, arr, 'scanned=', scanned);
       return arr;
     }catch(e){ dbg('prefill(graph) error', e); return []; }
   }
@@ -105,15 +186,17 @@
       const js = await r.json().catch(()=>({}));
       const steps = Array.isArray(js?.steps) ? js.steps : [];
       const out = new Set();
+      let countCalls = 0;
       for (const st of steps){
         try{
           const call = st && st.io && st.io.in || {};
-          const name = String(call.tool || call.tool_name || '').trim();
+          const name = deriveToolName(call);
           if (name) out.add(name);
+          countCalls++;
         }catch{}
       }
       const arr = Array.from(out);
-      dbg('prefill(replay)', wn, arr);
+      dbg('prefill(replay)', wn, arr, 'calls=', countCalls, 'steps=', steps.length);
       return arr;
     }catch(e){ dbg('prefill(replay) error', e); return []; }
   }
@@ -141,18 +224,19 @@
 
   global.WorkersGridLiveCore = {
     dbg,
+    // helpers
     addToolChip,
     populateTools,
     prefillToolsFromIdentity,
     prefillToolsFromGraph,
     prefillToolsFromReplay,
     ensureChronoTick,
+    // expose label helpers for live observe
+    resolveToolLabel,
+    deriveToolName,
   };
 })(window);
 
- 
- 
- 
  
  
  
