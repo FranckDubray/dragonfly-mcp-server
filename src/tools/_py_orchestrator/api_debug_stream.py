@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 from typing import Dict, Any
 import time
@@ -36,12 +35,24 @@ def debug_stream(params: dict) -> dict:
     max_events = int(dbg_req.get('max_events') or 0)
 
     run_id = get_state_kv(db_path, wn, 'run_id') or ''
+    
+    # ✅ FIX: Vérifier run_id avant de démarrer
+    if not run_id:
+        return {
+            'accepted': False,
+            'status': 'error',
+            'message': 'Worker has no active run_id (not started or crashed)',
+            'events': [],
+            'count': 0
+        }
+    
     last_rowid = db_max_rowid(db_path, wn, run_id)
     seen_sig = {}
 
     while True:
         if deadline is not None and time.time() > deadline:
             return {'accepted': True, 'status': 'timeout', 'events': events, 'count': len(events)}
+        
         phase = get_state_kv(db_path, wn, 'phase') or ''
         if phase in {'completed','failed','canceled'}:
             call, lrp, ph, hb, last_err = read_step_snapshot(db_path, wn)
@@ -58,6 +69,19 @@ def debug_stream(params: dict) -> dict:
                     'terminal': True,
                 })
             return {'accepted': True, 'status': phase, 'events': events, 'count': len(events)}
+
+        # ✅ FIX: Détecter changement de run_id (worker restart)
+        current_run_id = get_state_kv(db_path, wn, 'run_id') or ''
+        if current_run_id != run_id:
+            return {
+                'accepted': True,
+                'status': 'worker_restarted',
+                'message': f'Worker restarted with new run_id. Old: {run_id[:8]}, New: {current_run_id[:8]}',
+                'events': events,
+                'count': len(events),
+                'old_run_id': run_id,
+                'new_run_id': current_run_id
+            }
 
         rows = db_rows_since(db_path, wn, run_id, last_rowid)
         if rows:
@@ -115,7 +139,7 @@ def debug_stream(params: dict) -> dict:
                 except Exception:
                     pass
                 events.append({
-                    'chunk_type': ('error' if str(status).lower()=='failed' else 'step'),
+                    'chunk_type': ('error' if str(status).lower()== 'failed' else 'step'),
                     'node_executed': node,
                     'node_next': '',
                     'io': {'in': call, 'out_preview': lrp},

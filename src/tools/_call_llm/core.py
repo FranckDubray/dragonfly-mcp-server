@@ -1,3 +1,8 @@
+
+
+
+
+
 from __future__ import annotations
 """
 LLM Orchestrator (stream-only):
@@ -31,6 +36,27 @@ from .usage_utils import merge_usage
 LOG = logging.getLogger(__name__)
 
 
+_DEF_TIMEOUT = 90  # seconds (default call timeout if not overridden)
+_MIN_TIMEOUT = 10
+_MAX_TIMEOUT = 600
+
+def _pick_timeout_sec(kwargs: Dict[str, Any]) -> int:
+    # Priority: explicit kw → env → default
+    try:
+        if kwargs is not None:
+            for key in ("request_timeout_sec", "timeout_sec", "llm_timeout_sec"):
+                if key in kwargs and kwargs[key] is not None:
+                    v = int(float(kwargs[key]))
+                    return max(_MIN_TIMEOUT, min(_MAX_TIMEOUT, v))
+    except Exception:
+        pass
+    try:
+        v = int(os.getenv("LLM_REQUEST_TIMEOUT_SEC", str(_DEF_TIMEOUT)))
+        return max(_MIN_TIMEOUT, min(_MAX_TIMEOUT, v))
+    except Exception:
+        return _DEF_TIMEOUT
+
+
 def execute_call_llm(
     messages: List[Dict[str, Any]],
     model: str = "gpt-5",
@@ -59,10 +85,10 @@ def execute_call_llm(
 
     endpoint = os.getenv("LLM_ENDPOINT", "https://dev-ai.dragonflygroup.fr/api/v1/chat/completions")
     mcp_url = os.getenv("MCP_URL", "http://127.0.0.1:8000")
-    timeout_sec = int(os.getenv("LLM_REQUEST_TIMEOUT_SEC", "180"))
+    timeout_sec = _pick_timeout_sec(kwargs)
 
     if LOG.isEnabledFor(logging.INFO):
-        LOG.info(f"LLM call: model={model}, messages_count={len(messages)}, tool_names={tool_names}")
+        LOG.info(f"LLM call: model={model}, messages_count={len(messages)}, tool_names={tool_names}, timeout={timeout_sec}s")
 
     payload = build_initial_payload(model, messages, prompt_system, max_tokens, assistant_id=assistantId, temperature=temperature)
 
@@ -133,7 +159,6 @@ def execute_call_llm(
                 "finish_reason": tc_data.get("finish_reason", "stop"),
                 "usage": usage_cumulative if usage_cumulative else first_usage,
             }
-            # remove None field for cleanliness
             if out.get("media") is None:
                 del out["media"]
             if debug_enabled:
@@ -232,3 +257,13 @@ def execute_call_llm(
     if debug_enabled:
         out["debug"] = debug
     return out
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

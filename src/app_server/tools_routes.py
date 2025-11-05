@@ -1,12 +1,13 @@
-
 import json
 import time
 import asyncio
 import logging
 from hashlib import sha1
 from typing import Dict, Any, Optional
+from collections.abc import Iterator
 
 from fastapi import FastAPI, Request, Response, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from config import find_project_root
@@ -109,7 +110,33 @@ async def post_execute(request: ExecuteRequest, auto_reload: bool, reload_env: b
         result = await asyncio.wait_for(loop.run_in_executor(None, lambda: func(**params)), timeout=execute_timeout)
         duration = time.perf_counter() - start_time
         logger.info(f"✅ '{display_name}' completed in {duration:.3f}s")
+        
+        # 🆕 DÉTECTION DES GENERATORS : Stream SSE
+        if isinstance(result, Iterator):
+            logger.info(f"🌊 Streaming response detected for '{display_name}'")
+            
+            async def event_stream():
+                try:
+                    for chunk in result:
+                        # ✅ FORMAT SSE STANDARD : {json}\n\n
+                        chunk_json = json.dumps(sanitize_for_json(chunk), ensure_ascii=False)
+                        yield f"data: {chunk_json}\n\n"
+                except Exception as e:
+                    error_chunk = {"chunk_type": "error", "error": {"message": str(e)[:200]}, "terminal": True}
+                    yield f"{json.dumps(error_chunk)}\n\n"
+            
+            return StreamingResponse(
+                event_stream(), 
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "X-Accel-Buffering": "no",  # Disable nginx buffering
+                }
+            )
+        
+        # Mode normal (non-streaming)
         return SafeJSONResponse(content={"result": result})
+        
     except asyncio.TimeoutError:
         duration = time.perf_counter() - start_time
         logger.error(f"⏱️ '{display_name}' timed out after {duration:.3f}s")

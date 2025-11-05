@@ -1,0 +1,131 @@
+{
+  "type": "function",
+  "function": {
+    "name": "veo_video",
+    "displayName": "Google Veo 3.1 Video",
+    "category": "media",
+    "tags": ["external_sources", "video", "generation"],
+    "description": "Créer et gérer des rendus vidéo avec Google Veo 3.1 (texte→vidéo, image→vidéo, images de référence ≤3, interpolation première/dernière image) et étendre des vidéos Veo. Fournit aussi get_status, download et auto_start. Lit la clé via GOOGLE_API_KEY.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": [
+            "create",
+            "get_status",
+            "download",
+            "extend",
+            "auto_start"
+          ]
+        },
+        "prompt": {
+          "type": "string",
+          "description": "Description cinématographique (objet, action, style, caméra, composition, optique, ambiance). Dialogues/FX/ambiance supportés pour l’audio natif."
+        },
+        "negative_prompt": {
+          "type": "string",
+          "description": "Éléments à éviter (ex: \"cartoon, drawing, low quality\"). Préférer l’énumération plutôt que des formulations 'no/without'."
+        },
+        "model": {
+          "type": "string",
+          "enum": ["veo-3.1-generate-preview", "veo-3.1-fast-generate-preview"],
+          "default": "veo-3.1-generate-preview"
+        },
+        "aspect_ratio": {
+          "type": "string",
+          "enum": ["16:9", "9:16"],
+          "default": "16:9",
+          "description": "Format vidéo. Pour reference_images, 16:9 requis."
+        },
+        "resolution": {
+          "type": "string",
+          "enum": ["720p", "1080p"],
+          "default": "720p",
+          "description": "1080p seulement pour des durées de 8 s. L’extension vidéo est 720p uniquement."
+        },
+        "seconds": {
+          "type": "integer",
+          "enum": [4, 6, 8],
+          "default": 8,
+          "description": "Durée cible. Interpolation et images de référence exigent 8 s (et 16:9 pour les références)."
+        },
+        "person_generation": {
+          "type": "string",
+          "enum": ["allow_all", "allow_adult", "dont_allow"],
+          "description": "Veo 3.1: texte→vidéo & extension: allow_all; image→vidéo, interpolation, références: allow_adult. Des restrictions régionales peuvent s’appliquer (UE/UK/CH/MENA)."
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optionnel, améliore légèrement le caractère déterministe (non garanti)."
+        },
+
+        "image_path": {
+          "type": "string",
+          "description": "Chemin relatif (chroot) sous docs/images vers l’image de départ (start frame) pour image→vidéo ou interpolation."
+        },
+        "last_frame_path": {
+          "type": "string",
+          "description": "Chemin relatif (chroot) sous docs/images vers l’image de fin (obligatoire pour l’interpolation)."
+        },
+        "reference_image_paths": {
+          "type": "array",
+          "description": "Jusqu’à 3 chemins relatifs (docs/images) d’images de référence (Veo 3.1 uniquement). Nécessite seconds=8 et aspect_ratio=16:9.",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "maxItems": 3
+        },
+
+        "video_path": {
+          "type": "string",
+          "description": "Chemin relatif (chroot) sous docs/video vers une vidéo Veo (pour operation=extend ou auto_start). Doit être une vidéo générée par Veo, ≤141 s, 720p, 9:16 ou 16:9."
+        },
+
+        "wait": {
+          "type": "boolean",
+          "default": false,
+          "description": "Si true, interroge jusqu’à la complétion ou timeout (max_attempts/timeout_seconds)."
+        },
+        "max_attempts": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 600,
+          "default": 60
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600,
+          "default": 600
+        },
+        "auto_download": {
+          "type": "boolean",
+          "default": false,
+          "description": "Si wait=true et la génération aboutit, télécharge automatiquement la vidéo vers docs/video."
+        },
+        "filename": {
+          "type": "string",
+          "description": "Nom de base du fichier lors du téléchargement automatique (docs/video/<filename>.mp4)."
+        },
+
+        "operation_name": {
+          "type": "string",
+          "description": "Identifiant d’opération Gemini (pour get_status et download)."
+        },
+        "overwrite": {
+          "type": "boolean",
+          "default": false,
+          "description": "Écraser un fichier existant lors du téléchargement."
+        },
+
+        "path": {
+          "type": "string",
+          "description": "Chemin local à démarrer (auto_start), ex: docs/video/clip.mp4 (lance le lecteur vidéo par défaut du système)."
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}

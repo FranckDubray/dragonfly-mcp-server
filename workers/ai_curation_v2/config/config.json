@@ -25,7 +25,6 @@
     "https://mistral.ai/news/": 5000,
     "https://x.ai/blog": 7000
   },
-  "db_file": "worker_ai_curation_v2.db",
   "max_primary_pages": 8,
   "scrape_max_items": 18,
   "llm_retry_count": 2

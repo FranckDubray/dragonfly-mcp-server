@@ -1,215 +1,260 @@
+"""Streaming observation mode - yields events one by one."""
+
 from __future__ import annotations
-from fastapi import APIRouter
-from fastapi.responses import StreamingResponse
-import asyncio
-import json
+from typing import Iterator, Dict, Any
 import time
-import sqlite3
+import json as _json
 
 from .api_spawn import db_path_for_worker
 from .db import get_state_kv
-from .api_start import start as start_worker_api
+from .api_observe import (
+    _long_timeout_or_default,
+    _db_max_rowid,
+    _db_rows_since,
+    _db_recent_window,
+)
 
-router = APIRouter()
 
-def _sse_pack(event: str, data: dict) -> str:
-    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+def observe_stream(params: dict) -> Iterator[Dict[str, Any]]:
+    """
+    Generator that yields observation events one by one (streaming mode).
+    
+    Each event is a dict with:
+    - chunk_type: 'step' | 'error' | 'terminal' | 'status'
+    - node_executed, node_next, io, phase, heartbeat, cycle_id, duration_ms
+    - updated: bool (if it's an update to existing step)
+    - last_rowid: int (for resuming stream later)
+    
+    Yields events as they happen, enabling real-time UI updates.
+    Supports resuming from a specific rowid via 'from_rowid' parameter.
+    """
+    wn = str((params or {}).get('worker_name') or '').strip()
+    if not wn:
+        yield {
+            'chunk_type': 'error',
+            'error': {'message': 'worker_name required'},
+            'terminal': True
+        }
+        return
 
-def _ndjson_pack(data: dict) -> str:
-    return json.dumps(data, ensure_ascii=False) + "\n"
+    db_path = db_path_for_worker(wn)
+    obs_req = (params or {}).get('observe') or {}
 
-def _timeout_parse(val):
+    # Config
+    window_size = int(obs_req.get('window_size') or 50)  # Augmenté de 10 à 50
     try:
-        if val is None:
-            return None  # infinite by default
-        v = float(val)
-        if v <= 0:
-            return None
-        return min(v, 86400.0)
+        window_size = max(1, min(500, window_size))
     except Exception:
-        return None
-
-def _max_rowid(dbp: str, worker_name: str, run_id: str) -> int:
+        window_size = 50
+    
+    tick = float(obs_req.get('tick_sec') or 0.2)
     try:
-        conn = sqlite3.connect(dbp, timeout=3.0)
+        tick = max(0.1, min(2.0, tick))
+    except Exception:
+        tick = 0.2
+
+    timeout_sec = _long_timeout_or_default(obs_req.get('timeout_sec'))
+    deadline = (time.time() + timeout_sec) if (timeout_sec is not None) else None
+
+    max_events = int(obs_req.get('max_events') or 0)
+    event_count = 0
+
+    run_id = get_state_kv(db_path, wn, 'run_id') or ''
+    
+    # ✅ FIX: Si run_id est vide, ne pas utiliser from_rowid (évite pollution)
+    if not run_id:
+        yield {
+            'chunk_type': 'error',
+            'error': {'message': 'Worker has no active run_id (not started or crashed)'},
+            'terminal': True,
+            'worker_name': wn
+        }
+        return
+    
+    # 🆕 Support for resuming from specific rowid
+    from_rowid = obs_req.get('from_rowid')
+    if from_rowid is not None:
         try:
-            cur = conn.execute(
-                "SELECT COALESCE(MAX(rowid),0) FROM job_steps WHERE worker=? AND (run_id=? OR ?='')",
-                (worker_name, run_id, run_id),
-            )
-            row = cur.fetchone()
-            return int(row[0] or 0)
-        finally:
-            conn.close()
-    except Exception:
-        return 0
+            last_rowid = int(from_rowid)
+        except Exception:
+            last_rowid = _db_max_rowid(db_path, wn, run_id)
+    else:
+        last_rowid = _db_max_rowid(db_path, wn, run_id)
+    
+    seen_sig = {}
+    idle_loops = 0
 
-def _rows_since(dbp: str, worker_name: str, run_id: str, last_rowid: int):
+    # Yield initial status event with resume info
     try:
-        conn = sqlite3.connect(dbp, timeout=3.0)
-        try:
-            cur = conn.execute(
-                "SELECT rowid, cycle_id, node, status, duration_ms, details_json, finished_at "
-                "FROM job_steps WHERE worker=? AND (run_id=? OR ?='') AND rowid>? ORDER BY rowid ASC",
-                (worker_name, run_id, run_id, int(last_rowid)),
-            )
-            return cur.fetchall()
-        finally:
-            conn.close()
+        phase = get_state_kv(db_path, wn, 'phase') or 'unknown'
+        heartbeat = get_state_kv(db_path, wn, 'heartbeat') or ''
+        yield {
+            'chunk_type': 'status',
+            'phase': phase,
+            'heartbeat': heartbeat,
+            'worker_name': wn,
+            'run_id': run_id,  # ✅ Expose run_id pour détection de restart
+            'last_rowid': last_rowid,  # 🆕 Client peut sauvegarder pour resume
+            'resume_from': from_rowid,  # 🆕 Echo du paramètre
+        }
     except Exception:
-        return []
-
-def _recent_window(dbp: str, worker_name: str, run_id: str, window: int = 10):
-    try:
-        conn = sqlite3.connect(dbp, timeout=3.0)
-        try:
-            cur = conn.execute(
-                "SELECT rowid, cycle_id, node, status, duration_ms, details_json, finished_at "
-                "FROM job_steps WHERE worker=? AND (run_id=? OR ?='') ORDER BY rowid DESC LIMIT ?",
-                (worker_name, run_id, run_id, int(window)),
-            )
-            return cur.fetchall()
-        finally:
-            conn.close()
-    except Exception:
-        return []
-
-async def _observe_stream(worker_name: str, protocol: str, timeout_sec: float | None, max_events: int | None):
-    dbp = db_path_for_worker(worker_name)
-
-    run_id = get_state_kv(dbp, worker_name, 'run_id') or ''
-
-    start = time.time()
-    sent = 0
-    pack = _sse_pack if protocol == "sse" else _ndjson_pack
-    tick = 0.2
-
-    last_rowid = _max_rowid(dbp, worker_name, run_id)
-    # Track recent row updates: rowid -> signature(status, finished_at, duration_ms, details_json_hash)
-    seen_sig: dict[int, tuple] = {}
+        pass
 
     while True:
-        # terminal or timeout
-        phase = get_state_kv(dbp, worker_name, 'phase') or ''
-        if phase in {'completed','failed','canceled'}:
-            payload = {
-                'chunk_type': ('error' if phase == 'failed' else 'step'),
-                'node_executed': '',
-                'io': {'in': {}, 'out_preview': ''},
-                'error': ({'message': get_state_kv(dbp, worker_name, 'last_error') or ''} if phase == 'failed' else None),
-                'phase': phase,
-                'heartbeat': get_state_kv(dbp, worker_name, 'heartbeat') or '',
-                'cycle_id': get_state_kv(dbp, worker_name, 'debug.cycle_id') or '',
-                'terminal': True,
+        # Timeout check
+        if deadline is not None and time.time() > deadline:
+            yield {
+                'chunk_type': 'terminal',
+                'reason': 'timeout',
+                'event_count': event_count,
+                'last_rowid': last_rowid,  # 🆕 Pour resume
             }
-            yield pack('error' if (payload['chunk_type']=='error' and protocol=='sse') else 'step', payload)
             return
 
-        # 1) New inserts since last_rowid
-        rows = _rows_since(dbp, worker_name, run_id, last_rowid)
+        # Terminal phase check
+        phase = get_state_kv(db_path, wn, 'phase') or ''
+        if phase in {'completed', 'failed', 'canceled'}:
+            call = ''
+            lrp = ''
+            try:
+                call = get_state_kv(db_path, wn, 'py.last_call') or ''
+                lrp = get_state_kv(db_path, wn, 'py.last_result_preview') or ''
+            except Exception:
+                pass
+            
+            yield {
+                'chunk_type': ('error' if (phase == 'failed') else 'terminal'),
+                'node_executed': '',
+                'node_next': '',
+                'io': {'in': call, 'out_preview': lrp},
+                'error': ({'message': get_state_kv(db_path, wn, 'last_error') or ''} if phase == 'failed' else None),
+                'phase': phase,
+                'heartbeat': get_state_kv(db_path, wn, 'heartbeat') or '',
+                'cycle_id': get_state_kv(db_path, wn, 'debug.cycle_id') or '',
+                'terminal': True,
+                'event_count': event_count,
+                'last_rowid': last_rowid,  # 🆕 Pour resume
+            }
+            return
+
+        # ✅ FIX: Vérifier si run_id a changé (worker restart)
+        current_run_id = get_state_kv(db_path, wn, 'run_id') or ''
+        if current_run_id != run_id:
+            yield {
+                'chunk_type': 'terminal',
+                'reason': 'worker_restarted',
+                'event_count': event_count,
+                'last_rowid': last_rowid,
+                'old_run_id': run_id,
+                'new_run_id': current_run_id,
+                'message': 'Worker restarted with new run_id. Please restart observation with from_rowid=0.'
+            }
+            return
+
+        # New inserts
+        rows = _db_rows_since(db_path, wn, run_id, last_rowid)
         if rows:
+            idle_loops = 0
             for rid, cycle_id, node, status, dur, dj, fin in rows:
                 call = {}
                 lrp = ''
                 try:
                     if dj:
-                        obj = json.loads(dj)
+                        obj = _json.loads(dj)
                         if isinstance(obj, dict):
                             call = obj.get('call') or {}
                             lrp_val = obj.get('last_result_preview')
                             if lrp_val is not None:
                                 lrp = lrp_val if isinstance(lrp_val, str) else str(lrp_val)
-                except Exception:
-                    pass
-                payload = {
-                    'chunk_type': ('error' if str(status).lower()=='failed' else 'step'),
+                except Exception as e:
+                    # 🆕 Log parsing errors instead of silent fail
+                    lrp = f"[JSON parse error: {str(e)[:100]}]"
+                
+                event = {
+                    'chunk_type': ('error' if str(status).lower() == 'failed' else 'step'),
                     'node_executed': node,
+                    'node_next': '',
                     'io': {'in': call, 'out_preview': lrp},
-                    'error': ({'message': (get_state_kv(dbp, worker_name, 'last_error') or '')} if str(status).lower()=='failed' else None),
-                    'phase': get_state_kv(dbp, worker_name, 'phase') or '',
-                    'heartbeat': get_state_kv(dbp, worker_name, 'heartbeat') or '',
+                    'error': ({'message': (get_state_kv(db_path, wn, 'last_error') or '')} if str(status).lower() == 'failed' else None),
+                    'phase': get_state_kv(db_path, wn, 'phase') or '',
+                    'heartbeat': get_state_kv(db_path, wn, 'heartbeat') or '',
                     'cycle_id': cycle_id,
                     'duration_ms': int(dur or 0),
+                    'last_rowid': int(rid),  # 🆕 Pour resume
                 }
-                yield pack('error' if (payload['chunk_type']=='error' and protocol=='sse') else 'step', payload)
-                sent += 1
-                last_rowid = int(rid)
-                # seed signature cache for updates
+                
+                yield event
+                event_count += 1
+                
+                # Track signature
                 sig = (str(status or ''), str(fin or ''), int(dur or 0), (dj[:120] if isinstance(dj, str) else str(dj)[:120]))
                 seen_sig[int(rid)] = sig
-                if max_events and sent >= max_events:
+                last_rowid = int(rid)
+                
+                # Max events limit
+                if max_events and event_count >= max_events:
+                    yield {
+                        'chunk_type': 'terminal',
+                        'reason': 'max_events_reached',
+                        'event_count': event_count,
+                        'last_rowid': last_rowid,  # 🆕 Pour resume
+                    }
                     return
         else:
-            await asyncio.sleep(tick)
+            # Backoff if idle
+            idle_loops += 1
+            sleep_for = tick if idle_loops < 5 else min(1.0, tick * 2)
+            time.sleep(sleep_for)
 
-        # 2) Detect updates on recent window (running -> succeeded/failed, etc.)
-        recent = _recent_window(dbp, worker_name, run_id, window=10)
-        # iterate in ascending order so we emit in timeline order
+        # Check updates in recent window
+        recent = _db_recent_window(db_path, wn, run_id, window=window_size)
         for rid, cycle_id, node, status, dur, dj, fin in reversed(recent):
             rid_i = int(rid)
-            # build current signature
             cur_sig = (str(status or ''), str(fin or ''), int(dur or 0), (dj[:120] if isinstance(dj, str) else str(dj)[:120]))
             prev_sig = seen_sig.get(rid_i)
+            
             if prev_sig is None:
-                # First time we see this row in the window; don't emit (insert was handled above if applicable)
                 seen_sig[rid_i] = cur_sig
                 continue
+            
             if cur_sig != prev_sig:
-                # emit update chunk
                 call = {}
                 lrp = ''
                 try:
                     if dj:
-                        obj = json.loads(dj)
+                        obj = _json.loads(dj)
                         if isinstance(obj, dict):
                             call = obj.get('call') or {}
                             lrp_val = obj.get('last_result_preview')
                             if lrp_val is not None:
                                 lrp = lrp_val if isinstance(lrp_val, str) else str(lrp_val)
-                except Exception:
-                    pass
-                payload = {
-                    'chunk_type': ('error' if str(status).lower()=='failed' else 'step'),
+                except Exception as e:
+                    # 🆕 Log parsing errors
+                    lrp = f"[JSON parse error: {str(e)[:100]}]"
+                
+                event = {
+                    'chunk_type': ('error' if str(status).lower() == 'failed' else 'step'),
                     'node_executed': node,
+                    'node_next': '',
                     'io': {'in': call, 'out_preview': lrp},
-                    'error': ({'message': (get_state_kv(dbp, worker_name, 'last_error') or '')} if str(status).lower()=='failed' else None),
-                    'phase': get_state_kv(dbp, worker_name, 'phase') or '',
-                    'heartbeat': get_state_kv(dbp, worker_name, 'heartbeat') or '',
+                    'error': ({'message': (get_state_kv(db_path, wn, 'last_error') or '')} if str(status).lower() == 'failed' else None),
+                    'phase': get_state_kv(db_path, wn, 'phase') or '',
+                    'heartbeat': get_state_kv(db_path, wn, 'heartbeat') or '',
                     'cycle_id': cycle_id,
                     'duration_ms': int(dur or 0),
-                    'updated': True,
+                    'updated': True,  # 🚨 Update flag
+                    'last_rowid': int(rid),  # 🆕 Pour resume
                 }
-                yield pack('error' if (payload['chunk_type']=='error' and protocol=='sse') else 'step', payload)
-                sent += 1
+                
+                yield event
+                event_count += 1
                 seen_sig[rid_i] = cur_sig
-                if max_events and sent >= max_events:
+                
+                if max_events and event_count >= max_events:
+                    yield {
+                        'chunk_type': 'terminal',
+                        'reason': 'max_events_reached',
+                        'event_count': event_count,
+                        'last_rowid': last_rowid,  # 🆕 Pour resume
+                    }
                     return
-
-        if (timeout_sec is not None) and ((time.time() - start) > timeout_sec):
-            return
-
-@router.get("/tools/py_orchestrator/observe")
-async def observe_stream(worker_name: str, protocol: str = "sse", timeout_sec: float | None = None, max_events: int = 0):
-    protocol = (protocol or "sse").lower()
-    if protocol not in {"sse","ndjson"}:
-        protocol = "sse"
-    timeout = _timeout_parse(timeout_sec)
-    gen = _observe_stream(worker_name=worker_name, protocol=protocol, timeout_sec=timeout, max_events=max_events)
-    if protocol == "sse":
-        return StreamingResponse(gen, media_type="text/event-stream")
-    return StreamingResponse(gen, media_type="application/x-ndjson")
-
-@router.get("/tools/py_orchestrator/start_observe")
-async def start_observe(worker_name: str, worker_file: str, protocol: str = "sse", timeout_sec: float | None = None, hot_reload: bool = True):
-    # Start the worker, then attach passive observation stream in the same request
-    try:
-        _ = start_worker_api({'operation': 'start', 'worker_name': worker_name, 'worker_file': worker_file, 'hot_reload': hot_reload})
-    except Exception:
-        pass
-    # give a tiny breath for DB init
-    await asyncio.sleep(0.2)
-    timeout = _timeout_parse(timeout_sec)
-    gen = _observe_stream(worker_name=worker_name, protocol=protocol, timeout_sec=timeout, max_events=0)
-    if protocol == "sse":
-        return StreamingResponse(gen, media_type="text/event-stream")
-    return StreamingResponse(gen, media_type="application/x-ndjson")

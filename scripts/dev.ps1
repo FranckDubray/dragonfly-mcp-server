@@ -1,43 +1,68 @@
 #Requires -Version 5.1
 Set-StrictMode -Version Latest
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = "Stop"
 
-# Always run from repo root
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-Set-Location (Join-Path $ScriptDir '..')
+# Verbose mode: set $env:DEV_VERBOSE=1 to enable
+$Verbose = $env:DEV_VERBOSE -eq '1'
+
+# Always run from repo root (space-safe)
+$Root = Join-Path $PSScriptRoot ".."
+Set-Location $Root
 
 # Detect Python
-function Get-Python {
-  try {
-    $v = & python --version 2>$null
-    if ($LASTEXITCODE -eq 0) { return 'python' }
-  } catch {}
-  try {
-    $v = & py -3 --version 2>$null
-    if ($LASTEXITCODE -eq 0) { return 'py -3' }
-  } catch {}
-  return 'python'
+$py = $null
+try {
+  if ($env:VIRTUAL_ENV) { $py = (Get-Command python -ErrorAction Stop).Source }
+  else { $py = (Get-Command python -ErrorAction Stop).Source }
+} catch {
+  $py = 'python'
 }
 
-$PY = Get-Python
-Write-Host "[dev.ps1] 🔧 Python version:" (& $PY --version)
-
-# Ensure deps (idempotent)
-Write-Host "[dev.ps1] 📦 Installation des dépendances (pyproject)"
-try { & $PY -m pip install -U pip setuptools wheel *> $null } catch {}
-try { & $PY -m pip install -e . } catch { & $PY -m pip install . }
-
-# Playwright browsers (scoped in ./playwright/browsers)
-Write-Host "[dev.ps1] 📦 Installation navigateurs Playwright (scopés dans ./playwright/browsers)"
-$env:PLAYWRIGHT_BROWSERS_PATH = 'playwright/browsers'
-try { & $PY -m playwright install chromium } catch {}
-
-# Generate tools catalog if script exists
-if (Test-Path 'scripts/generate_tools_catalog.py') {
-  Write-Host "[dev.ps1] 🧠 Génération catalogue tools"
-  try { & $PY scripts/generate_tools_catalog.py } catch {}
+try {
+  $ver = & $py --version 2>&1
+  Write-Host "[dev.ps1] Python: $ver"
+} catch {
+  Write-Warning "[dev.ps1] Python introuvable dans PATH. Le script peut échouer."
 }
 
-# Start server
-Write-Host "[dev.ps1] 🚀 Démarrage serveur"
-& $PY src/server.py
+# Deps (best-effort)
+Write-Host "[dev.ps1] Installing deps (best-effort)"
+try { & $py -m pip install -U pip setuptools wheel | Out-Null } catch {}
+try { & $py -m pip install -e . | Out-Null } catch { try { & $py -m pip install . | Out-Null } catch {} }
+
+# Playwright (best-effort)
+try { $env:PLAYWRIGHT_BROWSERS_PATH = "playwright/browsers"; & $py -m playwright install chromium | Out-Null } catch {}
+
+# Optional tools catalog
+if (Test-Path "scripts/generate_tools_catalog.py") {
+  Write-Host "[dev.ps1] Generating tools catalog"
+  try { & $py scripts/generate_tools_catalog.py } catch {}
+}
+
+$PORT = if ($env:PORT) { $env:PORT } else { '8000' }
+$WORKERS = if ($env:WORKERS) { $env:WORKERS } else { '5' }
+Write-Host "[dev.ps1] Start server: PORT=$PORT WORKERS=$WORKERS"
+
+function Test-PyModule($module) {
+  try {
+    & $py -c "import importlib,sys; sys.exit(0 if importlib.util.find_spec('$module') else 1)" | Out-Null
+    return $LASTEXITCODE -eq 0
+  } catch { return $false }
+}
+
+# Prefer uvicorn if available on Windows
+if (Test-PyModule 'uvicorn') {
+  Write-Host "[dev.ps1] ▶ uvicorn --workers $WORKERS"
+  & $py -m uvicorn src.app_factory:create_app --host 0.0.0.0 --port $PORT --workers $WORKERS
+  exit $LASTEXITCODE
+}
+
+# Fallback to server.py
+if (Test-Path "src/server.py") {
+  Write-Host "[dev.ps1] ▶ fallback python src/server.py (single-worker)"
+  & $py src/server.py
+  exit $LASTEXITCODE
+}
+
+Write-Error "[dev.ps1] ❌ uvicorn introuvable et aucun src/server.py. Installe uvicorn, ou fournis src/server.py"
+exit 1

@@ -1,0 +1,22 @@
+export const __meta = { standalone: true, code: 'vi', flag: '🇻🇳', native: 'Tiếng Việt' };
+export default {
+  lang: { vi: 'Tiếng Việt' },
+  header: { title: 'Người lao động & Lãnh đạo', add_leader: '+ Thêm lãnh đạo', add_worker: '+ Thêm nhân viên', leader: 'Lãnh đạo:' },
+  common: { process: 'Quy trình', details: 'Chi tiết', tools_mcp: 'Công cụ MCP:', last_step: 'Bước cuối', edit_identity: 'Xem/chỉnh sửa danh tính', close: 'Đóng', start_observe: 'Bắt đầu (quan sát)', start_debug: 'Bắt đầu (gỡ lỗi)', step: 'Bước', continue: 'Tiếp tục', stop: 'Dừng', copy_in: 'Sao chép IN', copy_out: 'Sao chép OUT', copy_err: 'Sao chép lỗi', error_network: 'Lỗi mạng', error_action: 'Thao tác thất bại', ok: 'OK', current_sg: 'Subgraph hiện tại', chat: 'Chat', worker_status: 'Trạng thái', save: 'Lưu', send: 'Gửi' },
+  kpis: { workers: 'NGƯỜI LAO ĐỘNG', actifs: 'HOẠT ĐỘNG', steps24h: 'BƯỚC (24H)', tokens24h: 'TOKEN (24H)', qualite7j: 'CHẤT LƯỢNG (7N)' },
+  toolbar: { process: 'Quy trình', current: 'Subgraph hiện tại', overview: 'Tổng quan', hide_start: 'ẩn START', hide_end: 'ẩn END', labels: 'nhãn', follow_sg: 'theo dõi SG', mode_observe: 'Quan sát', mode_debug: 'Luồng gỡ lỗi', current_sg_btn: 'SG hiện tại', display: 'Hiển thị:', mode: 'Chế độ:' },
+  modal: { process_title: 'Quy trình —' },
+  status: { panel_title: 'Trạng thái & chỉ số', running: 'Đang chạy', starting: 'Đang bắt đầu', failed: 'Thất bại', completed: 'Hoàn tất', canceled: 'Đã hủy', idle: 'Nhàn rỗi', unknown: 'Không rõ' },
+  io: { title: 'Đầu vào/ra của node', in: 'IN', out: 'OUT', error: 'LỖI' },
+  config: { title: 'Cấu hình quy trình', general: 'Chung', params: 'Tham số', docs: 'Tài liệu', doc_title: 'Tiêu đề', doc_desc: 'Mô tả', none: 'Không có cấu hình khả dụng' },
+  graph: { error_title: 'Biểu đồ', unavailable: 'Biểu đồ không khả dụng', aria_label: 'Biểu đồ Mermaid', mermaid_error_prefix: 'Mermaid — ', render_error: 'lỗi hiển thị' },
+  node_menu: { aria_actions: 'Thao tác node', open_sg: 'Mở subgraph', run_until: 'Chạy đến', break_add: 'Thêm breakpoint', break_remove: 'Xóa breakpoint', inspect: 'Kiểm tra' },
+  control_inputs: { debug_label: 'Gỡ lỗi:', node_id: 'ID node', when: 'Điều kiện', when_always: 'luôn luôn', when_success: 'thành công', when_fail: 'thất bại', when_retry: 'thử lại', run_until: 'Chạy đến', break_add: 'Thêm breakpoint', break_remove: 'Xóa breakpoint' },
+  chat: { leader_panel_title: 'Lãnh đạo — Chat', placeholder: 'Tin nhắn...', tools_trace: 'Xem dấu vết công cụ', error_history: 'Không thể tải lịch sử', empty_reply: '(phản hồi trống)', global: 'Chat toàn cục', error_history_global: 'Không thể tải lịch sử toàn cục', you: 'Bạn', assistant: 'LLM' },
+  leader_global: { title: 'Lãnh đạo — Chat toàn cục', select_label: 'Lãnh đạo:', select_aria: 'Chọn một lãnh đạo', display: 'Tên hiển thị', role: 'Vai trò', persona: 'Nhân dạng', persona_ph: 'Bộ điều phối workers', none_detected: '(không có lãnh đạo)' },
+  leader_identity_panel: { no_leader: 'Chưa gán lãnh đạo', error_read: 'Không thể đọc danh tính', refresh: 'Làm mới', display: 'Tên hiển thị', role: 'Vai trò', persona: 'Nhân dạng', persona_ph: 'Bộ điều phối workers', global_chat: 'Chat toàn cục', leader_workers: 'Workers của lãnh đạo', loading: 'Đang tải…', none_attached: 'Không có worker đính kèm', error_load: 'Lỗi tải' },
+  list: { title: 'Người lao động', view: 'Xem' },
+  config_editor: { tabs_simple: 'Đơn giản', tabs_json: 'JSON', beautify: 'Định dạng', minify: 'Rút gọn', validate: 'Xác thực', json_valid: 'JSON hợp lệ', json_invalid: 'JSON không hợp lệ', complex_only_json: 'Một số trường phức tạp chỉ có thể chỉnh sửa trong JSON' },
+  leader_section: { edit_identity_hint: 'Sửa danh tính (nhấp)' },
+  replay: { title: 'Phát lại (cỗ máy thời gian)', load_run: 'Tải run', play: 'Phát', stop: 'Dừng', error_runs: 'Không thể tải run', error_steps: 'Không thể tải bước', view_node: 'Xem node này', live_announce_step: 'Đang phát bước {idx}/{total}: {nodeId}' }
+};

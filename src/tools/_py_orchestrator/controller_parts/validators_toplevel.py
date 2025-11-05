@@ -1,3 +1,13 @@
+
+
+
+
+
+
+
+
+
+
 import ast
 from pathlib import Path
 from .constants import ALLOWED_IMPORTS
@@ -6,7 +16,19 @@ from typing import List
 
 def validate_module_toplevel(file_path: Path, allowed_assign_names: List[str]) -> None:
     src = file_path.read_text(encoding='utf-8')
-    tree = ast.parse(src, filename=str(file_path))
+    try:
+        tree = ast.parse(src, filename=str(file_path))
+    except SyntaxError as e:
+        # remonte une erreur plus parlante (notamment null bytes / encodage)
+        raise _err(
+            f"Import failed for {file_path}: SyntaxError: {e.msg}",
+            code="E099",
+            file_path=file_path,
+            lineno=getattr(e, 'lineno', 0),
+            rule="Module must be a valid UTF-8 Python file (no null bytes)",
+            fix="Remove null bytes / fix encoding",
+            example="utf-8 source only",
+        )
     seen_docstring = False
     for i, node in enumerate(tree.body):
         if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):

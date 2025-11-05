@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 import time
 import json as _json
@@ -60,9 +59,12 @@ def db_max_rowid(dbp: str, wn: str, run_id: str) -> int:
     try:
         conn = sqlite3.connect(dbp, timeout=3.0)
         try:
+            # ✅ FIX: Filtrage strict par run_id (pas de OR fallback)
+            if not run_id:
+                return 0
             cur = conn.execute(
-                "SELECT COALESCE(MAX(rowid),0) FROM job_steps WHERE worker=? AND (run_id=? OR ?='')",
-                (wn, run_id, run_id),
+                "SELECT COALESCE(MAX(rowid),0) FROM job_steps WHERE worker=? AND run_id=?",
+                (wn, run_id),
             )
             row = cur.fetchone()
             return int(row[0] or 0)
@@ -76,10 +78,13 @@ def db_rows_since(dbp: str, wn: str, run_id: str, last_rowid: int):
     try:
         conn = sqlite3.connect(dbp, timeout=3.0)
         try:
+            # ✅ FIX: Filtrage strict par run_id (pas de OR fallback)
+            if not run_id:
+                return []
             cur = conn.execute(
                 "SELECT rowid, cycle_id, node, status, duration_ms, details_json, finished_at "
-                "FROM job_steps WHERE worker=? AND (run_id=? OR ?='') AND rowid>? ORDER BY rowid ASC",
-                (wn, run_id, run_id, int(last_rowid)),
+                "FROM job_steps WHERE worker=? AND run_id=? AND rowid>? ORDER BY rowid ASC",
+                (wn, run_id, int(last_rowid)),
             )
             return cur.fetchall()
         finally:
@@ -92,10 +97,13 @@ def db_recent_window(dbp: str, wn: str, run_id: str, window: int = 10):
     try:
         conn = sqlite3.connect(dbp, timeout=3.0)
         try:
+            # ✅ FIX: Filtrage strict par run_id (pas de OR fallback)
+            if not run_id:
+                return []
             cur = conn.execute(
                 "SELECT rowid, cycle_id, node, status, duration_ms, details_json, finished_at "
-                "FROM job_steps WHERE worker=? AND (run_id=? OR ?='') ORDER BY rowid DESC LIMIT ?",
-                (wn, run_id, run_id, int(window)),
+                "FROM job_steps WHERE worker=? AND run_id=? ORDER BY rowid DESC LIMIT ?",
+                (wn, run_id, int(window)),
             )
             return cur.fetchall()
         finally:

@@ -1,4 +1,13 @@
 
+
+
+
+
+
+
+
+
+
 from __future__ import annotations
 from typing import Tuple, List, Any
 from pathlib import Path
@@ -14,7 +23,15 @@ def _load_module_from_path(mod_name: str, file_path: Path):
         raise ValidationError("Cannot load module: %s" % file_path)
     mod = importlib.util.module_from_spec(spec)
     sys.modules[mod_name] = mod
-    spec.loader.exec_module(mod)
+    try:
+        spec.loader.exec_module(mod)
+    except SyntaxError as e:
+        # Give a clearer message to help diagnose encoding/null-bytes issues
+        raise ValidationError(
+            f"Import failed for {file_path}: SyntaxError: {e.msg} (line {getattr(e, 'lineno', '?')}, offset {getattr(e, 'offset', '?')})"
+        ) from e
+    except Exception as e:
+        raise ValidationError(f"Import failed for {file_path}: {e.__class__.__name__}: {str(e)}") from e
     return mod
 
 
