@@ -1,15 +1,4 @@
 
-
-
-
-
-
-
-
-
-
-
-
 from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query, Body
 from typing import Optional, Dict, Any
@@ -175,4 +164,11 @@ async def api_avatars():
 @router.get("/leaders")
 async def api_leaders():
     res = await leader_list_api.list_leaders()
+    return res or {"accepted": False, "status": "error"}
+
+# NEW: tools_from_code (deterministic, no graph parsing)
+@router.get("/tools_from_code")
+async def api_tools_from_code(worker: str = Query(..., min_length=1)):
+    from . import tools_code_api
+    res = await tools_code_api.get(worker)
     return res or {"accepted": False, "status": "error"}

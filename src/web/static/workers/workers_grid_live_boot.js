@@ -1,15 +1,27 @@
 
-
-
-
-
-
-
 (function(global){
   const Core = global.WorkersGridCore || {};
   const LiveCore = global.WorkersGridLiveCore || {};
   const Observe = global.WorkersGridLiveObserve || {};
   const { h } = Core;
+
+  async function _loadPrefill(){
+    try{
+      const mod = await import('./workers_grid_live_prefill.js?v=' + Date.now());
+      return global.WGLivePrefill || mod.WGLivePrefill || null;
+    }catch(e){ LiveCore.dbg('prefill module load error', e); return null; }
+  }
+
+  async function _forceRefineOnce(){
+    try{
+      const Tools = global.WGLiveTools || {};
+      const idx = await Tools.ensureToolsIndex();
+      if (idx && idx.size){
+        LiveCore.refineChipsAfterRegistry && LiveCore.refineChipsAfterRegistry();
+        LiveCore.dbg('refineChipsAfterRegistry: forced pass');
+      }
+    }catch(e){ LiveCore.dbg('refine once error', e); }
+  }
 
   async function buildWorkersGrid(root, selectedLeader){
     const [list] = await Promise.all([ Core.apiList() ]);
@@ -34,19 +46,16 @@
       grid.appendChild(card);
       try{ Core.setAvatarAura(card, { phase: String(rec.phase||'').toLowerCase(), running_kind:'', sleeping:false }); }catch{}
 
-      // Prefill tools: list -> identity -> replay -> graph
-      let pre = [];
+      const PF = await _loadPrefill();
+      if (!PF || !PF.prefillToolsFromCode){ LiveCore.dbg('prefill API missing'); return; }
       try{
-        const listTools = Array.isArray(w.tools_used) ? w.tools_used : [];
-        if (listTools.length) pre = listTools.slice();
-        LiveCore.dbg('prefill(list)', w.worker_name, listTools);
-      }catch{}
-
-      try{ if (!pre.length){ const t = await LiveCore.prefillToolsFromIdentity(w.worker_name); if (t && t.length) pre = t.slice(); } }catch{}
-      try{ if (!pre.length){ const tr = await LiveCore.prefillToolsFromReplay(w.worker_name, 200); if (tr && tr.length) pre = tr.slice(); } }catch{}
-      try{ if (!pre.length){ const tg = await LiveCore.prefillToolsFromGraph(w.worker_name); if (tg && tg.length) pre = tg.slice(); } }catch{}
-
-      if (pre && pre.length) LiveCore.populateTools(card, pre); else LiveCore.dbg('no prefilled tools', w.worker_name);
+        const fromCode = await PF.prefillToolsFromCode(Core, w.worker_name);
+        if (fromCode && fromCode.length){
+          LiveCore.populateTools(card, fromCode);
+        } else {
+          LiveCore.dbg('no tools_from_code', w.worker_name);
+        }
+      }catch(e){ LiveCore.dbg('prefill fromCode error', e); }
     });
 
     async function ensureCard(wn){
@@ -58,10 +67,13 @@
         const card = global.WorkersGridCard.buildCard(rec); grid.appendChild(card); known.add(wn);
         try{ Core.setAvatarAura(card, { phase: String(rec.phase||'').toLowerCase(), running_kind:'', sleeping:false }); }catch{}
         try{
-          let tools = Array.isArray(ident.tools)? ident.tools : [];
-          if (!tools.length){ tools = await LiveCore.prefillToolsFromReplay(wn, 200); }
-          if (!tools.length){ tools = await LiveCore.prefillToolsFromGraph(wn); }
-          if (tools.length) LiveCore.populateTools(card, tools);
+          const PF = await _loadPrefill();
+          if (PF && PF.prefillToolsFromCode){
+            const fromCode = await PF.prefillToolsFromCode(Core, wn);
+            if (fromCode && fromCode.length){
+              LiveCore.populateTools(card, fromCode);
+            }
+          }
         }catch(e){ LiveCore.dbg('ensureCard populate error', e); }
       }catch(e){ LiveCore.dbg('ensureCard error', wn, e); }
       finally{ inflight.delete(wn); }
@@ -81,18 +93,11 @@
       LiveCore.dbg('observe_many started');
     }catch(e){ LiveCore.dbg('observe_many init error', e); }
 
+    // Force a refine pass once the registry is ready (labels + tooltips)
+    _forceRefineOnce();
+
     return {grid};
   }
 
   global.WorkersGridLive = { buildWorkersGrid };
 })(window);
-
- 
- 
- 
- 
- 
- 
- 
- 
- 

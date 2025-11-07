@@ -1,0 +1,83 @@
+
+{
+  "type": "function",
+  "function": {
+    "name": "voice_chat",
+    "displayName": "Voice Chat (Portal + Whisper + LLM)",
+    "category": "intelligence",
+    "tags": ["voice", "blocking", "interactive"],
+    "description": "Basculer la conversation courante en mode vocal local: capture micro (détection de silence), transcription Whisper (modèle par défaut), appel LLM (modèle par défaut, max_tokens ≤ 100), TTS local. ATTENTION (règles d’appel pour le LLM): outil BLOQUANT et MODAL — ne l’appeler que sur demande explicite de l’utilisateur (ex: ‘active le mode vocal’, ‘on passe en vocal’, ‘parle‑moi à l’oral’). Ne jamais le relancer automatiquement après exécution; attendre une nouvelle demande explicite pour tout redémarrage. Ne pas l’appeler en chaîne dans une même réponse. À la fin, l’outil renvoie success:true, ended:true, vocal_dialog et llm_note=‘Mode vocal terminé. Reprends en conversation texte.’ — reprendre immédiatement en conversation texte sans relancer l’outil.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "min_seconds": {
+          "type": "number",
+          "description": "Durée minimale d’une utterance avant envoi à Whisper. Option avancée — laisser vide recommandé (default 0.5s).",
+          "minimum": 0.3,
+          "maximum": 10,
+          "default": 0.5
+        },
+        "vad_threshold": {
+          "type": "number",
+          "description": "Seuil RMS de base pour détection de voix. Option avancée — laisser vide recommandé (default 0.02). Le moteur recalcule dynamiquement selon le bruit et applique un ‘relief’.",
+          "minimum": 0.001,
+          "maximum": 0.5,
+          "default": 0.02
+        },
+        "vad_silence_ms": {
+          "type": "integer",
+          "description": "Silence consécutif (ms) pour clôturer une utterance. Option avancée — laisser vide recommandé (default 1000).",
+          "minimum": 100,
+          "maximum": 3000,
+          "default": 1000
+        },
+        "idle_timeout_s": {
+          "type": "integer",
+          "description": "Arrêt automatique si aucune activité (voix ou TTS) pendant N secondes. Option avancée — laisser vide recommandé (default 20).",
+          "minimum": 5,
+          "maximum": 600,
+          "default": 20
+        },
+        "device": {
+          "type": "string",
+          "description": "Identifiant périphérique audio (optionnel). À renseigner seulement si le device par défaut n’est pas le bon."
+        },
+        "tts_voice": {
+          "type": "string",
+          "description": "Nom/ID de voix TTS (optionnel, dépend de l’OS). Laisser vide recommandé."
+        },
+        "whisper_model": {
+          "type": "string",
+          "description": "Modèle Whisper pour la transcription. Laisser vide recommandé (default: whisper-large-v3).",
+          "default": "whisper-large-v3"
+        },
+        "model": {
+          "type": "string",
+          "description": "Modèle LLM pour la réponse. Laisser vide recommandé (default: openai/gpt-oss-120b).",
+          "default": "openai/gpt-oss-120b"
+        },
+        "temperature": {
+          "type": "number",
+          "description": "Option avancée — laisser 1.0 (par défaut) sauf besoin spécifique.",
+          "minimum": 0,
+          "maximum": 2,
+          "default": 1.0
+        },
+        "max_tokens": {
+          "type": "integer",
+          "description": "Plafond de tokens de sortie LLM (fixé à 100 pour l’audio). Ne pas surcharger.",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 100
+        },
+        "tool_names": {
+          "type": "array",
+          "description": "Liste optionnelle de tools (noms) autorisés côté LLM pendant l’appel. Laisser vide recommandé; à fournir uniquement si vous souhaitez activer des tools spécifiques pour ce tour.",
+          "items": {"type": "string", "minLength": 1}
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    }
+  }
+}

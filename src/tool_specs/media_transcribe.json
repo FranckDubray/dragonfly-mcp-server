@@ -1,0 +1,60 @@
+{
+  "type": "function",
+  "function": {
+    "name": "media_transcribe",
+    "displayName": "Media Transcription (Audio/Video)",
+    "category": "media",
+    "tags": ["media", "audio", "video", "transcription", "whisper"],
+    "description": "Transcribe an audio or video file from docs/audio or docs/video using the Whisper API. Supports time-based segmentation and parallel processing (3 chunks at a time). Returns full_text and timing; optionally includes segments.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["transcribe", "get_info"],
+          "description": "transcribe (extract/convert audio, split into chunks, parallel Whisper) or get_info (metadata only)"
+        },
+        "path": {
+          "type": "string",
+          "description": "Media file path (relative to project root, must be under docs/audio/ or docs/video/). Examples: 'docs/audio/interview.wav', 'docs/video/demo.mp4'"
+        },
+        "time_start": {
+          "type": "integer",
+          "description": "Start time in seconds (default: 0). Use to limit processing window.",
+          "minimum": 0,
+          "default": 0
+        },
+        "time_end": {
+          "type": "integer",
+          "description": "End time in seconds (default: media duration). Combine with time_start to process a portion.",
+          "minimum": 0
+        },
+        "chunk_duration": {
+          "type": "integer",
+          "description": "Chunk size in seconds for Whisper API calls (default: 60, min: 10, max: 600).",
+          "minimum": 10,
+          "maximum": 600,
+          "default": 60
+        },
+        "include_segments": {
+          "type": "boolean",
+          "description": "If true, includes per-chunk segments in the response (can be large).",
+          "default": false
+        },
+        "segment_limit": {
+          "type": "integer",
+          "description": "Max number of segments to return when include_segments=true (default: 100, max: 500).",
+          "minimum": 1,
+          "maximum": 500,
+          "default": 100
+        },
+        "model": {
+          "type": "string",
+          "description": "Optional Whisper model hint for the backend (if supported)."
+        }
+      },
+      "required": ["operation", "path"],
+      "additionalProperties": false
+    }
+  }
+}

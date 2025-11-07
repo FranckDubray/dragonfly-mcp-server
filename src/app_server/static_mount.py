@@ -38,9 +38,10 @@ def _has_required_workers_assets(base: Path) -> bool:
 def mount_static_and_assets(app, project_root: Path):
     """Mount /static and /assets if folders exist; log absolute paths and CWD.
     Backward-compatible policy:
-    - Mount legacy Control Panel assets from src/static at /static (if present).
-    - Mount Workers SPA assets from src/web/static/workers at /static/workers (if present).
-    This avoids breaking /control which historically expects /static/css and /static/js.
+    - Mount Workers SPA assets from src/web/static/workers at /static/workers (FIRST, to avoid being shadowed).
+    - Mount legacy Control Panel assets from src/static at /static.
+    This avoids breaking /control which historically expects /static/css and /static/js,
+    while keeping /workers functional.
     Also mount /docs/images if present so avatars from identity can be served.
     """
     try:
@@ -70,14 +71,7 @@ def mount_static_and_assets(app, project_root: Path):
         assets_rel = str(assets_dir)
         docs_images_rel = str(docs_images_dir)
 
-    # 1) Legacy Control Panel assets → /static
-    if static_dir.exists():
-        app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
-        logger.info("📎 Mounted /static → %s (relative: %s)", static_dir.resolve(), static_rel)
-    else:
-        logger.warning("⚠️ Legacy static directory not found: %s", static_rel)
-
-    # 2) Workers SPA assets → /static/workers (mount unconditionally if folder exists)
+    # 1) Workers SPA assets → /static/workers (mount FIRST to avoid /static shadowing)
     if workers_dir.exists():
         app.mount("/static/workers", StaticFiles(directory=str(workers_dir)), name="static_workers")
         logger.info("📎 Mounted /static/workers → %s (relative: %s)", workers_dir.resolve(), workers_rel)
@@ -87,6 +81,13 @@ def mount_static_and_assets(app, project_root: Path):
         logger.info("ℹ️ Mounted /static_web (full web static) → %s (relative: %s)", web_static_dir.resolve(), web_static_rel)
     else:
         logger.info("ℹ️ Web static directory not found: %s", web_static_rel)
+
+    # 2) Legacy Control Panel assets → /static
+    if static_dir.exists():
+        app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+        logger.info("📎 Mounted /static → %s (relative: %s)", static_dir.resolve(), static_rel)
+    else:
+        logger.warning("⚠️ Legacy static directory not found: %s", static_rel)
 
     # 3) Mount assets
     if assets_dir.exists():

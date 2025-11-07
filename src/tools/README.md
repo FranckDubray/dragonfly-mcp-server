@@ -2,9 +2,9 @@
 
 Ce fichier est généré automatiquement par `scripts/generate_tools_catalog.py`. Ne pas éditer à la main.
 
-Total tools: 57
+Total tools: 58
 
-## 📊 Intelligence & Orchestration (5)
+## 📊 Intelligence & Orchestration (6)
 
 - Call LLM+tools — Appelle un modèle LLM en streaming. Orchestration tool_calls (MCP) en 2 phases. Supporte l'entrée multi-modale (images) via messages Open… · Tags: llm, orchestration, vision, multimodal
   - Opérations: N/A
@@ -24,6 +24,10 @@ Total tools: 57
 
 - Research — Recherche académique multi-sources (PubMed, arXiv, HAL, CrossRef). · Tags: knowledge, research, external_sources
   - Opérations: search_papers, get_paper_details, search_authors, get_citations
+  - Tokens: aucun
+
+- Voice Chat (Portal + Whisper + LLM) — Basculer la conversation courante en mode vocal local: capture micro (détection de silence), transcription Whisper (modèle par défaut), a… · Tags: voice, blocking, interactive
+  - Opérations: N/A
   - Tokens: aucun
 
 ## 🔧 Development (8)
@@ -144,16 +148,16 @@ Total tools: 57
   - Opérations: create, get_status, list, download, auto_start
   - Tokens: aucun
 
+- Media Transcription (Audio/Video) — Transcribe an audio or video file from docs/audio or docs/video using the Whisper API. Supports time-based segmentation and parallel proc… · Tags: media, audio, video, transcription, whisper
+  - Opérations: transcribe, get_info
+  - Tokens: aucun
+
 - OBS Control — Contrôle OBS via une seule fonction multi-actions en appels courts (ou sessions courtes). Pas d’API fichiers: si un média local est requi…
   - Opérations: N/A
   - Tokens: aucun
 
 - OpenAI Video (Sora) — Create and manage video renders with OpenAI's Sora models (sora-2 / sora-2-pro). Supports create (with optional wait), get_status, downlo… · Tags: external_sources, video, generation
   - Opérations: create, get_status, download, list, delete, remix …
-  - Tokens: aucun
-
-- Video Transcription — Extract audio from video and transcribe using Whisper API. Supports time-based segmentation for large videos. Parallel processing (3 chun… · Tags: video, audio, transcription, whisper
-  - Opérations: transcribe, get_info
   - Tokens: aucun
 
 - YouTube Downloader — Download videos or audio from YouTube URLs. Supports audio-only (for transcription), video, or both. Files saved to docs/video/ for integ… · Tags: youtube, video, audio, download, transcription

@@ -1,4 +1,4 @@
-"""Video Transcription package - internal implementation."""
+"""Media Transcription package - internal implementation."""
 from __future__ import annotations
 from typing import Dict, Any
 import json
@@ -11,9 +11,7 @@ def spec() -> Dict[str, Any]:
     Returns:
         OpenAI function spec
     """
-    # Load from canonical JSON file
-    spec_path = Path(__file__).parent.parent.parent / "tool_specs" / "video_transcribe.json"
-    
+    spec_path = Path(__file__).parent.parent.parent / "tool_specs" / "media_transcribe.json"
     try:
         with open(spec_path, "r", encoding="utf-8") as f:
             return json.load(f)
@@ -22,14 +20,14 @@ def spec() -> Dict[str, Any]:
         return {
             "type": "function",
             "function": {
-                "name": "video_transcribe",
-                "displayName": "Video Transcription",
-                "description": "Extract audio from video and transcribe using Whisper API",
+                "name": "media_transcribe",
+                "displayName": "Media Transcription",
+                "description": "Transcribe audio/video using Whisper API",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "operation": {"type": "string", "enum": ["transcribe", "get_info"]},
-                        "path": {"type": "string"},
+                        "path": {"type": "string"}
                     },
                     "required": ["operation", "path"],
                     "additionalProperties": False
@@ -38,5 +36,4 @@ def spec() -> Dict[str, Any]:
         }
 
 
-# Export spec for bootstrap file
 __all__ = ["spec"]

@@ -3,9 +3,12 @@
 
 
 
+
 (function(global){
   const Core = global.WorkersGridCore || {};
   const LiveCore = global.WorkersGridLiveCore || {};
+
+  function dbg(){ try{ if (global.__WG_DEBUG) console.log('[WG][observe]', ...arguments); }catch{} }
 
   function updateGauges(card, ev, helpers){
     const g = card.querySelector('.gauge');
@@ -59,7 +62,7 @@
       Core.setAvatarAura(card, { phase:p, running_kind:String(ev.running_kind||''), sleeping });
     }catch{}
 
-    // Tools chips live (use label+tooltip from /tools, with fallback on operation)
+    // Tools chips live (use label+tooltip from /tools, with fallback). No hard pre-filter.
     try{
       let toolsRow = card.querySelector('.tools');
       if (!toolsRow){
@@ -68,13 +71,12 @@
         const lab = document.createElement('span'); lab.className = 'label'; lab.textContent = 'Tools'; toolsRow.appendChild(lab);
         const actionsNode = card.querySelector('.card-actions');
         if (actionsNode) card.insertBefore(toolsRow, actionsNode); else card.appendChild(toolsRow);
-        LiveCore.dbg('created toolsRow for', wn);
+        dbg('created toolsRow for', wn);
       }
       toolsRow.querySelectorAll('.tool.running').forEach(el => el.classList.remove('running'));
       const rk = String(ev.running_kind||'');
       const rstarted = ev.running_started_at || '';
 
-      // derive tool name from last_io_call (with operation fallback)
       const call = ev?.last_io_call || {};
       let rawName = String(call.tool || call.tool_name || '').trim();
       if (!rawName){
@@ -83,19 +85,24 @@
       }
 
       if (rk==='tool' && rawName){
+        // Diagnostic: prefilter info
+        try{ if (LiveCore.isToolName) dbg('prefilter isToolName', rawName, '=>', LiveCore.isToolName(rawName)); }catch{}
+
         let chipEl = toolsRow.querySelector(`.tool[data-tool="${CSS.escape(rawName)}"]`);
         if (!chipEl){
           chipEl = document.createElement('div');
           chipEl.className='tool tooltip';
           chipEl.setAttribute('data-tool', rawName);
           toolsRow.appendChild(chipEl);
-          LiveCore.dbg('created chip for', wn, rawName);
+          dbg('created chip for', wn, rawName);
         }
         try{
           if (LiveCore.resolveToolLabel){
-            const { text, tip } = await LiveCore.resolveToolLabel(rawName);
+            const { text, tip, kind } = await LiveCore.resolveToolLabel(rawName);
+            dbg('resolved label', rawName, '=>', {text, kind});
+            if (kind && kind !== 'tool'){ chipEl.remove(); dbg('removed non-tool chip', rawName, kind); return; }
             chipEl.textContent = text || rawName;
-            if (tip) chipEl.setAttribute('data-tip', tip);
+            if (tip) chipEl.setAttribute('data-tip', tip); else chipEl.removeAttribute('data-tip');
           } else {
             chipEl.textContent = rawName;
           }
@@ -108,19 +115,19 @@
           const mm = Math.floor(elapsed/60), ss = String(elapsed%60).padStart(2,'0');
           chrono.textContent = `${mm}:${ss}`;
           card.dataset.toolStarted = rstarted || '';
-          LiveCore.ensureChronoTick();
-          LiveCore.dbg('running tool', wn, rawName, 'started', rstarted);
+          LiveCore.ensureChronoTick && LiveCore.ensureChronoTick();
+          dbg('running tool', wn, rawName, 'started', rstarted);
         } else {
           chrono.textContent = '';
           delete card.dataset.toolStarted;
-          LiveCore.dbg('running tool without valid started_at', wn, rawName, rstarted);
+          dbg('running tool without valid started_at', wn, rawName, rstarted);
         }
       } else {
-        if (card.dataset.toolStarted) LiveCore.dbg('clear toolStarted for', wn);
+        if (card.dataset.toolStarted) dbg('clear toolStarted for', wn);
         delete card.dataset.toolStarted;
         toolsRow.querySelectorAll('.tool .chrono').forEach(c => c.textContent='');
       }
-    }catch(e){ LiveCore.dbg('tools chips error', e); }
+    }catch(e){ dbg('tools chips error', e); }
   }
 
   global.WorkersGridLiveObserve = { applyEvent };
@@ -136,5 +143,14 @@
  
  
 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
  
  
