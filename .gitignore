@@ -1,46 +1,34 @@
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
 *.pyd
+*.so
 
-# Virtual envs
+# Virtual environments
 .venv/
 venv/
-
-# IDE
-.vscode/
-.idea/
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Env/Secrets
-.env
+# Build artifacts
+build/
+dist/
+*.egg-info/
 
-# Local databases (anywhere)
-*.db
-*.db-shm
-*.db-wal
+# Editors/IDE
+.vscode/
+.idea/
 
-# Project SQLite dirs
+# Project artifacts and large local assets (do not commit)
+models/
+docs/audio/tmp/
+docs/video/tmp/
 sqlite3/
-src/sqlite3/
-
-# Runner/Server logs (do not sync)
-logs/
-logs/*.log
-
-# Heavy/local artifacts (not for repo)
 .dgy_backup/
-docs/
-script_executor/
-tests/
 
-# Build/egg-info metadata
-src/add_mcp_server.egg-info/
-src/dragonfly_mcp_server.egg-info/
-
-# Playwright recordings, profiles and browsers
-playwright/
+# Caches/Logs
+.cache/
+*.log
