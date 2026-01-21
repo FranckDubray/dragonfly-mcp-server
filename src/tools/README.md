@@ -2,7 +2,7 @@
 
 Ce fichier est généré automatiquement par `scripts/generate_tools_catalog.py`. Ne pas éditer à la main.
 
-Total tools: 58
+Total tools: 59
 
 ## 📊 Intelligence & Orchestration (6)
 
@@ -108,10 +108,14 @@ Total tools: 58
   - Opérations: ensure_dir, list_dbs, create_db, delete_db, get_tables, describe …
   - Tokens: aucun
 
-## 📄 Documents (5)
+## 📄 Documents (6)
 
 - Doc Scraper — Universal documentation scraper supporting GitBook, Notion, Confluence, ReadTheDocs, Docusaurus, and other doc platforms. Discover, extra…
   - Opérations: discover_docs, extract_page, search_across_sites, detect_platform
+  - Tokens: aucun
+
+- Légifrance LEGI — Accès aux codes juridiques français (corpus LEGI). Récupère l'arborescence des codes en vigueur/abrogés et le contenu des articles avec m… · Tags: external_sources, knowledge, legal, france
+  - Opérations: get_summary, get_article
   - Tokens: aucun
 
 - Office to PDF Converter — Convert Microsoft Office documents (Word, PowerPoint) to PDF using either the Office suite installed on the laptop (via docx2pdf) or a he…

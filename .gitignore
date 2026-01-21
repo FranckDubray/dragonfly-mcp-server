@@ -32,3 +32,6 @@ sqlite3/
 # Caches/Logs
 .cache/
 *.log
+
+# Configuration
+.env
