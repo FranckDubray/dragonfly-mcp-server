@@ -35,3 +35,9 @@ sqlite3/
 
 # Configuration
 .env
+.env.example
+.env.legifrance.example
+
+# Documentation locale et server spécifique
+docs/
+server_legifrance/

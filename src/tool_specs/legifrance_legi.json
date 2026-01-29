@@ -2,59 +2,72 @@
   "type": "function",
   "function": {
     "name": "legifrance_legi",
-    "displayName": "Légifrance LEGI",
+    "displayName": "Légifrance LEGI v2",
     "category": "documents",
     "tags": ["external_sources", "knowledge", "legal", "france"],
-    "description": "Accès aux codes juridiques français (corpus LEGI). Récupère l'arborescence des codes en vigueur/abrogés et le contenu des articles avec métadonnées, liens juridiques et fil d'Ariane. Utilise des données précalculées pour des performances optimales.",
+    "description": "Accès aux codes juridiques français (corpus LEGI). 3 opérations : list_codes (liste des codes avec métadonnées, filtrable par nature), get_code (arborescence d'un code spécifique jusqu'à depth 10), get_articles (contenu détaillé d'articles avec liens juridiques).",
     "parameters": {
       "type": "object",
       "properties": {
         "operation": {
           "type": "string",
-          "enum": ["get_summary", "get_article"],
-          "description": "Type d'opération : get_summary (arborescence des codes) ou get_article (contenu articles)"
+          "enum": ["list_codes", "get_code", "get_articles"],
+          "description": "Type d'opération"
         },
         "scope": {
           "type": "string",
           "enum": ["codes_en_vigueur", "codes_abroges", "all"],
-          "description": "[get_summary] Scope des codes : codes_en_vigueur (77 codes actifs), codes_abroges (31 codes), ou all (défaut: codes_en_vigueur)",
-          "default": "codes_en_vigueur"
+          "description": "[list_codes] Scope des codes (défaut: codes_en_vigueur)"
+        },
+        "nature": {
+          "type": "string",
+          "enum": ["CODE", "ARRETE", "DECRET", "LOI", "ORDONNANCE", "ALL"],
+          "default": "CODE",
+          "description": "[list_codes] Filtrer par nature de texte (défaut: CODE pour n'avoir que les 76 codes juridiques)"
+        },
+        "code_id": {
+          "type": "string",
+          "pattern": "^LEGITEXT[0-9]{12}$",
+          "description": "[get_code] ID du code à récupérer (OBLIGATOIRE). Ex: LEGITEXT000006072050 pour Code du travail"
+        },
+        "root_section_id": {
+          "type": "string",
+          "pattern": "^LEGISCTA[0-9]{12}$",
+          "description": "[get_code] (Optionnel) ID d'une section racine pour ne retourner que cette branche (ex: une partie, un livre, etc.)."
         },
         "depth": {
           "type": "integer",
-          "description": "[get_summary] Profondeur de l'arborescence : 1=Codes uniquement, 2=+Livres, 3=+Titres, 4=+Chapitres, 5=+Articles (défaut: 2). Données précalculées pour performances optimales.",
           "minimum": 1,
-          "maximum": 5,
-          "default": 2
+          "maximum": 10,
+          "default": 3,
+          "description": "[get_code] Profondeur de l'arborescence (1-10). Recommandé : 3 pour navigation, 8+ pour articles"
         },
-        "limit": {
-          "type": "integer",
-          "description": "[get_summary] Nombre maximum de codes retournés (défaut: 77 pour tous les codes en vigueur, max: 200)",
-          "minimum": 1,
-          "maximum": 200,
-          "default": 77
+        "include_articles": {
+          "type": "boolean",
+          "default": false,
+          "description": "[get_code] Inclure les IDs articles au niveau le plus profond (utile avec depth >= 8)"
         },
         "article_ids": {
           "type": "array",
           "items": {"type": "string", "pattern": "^LEGIARTI[0-9]{12}$"},
-          "description": "[get_article] Liste des identifiants d'articles (format: LEGIARTI + 12 chiffres). Exemple: ['LEGIARTI000044072567']. Min: 1 article, Max: 50 articles par requête.",
           "minItems": 1,
-          "maxItems": 50
+          "maxItems": 50,
+          "description": "[get_articles] Liste des IDs articles (OBLIGATOIRE). Max 50 articles"
         },
         "date": {
           "type": "string",
-          "description": "[get_article] Date pour récupérer la version de l'article valide à cette date (format: YYYY-MM-DD). Par défaut: date du jour. Filtre les articles selon date_debut <= date <= date_fin.",
-          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "description": "[get_articles] Date pour version historique (YYYY-MM-DD). Défaut: aujourd'hui"
         },
         "include_links": {
           "type": "boolean",
-          "description": "[get_article] Inclure les liens juridiques (CITATION, MODIFIE, CONCORDANCE, etc.) dans la réponse (défaut: true)",
-          "default": true
+          "default": true,
+          "description": "[get_articles] Inclure les liens juridiques (CITATION, MODIFIE, etc.)"
         },
         "include_breadcrumb": {
           "type": "boolean",
-          "description": "[get_article] Inclure le fil d'Ariane (Code > Livre > Titre > Chapitre > Section > Article) dans la réponse (défaut: true)",
-          "default": true
+          "default": true,
+          "description": "[get_articles] Inclure le fil d'Ariane (Code > Livre > Titre > Chapitre > Article)"
         }
       },
       "required": ["operation"],

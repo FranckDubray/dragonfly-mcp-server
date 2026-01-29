@@ -1,0 +1,87 @@
+{
+  "type": "function",
+  "function": {
+    "name": "ssh_diagnostics",
+    "displayName": "SSH Diagnostics",
+    "category": "networking",
+    "tags": ["diagnostics", "ssh", "network", "troubleshooting"],
+    "description": "Outil de diagnostic pour connexions SSH instables. Permet de tester la connectivité, analyser les logs serveur, vérifier les keepalives, firewall, fail2ban, charge système, et générer des configs SSH optimisées.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": [
+            "test_connection",
+            "check_server_logs",
+            "check_keepalive_config",
+            "test_network",
+            "check_firewall",
+            "check_fail2ban",
+            "check_server_load",
+            "generate_ssh_config",
+            "full_diagnostic"
+          ],
+          "description": "Opération de diagnostic à exécuter"
+        },
+        "host": {
+          "type": "string",
+          "description": "IP ou hostname du serveur SSH (ex: '188.245.151.223'). Requis pour test_connection, test_network, generate_ssh_config"
+        },
+        "user": {
+          "type": "string",
+          "description": "Username SSH (ex: 'root'). Utilisé pour test_connection et generate_ssh_config",
+          "default": "root"
+        },
+        "port": {
+          "type": "integer",
+          "description": "Port SSH (default: 22)",
+          "minimum": 1,
+          "maximum": 65535,
+          "default": 22
+        },
+        "log_lines": {
+          "type": "integer",
+          "description": "Nombre de lignes de logs à récupérer (default: 100, max: 500)",
+          "minimum": 10,
+          "maximum": 500,
+          "default": 100
+        },
+        "mtr_count": {
+          "type": "integer",
+          "description": "Nombre de paquets MTR pour test réseau (default: 50, max: 200)",
+          "minimum": 10,
+          "maximum": 200,
+          "default": 50
+        },
+        "ssh_key_path": {
+          "type": "string",
+          "description": "Chemin vers la clé SSH privée (optionnel, pour test_connection)"
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Timeout en secondes pour les commandes (default: 30, max: 120)",
+          "minimum": 5,
+          "maximum": 120,
+          "default": 30
+        },
+        "keepalive_interval": {
+          "type": "integer",
+          "description": "Interval keepalive pour generate_ssh_config (default: 30)",
+          "minimum": 10,
+          "maximum": 120,
+          "default": 30
+        },
+        "keepalive_count_max": {
+          "type": "integer",
+          "description": "Max count keepalive pour generate_ssh_config (default: 6)",
+          "minimum": 3,
+          "maximum": 20,
+          "default": 6
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}

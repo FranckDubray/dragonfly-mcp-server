@@ -1,0 +1,86 @@
+{
+  "type": "function",
+  "function": {
+    "name": "call_llm_agent",
+    "displayName": "LLM Agent (Multi-turn)",
+    "category": "intelligence",
+    "tags": ["llm", "agent", "orchestration", "multi-turn", "chain", "autonomous"],
+    "description": "Appelle un LLM avec capacité d'enchaînement automatique de tools. Le LLM peut appeler plusieurs tools en séquence, en utilisant les résultats précédents pour décider des prochains appels. Idéal pour workflows complexes nécessitant plusieurs étapes dépendantes (recherche juridique, analyse multi-sources, navigation dans APIs hiérarchiques, etc.).",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string",
+          "description": "Message utilisateur (question ou instruction). Soyez explicite sur l'objectif final pour guider l'agent.",
+          "minLength": 1,
+          "maxLength": 50000
+        },
+        "model": {
+          "type": "string",
+          "description": "Nom du modèle LLM à utiliser. Exemples recommandés pour agents : 'claude-sonnet-4-5-20250929' (raisonnement avancé), 'gpt-5.2' (OpenAI flagship), 'gpt-oss:120b' (open-source), 'qwen3-vl:235b' (vision 235B), 'glm-4.7:358b' (coding expert), 'qwen3-next:80b' (excellent rapport qualité/prix)."
+        },
+        "tool_names": {
+          "type": "array",
+          "description": "Liste des outils MCP disponibles pour l'agent. L'agent choisira lesquels utiliser et dans quel ordre selon les besoins.",
+          "items": {"type": "string", "minLength": 1},
+          "minItems": 1,
+          "maxItems": 20
+        },
+        "max_iterations": {
+          "type": "integer",
+          "description": "Nombre maximum d'itérations (tours de tools). Sécurité anti-boucle infinie. L'agent s'arrête naturellement quand il a toutes les infos nécessaires.",
+          "default": 20,
+          "minimum": 1,
+          "maximum": 50
+        },
+        "agent_prompt": {
+          "type": "string",
+          "description": "Prompt system spécifique pour guider l'agent. Si non fourni, utilise le prompt par défaut optimisé pour l'orchestration multi-tours.",
+          "maxLength": 10000
+        },
+        "temperature": {
+          "type": "number",
+          "description": "Température d'échantillonnage (0.1-1.0). Recommandé : 0.3-0.5 pour agent déterministe, 0.7-0.9 pour créativité.",
+          "default": 0.5,
+          "minimum": 0.1,
+          "maximum": 1.0
+        },
+        "max_tokens": {
+          "type": "integer",
+          "description": "Nombre maximum de tokens pour la réponse finale (synthèse). Ne s'applique pas aux appels intermédiaires de tools.",
+          "minimum": 50,
+          "maximum": 32000
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "description": "Timeout global pour tout le workflow (en secondes). Défaut : 300s (5 min). Max : 600s (10 min).",
+          "default": 300,
+          "minimum": 30,
+          "maximum": 600
+        },
+        "parallel_execution": {
+          "type": "boolean",
+          "description": "Activer l'exécution parallèle des tools indépendants dans un même tour (gain de latence). Défaut : true.",
+          "default": true
+        },
+        "early_stop_on_error": {
+          "type": "boolean",
+          "description": "Arrêter immédiatement si un tool échoue (true) ou continuer et laisser le LLM gérer l'erreur (false). Défaut : false.",
+          "default": false
+        },
+        "debug": {
+          "type": "boolean",
+          "description": "Active le debug détaillé : tracking de chaque itération, appels LLM, résultats tools, usage cumulatif. Défaut : false.",
+          "default": false
+        },
+        "include_cost_breakdown": {
+          "type": "boolean",
+          "description": "Inclure une analyse détaillée des coûts par itération dans la réponse. Défaut : true.",
+          "default": true
+        }
+      },
+      "required": ["message", "model", "tool_names"],
+      "additionalProperties": false
+    }
+  }
+}

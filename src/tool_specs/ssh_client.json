@@ -1,0 +1,102 @@
+{
+  "type": "function",
+  "function": {
+    "name": "ssh_client",
+    "displayName": "SSH Client",
+    "category": "networking",
+    "tags": ["remote", "server", "automation"],
+    "description": "Client SSH/SFTP universel pour exécuter des commandes à distance, transférer des fichiers (upload/download), et gérer des serveurs. Supporte l'authentification par mot de passe, clé SSH, ou agent SSH.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["exec", "upload", "download", "status"],
+          "description": "Opération à effectuer : exec (exécuter commande), upload (envoyer fichier), download (récupérer fichier), status (vérifier connexion)"
+        },
+        "host": {
+          "type": "string",
+          "description": "Adresse du serveur (IP ou hostname). Ex: '188.245.151.223' ou 'server.example.com'"
+        },
+        "port": {
+          "type": "integer",
+          "description": "Port SSH (default: 22)",
+          "minimum": 1,
+          "maximum": 65535,
+          "default": 22
+        },
+        "username": {
+          "type": "string",
+          "description": "Nom d'utilisateur SSH (ex: 'root', 'ubuntu')"
+        },
+        "auth_type": {
+          "type": "string",
+          "enum": ["password", "key", "agent"],
+          "description": "Type d'authentification : password (mot de passe), key (fichier clé SSH), agent (SSH agent)"
+        },
+        "password": {
+          "type": "string",
+          "description": "Mot de passe pour l'authentification password"
+        },
+        "key_file": {
+          "type": "string",
+          "description": "Chemin vers la clé SSH privée (ex: '~/.ssh/id_rsa')"
+        },
+        "key_passphrase": {
+          "type": "string",
+          "description": "Passphrase pour déverrouiller la clé SSH (optionnel)"
+        },
+        "command": {
+          "type": "string",
+          "description": "Commande à exécuter (pour operation=exec). Ex: 'ls -lah', 'python3 script.py --status'"
+        },
+        "cwd": {
+          "type": "string",
+          "description": "Répertoire de travail (current working directory) pour la commande. Ex: '/var/www'"
+        },
+        "sudo": {
+          "type": "boolean",
+          "description": "Exécuter la commande avec sudo (default: false)",
+          "default": false
+        },
+        "sudo_password": {
+          "type": "string",
+          "description": "Mot de passe pour sudo (si différent du mot de passe de connexion)"
+        },
+        "local_path": {
+          "type": "string",
+          "description": "Chemin local du fichier (pour upload/download). Ex: 'files/scripts/script.py'"
+        },
+        "remote_path": {
+          "type": "string",
+          "description": "Chemin distant du fichier (pour upload/download). Ex: '/root/script.py'"
+        },
+        "create_dirs": {
+          "type": "boolean",
+          "description": "Créer les répertoires parents si nécessaire (pour upload). Default: true",
+          "default": true
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Timeout en secondes (default: 30, min: 1, max: 600)",
+          "minimum": 1,
+          "maximum": 600,
+          "default": 30
+        },
+        "verify_host_key": {
+          "type": "string",
+          "enum": ["strict", "auto_add", "disabled"],
+          "description": "Vérification de la clé d'hôte : strict (refuse si inconnue), auto_add (ajoute automatiquement), disabled (désactivé, dangereux)",
+          "default": "auto_add"
+        },
+        "env": {
+          "type": "object",
+          "description": "Variables d'environnement pour la commande. Ex: {'DEBIAN_FRONTEND': 'noninteractive'}",
+          "additionalProperties": {"type": "string"}
+        }
+      },
+      "required": ["operation", "host", "username", "auth_type"],
+      "additionalProperties": false
+    }
+  }
+}

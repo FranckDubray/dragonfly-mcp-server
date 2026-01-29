@@ -2,11 +2,15 @@
 
 Ce fichier est généré automatiquement par `scripts/generate_tools_catalog.py`. Ne pas éditer à la main.
 
-Total tools: 59
+Total tools: 63
 
-## 📊 Intelligence & Orchestration (6)
+## 📊 Intelligence & Orchestration (7)
 
 - Call LLM+tools — Appelle un modèle LLM en streaming. Orchestration tool_calls (MCP) en 2 phases. Supporte l'entrée multi-modale (images) via messages Open… · Tags: llm, orchestration, vision, multimodal
+  - Opérations: N/A
+  - Tokens: aucun
+
+- LLM Agent (Multi-turn) — Appelle un LLM avec capacité d'enchaînement automatique de tools. Le LLM peut appeler plusieurs tools en séquence, en utilisant les résul… · Tags: llm, agent, orchestration, multi-turn, chain, autonomous
   - Opérations: N/A
   - Tokens: aucun
 
@@ -108,14 +112,18 @@ Total tools: 59
   - Opérations: ensure_dir, list_dbs, create_db, delete_db, get_tables, describe …
   - Tokens: aucun
 
-## 📄 Documents (6)
+## 📄 Documents (7)
 
 - Doc Scraper — Universal documentation scraper supporting GitBook, Notion, Confluence, ReadTheDocs, Docusaurus, and other doc platforms. Discover, extra…
   - Opérations: discover_docs, extract_page, search_across_sites, detect_platform
   - Tokens: aucun
 
-- Légifrance LEGI — Accès aux codes juridiques français (corpus LEGI). Récupère l'arborescence des codes en vigueur/abrogés et le contenu des articles avec m… · Tags: external_sources, knowledge, legal, france
-  - Opérations: get_summary, get_article
+- Légifrance LEGI v2 — Accès aux codes juridiques français (corpus LEGI). 3 opérations : list_codes (liste des codes avec métadonnées, filtrable par nature), ge… · Tags: external_sources, knowledge, legal, france
+  - Opérations: list_codes, get_code, get_articles
+  - Tokens: aucun
+
+- Légifrance LEGI v2 - Optimisé — Accès aux codes juridiques français (corpus LEGI). WORKFLOW RECOMMANDÉ : (1) list_codes UNE FOIS pour identifier le code → (2) get_code a… · Tags: external_sources, knowledge, legal, france
+  - Opérations: list_codes, get_code, get_articles
   - Tokens: aucun
 
 - Office to PDF Converter — Convert Microsoft Office documents (Word, PowerPoint) to PDF using either the Office suite installed on the laptop (via docx2pdf) or a he…
@@ -190,10 +198,18 @@ Total tools: 59
   - Opérations: refresh_stations, get_availability, check_cache
   - Tokens: aucun
 
-## 🌐 Networking (1)
+## 🌐 Networking (3)
 
 - HTTP Client — Client HTTP/REST générique pour interagir avec n'importe quelle API. Supporte GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS avec authentif…
   - Opérations: N/A
+  - Tokens: aucun
+
+- SSH Client — Client SSH/SFTP universel pour exécuter des commandes à distance, transférer des fichiers (upload/download), et gérer des serveurs. Suppo… · Tags: remote, server, automation
+  - Opérations: exec, upload, download, status
+  - Tokens: aucun
+
+- SSH Diagnostics — Outil de diagnostic pour connexions SSH instables. Permet de tester la connectivité, analyser les logs serveur, vérifier les keepalives,… · Tags: diagnostics, ssh, network, troubleshooting
+  - Opérations: test_connection, check_server_logs, check_keepalive_config, test_network, check_firewall, check_fail2ban …
   - Tokens: aucun
 
 ## 🔢 Utilities (8)
