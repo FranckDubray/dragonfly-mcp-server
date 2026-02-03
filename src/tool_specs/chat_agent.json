@@ -1,0 +1,81 @@
+{
+  "type": "function",
+  "function": {
+    "name": "chat_agent",
+    "displayName": "Chat Agent (Threaded)",
+    "category": "intelligence",
+    "tags": ["llm", "agent", "threading", "multi-turn", "conversation", "persistent"],
+    "description": "Agent conversationnel persistant avec exécution d'outils. Utilise l'API Threads pour stocker l'historique complet côté serveur. Idéal pour chatbots et assistants longue durée avec mémoire persistante.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string",
+          "description": "Message utilisateur (question ou instruction).",
+          "minLength": 1,
+          "maxLength": 100000
+        },
+        "model": {
+          "type": "string",
+          "description": "Nom du modèle LLM à utiliser. Exemples : 'gpt-5.2', 'claude-sonnet-4-5-20250929', 'gpt-oss:120b', 'qwen3-next:80b'.",
+          "default": "gpt-5.2"
+        },
+        "tools": {
+          "type": "array",
+          "description": "Liste des outils MCP disponibles pour l'agent. Si vide, l'agent fait uniquement de la conversation sans tool use.",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0,
+          "maxItems": 20,
+          "default": []
+        },
+        "thread_id": {
+          "type": "string",
+          "description": "ID du thread pour continuer une conversation existante. Si omis, crée un nouveau thread. Format: 'thread_stream_XXXXX'.",
+          "pattern": "^thread_"
+        },
+        "output_mode": {
+          "type": "string",
+          "enum": ["minimal", "intermediate", "debug"],
+          "default": "minimal",
+          "description": "Niveau de détail de la réponse.\n- minimal: {success, response, tools_used, thread_id} — Pour chatbots\n- intermediate: + {operations_summary, context_info} — Pour production\n- debug: + {full_operations, usage, transcript_snapshot} — Pour développement"
+        },
+        "max_iterations": {
+          "type": "integer",
+          "default": 10,
+          "minimum": 1,
+          "maximum": 50,
+          "description": "Nombre maximum d'itérations (tours de tool use). Limite de sécurité pour éviter les boucles infinies."
+        },
+        "timeout": {
+          "type": "integer",
+          "default": 300,
+          "minimum": 10,
+          "maximum": 600,
+          "description": "Timeout global en secondes pour toute l'exécution."
+        },
+        "temperature": {
+          "type": "number",
+          "default": 0.5,
+          "minimum": 0.0,
+          "maximum": 2.0,
+          "description": "Température d'échantillonnage du LLM. 0 = déterministe, 2 = très créatif."
+        },
+        "system_prompt": {
+          "type": "string",
+          "description": "Prompt système custom pour guider le comportement de l'agent. Si omis, utilise le prompt par défaut. Écrase le prompt du thread si thread_id est fourni.",
+          "maxLength": 10000
+        },
+        "parallel_execution": {
+          "type": "boolean",
+          "default": true,
+          "description": "Exécuter les outils indépendants en parallèle pour réduire la latence."
+        }
+      },
+      "required": ["message"],
+      "additionalProperties": false
+    }
+  }
+}

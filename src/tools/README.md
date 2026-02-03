@@ -2,15 +2,27 @@
 
 Ce fichier est généré automatiquement par `scripts/generate_tools_catalog.py`. Ne pas éditer à la main.
 
-Total tools: 63
+Total tools: 69
 
-## 📊 Intelligence & Orchestration (7)
+## 📊 Intelligence & Orchestration (10)
+
+- Agent (Multi-turn v2) — Multi-turn LLM agent with automatic tool chaining. Simplified architecture with client-side state management. Supports conversation conti… · Tags: llm, agent, multi-turn, orchestration, autonomous, state
+  - Opérations: N/A
+  - Tokens: aucun
 
 - Call LLM+tools — Appelle un modèle LLM en streaming. Orchestration tool_calls (MCP) en 2 phases. Supporte l'entrée multi-modale (images) via messages Open… · Tags: llm, orchestration, vision, multimodal
   - Opérations: N/A
   - Tokens: aucun
 
-- LLM Agent (Multi-turn) — Appelle un LLM avec capacité d'enchaînement automatique de tools. Le LLM peut appeler plusieurs tools en séquence, en utilisant les résul… · Tags: llm, agent, orchestration, multi-turn, chain, autonomous
+- Chat Agent (Threaded) — Agent conversationnel persistant avec exécution d'outils. Utilise l'API Threads pour stocker l'historique complet côté serveur. Idéal pou… · Tags: llm, agent, threading, multi-turn, conversation, persistent
+  - Opérations: N/A
+  - Tokens: aucun
+
+- LLM Agent (Multi-turn) — Appelle un LLM avec capacité d'enchaînement automatique de tools. Le LLM peut appeler plusieurs tools en séquence, en utilisant les résul… · Tags: llm, agent, orchestration, multi-turn, chain, autonomous, resume, threading
+  - Opérations: N/A
+  - Tokens: aucun
+
+- LLM Agent Planner — Orchestrateur LLM avec planification explicite. Génère un plan d'exécution structuré, optimise les parallélisations, puis exécute les éta… · Tags: llm, agent, planning, orchestration, reasoning, multi-step, workflow
   - Opérations: N/A
   - Tokens: aucun
 
@@ -34,7 +46,7 @@ Total tools: 63
   - Opérations: N/A
   - Tokens: aucun
 
-## 🔧 Development (8)
+## 🔧 Development (9)
 
 - Dev Navigator — Couteau suisse LLM pour explorer un dépôt: overview, tree, search, outline, open (plan fs_requests uniquement — pas de contenu), endpoint… · Tags: knowledge
   - Opérations: compose, overview, tree, search, outline, open …
@@ -57,6 +69,10 @@ Total tools: 63
   - Tokens: aucun
 
 - Python Sandbox — Exécute du code Python dans un sandbox sécurisé avec accès à des tools MCP. Pas d'imports, API limitée, timeout configurable.
+  - Opérations: N/A
+  - Tokens: aucun
+
+- Shell Command — Execute shell commands (bash/sh). Useful for running scripts, tests, git commands, file operations. Supports piping, redirections, and wo… · Tags: shell, bash, command, exec, system
   - Opérations: N/A
   - Tokens: aucun
 
@@ -112,10 +128,22 @@ Total tools: 63
   - Opérations: ensure_dir, list_dbs, create_db, delete_db, get_tables, describe …
   - Tokens: aucun
 
-## 📄 Documents (7)
+## 📄 Documents (9)
 
 - Doc Scraper — Universal documentation scraper supporting GitBook, Notion, Confluence, ReadTheDocs, Docusaurus, and other doc platforms. Discover, extra…
   - Opérations: discover_docs, extract_page, search_across_sites, detect_platform
+  - Tokens: aucun
+
+- Légifrance Consult — Consultation du corpus juridique français (LEGI).
+
+[DEUX STRATEGIES PRINCIPALES]
+
+[STRATEGIE A] NAVIGATION PURE (Recommandée pour explora… · Tags: external_sources, knowledge, legal, france
+  - Opérations: search_sections, get_section_tree, get_articles
+  - Tokens: aucun
+
+- Légifrance Consult — Consultation du corpus juridique français (LEGI). 3 opérations : search_sections (recherche textuelle), get_section_tree (arborescence av… · Tags: external_sources, knowledge, legal, france
+  - Opérations: search_sections, get_section_tree, get_articles
   - Tokens: aucun
 
 - Légifrance LEGI v2 — Accès aux codes juridiques français (corpus LEGI). 3 opérations : list_codes (liste des codes avec métadonnées, filtrable par nature), ge… · Tags: external_sources, knowledge, legal, france

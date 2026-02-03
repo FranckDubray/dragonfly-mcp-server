@@ -1,0 +1,90 @@
+{
+  "type": "function",
+  "function": {
+    "name": "legifrance_consult",
+    "displayName": "Légifrance Consult",
+    "category": "documents",
+    "tags": ["external_sources", "knowledge", "legal", "france"],
+    "description": "Consultation du corpus juridique français (LEGI). 3 opérations : search_sections (recherche textuelle), get_section_tree (arborescence avec filtre vigueur), get_articles (texte complet avec breadcrumb).",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["search_sections", "get_section_tree", "get_articles"],
+          "description": "Type d'opération"
+        },
+        "query": {
+          "type": "string",
+          "minLength": 3,
+          "description": "[search_sections] Requête textuelle (min 3 caractères)"
+        },
+        "code_id": {
+          "type": "string",
+          "pattern": "^LEGITEXT[0-9]{12}$",
+          "description": "[search_sections, get_section_tree] ID du code (optionnel pour search)"
+        },
+        "section_id": {
+          "type": "string",
+          "pattern": "^LEGISCTA[0-9]{12}$",
+          "description": "[get_section_tree] ID de la section (optionnel, défaut: racine code)"
+        },
+        "article_ids": {
+          "type": "array",
+          "items": {"type": "string", "pattern": "^LEGIARTI[0-9]{12}$"},
+          "minItems": 1,
+          "maxItems": 50,
+          "description": "[get_articles] Liste IDs articles (1-50)"
+        },
+        "etat": {
+          "type": "string",
+          "enum": ["VIGUEUR", "ABROGE", "ALL"],
+          "default": "VIGUEUR",
+          "description": "Filtre état articles (défaut: VIGUEUR)"
+        },
+        "max_depth": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 10,
+          "description": "[get_section_tree] Profondeur max arbre"
+        },
+        "include_articles": {
+          "type": "boolean",
+          "default": true,
+          "description": "[get_section_tree] Inclure IDs articles"
+        },
+        "max_size_kb": {
+          "type": "integer",
+          "minimum": 50,
+          "maximum": 5000,
+          "description": "[get_section_tree] Taille max retour (KB)"
+        },
+        "include_links": {
+          "type": "boolean",
+          "default": true,
+          "description": "[get_articles] Inclure liens juridiques"
+        },
+        "include_breadcrumb": {
+          "type": "boolean",
+          "default": true,
+          "description": "[get_articles, get_section_tree] Inclure breadcrumb"
+        },
+        "date": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "description": "[get_articles] Date version historique (YYYY-MM-DD)"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 20,
+          "description": "[search_sections] Limite résultats"
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}

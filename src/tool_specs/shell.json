@@ -1,0 +1,43 @@
+{
+  "type": "function",
+  "function": {
+    "name": "shell",
+    "displayName": "Shell Command",
+    "category": "development",
+    "tags": ["shell", "bash", "command", "exec", "system"],
+    "description": "Execute shell commands (bash/sh). Useful for running scripts, tests, git commands, file operations. Supports piping, redirections, and working directory.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "Shell command to execute (e.g., 'ls -la', 'python3 test.py', 'git status')"
+        },
+        "cwd": {
+          "type": "string",
+          "description": "Working directory (default: project root). Example: 'tests', 'src/tools'"
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 300,
+          "default": 30,
+          "description": "Timeout in seconds (default: 30, max: 300)"
+        },
+        "capture_output": {
+          "type": "boolean",
+          "default": true,
+          "description": "Capture stdout/stderr (default: true). Set to false for interactive commands."
+        },
+        "shell": {
+          "type": "string",
+          "enum": ["bash", "sh", "python3", "node"],
+          "default": "bash",
+          "description": "Shell to use (default: bash)"
+        }
+      },
+      "required": ["command"],
+      "additionalProperties": false
+    }
+  }
+}

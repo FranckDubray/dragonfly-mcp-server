@@ -42,6 +42,11 @@ def process_streaming_chunks(response):
 
     headers = {k.lower(): v for k, v in (response.headers or {}).items()}
     ct = (headers.get("content-type") or "").lower()
+    
+    # Initialize variables that might be used in fallback
+    thread_id = None
+    assistant_message_id = None
+    
     if "text/event-stream" not in ct:
         # Non-SSE fallback: parse JSON body once
         try:
@@ -55,6 +60,14 @@ def process_streaming_chunks(response):
         out["sse_stats"] = stats_init()
         out["raw_preview"] = [_trim_str(json.dumps(obj)[:4000], 4000)] if obj else []
         out["response_headers"] = _trim_val(headers, 1000)
+        # Try to extract thread_id from non-stream response if present
+        if isinstance(obj, dict):
+            thread_id = obj.get("threadId") or obj.get("thread_id")
+            assistant_message_id = obj.get("id")
+            
+        out["thread_id"] = thread_id
+        out["assistant_message_id"] = assistant_message_id
+        
         if DUMP:
             out["raw"] = [_trim_str(json.dumps(obj), 4000)]
         return out
@@ -105,6 +118,13 @@ def process_streaming_chunks(response):
                     media.extend(collect_media_from_openai_message_content(msg["content"]))
             if chunk.get("usage"):
                 usage = chunk["usage"]
+            
+            # Extract thread_id and id if present in chunk
+            if chunk.get("thread_id"):
+                thread_id = chunk["thread_id"]
+            if chunk.get("id"):
+                assistant_message_id = chunk["id"]
+                
         except Exception:
             sse_stats["json_errors"] += 1
             continue
@@ -115,6 +135,8 @@ def process_streaming_chunks(response):
         "sse_stats": sse_stats,
         "raw_preview": raw_preview,
         "response_headers": _trim_val(headers, 1000),
+        "thread_id": thread_id,
+        "assistant_message_id": assistant_message_id,
     }
     if media:
         out["media"] = media
@@ -129,6 +151,11 @@ def process_tool_calls_stream(response):
 
     headers = {k.lower(): v for k, v in (response.headers or {}).items()}
     ct = (headers.get("content-type") or "").lower()
+    
+    # Initialize variables that might be used in fallback
+    thread_id = None
+    assistant_message_id = None
+    
     if "text/event-stream" not in ct:
         # Non-SSE fallback
         try:
@@ -138,6 +165,12 @@ def process_tool_calls_stream(response):
                 obj = json.loads(response.text or "{}")
             except Exception:
                 obj = {}
+        
+        # Try to extract thread_id from non-stream response if present
+        if isinstance(obj, dict):
+            thread_id = obj.get("threadId") or obj.get("thread_id")
+            assistant_message_id = obj.get("id")
+            
         fallback = fallback_parse_non_stream_json(obj)
         out = {
             "tool_calls": fallback.get("tool_calls", []),
@@ -147,6 +180,8 @@ def process_tool_calls_stream(response):
             "sse_stats": stats_init(),
             "raw_preview": [_trim_str(json.dumps(obj)[:4000], 4000)] if obj else [],
             "response_headers": _trim_val(headers, 1000),
+            "thread_id": thread_id,
+            "assistant_message_id": assistant_message_id,
             "provider_preview": [],
         }
         if "media" in fallback:
@@ -263,6 +298,10 @@ def process_tool_calls_stream(response):
                 sse_stats["final_seen_finish_reason"] = finish_reason
         if obj.get("usage"):
             usage = obj["usage"]
+        if obj.get("thread_id"):
+            thread_id = obj["thread_id"]
+        if obj.get("id"):
+            assistant_message_id = obj["id"]
     tool_calls = [calls[idx] for idx in sorted(calls.keys())]
     out = {
         "tool_calls": tool_calls,
@@ -272,6 +311,8 @@ def process_tool_calls_stream(response):
         "sse_stats": sse_stats,
         "raw_preview": raw_preview,
         "response_headers": _trim_val(headers, 1000),
+        "thread_id": thread_id,
+        "assistant_message_id": assistant_message_id,
         "provider_preview": [],
     }
     if media:
