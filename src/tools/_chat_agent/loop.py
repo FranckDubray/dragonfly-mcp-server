@@ -4,6 +4,11 @@ Handles the multi-turn iteration:
 1. Call LLM with current messages
 2. If tool_calls → execute tools → add results → loop
 3. If stop → return final response
+
+IMPORTANT: Platform save strategy v2 (FIXED)
+- ALWAYS save=True to persist complete conversation including tool results
+- Platform handles message deduplication via id/parentId/level
+- No need for separate "save-only" calls (wasteful LLM invocations)
 """
 
 from __future__ import annotations
@@ -11,31 +16,36 @@ from __future__ import annotations
 import time
 import json
 import logging
-import random
-import string
+import uuid
 from typing import Any, Dict, List, Optional
 
 from .platform_api import call_llm_streaming
-from .executor import execute_tools
+from .executor import execute_tools, _trim_val
 from .thread_utils import estimate_tokens
 
 LOG = logging.getLogger(__name__)
 
 
 def _gen_call_id() -> str:
-    """Generate unique call ID."""
-    suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
-    return f"call_{int(time.time()*1000)}_{suffix}"
+    """Generate guaranteed unique call ID using UUID4."""
+    return f"call_{uuid.uuid4().hex}"
 
 
 def _normalize_tool_calls(tool_calls: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Ensure each tool_call has id + type + function{name,arguments(str)}."""
+    """Normalize tool_calls and ALWAYS generate new unique IDs.
+    
+    CRITICAL: We always replace IDs because:
+    1. LLM may reuse the same call_id across iterations
+    2. Platform indexes/overwrites by call_id
+    3. Duplicate IDs cause data loss in thread history
+    """
     norm: List[Dict[str, Any]] = []
     for tc in tool_calls or []:
         tc = dict(tc) if isinstance(tc, dict) else {}
 
-        if not tc.get("id"):
-            tc["id"] = _gen_call_id()
+        # ALWAYS generate new unique ID to avoid Platform collisions
+        tc["id"] = _gen_call_id()
+        
         if not tc.get("type"):
             tc["type"] = "function"
 
@@ -77,13 +87,18 @@ def execute_agent_loop(
 ) -> Dict[str, Any]:
     """Execute agent multi-turn loop.
     
+    Platform save strategy v2 (FIXED):
+    - ALWAYS save=True to persist complete conversation including tool results
+    - Platform handles message deduplication via id/parentId/level
+    - No separate "save-only" calls (eliminates wasteful LLM invocations)
+    
     Returns:
         Dict with:
         - success: bool
         - response: Final text response
         - thread_id: Thread ID
         - iterations: Number of iterations
-        - operations: List of operations (tool calls)
+        - operations: List of operations (tool calls with results and debug)
         - usage: Token usage
         - error: Error message if failed
     """
@@ -122,6 +137,10 @@ def execute_agent_loop(
                 "usage": cumulative_usage
             }
         
+        # Save strategy v2: Always save to persist tool results
+        # The Platform handles message deduplication via id/parentId
+        should_save = True
+        
         # Call LLM
         try:
             llm_result = call_llm_streaming(
@@ -133,7 +152,8 @@ def execute_agent_loop(
                 token=token,
                 api_base=api_base,
                 thread_id=returned_thread_id,
-                timeout=remaining_timeout
+                timeout=remaining_timeout,
+                save=should_save
             )
         except Exception as e:
             return {
@@ -158,11 +178,18 @@ def execute_agent_loop(
         content = llm_result.get("text", "")
         tool_calls = llm_result.get("tool_calls", [])
         
-        # Normalize tool_calls (ensure id, type, function)
+        # Normalize tool_calls (ALWAYS generates new unique IDs)
         tool_calls = _normalize_tool_calls(tool_calls)
         
         # If no tool_calls → final response
         if not tool_calls:
+            # Add final assistant message to history
+            if content:
+                messages.append({
+                    "role": "assistant",
+                    "content": [{"type": "text", "text": content}],
+                })
+            
             # Track with ThreadChain for debugging
             thread_chain.new_assistant_text(content)
             
@@ -170,6 +197,8 @@ def execute_agent_loop(
                 "iteration": iteration,
                 "tool_calls": []
             })
+            
+            # No need for separate save call - already saved in LLM call above
             
             return {
                 "success": True,
@@ -181,16 +210,6 @@ def execute_agent_loop(
             }
         
         # Tool calls present → execute
-        # 1. Add assistant tool_calls message (OpenAI format, NO id/parentId/level)
-        messages.append({
-            "role": "assistant",
-            "tool_calls": tool_calls,
-        })
-        
-        # Track with ThreadChain for debugging
-        thread_chain.new_assistant_tool_calls(tool_calls)
-        
-        # 2. Execute tools
         try:
             tool_results = execute_tools(
                 tool_calls=tool_calls,
@@ -207,30 +226,53 @@ def execute_agent_loop(
                 "usage": cumulative_usage
             }
         
-        # 3. Add tool result messages (OpenAI format, NO id/parentId/level)
-        for tc, result in zip(tool_calls, tool_results):
-            # Extract actual result (handle nested structure)
-            tool_content = json.dumps(result.get("result", result), ensure_ascii=False)
+        # Build tool_calls with functionOutput for Platform storage
+        tool_calls_with_output = []
+        for tc, tool_res in zip(tool_calls, tool_results):
+            actual_result = tool_res.get("result", tool_res)
+            tool_content = json.dumps(actual_result, ensure_ascii=False)
+            
+            tool_calls_with_output.append({
+                "id": tc.get("id"),
+                "type": tc.get("type", "function"),
+                "function": {
+                    "name": tc.get("function", {}).get("name"),
+                    "arguments": tc.get("function", {}).get("arguments", "{}"),
+                    "functionOutput": tool_content
+                }
+            })
+        
+        # Add assistant message with tool_calls (including functionOutput)
+        messages.append({
+            "role": "assistant",
+            "content": [],
+            "tool_calls": tool_calls_with_output,
+        })
+        
+        # Track with ThreadChain for debugging
+        thread_chain.new_assistant_tool_calls(tool_calls)
+        
+        # Add tool result messages (Platform format)
+        for tc, tool_res in zip(tool_calls, tool_results):
+            actual_result = tool_res.get("result", tool_res)
+            tool_content = json.dumps(actual_result, ensure_ascii=False)
             
             messages.append({
                 "role": "tool",
+                "content": [{"type": "text", "text": tool_content}],
                 "tool_call_id": tc.get("id"),
-                "content": tool_content,
             })
             
-            # Track with ThreadChain for debugging
             thread_chain.new_tool_result(tc.get("id"), tool_content)
         
-        # 4. Record operation
+        # Record operation
         op = {
             "iteration": iteration,
             "tool_calls": _format_tool_calls_for_operations(tool_calls, tool_results)
         }
         operations.append(op)
-        
-        # Loop continues
     
-    # Max iterations reached
+    # Max iterations reached - already saved in last LLM call
     return {
         "success": False,
         "error": f"Max iterations ({max_iterations}) reached without natural completion",
@@ -261,15 +303,17 @@ def _format_tool_calls_for_operations(
     """Format tool_calls with results for operations list."""
     formatted = []
     
-    for tc, result in zip(tool_calls, tool_results):
+    for tc, tool_res in zip(tool_calls, tool_results):
         fn = tc.get("function", {})
+        actual_result = tool_res.get("result", tool_res)
+        debug_info = tool_res.get("debug", {})
         
         item = {
             "name": fn.get("name"),
             "arguments": fn.get("arguments"),
-            "result": result
+            "result_excerpt": _trim_val(actual_result, 2000),
+            "mcp_debug": debug_info
         }
-        
         formatted.append(item)
     
     return formatted

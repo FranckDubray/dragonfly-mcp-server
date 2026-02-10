@@ -41,3 +41,4 @@ sqlite3/
 # Documentation locale et server spécifique
 docs/
 server_legifrance/
+files/

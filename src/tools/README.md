@@ -2,13 +2,9 @@
 
 Ce fichier est généré automatiquement par `scripts/generate_tools_catalog.py`. Ne pas éditer à la main.
 
-Total tools: 69
+Total tools: 66
 
-## 📊 Intelligence & Orchestration (10)
-
-- Agent (Multi-turn v2) — Multi-turn LLM agent with automatic tool chaining. Simplified architecture with client-side state management. Supports conversation conti… · Tags: llm, agent, multi-turn, orchestration, autonomous, state
-  - Opérations: N/A
-  - Tokens: aucun
+## 📊 Intelligence & Orchestration (8)
 
 - Call LLM+tools — Appelle un modèle LLM en streaming. Orchestration tool_calls (MCP) en 2 phases. Supporte l'entrée multi-modale (images) via messages Open… · Tags: llm, orchestration, vision, multimodal
   - Opérations: N/A
@@ -18,11 +14,7 @@ Total tools: 69
   - Opérations: N/A
   - Tokens: aucun
 
-- LLM Agent (Multi-turn) — Appelle un LLM avec capacité d'enchaînement automatique de tools. Le LLM peut appeler plusieurs tools en séquence, en utilisant les résul… · Tags: llm, agent, orchestration, multi-turn, chain, autonomous, resume, threading
-  - Opérations: N/A
-  - Tokens: aucun
-
-- LLM Agent Planner — Orchestrateur LLM avec planification explicite. Génère un plan d'exécution structuré, optimise les parallélisations, puis exécute les éta… · Tags: llm, agent, planning, orchestration, reasoning, multi-step, workflow
+- LLM Agent (Multi-turn) — Appelle un LLM avec capacité d'enchaînement automatique de tools. Le LLM peut appeler plusieurs tools en séquence, en utilisant les résul… · Tags: llm, agent, orchestration, multi-turn, chain, autonomous
   - Opérations: N/A
   - Tokens: aucun
 
@@ -128,7 +120,7 @@ Total tools: 69
   - Opérations: ensure_dir, list_dbs, create_db, delete_db, get_tables, describe …
   - Tokens: aucun
 
-## 📄 Documents (9)
+## 📄 Documents (7)
 
 - Doc Scraper — Universal documentation scraper supporting GitBook, Notion, Confluence, ReadTheDocs, Docusaurus, and other doc platforms. Discover, extra…
   - Opérations: discover_docs, extract_page, search_across_sites, detect_platform
@@ -136,22 +128,14 @@ Total tools: 69
 
 - Légifrance Consult — Consultation du corpus juridique français (LEGI).
 
-[DEUX STRATEGIES PRINCIPALES]
+[QUATRE OPERATIONS]
 
-[STRATEGIE A] NAVIGATION PURE (Recommandée pour explora… · Tags: external_sources, knowledge, legal, france
-  - Opérations: search_sections, get_section_tree, get_articles
+1. list_codes : Lister tous les codes juridiques français (77 en… · Tags: external_sources, knowledge, legal, france
+  - Opérations: list_codes, search_sections, get_section_tree, get_articles
   - Tokens: aucun
 
 - Légifrance Consult — Consultation du corpus juridique français (LEGI). 3 opérations : search_sections (recherche textuelle), get_section_tree (arborescence av… · Tags: external_sources, knowledge, legal, france
   - Opérations: search_sections, get_section_tree, get_articles
-  - Tokens: aucun
-
-- Légifrance LEGI v2 — Accès aux codes juridiques français (corpus LEGI). 3 opérations : list_codes (liste des codes avec métadonnées, filtrable par nature), ge… · Tags: external_sources, knowledge, legal, france
-  - Opérations: list_codes, get_code, get_articles
-  - Tokens: aucun
-
-- Légifrance LEGI v2 - Optimisé — Accès aux codes juridiques français (corpus LEGI). WORKFLOW RECOMMANDÉ : (1) list_codes UNE FOIS pour identifier le code → (2) get_code a… · Tags: external_sources, knowledge, legal, france
-  - Opérations: list_codes, get_code, get_articles
   - Tokens: aucun
 
 - Office to PDF Converter — Convert Microsoft Office documents (Word, PowerPoint) to PDF using either the Office suite installed on the laptop (via docx2pdf) or a he…
@@ -240,7 +224,7 @@ Total tools: 69
   - Opérations: test_connection, check_server_logs, check_keepalive_config, test_network, check_firewall, check_fail2ban …
   - Tokens: aucun
 
-## 🔢 Utilities (8)
+## 🔢 Utilities (9)
 
 - Date/Time — Common date/time operations: weekday name, difference between dates, now/today, add duration, format, parse, week number. Supports timezo… · Tags: datetime, calendar, timezone
   - Opérations: now, today, day_of_week, diff, diff_days, add …
@@ -248,6 +232,10 @@ Total tools: 69
 
 - Device Location — Get GPS coordinates and location information for the current device based on network/IP geolocation. Returns latitude, longitude, city, r… · Tags: location, gps, network, geo
   - Opérations: get_location
+  - Tokens: aucun
+
+- Get Prompt — Recupere un prompt systeme depuis la base SQLite prompts.db. Supporte plusieurs domaines (legal medical financial) et types d'agents (pla… · Tags: orchestration, prompts, agents
+  - Opérations: N/A
   - Tokens: aucun
 
 - Google Maps — Complete Google Maps API access. Geocoding, directions, places search, distance matrix, timezone, elevation. Free tier: $200 credit/month… · Tags: maps, geocoding, directions, places, navigation

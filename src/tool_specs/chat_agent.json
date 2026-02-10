@@ -5,7 +5,7 @@
     "displayName": "Chat Agent (Threaded)",
     "category": "intelligence",
     "tags": ["llm", "agent", "threading", "multi-turn", "conversation", "persistent"],
-    "description": "Agent conversationnel persistant avec exécution d'outils. Utilise l'API Threads pour stocker l'historique complet côté serveur. Idéal pour chatbots et assistants longue durée avec mémoire persistante.",
+    "description": "Agent conversationnel persistant avec exécution d'outils. Utilise l'API Threads pour stocker l'historique complet côté serveur. Idéal pour chatbots et assistants longue durée avec mémoire persistante. Supporte system_prompt_ref pour économie de tokens.",
     "parameters": {
       "type": "object",
       "properties": {
@@ -67,6 +67,11 @@
           "type": "string",
           "description": "Prompt système custom pour guider le comportement de l'agent. Si omis, utilise le prompt par défaut. Écrase le prompt du thread si thread_id est fourni.",
           "maxLength": 10000
+        },
+        "system_prompt_ref": {
+          "type": "string",
+          "description": "Référence à un prompt stocké dans prompts.db au format 'domain/agent_type/version'. Exemple: 'legal/planner/v1'. Si fourni, remplace system_prompt. ÉCONOMIE DE TOKENS : Utilise cette option pour éviter de charger les prompts dans le contexte.",
+          "pattern": "^[a-z]+/[a-z_]+/v[0-9]+$"
         },
         "parallel_execution": {
           "type": "boolean",

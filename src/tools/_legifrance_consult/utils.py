@@ -14,9 +14,15 @@ def build_cli_command(operation: str, **params) -> str:
     config = get_ssh_config()
     cmd = f"sudo -u legifrance_app python3 {config['cli_path']} {operation}"
     
-    # Mapping params
+    # list_codes params
+    if params.get('scope'):
+        cmd += f" --scope {params['scope']}"
+    if params.get('nature'):
+        cmd += f" --nature {params['nature']}"
+    
+    # search/tree params
     if params.get('query'):
-        cmd += f" --query \"{params['query']}\""
+        cmd += f' --query "{params["query"]}"'
     if params.get('code_id'):
         cmd += f" --code_id {params['code_id']}"
     if params.get('section_id'):
@@ -34,8 +40,6 @@ def build_cli_command(operation: str, **params) -> str:
         
     # Flags
     if operation == 'get_section_tree':
-        # Default include_articles=True in spec, need flag if False ?
-        # CLI has --no-articles.
         if params.get('include_articles') is False:
             cmd += " --no-articles"
             

@@ -1,0 +1,32 @@
+{
+  "type": "function",
+  "function": {
+    "name": "get_prompt",
+    "displayName": "Get Prompt",
+    "category": "utilities",
+    "tags": ["orchestration", "prompts", "agents"],
+    "description": "Recupere un prompt systeme depuis la base SQLite prompts.db. Supporte plusieurs domaines (legal medical financial) et types d'agents (planner researcher evaluator). Wrapper optimise autour de sqlite_db.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "agent_type": {
+          "type": "string",
+          "description": "Type d'agent dont on veut recuperer le prompt. Exemples: planner, researcher, evaluator, corrector"
+        },
+        "domain": {
+          "type": "string",
+          "default": "legal",
+          "enum": ["legal", "medical", "financial", "technical"],
+          "description": "Domaine metier du prompt.\n- legal: Juridique (Legifrance)\n- medical: Medical (codes sante)\n- financial: Financier (comptabilite fiscalite)\n- technical: Technique (documentation API)"
+        },
+        "version": {
+          "type": "string",
+          "default": "v1",
+          "description": "Version du prompt a charger. Permet A/B testing et rollback. Exemples: v1, v2, experimental, stable"
+        }
+      },
+      "required": ["agent_type"],
+      "additionalProperties": false
+    }
+  }
+}
