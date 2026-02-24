@@ -22,8 +22,11 @@ def op_create(
     if not content_type:
         content_type = guess_content_type(path)
 
+    # S3 backend rejects empty content — send a single newline as minimum
+    effective_content = content if content else "\n"
+
     result = s3_client.put_object(
-        path=path, content=content, scope=scope,
+        path=path, content=effective_content, scope=scope,
         content_type=content_type, project=project,
     )
     if "error" in result:

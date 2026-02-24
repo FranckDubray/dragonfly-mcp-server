@@ -61,14 +61,15 @@ def _route(operation: str, **params) -> Dict[str, Any]:
                 return {"error": err}
 
     # --- Scope validations ---
-    ok, err = validate_scope_params(scope, project, datasource)
-    if not ok:
-        return {"error": err}
-
+    # Check read-only BEFORE scope params (write on datasource → "read-only" not "missing datasource")
     if operation in _WRITE_OPS:
         ok, err = validate_scope_writable(scope)
         if not ok:
             return {"error": err}
+
+    ok, err = validate_scope_params(scope, project, datasource)
+    if not ok:
+        return {"error": err}
 
     # --- Dispatch ---
     if operation == "list":
