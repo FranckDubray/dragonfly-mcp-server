@@ -147,8 +147,25 @@ def _route(operation: str, **params) -> Dict[str, Any]:
             project=project,
         )
 
-    # Phase 2 stubs
-    if operation in ("load", "unload"):
-        return {"error": f"Operation '{operation}' not yet implemented (Phase 2)"}
+    # Phase 2: Workspace operations
+    if operation == "load":
+        from . import workspace
+        return workspace.op_load(
+            path=path,
+            scope=scope,
+            thread_id=params.get("thread_id"),
+            range_=params.get("range"),
+            project=project,
+            datasource=datasource,
+        )
+
+    if operation == "unload":
+        from . import workspace
+        return workspace.op_unload(
+            path=path,
+            scope=scope,
+            thread_id=params.get("thread_id"),
+            all_files=params.get("all", False),
+        )
 
     return {"error": f"Unknown operation '{operation}'"}
