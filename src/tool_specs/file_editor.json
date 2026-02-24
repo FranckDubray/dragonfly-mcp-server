@@ -10,7 +10,18 @@
       "properties": {
         "operation": {
           "type": "string",
-          "enum": ["list", "create", "edit", "append", "delete", "versions", "diff", "restore", "load", "unload"],
+          "enum": [
+            "list",
+            "create",
+            "edit",
+            "append",
+            "delete",
+            "versions",
+            "diff",
+            "restore",
+            "load",
+            "unload"
+          ],
           "description": "Opération à effectuer:\n- list: Lister les fichiers d'un scope/prefix\n- create: Créer un nouveau fichier\n- edit: Édition chirurgicale (search/replace, regex, insert/delete lignes)\n- append: Ajouter du contenu à la fin d'un fichier\n- delete: Supprimer un fichier\n- versions: Historique des versions d'un fichier\n- diff: Comparer deux versions d'un fichier\n- restore: Restaurer une version antérieure\n- load: Charger un fichier dans le workspace contextuel (Phase 2)\n- unload: Décharger un fichier du workspace contextuel (Phase 2)"
         },
         "path": {
@@ -19,7 +30,13 @@
         },
         "scope": {
           "type": "string",
-          "enum": ["user", "company", "project", "media", "datasource"],
+          "enum": [
+            "user",
+            "company",
+            "project",
+            "media",
+            "datasource"
+          ],
           "default": "user",
           "description": "Scope S3. 'user' = espace personnel, 'company' = partagé entreprise, 'project'/'media'/'datasource' = spécialisés. Certains scopes sont en lecture seule."
         },
@@ -39,7 +56,14 @@
             "properties": {
               "type": {
                 "type": "string",
-                "enum": ["search_replace", "regex_replace", "insert_after", "insert_before", "delete_lines", "replace_lines"],
+                "enum": [
+                  "search_replace",
+                  "regex_replace",
+                  "insert_after",
+                  "insert_before",
+                  "delete_lines",
+                  "replace_lines"
+                ],
                 "description": "Type d'édition:\n- search_replace: Remplace une chaîne exacte\n- regex_replace: Remplace via regex\n- insert_after: Insère du contenu après une ligne\n- insert_before: Insère du contenu avant une ligne\n- delete_lines: Supprime une plage de lignes\n- replace_lines: Remplace une plage de lignes"
               },
               "search": {
@@ -76,7 +100,9 @@
                 "minimum": 0
               }
             },
-            "required": ["type"]
+            "required": [
+              "type"
+            ]
           }
         },
         "dry_run": {
@@ -115,13 +141,23 @@
           "type": "string",
           "description": "Plage d'octets pour chargement partiel (Phase 2: load). Ex: '0-5000' (premiers 5 Ko), '10000-20000', '-5000' (derniers 5 Ko)."
         },
+        "project": {
+          "type": "string",
+          "description": "Nom du projet (requis si scope='project')"
+        },
+        "datasource": {
+          "type": "string",
+          "description": "Nom de la datasource (requis si scope='datasource'). Ex: 'legi'"
+        },
         "all": {
           "type": "boolean",
           "default": false,
           "description": "Pour unload: décharger tous les fichiers du workspace"
         }
       },
-      "required": ["operation"],
+      "required": [
+        "operation"
+      ],
       "additionalProperties": false
     }
   }
