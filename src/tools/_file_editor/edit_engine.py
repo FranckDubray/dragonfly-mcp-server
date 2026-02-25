@@ -94,6 +94,9 @@ def _regex_replace(content: str, edit: Dict[str, Any]) -> str:
     except re.error as exc:
         raise EditError(f"regex_replace: invalid pattern: {exc}") from exc
 
+    # Support both $1 (JS/Perl style) and \1 (Python style) backreferences
+    replace = re.sub(r'\$(\d+)', r'\\\1', replace)
+
     new_content, count = compiled.subn(replace, content)
     if count == 0:
         raise EditError(f"regex_replace: pattern matched nothing: {pattern!r}")
