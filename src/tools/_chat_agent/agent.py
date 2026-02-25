@@ -96,8 +96,14 @@ def execute_chat_agent(
         return error
     
     # API configuration
-    api_base = os.getenv("AI_PLATFORM_API_BASE", "https://ai.dragonflygroup.fr/api/v1")
+    _FALLBACK_API_BASE = "https://ai.dragonflygroup.fr/api/v1"
+    api_base = os.getenv("AI_PLATFORM_API_BASE", _FALLBACK_API_BASE)
     mcp_url = os.getenv("MCP_URL", "http://127.0.0.1:8000")
+    
+    if api_base == _FALLBACK_API_BASE:
+        LOG.warning("AI_PLATFORM_API_BASE not set in .env — falling back to production: %s", api_base)
+    else:
+        LOG.info("Platform API base: %s", api_base)
     
     # Validate model
     error = validate_model(model, api_base, token)
