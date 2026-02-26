@@ -42,3 +42,8 @@ sqlite3/
 docs/
 server_legifrance/
 files/
+
+# Frontend and Backend projects
+ai-you-frontend/
+backend/
+legifrance-indexer/

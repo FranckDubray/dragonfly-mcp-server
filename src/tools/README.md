@@ -2,7 +2,7 @@
 
 Ce fichier est généré automatiquement par `scripts/generate_tools_catalog.py`. Ne pas éditer à la main.
 
-Total tools: 66
+Total tools: 67
 
 ## 📊 Intelligence & Orchestration (8)
 
@@ -102,7 +102,7 @@ Total tools: 66
   - Opérations: send_message, send_photo, send_document, send_location, send_video, get_updates …
   - Tokens: aucun
 
-## 🗄️ Data & Storage (4)
+## 🗄️ Data & Storage (5)
 
 - CoinGecko — Complete cryptocurrency data via CoinGecko API. Prices, market data, historical charts, trending coins, exchanges. Free tier: 50 calls/mi… · Tags: crypto, cryptocurrency, prices, market_data
   - Opérations: get_price, get_coin_info, search_coins, get_market_chart, get_trending, get_global_data …
@@ -114,6 +114,10 @@ Total tools: 66
 
 - Excel to SQLite — Import Excel (.xlsx) data into SQLite database with automatic schema detection, type mapping, and batch processing
   - Opérations: import_excel, preview, get_sheets, validate_mapping, get_info
+  - Tokens: aucun
+
+- File Editor — Éditeur de fichiers S3 avec édition chirurgicale (search/replace, insert, delete), gestion de versions, diff, restauration et workspace c…
+  - Opérations: list, create, edit, append, delete, versions …
   - Tokens: aucun
 
 - SQLite Database — Gestion d'une base SQLite locale dans <projet>/sqlite3. Créer, lister, supprimer des DB et exécuter des requêtes SQL. · Tags: sqlite, database, sql, local_storage

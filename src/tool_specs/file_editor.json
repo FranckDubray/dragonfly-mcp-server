@@ -1,0 +1,164 @@
+{
+  "type": "function",
+  "function": {
+    "name": "file_editor",
+    "displayName": "File Editor",
+    "category": "data",
+    "description": "Éditeur de fichiers S3 avec édition chirurgicale (search/replace, insert, delete), gestion de versions, diff, restauration et workspace contextuel. Permet de manipuler des fichiers texte sans réécriture complète grâce à des opérations d'édition ciblées. Le versioning S3 natif assure un historique complet et la possibilité de restaurer n'importe quelle version antérieure.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": [
+            "list",
+            "create",
+            "edit",
+            "append",
+            "delete",
+            "versions",
+            "diff",
+            "restore",
+            "load",
+            "unload"
+          ],
+          "description": "Opération à effectuer:\n- list: Lister les fichiers d'un scope/prefix\n- create: Créer un nouveau fichier\n- edit: Édition chirurgicale (search/replace, regex, insert/delete lignes)\n- append: Ajouter du contenu à la fin d'un fichier\n- delete: Supprimer un fichier\n- versions: Historique des versions d'un fichier\n- diff: Comparer deux versions d'un fichier\n- restore: Restaurer une version antérieure\n- load: Charger un fichier dans le workspace contextuel (Phase 2)\n- unload: Décharger un fichier du workspace contextuel (Phase 2)"
+        },
+        "path": {
+          "type": "string",
+          "description": "Chemin du fichier (relatif au scope). Ex: 'docs/config.yaml', 'README.md'"
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "user",
+            "company",
+            "project",
+            "media",
+            "datasource"
+          ],
+          "default": "user",
+          "description": "Scope S3. 'user' = espace personnel, 'company' = partagé entreprise, 'project'/'media'/'datasource' = spécialisés. Certains scopes sont en lecture seule."
+        },
+        "content": {
+          "type": "string",
+          "description": "Contenu du fichier (pour create/append)"
+        },
+        "content_type": {
+          "type": "string",
+          "description": "Type MIME du fichier (pour create). Ex: 'text/plain', 'text/markdown', 'application/json'. Défaut: détection automatique par extension."
+        },
+        "edits": {
+          "type": "array",
+          "description": "Liste d'éditions à appliquer (pour operation=edit). Appliquées séquentiellement de manière atomique.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "search_replace",
+                  "regex_replace",
+                  "insert_after",
+                  "insert_before",
+                  "delete_lines",
+                  "replace_lines"
+                ],
+                "description": "Type d'édition:\n- search_replace: Remplace une chaîne exacte\n- regex_replace: Remplace via regex\n- insert_after: Insère du contenu après une ligne\n- insert_before: Insère du contenu avant une ligne\n- delete_lines: Supprime une plage de lignes\n- replace_lines: Remplace une plage de lignes"
+              },
+              "search": {
+                "type": "string",
+                "description": "Chaîne à chercher (search_replace) ou pattern regex (regex_replace)"
+              },
+              "replace": {
+                "type": "string",
+                "description": "Chaîne de remplacement (search_replace, regex_replace)"
+              },
+              "line": {
+                "type": "integer",
+                "description": "Numéro de ligne (1-based) pour insert_after/insert_before",
+                "minimum": 1
+              },
+              "start_line": {
+                "type": "integer",
+                "description": "Ligne de début (1-based, inclusive) pour delete_lines/replace_lines",
+                "minimum": 1
+              },
+              "end_line": {
+                "type": "integer",
+                "description": "Ligne de fin (1-based, inclusive) pour delete_lines/replace_lines",
+                "minimum": 1
+              },
+              "content": {
+                "type": "string",
+                "description": "Contenu à insérer (insert_after, insert_before, replace_lines)"
+              },
+              "occurrence": {
+                "type": "integer",
+                "description": "Numéro d'occurrence à remplacer (search_replace). 0 = toutes (défaut), 1 = première, 2 = deuxième, etc.",
+                "default": 0,
+                "minimum": 0
+              }
+            },
+            "required": [
+              "type"
+            ]
+          }
+        },
+        "dry_run": {
+          "type": "boolean",
+          "default": false,
+          "description": "Mode simulation: retourne le diff sans écrire. Utile pour prévisualiser les changements avant de les appliquer."
+        },
+        "prefix": {
+          "type": "string",
+          "description": "Préfixe pour filtrer (operation=list). Ex: 'docs/', 'config/'"
+        },
+        "max_keys": {
+          "type": "integer",
+          "default": 50,
+          "minimum": 1,
+          "maximum": 1000,
+          "description": "Nombre max de fichiers à retourner (operation=list)"
+        },
+        "version_id": {
+          "type": "string",
+          "description": "ID de version spécifique (pour restore, diff)"
+        },
+        "version_a": {
+          "type": "string",
+          "description": "ID de la première version à comparer (operation=diff). Si omis, utilise la version courante."
+        },
+        "version_b": {
+          "type": "string",
+          "description": "ID de la seconde version à comparer (operation=diff)"
+        },
+        "thread_id": {
+          "type": "string",
+          "description": "ID du thread pour le workspace (Phase 2: load/unload). Format: 'thread_stream_XXXXX'."
+        },
+        "range": {
+          "type": "string",
+          "description": "Plage d'octets pour chargement partiel (Phase 2: load). Ex: '0-5000' (premiers 5 Ko), '10000-20000', '-5000' (derniers 5 Ko)."
+        },
+        "project": {
+          "type": "string",
+          "description": "Nom du projet (requis si scope='project')"
+        },
+        "datasource": {
+          "type": "string",
+          "description": "Nom de la datasource (requis si scope='datasource'). Ex: 'legi'"
+        },
+        "all": {
+          "type": "boolean",
+          "default": false,
+          "description": "Pour unload: décharger tous les fichiers du workspace"
+        }
+      },
+      "required": [
+        "operation"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
