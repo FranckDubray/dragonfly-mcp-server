@@ -1,0 +1,63 @@
+{
+  "type": "function",
+  "function": {
+    "name": "portal_user_create",
+    "displayName": "Portal User Create",
+    "category": "data",
+    "tags": ["portal", "user", "admin", "provisioning"],
+    "description": "Création en batch d'utilisateurs sur le portail AI You.\n\n[OPERATIONS]\n1. preview : Dry-run — montre ce qui serait créé (AUCUNE modification)\n2. execute : Crée les utilisateurs en base, retourne les credentials UNE SEULE FOIS\n3. list_companies : Liste les entreprises disponibles\n\n[SÉCURITÉ]\n- Rôle TOUJOURS [\"ROLE_USER\"] — JAMAIS d'administrateur\n- Max 50 utilisateurs par batch\n- Vérifie que l'email n'existe pas déjà\n- Mot de passe sécurisé 16 chars généré automatiquement\n- Credentials retournés UNE SEULE FOIS à l'execute\n\n[FLUX]\n1. list_companies → trouver le company_id\n2. preview(company_id, users) → vérifier\n3. execute(company_id, users) → créer + récupérer credentials",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["preview", "execute", "list_companies"],
+          "description": "Type d'opération.\n- preview : Dry-run (montre ce qui serait créé)\n- execute : Création réelle (retourne credentials)\n- list_companies : Liste les entreprises disponibles"
+        },
+        "company_id": {
+          "type": "integer",
+          "description": "[preview, execute] ID de l'entreprise. Obligatoire. Obtenu via list_companies."
+        },
+        "users": {
+          "type": "array",
+          "description": "[preview, execute] Liste des utilisateurs à créer (max 50).",
+          "items": {
+            "type": "object",
+            "properties": {
+              "email": {
+                "type": "string",
+                "description": "Adresse email (obligatoire, doit être unique)"
+              },
+              "first_name": {
+                "type": "string",
+                "description": "Prénom (optionnel — détecté depuis l'email si absent)"
+              },
+              "last_name": {
+                "type": "string",
+                "description": "Nom (optionnel — détecté depuis l'email si absent)"
+              }
+            },
+            "required": ["email"]
+          },
+          "minItems": 1,
+          "maxItems": 50
+        },
+        "limit": {
+          "type": "integer",
+          "description": "[list_companies] Nombre max de résultats (default: 50)",
+          "minimum": 1,
+          "maximum": 200,
+          "default": 50
+        },
+        "offset": {
+          "type": "integer",
+          "description": "[list_companies] Décalage pour pagination (default: 0)",
+          "minimum": 0,
+          "default": 0
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}

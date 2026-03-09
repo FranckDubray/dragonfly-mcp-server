@@ -2,8 +2,15 @@
 
 from typing import Dict, List, Optional, Any
 import requests
+import urllib3
 import logging
+import os
 import time
+
+# Match FILE_EDITOR_VERIFY_SSL convention — default False for dev environments
+_VERIFY_SSL = os.getenv("CHAT_AGENT_VERIFY_SSL", "false").lower() in ("1", "true", "yes")
+if not _VERIFY_SSL:
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 LOG = logging.getLogger(__name__)
 
@@ -40,7 +47,7 @@ def fetch_models(api_base: str, token: str) -> List[Dict[str, Any]]:
         if LOG.isEnabledFor(logging.DEBUG):
             LOG.debug(f"Fetching models from: {url}")
         
-        resp = requests.get(url, headers=headers, timeout=10)
+        resp = requests.get(url, headers=headers, timeout=10, verify=_VERIFY_SSL)
         resp.raise_for_status()
         data = resp.json()
         

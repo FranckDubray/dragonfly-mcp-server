@@ -2,7 +2,7 @@
 
 Ce fichier est généré automatiquement par `scripts/generate_tools_catalog.py`. Ne pas éditer à la main.
 
-Total tools: 67
+Total tools: 72
 
 ## 📊 Intelligence & Orchestration (8)
 
@@ -102,7 +102,14 @@ Total tools: 67
   - Opérations: send_message, send_photo, send_document, send_location, send_video, get_updates …
   - Tokens: aucun
 
-## 🗄️ Data & Storage (5)
+## 🗄️ Data & Storage (10)
+
+- Assistant Model Migration — Migration massive du modèle IA des assistants du portail AI You.
+
+[OPERATIONS]
+1. models : Liste les modèles disponibles avec nb d'assist… · Tags: migration, assistant, model, portal, admin
+  - Opérations: models, preview, execute, history, rollback, deactivate_model …
+  - Tokens: aucun
 
 - CoinGecko — Complete cryptocurrency data via CoinGecko API. Prices, market data, historical charts, trending coins, exchanges. Free tier: 50 calls/mi… · Tags: crypto, cryptocurrency, prices, market_data
   - Opérations: get_price, get_coin_info, search_coins, get_market_chart, get_trending, get_global_data …
@@ -117,6 +124,27 @@ Total tools: 67
   - Tokens: aucun
 
 - File Editor — Éditeur de fichiers S3 avec édition chirurgicale (search/replace, insert, delete), gestion de versions, diff, restauration et workspace c…
+  - Opérations: list, create, edit, append, delete, versions …
+  - Tokens: aucun
+
+- Portal Custom Model Manager — Création et gestion de modèles custom sur le portail AI You.
+
+Un modèle custom est une enveloppe autour d'un modèle existant, avec tools… · Tags: model, custom, portal, admin
+  - Opérations: list, preview, create, activate, set_position, set_preprompt …
+  - Tokens: aucun
+
+- Portal Database (Read-Only) — Accès en lecture seule à la base de données MySQL du portail AI You (appwebldragonfly). Permet d'interroger les données utilisateurs, ass… · Tags: database, mysql, portal, production, read-only
+  - Opérations: query, tables, describe, schema, count
+  - Tokens: aucun
+
+- Portal User Create — Création en batch d'utilisateurs sur le portail AI You.
+
+[OPERATIONS]
+1. preview : Dry-run — montre ce qui serait créé (AUCUNE modificati… · Tags: portal, user, admin, provisioning
+  - Opérations: preview, execute, list_companies
+  - Tokens: aucun
+
+- S3 Editor — Éditeur de fichiers S3 avec édition chirurgicale (search/replace, insert, delete), gestion de versions, diff, restauration et workspace c…
   - Opérations: list, create, edit, append, delete, versions …
   - Tokens: aucun
 

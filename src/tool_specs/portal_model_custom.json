@@ -1,0 +1,77 @@
+{
+  "type": "function",
+  "function": {
+    "name": "portal_model_custom",
+    "displayName": "Portal Custom Model Manager",
+    "category": "data",
+    "tags": ["model", "custom", "portal", "admin"],
+    "description": "Création et gestion de modèles custom sur le portail AI You.\n\nUn modèle custom est une enveloppe autour d'un modèle existant, avec tools injectés et preprompt, masqués pour l'utilisateur.\n\n[OPERATIONS]\n1. list : Lister les customs existants\n2. preview : Dry-run création (AUCUNE modification)\n3. create : Créer un custom à partir d'un modèle source (active=0)\n4. activate : Activer/désactiver un custom\n5. set_position : Changer la position d'affichage\n6. set_preprompt : Modifier le system prompt\n7. add_tools : Ajouter des tools au custom\n8. remove_tools : Retirer des tools du custom\n9. list_tools : Lister les tools d'un custom\n10. update : Modifier display_name, config, input\n\n[SÉCURITÉ]\n- Création toujours en active=0 (draft)\n- JAMAIS de suppression (uniquement désactivation)\n- preview obligatoire avant create\n- Logs SQLite locaux",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["list", "preview", "create", "activate", "set_position", "set_preprompt", "add_tools", "remove_tools", "list_tools", "update"],
+          "description": "Type d'opération."
+        },
+        "source_model_id": {
+          "type": "integer",
+          "description": "[preview, create] ID du modèle source sur lequel baser le custom."
+        },
+        "name": {
+          "type": "string",
+          "description": "[preview, create] Nom technique du custom (ex: 'gpt-dgy', 'claude-dgy')."
+        },
+        "display_name": {
+          "type": "string",
+          "description": "[preview, create, update] Nom affiché du custom (ex: 'GPT DGY')."
+        },
+        "model_id": {
+          "type": "integer",
+          "description": "[activate, set_position, set_preprompt, add_tools, remove_tools, list_tools, update] ID du custom à modifier."
+        },
+        "active": {
+          "type": "boolean",
+          "description": "[activate] true pour activer, false pour désactiver."
+        },
+        "position": {
+          "type": "integer",
+          "description": "[set_position] Position d'affichage (0=haut, 99=bas).",
+          "minimum": 0
+        },
+        "preprompt": {
+          "type": "string",
+          "description": "[set_preprompt] System prompt du custom. Vide '' pour supprimer."
+        },
+        "tool_ids": {
+          "type": "array",
+          "items": {"type": "integer"},
+          "description": "[add_tools, remove_tools] Liste des IDs de tools à ajouter/retirer."
+        },
+        "config": {
+          "type": "string",
+          "description": "[update] Nouveau JSON config complet (remplace l'existant)."
+        },
+        "input": {
+          "type": "string",
+          "description": "[update] Nouveau JSON input complet (remplace l'existant)."
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Nombre max de résultats (default: 20).",
+          "minimum": 1,
+          "maximum": 200,
+          "default": 20
+        },
+        "offset": {
+          "type": "integer",
+          "description": "Décalage pagination (default: 0).",
+          "minimum": 0,
+          "default": 0
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}

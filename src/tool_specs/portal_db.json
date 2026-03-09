@@ -1,0 +1,55 @@
+{
+  "type": "function",
+  "function": {
+    "name": "portal_db",
+    "displayName": "Portal Database (Read-Only)",
+    "category": "data",
+    "tags": ["database", "mysql", "portal", "production", "read-only"],
+    "description": "Accès en lecture seule à la base de données MySQL du portail AI You (appwebldragonfly). Permet d'interroger les données utilisateurs, assistants, conversations, modèles, tenants, etc.\n\n[OPERATIONS]\n1. query : Exécuter un SELECT SQL avec pagination (limit/offset)\n2. tables : Lister toutes les tables\n3. describe : Structure d'une table (colonnes, types, clés)\n4. schema : Schéma complet de la base\n5. count : Comptage rapide sur une table avec filtre optionnel\n\n[SECURITE]\n- LECTURE SEULE : seuls SELECT, SHOW, DESCRIBE, EXPLAIN sont autorisés\n- INSERT/UPDATE/DELETE/DROP/ALTER/CREATE/TRUNCATE sont BLOQUÉS\n\n[PAGINATION]\n- Utiliser limit + offset pour parcourir les grands résultats\n- Toujours vérifier returned_count vs total_count",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["query", "tables", "describe", "schema", "count"],
+          "description": "Type d'opération.\n- query : Exécuter un SELECT SQL\n- tables : Lister les tables de la base\n- describe : Structure d'une table\n- schema : Schéma complet (toutes les tables)\n- count : COUNT(*) sur une table"
+        },
+        "sql": {
+          "type": "string",
+          "description": "[query] Requête SQL SELECT à exécuter. Seules les requêtes en lecture sont autorisées.",
+          "maxLength": 10000
+        },
+        "table": {
+          "type": "string",
+          "description": "[describe, count] Nom de la table cible."
+        },
+        "where": {
+          "type": "string",
+          "description": "[count] Clause WHERE optionnelle (sans le mot WHERE). Ex: 'is_active = 1 AND company_id = 3'",
+          "maxLength": 2000
+        },
+        "limit": {
+          "type": "integer",
+          "description": "[query] Nombre max de lignes retournées (default: 50). Pour tout parcourir, utiliser avec offset.",
+          "minimum": 1,
+          "default": 50
+        },
+        "offset": {
+          "type": "integer",
+          "description": "[query] Décalage pour la pagination (default: 0). Ex: offset=50 pour la page 2 avec limit=50.",
+          "minimum": 0,
+          "default": 0
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Timeout en secondes (default: 30, max: 120).",
+          "minimum": 5,
+          "maximum": 120,
+          "default": 30
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}

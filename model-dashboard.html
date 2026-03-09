@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI You — Model Dashboard</title>
+<style>
+/* ── Reset & Base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f3f4f6; color: #1f2937; line-height: 1.5; }
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ── Layout ── */
+.header { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; position: sticky; top: 0; z-index: 100; }
+.header h1 { font-size: 18px; font-weight: 700; white-space: nowrap; }
+.header h1 span { color: #6b7280; font-weight: 400; font-size: 13px; margin-left: 8px; }
+.mcp-input { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.mcp-input label { font-size: 12px; color: #6b7280; white-space: nowrap; }
+.mcp-input input { font-size: 12px; padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 4px; width: 200px; }
+.btn { padding: 6px 14px; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all .15s; }
+.btn-primary { background: #2563eb; color: #fff; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-primary:disabled { background: #93c5fd; cursor: wait; }
+.btn-sm { padding: 3px 8px; font-size: 11px; border-radius: 4px; }
+
+/* ── Tabs ── */
+.tabs { display: flex; gap: 0; border-bottom: 2px solid #e5e7eb; background: #fff; padding: 0 24px; }
+.tab { padding: 10px 20px; font-size: 13px; font-weight: 600; color: #6b7280; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all .15s; user-select: none; }
+.tab:hover { color: #1f2937; }
+.tab.active { color: #2563eb; border-bottom-color: #2563eb; }
+.tab .badge { background: #e5e7eb; color: #374151; font-size: 11px; padding: 1px 7px; border-radius: 10px; margin-left: 6px; font-weight: 500; }
+.tab.active .badge { background: #dbeafe; color: #1d4ed8; }
+
+/* ── Content ── */
+.content { max-width: 1400px; margin: 0 auto; padding: 20px 24px; }
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* ── Status bar ── */
+.status-bar { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+.stat-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px; min-width: 140px; flex: 1; }
+.stat-card .label { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
+.stat-card .value { font-size: 22px; font-weight: 700; color: #111827; margin-top: 2px; }
+.stat-card .sub { font-size: 11px; color: #9ca3af; }
+
+/* ── Search & Filters ── */
+.toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+.search-input { padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; width: 260px; }
+.search-input:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,.15); }
+.toggle-label { font-size: 12px; display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; color: #374151; }
+.toggle-label input { accent-color: #2563eb; }
+.filter-select { padding: 5px 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 12px; background: #fff; }
+
+/* ── Editor Group ── */
+.editor-group { margin-bottom: 20px; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
+.editor-header { padding: 12px 16px; display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; border-bottom: 1px solid #f3f4f6; }
+.editor-header:hover { background: #f9fafb; }
+.editor-header .arrow { font-size: 10px; color: #9ca3af; transition: transform .2s; width: 16px; text-align: center; }
+.editor-header .arrow.open { transform: rotate(90deg); }
+.editor-header .editor-name { font-weight: 600; font-size: 14px; }
+.editor-header .editor-stats { font-size: 12px; color: #6b7280; margin-left: auto; display: flex; gap: 12px; }
+.editor-header .editor-stats span { display: inline-flex; align-items: center; gap: 3px; }
+.editor-body { display: none; }
+.editor-body.open { display: block; }
+
+/* ── Model Row ── */
+.model-row { display: grid; grid-template-columns: 28px 1fr auto; align-items: center; padding: 6px 16px 6px 32px; border-bottom: 1px solid #f3f4f6; font-size: 13px; gap: 8px; }
+.model-row:last-child { border-bottom: none; }
+.model-row:hover { background: #f9fafb; }
+.model-row.inactive { opacity: .5; }
+.model-status { width: 8px; height: 8px; border-radius: 50%; justify-self: center; }
+.model-status.active { background: #22c55e; }
+.model-status.inactive { background: #ef4444; }
+.model-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.model-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.model-name .id-tag { color: #9ca3af; font-weight: 400; font-size: 11px; margin-left: 4px; }
+.model-sub { font-size: 11px; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.model-badges { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.badge { padding: 1px 7px; border-radius: 4px; font-size: 10px; font-weight: 600; white-space: nowrap; }
+.badge-api { background: #fef3c7; color: #92400e; }
+.badge-vision { background: #dbeafe; color: #1e40af; }
+.badge-tools { background: #d1fae5; color: #065f46; }
+.badge-reasoning { background: #ede9fe; color: #5b21b6; }
+.badge-custom { background: #fce7f3; color: #9d174d; }
+.badge-audio { background: #ffedd5; color: #9a3412; }
+.badge-category { background: #f3f4f6; color: #4b5563; }
+
+/* ── Custom detail ── */
+.custom-detail { padding: 4px 16px 8px 48px; font-size: 11px; color: #6b7280; border-bottom: 1px solid #f3f4f6; background: #fdf2f8; }
+.custom-detail .source { color: #9d174d; font-weight: 600; }
+.custom-detail .tool-tag { display: inline-block; background: #fce7f3; color: #9d174d; padding: 0 5px; border-radius: 3px; margin: 1px 2px; font-size: 10px; }
+
+/* ── Tenant Card ── */
+.tenant-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; margin-bottom: 16px; overflow: hidden; }
+.tenant-header { padding: 16px 20px; display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+.tenant-title { font-size: 18px; font-weight: 700; }
+.tenant-url { font-size: 12px; color: #6b7280; }
+.tenant-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.meta-chip { padding: 3px 10px; border-radius: 6px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; }
+.chip-green { background: #d1fae5; color: #065f46; }
+.chip-blue { background: #dbeafe; color: #1e40af; }
+.chip-amber { background: #fef3c7; color: #92400e; }
+.chip-gray { background: #f3f4f6; color: #374151; }
+.chip-red { background: #fee2e2; color: #991b1b; }
+.tenant-editors { padding: 0 20px 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+.editor-chip { padding: 2px 8px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 4px; font-size: 11px; color: #1e40af; }
+
+/* ── Companies table ── */
+.companies-section { border-top: 1px solid #e5e7eb; }
+.companies-toggle { padding: 10px 20px; cursor: pointer; font-size: 13px; font-weight: 600; color: #6b7280; display: flex; align-items: center; gap: 6px; user-select: none; }
+.companies-toggle:hover { background: #f9fafb; }
+.companies-list { display: none; }
+.companies-list.open { display: block; }
+.company-row { display: grid; grid-template-columns: 200px 1fr auto auto auto auto; align-items: center; padding: 6px 20px; border-bottom: 1px solid #f3f4f6; font-size: 12px; gap: 8px; }
+.company-row:hover { background: #f9fafb; cursor: pointer; }
+.company-row .company-name { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.company-row .company-meta { color: #6b7280; white-space: nowrap; }
+.company-header-row { font-weight: 700; color: #6b7280; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; background: #f9fafb; cursor: default !important; }
+
+/* ── Company Detail Panel ── */
+.company-detail { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+.company-detail h2 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+.company-detail .tenant-link { font-size: 13px; color: #6b7280; margin-bottom: 12px; }
+.detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.detail-chip { padding: 8px 12px; border-radius: 8px; font-size: 12px; }
+
+/* ── Loading / Error ── */
+.loading-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,.85); display: flex; align-items: center; justify-content: center; z-index: 200; }
+.loading-spinner { text-align: center; }
+.loading-spinner .spin { display: inline-block; width: 32px; height: 32px; border: 3px solid #e5e7eb; border-top-color: #2563eb; border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-spinner p { margin-top: 8px; font-size: 13px; color: #6b7280; }
+.error-box { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px 16px; color: #991b1b; font-size: 13px; margin-bottom: 12px; }
+.success-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 8px 12px; color: #166534; font-size: 12px; }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .company-row { grid-template-columns: 1fr 1fr; }
+  .company-header-row { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <h1>🐉 AI You — Model Dashboard <span id="lastSync"></span></h1>
+  <div class="mcp-input">
+    <label>MCP Server:</label>
+    <input type="text" id="mcpUrl" value="http://localhost:8000" />
+    <button class="btn btn-primary" id="syncBtn" onclick="syncAll()">🔄 Synchroniser</button>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <div class="tab active" data-tab="models" onclick="switchTab('models')">🏗️ Modèles <span class="badge" id="tabModelsCount">—</span></div>
+  <div class="tab" data-tab="tenants" onclick="switchTab('tenants')">🏢 Tenants <span class="badge" id="tabTenantsCount">—</span></div>
+  <div class="tab" data-tab="company" onclick="switchTab('company')">🔍 Détail Entreprise</div>
+</div>
+
+<!-- Content -->
+<div class="content">
+  <!-- PANEL 1: Models -->
+  <div class="panel active" id="panel-models">
+    <div class="status-bar" id="globalStats"></div>
+    <div class="toolbar">
+      <input type="text" class="search-input" id="searchModels" placeholder="Rechercher un modèle…" oninput="renderModels()" />
+      <label class="toggle-label"><input type="checkbox" id="showInactive" onchange="renderModels()" /> Afficher inactifs</label>
+      <label class="toggle-label"><input type="checkbox" id="showApiOnly" onchange="renderModels()" /> API only uniquement</label>
+      <label class="toggle-label"><input type="checkbox" id="showCustomOnly" onchange="renderModels()" /> Custom uniquement</label>
+    </div>
+    <div id="modelsContainer"></div>
+  </div>
+
+  <!-- PANEL 2: Tenants -->
+  <div class="panel" id="panel-tenants">
+    <div class="toolbar">
+      <input type="text" class="search-input" id="searchCompanies" placeholder="Rechercher une entreprise…" oninput="renderTenants()" />
+    </div>
+    <div id="tenantsContainer"></div>
+  </div>
+
+  <!-- PANEL 3: Company detail -->
+  <div class="panel" id="panel-company">
+    <div class="toolbar">
+      <select class="filter-select" id="companySelect" onchange="renderCompanyDetail()" style="width:350px; padding:8px;">
+        <option value="">— Sélectionner une entreprise —</option>
+      </select>
+    </div>
+    <div id="companyDetailContainer"></div>
+  </div>
+</div>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loadingOverlay" style="display:none">
+  <div class="loading-spinner">
+    <div class="spin"></div>
+    <p id="loadingMsg">Chargement…</p>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// DATA STORE
+// ═══════════════════════════════════════════
+const DB = {
+  editors: [],
+  models: [],
+  customModels: [],   // {id, source_model, tools: [{id, title}]}
+  tenants: [],
+  tenantEditors: [],  // {tenant_id, editor_id, editor_name}
+  tenantSelectedModels: [], // {tenant_id, models_id}
+  companies: [],
+  companyEditors: [],  // {company_id, editor_id, active}
+  companySelectedModels: [], // {company_id, models_id}
+};
+
+// ═══════════════════════════════════════════
+// MCP QUERY
+// ═══════════════════════════════════════════
+async function mcpQuery(sql, limit = 500) {
+  const url = document.getElementById('mcpUrl').value.replace(/\/+$/, '');
+  const resp = await fetch(url + '/execute', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tool: 'portal_db', params: { operation: 'query', sql, limit } })
+  });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+  const json = await resp.json();
+  if (json.error) throw new Error(json.error);
+  // portal_db returns {result: {columns, rows, ...}}
+  const r = json.result || json;
+  return r.rows || r;
+}
+
+// ═══════════════════════════════════════════
+// SYNC ALL
+// ═══════════════════════════════════════════
+async function syncAll() {
+  const btn = document.getElementById('syncBtn');
+  const overlay = document.getElementById('loadingOverlay');
+  const msg = document.getElementById('loadingMsg');
+  btn.disabled = true;
+  overlay.style.display = 'flex';
+
+  try {
+    // Q1: Editors
+    msg.textContent = '1/8 — Chargement des éditeurs…';
+    DB.editors = await mcpQuery(`
+      SELECT id, name, position
+      FROM editor ORDER BY position, name
+    `);
+
+    // Q2: All models (flags extracted via LIKE)
+    msg.textContent = '2/8 — Chargement des modèles…';
+    DB.models = await mcpQuery(`
+      SELECT
+        m.id, m.name, m.display_name, m.category, m.active, m.position,
+        CASE WHEN m.config LIKE '%"onlyApi": true%' OR m.config LIKE '%"onlyApi":true%' THEN 1 ELSE 0 END as is_api_only,
+        CASE WHEN m.config LIKE '%"imageProcessing": true%' OR m.config LIKE '%"imageProcessing":true%' THEN 1 ELSE 0 END as has_vision,
+        CASE WHEN m.config LIKE '%"toolsAvailable": true%' OR m.config LIKE '%"toolsAvailable":true%' THEN 1 ELSE 0 END as has_tools,
+        CASE WHEN m.config LIKE '%"isReasoning": true%' OR m.config LIKE '%"isReasoning":true%' THEN 1 ELSE 0 END as is_reasoning,
+        CASE WHEN m.preprompt IS NOT NULL AND m.preprompt != '' THEN 1 ELSE 0 END as has_preprompt,
+        CAST(NULLIF(SUBSTRING_INDEX(SUBSTRING_INDEX(m.config, '"context_window":', -1), ',', 1), m.config) AS UNSIGNED) as context_window,
+        e.id as editor_id, e.name as editor_name
+      FROM models m
+      JOIN editor e ON m.editor_id = e.id
+      ORDER BY e.position, m.position, m.name
+    `, 500);
+
+    // Q3: Custom models (preprompt or tools)
+    msg.textContent = '3/8 — Chargement des custom models…';
+    DB.customModels = await mcpQuery(`
+      SELECT
+        m.id, m.name, m.display_name, m.input,
+        GROUP_CONCAT(CONCAT(t.id, ':', t.title) SEPARATOR '||') as tools_list
+      FROM models m
+      LEFT JOIN models_tools mt ON mt.models_id = m.id
+      LEFT JOIN tools t ON mt.tools_id = t.id
+      WHERE (m.preprompt IS NOT NULL AND m.preprompt != '') OR mt.tools_id IS NOT NULL
+      GROUP BY m.id
+    `);
+    // Parse tools and source model
+    DB.customModels = DB.customModels.map(cm => {
+      let sourceModel = null;
+      if (cm.input) {
+        const match = cm.input.match(/"model"\s*:\s*"([^"]+)"/);
+        if (match) sourceModel = match[1];
+      }
+      const tools = cm.tools_list
+        ? cm.tools_list.split('||').map(t => {
+            const [id, ...rest] = t.split(':');
+            return { id: +id, title: rest.join(':') };
+          })
+        : [];
+      return { id: cm.id, name: cm.name, display_name: cm.display_name, source_model: sourceModel, tools };
+    });
+
+    // Q4: Tenants
+    msg.textContent = '4/8 — Chargement des tenants…';
+    DB.tenants = await mcpQuery(`
+      SELECT t.id, t.name, t.url, t.inherit_models_from_editors,
+        t.default_model_id, t.whisper_model_id,
+        dm.name as default_model_tech, dm.display_name as default_model_name,
+        wm.name as whisper_model_tech, wm.display_name as whisper_model_name
+      FROM tenant t
+      LEFT JOIN models dm ON t.default_model_id = dm.id
+      LEFT JOIN models wm ON t.whisper_model_id = wm.id
+      ORDER BY t.name
+    `);
+
+    // Q5: Tenant editors + tenant selected models
+    msg.textContent = '5/8 — Chargement hébergeurs tenants…';
+    DB.tenantEditors = await mcpQuery(`
+      SELECT te.tenant_id, te.editor_id, e.name as editor_name
+      FROM tenant_editor te JOIN editor e ON te.editor_id = e.id
+      ORDER BY te.tenant_id, e.position
+    `);
+    DB.tenantSelectedModels = await mcpQuery(`
+      SELECT tenant_id, models_id FROM tenant_selected_models
+    `);
+
+    // Q6: Companies
+    msg.textContent = '6/8 — Chargement des entreprises…';
+    DB.companies = await mcpQuery(`
+      SELECT c.id, c.name, c.tenant_id, c.default_model_id,
+        c.inherit_models_from_tenant, c.inherit_whisper_from_tenant,
+        c.whisper_model_id,
+        dm.name as default_model_tech, dm.display_name as default_model_name,
+        wm.name as whisper_model_tech, wm.display_name as whisper_model_name
+      FROM company c
+      LEFT JOIN models dm ON c.default_model_id = dm.id
+      LEFT JOIN models wm ON c.whisper_model_id = wm.id
+      ORDER BY c.tenant_id, c.name
+    `, 500);
+
+    // Q7: Company editors
+    msg.textContent = '7/8 — Chargement hébergeurs entreprises…';
+    DB.companyEditors = await mcpQuery(`
+      SELECT ce.company_id, ce.editor_id, ce.active
+      FROM company_editor ce
+    `, 2000);
+
+    // Q8: Company selected models
+    msg.textContent = '8/8 — Chargement sélections entreprises…';
+    DB.companySelectedModels = await mcpQuery(`
+      SELECT company_id, models_id FROM company_selected_models
+    `);
+
+    // Mark custom models on the models list
+    const customIds = new Set(DB.customModels.map(c => c.id));
+    DB.models.forEach(m => {
+      m.is_custom = customIds.has(m.id) ? 1 : 0;
+      const cm = DB.customModels.find(c => c.id === m.id);
+      m.custom_info = cm || null;
+    });
+
+    // Render everything
+    renderGlobalStats();
+    renderModels();
+    renderTenants();
+    populateCompanySelect();
+    renderCompanyDetail();
+
+    document.getElementById('lastSync').textContent = `— synchro ${new Date().toLocaleTimeString('fr-FR')}`;
+
+  } catch (err) {
+    alert('Erreur de synchronisation:\n' + err.message);
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+    overlay.style.display = 'none';
+  }
+}
+
+// ═══════════════════════════════════════════
+// TAB SWITCHING
+// ═══════════════════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + tab));
+}
+
+// ═══════════════════════════════════════════
+// GLOBAL STATS
+// ═══════════════════════════════════════════
+function renderGlobalStats() {
+  const active = DB.models.filter(m => m.active).length;
+  const inactive = DB.models.filter(m => !m.active).length;
+  const customs = DB.customModels.length;
+  const apiOnly = DB.models.filter(m => m.is_api_only).length;
+  document.getElementById('globalStats').innerHTML = `
+    <div class="stat-card"><div class="label">Éditeurs</div><div class="value">${DB.editors.length}</div></div>
+    <div class="stat-card"><div class="label">Modèles actifs</div><div class="value" style="color:#22c55e">${active}</div><div class="sub">${inactive} inactifs</div></div>
+    <div class="stat-card"><div class="label">Custom models</div><div class="value" style="color:#ec4899">${customs}</div></div>
+    <div class="stat-card"><div class="label">API only</div><div class="value" style="color:#f59e0b">${apiOnly}</div></div>
+    <div class="stat-card"><div class="label">Tenants</div><div class="value">${DB.tenants.length}</div></div>
+    <div class="stat-card"><div class="label">Entreprises</div><div class="value">${DB.companies.length}</div></div>
+  `;
+  document.getElementById('tabModelsCount').textContent = active + inactive;
+  document.getElementById('tabTenantsCount').textContent = DB.tenants.length;
+}
+
+// ═══════════════════════════════════════════
+// PANEL 1: MODELS BY EDITOR
+// ═══════════════════════════════════════════
+function renderModels() {
+  const search = document.getElementById('searchModels').value.toLowerCase();
+  const showInactive = document.getElementById('showInactive').checked;
+  const apiOnly = document.getElementById('showApiOnly').checked;
+  const customOnly = document.getElementById('showCustomOnly').checked;
+  const container = document.getElementById('modelsContainer');
+
+  // Group by editor
+  const grouped = {};
+  DB.models.forEach(m => {
+    if (!grouped[m.editor_id]) grouped[m.editor_id] = { name: m.editor_name, id: m.editor_id, models: [] };
+    grouped[m.editor_id].models.push(m);
+  });
+
+  let html = '';
+  Object.values(grouped).forEach(group => {
+    let models = group.models;
+
+    // Filters
+    if (!showInactive) models = models.filter(m => m.active);
+    if (apiOnly) models = models.filter(m => m.is_api_only);
+    if (customOnly) models = models.filter(m => m.is_custom);
+    if (search) models = models.filter(m =>
+      (m.name || '').toLowerCase().includes(search) ||
+      (m.display_name || '').toLowerCase().includes(search)
+    );
+
+    if (models.length === 0) return;
+
+    const activeCount = models.filter(m => m.active).length;
+    const inactiveCount = models.filter(m => !m.active).length;
+    const eid = 'eg-' + group.id;
+
+    html += `<div class="editor-group">
+      <div class="editor-header" onclick="toggleEditorGroup('${eid}')">
+        <span class="arrow open" id="arrow-${eid}">▶</span>
+        <span class="editor-name">${esc(group.name)}</span>
+        <div class="editor-stats">
+          <span>🟢 ${activeCount}</span>
+          ${inactiveCount ? `<span>🔴 ${inactiveCount}</span>` : ''}
+          <span>Total: ${models.length}</span>
+        </div>
+      </div>
+      <div class="editor-body open" id="body-${eid}">`;
+
+    models.forEach(m => {
+      const label = m.display_name || m.name;
+      const badges = buildBadges(m);
+
+      html += `<div class="model-row ${m.active ? '' : 'inactive'}">
+        <div class="model-status ${m.active ? 'active' : 'inactive'}"></div>
+        <div class="model-info">
+          <div class="model-name">${esc(label)} <span class="id-tag">#${m.id} — ${esc(m.name)}</span></div>
+          <div class="model-sub">${m.context_window ? formatNum(m.context_window) + ' ctx' : ''}${m.category ? ' · ' + esc(m.category) : ''}</div>
+        </div>
+        <div class="model-badges">${badges}</div>
+      </div>`;
+
+      // Custom detail line
+      if (m.is_custom && m.custom_info) {
+        const ci = m.custom_info;
+        const toolTags = ci.tools.map(t => `<span class="tool-tag">${esc(t.title)}</span>`).join('');
+        html += `<div class="custom-detail">
+          🎨 Custom — source: <span class="source">${ci.source_model ? esc(ci.source_model) : '(éditeur natif)'}</span>
+          ${toolTags ? ' — tools: ' + toolTags : ''}
+          ${m.has_preprompt ? ' — 📝 preprompt' : ''}
+        </div>`;
+      }
+    });
+
+    html += `</div></div>`;
+  });
+
+  container.innerHTML = html || '<p style="color:#6b7280; padding:20px;">Aucun modèle trouvé.</p>';
+}
+
+function buildBadges(m) {
+  let b = '';
+  if (m.is_api_only) b += '<span class="badge badge-api">API only</span>';
+  if (m.has_vision) b += '<span class="badge badge-vision">👁️ Vision</span>';
+  if (m.has_tools) b += '<span class="badge badge-tools">🔧 Tools</span>';
+  if (m.is_reasoning) b += '<span class="badge badge-reasoning">🧠 Reasoning</span>';
+  if (m.is_custom) b += '<span class="badge badge-custom">🎨 Custom</span>';
+  if (m.category === 'audio_transcription') b += '<span class="badge badge-audio">🎙️ Audio</span>';
+  if (m.category && m.category !== 'audio_transcription') b += `<span class="badge badge-category">${esc(m.category)}</span>`;
+  return b;
+}
+
+function toggleEditorGroup(eid) {
+  const body = document.getElementById('body-' + eid);
+  const arrow = document.getElementById('arrow-' + eid);
+  body.classList.toggle('open');
+  arrow.classList.toggle('open');
+}
+
+// ═══════════════════════════════════════════
+// PANEL 2: TENANTS
+// ═══════════════════════════════════════════
+function renderTenants() {
+  const search = document.getElementById('searchCompanies').value.toLowerCase();
+  const container = document.getElementById('tenantsContainer');
+  let html = '';
+
+  DB.tenants.forEach(t => {
+    const editors = DB.tenantEditors.filter(te => te.tenant_id === t.id);
+    const companies = DB.companies.filter(c => c.tenant_id === t.id);
+    const filteredCompanies = search
+      ? companies.filter(c => c.name.toLowerCase().includes(search))
+      : companies;
+    const visibleModelsCount = countTenantModels(t, editors);
+
+    html += `<div class="tenant-card">
+      <div class="tenant-header">
+        <div style="flex:1">
+          <div class="tenant-title">${esc(t.name)}</div>
+          <div class="tenant-url">${t.url ? `<a href="${esc(t.url)}" target="_blank">${esc(t.url)}</a>` : '—'}</div>
+          <div class="tenant-meta">
+            <span class="meta-chip ${t.inherit_models_from_editors ? 'chip-green' : 'chip-amber'}">
+              ${t.inherit_models_from_editors ? '✅ Hérite tous modèles éditeurs' : '⚙️ Sélection manuelle'}
+            </span>
+            <span class="meta-chip chip-blue">🤖 ${t.default_model_name || t.default_model_tech || '—'}</span>
+            <span class="meta-chip chip-gray">🎙️ ${t.whisper_model_name || t.whisper_model_tech || '—'}</span>
+            <span class="meta-chip chip-gray">📊 ${visibleModelsCount} modèles</span>
+            <span class="meta-chip chip-gray">🏪 ${companies.length} entreprises</span>
+          </div>
+        </div>
+      </div>
+      <div class="tenant-editors">
+        ${editors.map(e => `<span class="editor-chip">${esc(e.editor_name)}</span>`).join('')}
+      </div>
+      <div class="companies-section">
+        <div class="companies-toggle" onclick="toggleCompanies('cl-${t.id}')">
+          ▶ Entreprises (${filteredCompanies.length})
+        </div>
+        <div class="companies-list" id="cl-${t.id}">
+          <div class="company-row company-header-row">
+            <div>Entreprise</div>
+            <div>Modèle par défaut</div>
+            <div>Héritage modèles</div>
+            <div>Héritage whisper</div>
+            <div>Éditeurs</div>
+            <div>Modèles</div>
+          </div>
+          ${filteredCompanies.map(c => renderCompanyRow(c, t, editors)).join('')}
+        </div>
+      </div>
+    </div>`;
+  });
+
+  container.innerHTML = html || '<p style="color:#6b7280; padding:20px;">Aucun tenant chargé.</p>';
+}
+
+function renderCompanyRow(c, tenant, tenantEditors) {
+  const ceActive = DB.companyEditors.filter(ce => ce.company_id === c.id && ce.active);
+  const ceTotal = DB.companyEditors.filter(ce => ce.company_id === c.id);
+  const visibleCount = countCompanyModels(c, tenant);
+  const defaultLabel = c.default_model_name || c.default_model_tech || `<span style="color:#9ca3af">hérite: ${tenant.default_model_name || tenant.default_model_tech || '—'}</span>`;
+
+  return `<div class="company-row" onclick="showCompanyDetail(${c.id})">
+    <div class="company-name">${esc(c.name)} <span style="color:#9ca3af; font-weight:400; font-size:11px;">#${c.id}</span></div>
+    <div class="company-meta">${defaultLabel}</div>
+    <div>${c.inherit_models_from_tenant ? '<span class="meta-chip chip-green" style="font-size:11px;">✅ Hérite</span>' : '<span class="meta-chip chip-amber" style="font-size:11px;">⚙️ Manuel</span>'}</div>
+    <div>${c.inherit_whisper_from_tenant ? '<span class="meta-chip chip-green" style="font-size:11px;">✅ Hérite</span>' : '<span class="meta-chip chip-amber" style="font-size:11px;">⚙️ Manuel</span>'}</div>
+    <div class="company-meta">${ceActive.length}/${ceTotal.length}</div>
+    <div class="company-meta">${visibleCount}</div>
+  </div>`;
+}
+
+function toggleCompanies(id) {
+  const el = document.getElementById(id);
+  el.classList.toggle('open');
+}
+
+// ═══════════════════════════════════════════
+// PANEL 3: COMPANY DETAIL
+// ═══════════════════════════════════════════
+function populateCompanySelect() {
+  const sel = document.getElementById('companySelect');
+  sel.innerHTML = '<option value="">— Sélectionner une entreprise —</option>';
+  // Group by tenant
+  DB.tenants.forEach(t => {
+    const companies = DB.companies.filter(c => c.tenant_id === t.id);
+    if (!companies.length) return;
+    const grp = document.createElement('optgroup');
+    grp.label = t.name;
+    companies.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = `${c.name} (#${c.id})`;
+      grp.appendChild(opt);
+    });
+    sel.appendChild(grp);
+  });
+}
+
+function showCompanyDetail(companyId) {
+  document.getElementById('companySelect').value = companyId;
+  switchTab('company');
+  renderCompanyDetail();
+}
+
+function renderCompanyDetail() {
+  const cid = +document.getElementById('companySelect').value;
+  const container = document.getElementById('companyDetailContainer');
+  if (!cid) { container.innerHTML = ''; return; }
+
+  const c = DB.companies.find(co => co.id === cid);
+  if (!c) { container.innerHTML = '<div class="error-box">Entreprise introuvable.</div>'; return; }
+
+  const tenant = DB.tenants.find(t => t.id === c.tenant_id);
+  const tenantEditors = DB.tenantEditors.filter(te => te.tenant_id === c.tenant_id);
+  const companyEditorsAll = DB.companyEditors.filter(ce => ce.company_id === c.id);
+
+  // Resolve effective default model
+  const effectiveDefault = c.default_model_name || c.default_model_tech
+    ? (c.default_model_name || c.default_model_tech)
+    : (tenant ? (tenant.default_model_name || tenant.default_model_tech || '—') : '—');
+  const isDefaultInherited = !c.default_model_id;
+
+  // Resolve effective whisper
+  let effectiveWhisper, whisperInherited;
+  if (c.inherit_whisper_from_tenant) {
+    effectiveWhisper = tenant ? (tenant.whisper_model_name || tenant.whisper_model_tech || '—') : '—';
+    whisperInherited = true;
+  } else {
+    effectiveWhisper = c.whisper_model_name || c.whisper_model_tech || '—';
+    whisperInherited = false;
+  }
+
+  // Get visible models
+  const visibleModels = getVisibleModels(c, tenant);
+
+  // Group visible models by editor
+  const grouped = {};
+  visibleModels.forEach(m => {
+    if (!grouped[m.editor_id]) grouped[m.editor_id] = { name: m.editor_name, models: [] };
+    grouped[m.editor_id].models.push(m);
+  });
+
+  // Editors status
+  const editorStatusHtml = tenantEditors.map(te => {
+    const ce = companyEditorsAll.find(x => x.editor_id === te.editor_id);
+    const isActive = ce ? ce.active : false;
+    const modelsInEditor = isActive ? visibleModels.filter(m => m.editor_id === te.editor_id).length : 0;
+    return `<span class="meta-chip ${isActive ? 'chip-green' : 'chip-red'}" style="font-size:12px;">
+      ${isActive ? '✅' : '❌'} ${esc(te.editor_name)} ${isActive ? `(${modelsInEditor})` : ''}
+    </span>`;
+  }).join('');
+
+  let html = `<div class="company-detail">
+    <h2>${esc(c.name)}</h2>
+    <div class="tenant-link">Tenant: <strong>${tenant ? esc(tenant.name) : '?'}</strong></div>
+
+    <div class="detail-grid">
+      <div class="detail-chip chip-blue">
+        🤖 <strong>Modèle par défaut:</strong><br/>
+        ${esc(effectiveDefault)} ${isDefaultInherited ? '<em>(hérité du tenant)</em>' : ''}
+      </div>
+      <div class="detail-chip ${c.inherit_models_from_tenant ? 'chip-green' : 'chip-amber'}">
+        📋 <strong>Héritage modèles:</strong><br/>
+        ${c.inherit_models_from_tenant ? '✅ Hérite du tenant' : '⚙️ Sélection manuelle'}
+      </div>
+      <div class="detail-chip ${whisperInherited ? 'chip-green' : 'chip-amber'}">
+        🎙️ <strong>Whisper:</strong><br/>
+        ${esc(effectiveWhisper)} ${whisperInherited ? '<em>(hérité)</em>' : ''}
+      </div>
+      <div class="detail-chip chip-gray">
+        📊 <strong>Modèles visibles:</strong><br/>
+        ${visibleModels.length}
+      </div>
+    </div>
+
+    <h3 style="font-size:14px; margin-bottom:8px;">Hébergeurs</h3>
+    <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px;">${editorStatusHtml}</div>
+
+    <h3 style="font-size:14px; margin-bottom:8px;">Modèles visibles (${visibleModels.length})</h3>`;
+
+  Object.values(grouped).forEach(group => {
+    html += `<div class="editor-group" style="margin-bottom:10px;">
+      <div class="editor-header" style="cursor:default">
+        <span class="editor-name" style="font-size:13px;">${esc(group.name)}</span>
+        <div class="editor-stats"><span>${group.models.length} modèles</span></div>
+      </div>
+      <div class="editor-body open">`;
+
+    group.models.forEach(m => {
+      const badges = buildBadges(m);
+      html += `<div class="model-row">
+        <div class="model-status active"></div>
+        <div class="model-info">
+          <div class="model-name">${esc(m.display_name || m.name)} <span class="id-tag">#${m.id}</span></div>
+          <div class="model-sub">${m.context_window ? formatNum(m.context_window) + ' ctx' : ''}</div>
+        </div>
+        <div class="model-badges">${badges}</div>
+      </div>`;
+
+      if (m.is_custom && m.custom_info) {
+        const ci = m.custom_info;
+        const toolTags = ci.tools.map(t => `<span class="tool-tag">${esc(t.title)}</span>`).join('');
+        html += `<div class="custom-detail">
+          🎨 source: <span class="source">${ci.source_model ? esc(ci.source_model) : '(natif)'}</span>
+          ${toolTags ? ' — tools: ' + toolTags : ''}
+          ${m.has_preprompt ? ' — 📝 preprompt' : ''}
+        </div>`;
+      }
+    });
+
+    html += `</div></div>`;
+  });
+
+  if (visibleModels.length === 0) {
+    html += '<p style="color:#9ca3af; padding:12px;">Aucun modèle visible pour cette entreprise.</p>';
+  }
+
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════
+// MODEL RESOLUTION LOGIC
+// (Mirrors ModelsProvider.php exactly)
+// ═══════════════════════════════════════════
+function getVisibleModels(company, tenant) {
+  if (!tenant) return [];
+
+  // 1. Active editors for this company
+  const activeEditorIds = new Set(
+    DB.companyEditors
+      .filter(ce => ce.company_id === company.id && ce.active)
+      .map(ce => ce.editor_id)
+  );
+
+  // Active models only
+  const activeModels = DB.models.filter(m => m.active);
+
+  // 2. Company does NOT inherit from tenant → company_selected_models
+  if (!company.inherit_models_from_tenant) {
+    const selectedIds = new Set(
+      DB.companySelectedModels
+        .filter(csm => csm.company_id === company.id)
+        .map(csm => csm.models_id)
+    );
+    return activeModels.filter(m => selectedIds.has(m.id) && activeEditorIds.has(m.editor_id));
+  }
+
+  // 3. Tenant inherits all from editors → all active models from active editors
+  if (tenant.inherit_models_from_editors) {
+    // But only from editors the tenant has configured
+    const tenantEditorIds = new Set(
+      DB.tenantEditors
+        .filter(te => te.tenant_id === tenant.id)
+        .map(te => te.editor_id)
+    );
+    return activeModels.filter(m =>
+      activeEditorIds.has(m.editor_id) && tenantEditorIds.has(m.editor_id)
+    );
+  }
+
+  // 4. Tenant manual selection → tenant_selected_models
+  const tenantSelectedIds = new Set(
+    DB.tenantSelectedModels
+      .filter(tsm => tsm.tenant_id === tenant.id)
+      .map(tsm => tsm.models_id)
+  );
+  return activeModels.filter(m =>
+    tenantSelectedIds.has(m.id) && activeEditorIds.has(m.editor_id)
+  );
+}
+
+function countTenantModels(tenant, tenantEditors) {
+  const editorIds = new Set(tenantEditors.map(te => te.editor_id));
+  const activeModels = DB.models.filter(m => m.active);
+
+  if (tenant.inherit_models_from_editors) {
+    return activeModels.filter(m => editorIds.has(m.editor_id)).length;
+  }
+  const selectedIds = new Set(
+    DB.tenantSelectedModels.filter(tsm => tsm.tenant_id === tenant.id).map(tsm => tsm.models_id)
+  );
+  return activeModels.filter(m => selectedIds.has(m.id) && editorIds.has(m.editor_id)).length;
+}
+
+function countCompanyModels(company, tenant) {
+  return getVisibleModels(company, tenant).length;
+}
+
+// ═══════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════
+function esc(s) {
+  if (s == null) return '';
+  const d = document.createElement('div');
+  d.textContent = String(s);
+  return d.innerHTML;
+}
+
+function formatNum(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1).replace('.0', '') + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(0) + 'K';
+  return String(n);
+}
+
+// Auto-sync on load
+window.addEventListener('DOMContentLoaded', () => syncAll());
+</script>
+</body>
+</html>

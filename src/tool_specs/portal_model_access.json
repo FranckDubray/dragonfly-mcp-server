@@ -1,0 +1,72 @@
+{
+  "type": "function",
+  "function": {
+    "name": "portal_model_access",
+    "description": "Administration des modèles IA visibles par tenant et par entreprise sur le portail AI You.\n\nPermet de gérer finement quels modèles sont accessibles à chaque tenant et chaque company, avec héritage tenant→company.\n\n[OPERATIONS]\n1. overview : Vue globale de tous les tenants avec compteurs modèles/companies\n2. tenant_models : Liste des modèles d'un tenant, groupés par catégorie + éditeur\n3. company_models : Liste des modèles d'une company (hérités ou personnalisés)\n4. set_tenant_model : Activer/désactiver un modèle pour un tenant\n5. set_tenant_editor : Activer/désactiver tous les modèles d'un éditeur pour un tenant\n6. set_company_model : Activer/désactiver un modèle pour une company\n7. set_company_editor : Activer/désactiver tous les modèles d'un éditeur pour une company\n8. set_company_inherit : Basculer une company entre héritage tenant et sélection personnalisée\n9. set_default : Définir le modèle par défaut (chat) d'un tenant ou company\n10. set_whisper : Définir le modèle whisper d'un tenant ou company\n11. sync_tenant : Resynchroniser les modèles d'un tenant depuis ses éditeurs\n12. diff : Comparer les modèles d'un tenant vs une company\n\n[HIÉRARCHIE]\ntenant (inherit_models_from_editors → tenant_model)\n  └── company (inherit_models_from_tenant → company_model OU company_selected_models)\n\n[SÉCURITÉ]\n- Lecture seule pour overview/tenant_models/company_models/diff\n- Écriture pour set_*/sync_*\n- JAMAIS de suppression de données — uniquement active = 0/1",
+    "parameters": {
+      "type": "object",
+      "required": ["operation"],
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": [
+            "overview",
+            "tenant_models",
+            "company_models",
+            "set_tenant_model",
+            "set_tenant_editor",
+            "set_company_model",
+            "set_company_editor",
+            "set_company_inherit",
+            "set_default",
+            "set_whisper",
+            "sync_tenant",
+            "diff"
+          ],
+          "description": "Type d'opération à effectuer."
+        },
+        "tenant_id": {
+          "type": "integer",
+          "description": "[tenant_models, set_tenant_model, set_tenant_editor, set_default, set_whisper, sync_tenant, diff] ID du tenant."
+        },
+        "company_id": {
+          "type": "integer",
+          "description": "[company_models, set_company_model, set_company_editor, set_company_inherit, set_default, set_whisper, diff] ID de la company."
+        },
+        "model_id": {
+          "type": "integer",
+          "description": "[set_tenant_model, set_company_model, set_default, set_whisper] ID du modèle."
+        },
+        "editor_id": {
+          "type": "integer",
+          "description": "[set_tenant_editor, set_company_editor] ID de l'éditeur (toggle tous ses modèles)."
+        },
+        "active": {
+          "type": "boolean",
+          "description": "[set_tenant_model, set_tenant_editor, set_company_model, set_company_editor] true = activer, false = désactiver."
+        },
+        "inherit": {
+          "type": "boolean",
+          "description": "[set_company_inherit] true = hériter du tenant, false = sélection personnalisée."
+        },
+        "category": {
+          "type": "string",
+          "description": "[tenant_models, company_models] Filtre optionnel par catégorie (chat, audio_transcription, text_to_speech)."
+        },
+        "limit": {
+          "type": "integer",
+          "default": 50,
+          "minimum": 1,
+          "maximum": 200,
+          "description": "Nombre max de résultats retournés."
+        },
+        "offset": {
+          "type": "integer",
+          "default": 0,
+          "minimum": 0,
+          "description": "Décalage pour pagination."
+        }
+      }
+    }
+  }
+}

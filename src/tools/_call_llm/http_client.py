@@ -7,8 +7,8 @@ import urllib3
 
 # Disable SSL warnings only when SSL verification is disabled
 def _should_verify_ssl() -> bool:
-    """Check if SSL verification should be enabled (default: True in production)."""
-    verify = os.getenv("LLM_VERIFY_SSL", "true").lower()
+    """Check if SSL verification should be enabled (default: False for dev environments)."""
+    verify = os.getenv("LLM_VERIFY_SSL", "false").lower()
     return verify in ("true", "1", "yes", "on")
 
 
@@ -30,8 +30,8 @@ def post_stream(endpoint: str, headers: Dict[str, str], json_payload: Dict[str, 
     POST request with streaming support and configurable SSL verification.
     
     SSL verification controlled by LLM_VERIFY_SSL environment variable:
-    - "true" (default): Verify SSL certificates (recommended for production)
-    - "false": Disable SSL verification (dev/testing only)
+    - "false" (default): Disable SSL verification (dev environments with self-signed certs)
+    - "true": Verify SSL certificates (recommended for production)
     """
     verify_ssl = _should_verify_ssl()
     

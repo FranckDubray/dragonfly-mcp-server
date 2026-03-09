@@ -1,0 +1,73 @@
+{
+  "type": "function",
+  "function": {
+    "name": "assistant_model_migrate",
+    "displayName": "Assistant Model Migration",
+    "category": "data",
+    "tags": ["migration", "assistant", "model", "portal", "admin"],
+    "description": "Migration massive du modèle IA des assistants du portail AI You.\n\n[OPERATIONS]\n1. models : Liste les modèles disponibles avec nb d'assistants associés\n2. preview : Dry-run — montre les assistants impactés (AUCUNE modification)\n3. execute : Exécute la migration réelle (UPDATE model_ai_id)\n4. history : Historique des migrations passées\n5. rollback : Annule une migration via son ID\n6. deactivate_model : Désactive un modèle (JAMAIS supprimer). Refuse si des assistants l'utilisent encore.\n7. set_position : Change la position d'affichage d'un modèle\n\n[FLUX RECOMMANDÉ]\n1. models → voir les modèles\n2. preview(from_model_id, to_model_id) → vérifier l'impact\n3. execute(from_model_id, to_model_id) → migrer\n4. deactivate_model(model_id) → désactiver l'ancien modèle (optionnel, seulement si demandé)\n5. rollback(migration_id) si problème\n\n[SÉCURITÉ]\n- preview obligatoire avant execute (dry-run)\n- Logs SQLite locaux avec snapshot pour rollback\n- Refuse > 500 assistants sans force=true\n- Vérifie que to_model_id existe et est actif\n- deactivate_model refuse si des assistants utilisent encore le modèle\n- JAMAIS de suppression de modèle (uniquement active = 0)",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["models", "preview", "execute", "history", "rollback", "deactivate_model", "set_position"],
+          "description": "Type d'opération.\n- models : Liste modèles + nb assistants\n- preview : Dry-run (montre les impactés sans modifier)\n- execute : Migration réelle\n- history : Historique des migrations\n- rollback : Annuler une migration\n- deactivate_model : Désactiver un modèle (active=0). UNIQUEMENT si demandé explicitement.\n- set_position : Changer la position d'affichage d'un modèle (0 = tout en haut)"
+        },
+        "from_model_id": {
+          "type": "integer",
+          "description": "[preview, execute] ID du modèle source (model_ai_id actuel des assistants à migrer)"
+        },
+        "to_model_id": {
+          "type": "integer",
+          "description": "[preview, execute] ID du modèle cible (nouveau model_ai_id)"
+        },
+        "model_id": {
+          "type": "integer",
+          "description": "[deactivate_model, set_position] ID du modèle cible"
+        },
+        "position": {
+          "type": "integer",
+          "description": "[set_position] Nouvelle position d'affichage (0 = tout en haut, 99 = bas de liste)",
+          "minimum": 0
+        },
+        "tenant_id": {
+          "type": "integer",
+          "description": "[preview, execute] Filtre optionnel : ne migrer que les assistants de ce tenant"
+        },
+        "company_id": {
+          "type": "integer",
+          "description": "[preview, execute] Filtre optionnel : ne migrer que les assistants de cette company"
+        },
+        "creator_id": {
+          "type": "integer",
+          "description": "[preview, execute] Filtre optionnel : ne migrer que les assistants de ce créateur"
+        },
+        "migration_id": {
+          "type": "string",
+          "description": "[rollback] ID de la migration à annuler (ex: mig_20260304_143022)"
+        },
+        "force": {
+          "type": "boolean",
+          "description": "[execute] Autoriser la migration de plus de 500 assistants (default: false)",
+          "default": false
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Nombre max de résultats retournés (default: 20)",
+          "minimum": 1,
+          "maximum": 200,
+          "default": 20
+        },
+        "offset": {
+          "type": "integer",
+          "description": "Décalage pour pagination (default: 0)",
+          "minimum": 0,
+          "default": 0
+        }
+      },
+      "required": ["operation"],
+      "additionalProperties": false
+    }
+  }
+}

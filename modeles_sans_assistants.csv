@@ -1,0 +1,59 @@
+id,nom_technique,nom_affiche,categorie,actif,editeur
+12,dall-e-3,Dall-e 3,,Oui,DALL·E
+18,Llama-3-4B-local,,,Oui,Localhost
+47,claude-3-5-sonnet-20241022,⚠️ Claude 3.5 Sonnet (10-2024) (DÉPRÉCIÉ),,Non,🇺🇸 Anthropic AI
+74,claude-opus-4-20250514,Claude 4 Opus,,Non,🇺🇸 Anthropic AI
+90,az-gpt-4.1-nano,GPT 4.1 nano,,Oui,🇪🇺 Azure OpenAI RGPD
+92,az-o3-mini,o3 mini,,Oui,🇪🇺 Azure OpenAI RGPD
+91,az-o4-mini,o4 mini,,Oui,🇪🇺 Azure OpenAI RGPD
+87,cogito:14b,Cogito 14B,,Non,🇫🇷 Cloud Temple SNC - LLMaaS
+81,deepseek r1 32b,⚠️Deepseek R1 32B (31/12/2025) (DÉPRÉCIÉ),,Non,🇫🇷 Cloud Temple SNC - LLMaaS
+137,deepseek-ai/DeepSeek-OCR,✨Deepseek OCR (NOUVEAUTÉ),,Non,🇫🇷 Cloud Temple SNC - LLMaaS
+148,deepseek-ai/DeepSeek-OCR,✨DeepSeek OCR (NOUVEAUTÉ),,Non,🇫🇷 Cloud Temple SNC - LLMaaS
+151,glm-4.7-flash:30b,✨ GLM 4.7 flash 30B (NOUVEAUTÉ),chat,Oui,🇫🇷 Cloud Temple SNC - LLMaaS
+106,kimi-k2-snc:latest,Kimi K2,,Non,🇫🇷 Cloud Temple SNC - LLMaaS
+75,lucie-instruct:7b,Lucie 7B,,Non,🇫🇷 Cloud Temple SNC - LLMaaS
+146,qwen3-2507-think:4b,✨ Qwen 3 4B Thinking (NOUVEAUTÉ),,Oui,🇫🇷 Cloud Temple SNC - LLMaaS
+143,qwen3-vl:30b,✨ Qwen 3 VL 30B (NOUVEAUTÉ),,Oui,🇫🇷 Cloud Temple SNC - LLMaaS
+144,qwen3-vl:8b,✨ Qwen 3 VL 8B (NOUVEAUTÉ),,Oui,🇫🇷 Cloud Temple SNC - LLMaaS
+152,snc/tts-1,SNC/tts-1,text_to_speech,Oui,🇫🇷 Cloud Temple SNC - LLMaaS
+127,whisper-1,,audio_transcription,Oui,🇫🇷 Cloud Temple SNC - LLMaaS
+43,deepseek-coder,Deepseek Coder,,Oui,🇨🇳 Deepseek
+153,gemini-2.5-flash-preview-tts,gemini-2.5-flash-preview-tts,text_to_speech,Oui,🇺🇸 Google AI
+76,gemini-2.5-pro-preview-05-06,Gemini 2.5 Pro Preview 05-06,,Non,🇺🇸 Google AI
+139,gemini-3-pro-preview,A SUPPRIMER - Gemini 3 Pro Preview,chat,Non,🇺🇸 Google AI
+25,gemma2-9b-it,Gemma 2 9B,,Oui,🇺🇸 GroqCloud
+2,llama3-8b-8192,Llama 3 8B,,Oui,🇺🇸 GroqCloud
+35,meta-llama/llama-4-maverick-17b-128e-instruct,Meta Llama 4 17B,,Oui,🇺🇸 GroqCloud
+105,moonshotai/kimi-k2-instruct,Kimi K2,,Oui,🇺🇸 GroqCloud
+133,openai/gpt-oss-120b,GPT OSS 120B,chat,Oui,🇺🇸 GroqCloud
+128,whisper-large-v3,,audio_transcription,Oui,🇺🇸 GroqCloud
+28,codestral-latest,Codestral,,Oui,🇪🇺 Mistral AI
+93,magistral-medium-latest,Magistral Medium,,Oui,🇪🇺 Mistral AI
+94,magistral-small-latest,Magistral Small,,Oui,🇪🇺 Mistral AI
+29,ministral-8b-latest,Ministral,,Oui,🇪🇺 Mistral AI
+95,mistral-ocr-latest,Document AI,,Oui,🇪🇺 Mistral AI
+96,mistral-small-latest,Mistral Small,,Oui,🇪🇺 Mistral AI
+26,pixtral-large-latest,⚠️ Pixtral Large (DÉPRÉCIÉ),,Oui,🇪🇺 Mistral AI
+155,moonshotai/kimi-k2-5,Kimi K2.5,chat,Oui,🇺🇸 Nvidia
+68,chatgpt-4o-latest-remove,⚠️ GPT 4o (DÉPRÉCIÉ),,Non,🇺🇸 OpenAi
+22,gpt-4o-mini-2024-07-18,GPT 4o mini,,Oui,🇺🇸 OpenAi
+121,gpt-4o-mini-realtime-preview-2024-12-17,gpt-4o-mini-realtime-preview-2024-12-17,,Oui,🇺🇸 OpenAi
+154,gpt-4o-mini-tts,gpt-4o-mini-tts,text_to_speech,Oui,🇺🇸 OpenAi
+54,gpt-4o-search-preview,GPT 4o Search Preview,,Oui,🇺🇸 OpenAi
+123,gpt-5-codex,GPT 5 codex,,Oui,🇺🇸 OpenAi
+157,gpt-dgy,GPT DGY,chat,Non,🇺🇸 OpenAi
+122,gpt-realtime,gpt-realtime,,Oui,🇺🇸 OpenAi
+131,gpt-realtime-2025-08-28,gpt-realtime-2025-08-28,,Oui,🇺🇸 OpenAi
+39,o1,o1,,Non,🇺🇸 OpenAi
+71,o3,o3,,Oui,🇺🇸 OpenAi
+44,o3-mini,o3 mini,,Non,🇺🇸 OpenAi
+126,whisper-1,,audio_transcription,Oui,🇺🇸 OpenAi
+48,sonar,Sonar,,Oui,🇺🇸 Perplexity
+66,grok-2-image,Grok 2 Image,,Oui,🇺🇸 X.ai
+33,grok-2-latest,Grok 2 Latest,,Non,🇺🇸 X.ai
+32,grok-2-vision-latest,Grok 2 Vision Latest,,Non,🇺🇸 X.ai
+61,grok-3-beta,Grok 3 Beta,,Non,🇺🇸 X.ai
+65,grok-3-mini-beta,Grok 3 mini Beta,,Non,🇺🇸 X.ai
+136,grok-4-1-fast-non-reasoning,grok 4.1 Fast Non reasoning,chat,Oui,🇺🇸 X.ai
+135,grok-4-1-fast-reasoning,grok 4.1 fast Reasoning,chat,Oui,🇺🇸 X.ai

@@ -8,11 +8,18 @@ Handles:
 
 from typing import Any, Dict, List, Optional
 import requests
+import urllib3
 import logging
 import json
+import os
 import time
 import random
 import string
+
+# Match FILE_EDITOR_VERIFY_SSL convention — default False for dev environments
+_VERIFY_SSL = os.getenv("CHAT_AGENT_VERIFY_SSL", "false").lower() in ("1", "true", "yes")
+if not _VERIFY_SSL:
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 LOG = logging.getLogger(__name__)
 
@@ -53,7 +60,7 @@ def load_thread_history(
     try:
         LOG.info(f"Loading thread history from: {url}")
         
-        resp = requests.get(url, headers=headers, timeout=timeout)
+        resp = requests.get(url, headers=headers, timeout=timeout, verify=_VERIFY_SSL)
         
         if resp.status_code == 404:
             return {
@@ -197,7 +204,7 @@ def fetch_mcp_tools(tool_names: List[str], mcp_url: str) -> List[Dict[str, Any]]
     url = f"{mcp_url}/tools"
     
     try:
-        resp = requests.get(url, timeout=10)
+        resp = requests.get(url, timeout=10, verify=_VERIFY_SSL)
         resp.raise_for_status()
         all_tools = resp.json()
         
