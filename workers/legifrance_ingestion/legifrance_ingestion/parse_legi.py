@@ -57,16 +57,49 @@ def _inner_xml(node: ET.Element | None) -> str | None:
     return joined or None
 
 
+def _context_texte_node(root: ET.Element) -> ET.Element | None:
+    return root.find('.//CONTEXTE/TEXTE')
+
+
+def _extract_context_ids(root: ET.Element) -> dict[str, str | None]:
+    texte_node = _context_texte_node(root)
+    if texte_node is None:
+        return {
+            "cid": None,
+            "jorf_id": None,
+            "nor": None,
+            "text_nature": None,
+            "texte_titre": None,
+        }
+
+    cid = texte_node.attrib.get('cid') or None
+    jorf_id = texte_node.attrib.get('cid') or None
+    nor = texte_node.attrib.get('nor') or None
+    text_nature = texte_node.attrib.get('nature') or None
+    texte_titre = _text_or_none(texte_node, './TITRE_TXT')
+
+    return {
+        "cid": cid,
+        "jorf_id": jorf_id,
+        "nor": nor,
+        "text_nature": text_nature,
+        "texte_titre": texte_titre,
+    }
+
+
 def _detect_kind(member_name: str, root_tag: str) -> str:
     name = member_name.lower()
     tag = root_tag.upper()
 
-    if "/article/" in name or tag == "ARTICLE":
-        return "article"
-    if "/section_ta/" in name or tag == "SECTION_TA":
-        return "section"
-    if "/texte/" in name or tag in {"TEXTELR", "TEXTE_VERSION"}:
-        return "texte"
+    if 'versions.xml' in name or '/eli/' in name:
+        raise ValueError(f"Unsupported LEGI auxiliary file: {member_name}")
+
+    if '/article/' in name or tag == 'ARTICLE':
+        return 'article'
+    if '/section_ta/' in name or tag == 'SECTION_TA':
+        return 'section'
+    if '/texte/' in name or tag in {'TEXTELR', 'TEXTE_VERSION'}:
+        return 'texte'
     raise ValueError(f"Unsupported LEGI kind for member={member_name} root_tag={root_tag}")
 
 
@@ -113,7 +146,7 @@ def parse_legi_member(member: ArchiveMember) -> list[dict[str, Any]]:
     if kind == "article":
         return [parse_legi_article(root).to_raw_obj()]
     if kind == "section":
-        return [parse_legi_section(root).to_raw_obj()]
+        return [parse_legi_section(root, member.member_name).to_raw_obj()]
     if kind == "texte":
         return [parse_legi_texte(root).to_raw_obj()]
 
@@ -127,23 +160,15 @@ def parse_legi_article(root: ET.Element) -> ParsedLegiObject:
     etat = _text_or_none(root, './/META/META_SPEC/META_ARTICLE/ETAT')
     date_debut = _text_or_none(root, './/META/META_SPEC/META_ARTICLE/DATE_DEBUT')
     date_fin = _text_or_none(root, './/META/META_SPEC/META_ARTICLE/DATE_FIN')
-    cid = _text_or_none(root, './/CONTEXTE/TEXTE/@cid')
-    if cid is None:
-        texte_node = root.find('.//CONTEXTE/TEXTE')
-        cid = texte_node.attrib.get('cid') if texte_node is not None else None
-        jorf_id = texte_node.attrib.get('cid') if texte_node is not None else None
-        nor = texte_node.attrib.get('nor') if texte_node is not None else None
-        text_nature = texte_node.attrib.get('nature') if texte_node is not None else None
-    else:
-        jorf_id = None
-        nor = None
-        text_nature = None
 
-    texte_titre = _text_or_none(root, './/CONTEXTE/TEXTE/TITRE_TXT')
+    context_data = _extract_context_ids(root)
     contenu_node = root.find('.//BLOC_TEXTUEL/CONTENU')
     content_html = _inner_xml(contenu_node)
     content_text = ''.join(contenu_node.itertext()).strip() if contenu_node is not None else None
     links = _parse_links(root)
+
+    parent_section_id = None
+    # V1 minimal: no reliable extraction yet for all LEGI variants
 
     return ParsedLegiObject(
         entity_type='article',
@@ -156,33 +181,39 @@ def parse_legi_article(root: ET.Element) -> ParsedLegiObject:
             'html': content_html,
         },
         context={
-            'parent_text_id': cid,
-            'code_id': cid,
-            'code_title': texte_titre,
+            'parent_text_id': context_data['cid'],
+            'parent_section_id': parent_section_id,
+            'code_id': context_data['cid'],
+            'code_title': context_data['texte_titre'],
         },
         extra={
-            'cid': cid,
-            'jorf_id': jorf_id,
-            'nor': nor,
+            'cid': context_data['cid'],
+            'jorf_id': context_data['jorf_id'],
+            'nor': context_data['nor'],
             'article_num': article_num,
             'etat': etat,
             'date_debut': date_debut,
             'date_fin': date_fin,
-            'document_kind': text_nature,
+            'document_kind': context_data['text_nature'],
             'links_explicit': links,
         },
     )
 
 
-def parse_legi_section(root: ET.Element) -> ParsedLegiObject:
-    section_id = _text_or_none(root, './/META/META_COMMUN/ID') or 'UNKNOWN_SECTION_ID'
+def parse_legi_section(root: ET.Element, member_name: str) -> ParsedLegiObject:
+    section_id = _text_or_none(root, './/META/META_COMMUN/ID')
+    if not section_id:
+        lower_name = member_name.lower()
+        if lower_name.endswith('.xml'):
+            section_id = member_name.rsplit('/', 1)[-1].replace('.xml', '')
+    if not section_id:
+        section_id = 'UNKNOWN_SECTION_ID'
+
     section_title = _text_or_none(root, './/TITRE_TA') or section_id
     nature = _text_or_none(root, './/META/META_COMMUN/NATURE') or 'Section'
-    texte_node = root.find('.//CONTEXTE/TEXTE')
-    cid = texte_node.attrib.get('cid') if texte_node is not None else None
+    context_data = _extract_context_ids(root)
 
     parent_section_id = None
-    # parent section is not directly available in all XMLs; left absent for V1 minimal parser
 
     return ParsedLegiObject(
         entity_type='section',
@@ -192,11 +223,11 @@ def parse_legi_section(root: ET.Element) -> ParsedLegiObject:
         nature=nature,
         content={},
         context={
-            'parent_text_id': cid,
+            'parent_text_id': context_data['cid'],
             'parent_section_id': parent_section_id,
         },
         extra={
-            'cid': cid,
+            'cid': context_data['cid'],
             'section_title': section_title,
         },
     )
