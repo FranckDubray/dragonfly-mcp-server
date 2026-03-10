@@ -1,0 +1,31 @@
+[project]
+name = "legifrance-ingestion"
+version = "0.1.0"
+description = "Worker d'ingestion DILA vers API Dragonfly / S3 datasource legifrance"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "requests>=2.32.0",
+  "lxml>=5.3.0",
+  "python-dotenv>=1.0.1",
+]
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["legifrance_ingestion*"]
+
+[tool.black]
+line-length = 100
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
