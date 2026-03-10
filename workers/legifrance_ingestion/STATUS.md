@@ -9,21 +9,23 @@
 
 Le worker Python V1 est **amorcé et partiellement opérationnel**.
 
-Il ne s'agit **pas encore** d'un pipeline complet bootstrap/replay/daily entièrement branché dans `main.py`.
+Il ne s'agit **pas encore** d'un pipeline complet bootstrap/replay/daily, mais le mode `bootstrap` commence désormais à être **réellement branché** pour LEGI et JORF minimaux.
 
 ### Ce que c'est actuellement
 - un socle de worker réel,
 - un writer Dragonfly testé en réel,
-- une acquisition LEGI minimale testée,
+- une acquisition LEGI/JORF minimale testée,
 - un bootstrap LEGI minimal séparé,
-- un parseur LEGI MVP désormais capable de produire un roundtrip minimal propre,
-- un futur parseur JORF encore à implémenter.
+- un bootstrap JORF minimal séparé,
+- un parseur LEGI MVP capable de produire un roundtrip minimal propre,
+- un parseur JORF minimal (`texte` uniquement),
+- un bridge minimal LEGI ↔ JORF via mappings.
 
 ### Ce que ce n'est pas encore
 - un runner de production complet,
-- un pipeline daily entièrement branché,
-- un parseur JORF V1,
-- un bridge JORF ↔ LEGI stabilisé,
+- un pipeline replay/daily branché,
+- un parseur JORF complet,
+- un bridge JORF ↔ LEGI robuste à grande échelle,
 - un pipeline multi-corpus prêt pour la montée en charge.
 
 ---
@@ -48,9 +50,11 @@ Il ne s'agit **pas encore** d'un pipeline complet bootstrap/replay/daily entièr
 - `manifests.py`
 - `mappings.py`
 - `parse_legi.py`
+- `parse_jorf.py`
 - `utils.py`
 - `acquisition.py`
 - `bootstrap_legi_minimal.py`
+- `bootstrap_jorf_minimal.py`
 
 ---
 
@@ -69,85 +73,104 @@ Validé en réel :
 - writer HTTP Dragonfly ✅
 - lecture streaming `.tar.gz` ✅
 - téléchargement archive LEGI ✅
+- téléchargement archive JORF ✅
 - génération manifests minimaux ✅
 - génération mappings minimaux ✅
 - bootstrap LEGI minimal ✅
+- bootstrap JORF minimal ✅
 - roundtrip minimal propre sur :
   - 1 texte LEGI ✅
   - 1 article LEGI ✅
   - 1 section LEGI ✅
+  - 1 texte JORF ✅
+- bridge minimal LEGI ↔ JORF via mappings ✅
+- `main.py --mode bootstrap --corpus legi|jorf` branché et testé ✅
 
 ---
 
 ## 4. Ce qui est encore partiel ou fragile
 
 ### `main.py`
-- expose `--mode bootstrap|replay|daily`
-- mais les vraies branches restent essentiellement des `TODO`
-- **ne pas considérer `main.py` comme pipeline complet fonctionnel**
+- `bootstrap` minimal branché
+- `replay` = TODO
+- `daily` = TODO
 
 ### `parse_legi.py`
 - premier parseur réel utile
-- extraction minimale désormais correcte pour un roundtrip de base
+- extraction minimale correcte pour roundtrip de base
 - reste encore limité pour :
   - hiérarchies plus riches
   - robustesse complète sur tous les variants LEGI
   - filtrage métier plus fin
 
-### `bootstrap_legi_minimal.py`
-- c'est actuellement le **vrai harness de test utile**
-- beaucoup plus réel que `main.py` pour les tests LEGI
+### `parse_jorf.py`
+- MVP utile pour `texte` uniquement
+- pas encore d'articles, sections, conteneurs
+
+### `bootstrap_legi_minimal.py` / `bootstrap_jorf_minimal.py`
+- vrais harnesss de test utiles
+- encore pensés comme bootstrap minimal, pas comme pipeline complet de production
 
 ### `state_store.py`
 - implémenté
-- pas encore réellement branché au flow principal
+- utilisé par `main.py` pour un état très simple
+- pas encore branché à un système plus riche de reprise/checkpoint
 
 ### `acquisition.py`
-- implémenté minimalement
-- sert déjà à télécharger une archive LEGI
-- pas encore intégré dans un pipeline orchestré complet via `main.py`
+- utilisé pour résoudre/télécharger l'archive bootstrap si `--archive-path` est absent
+- pas encore intégré à replay/daily
 
 ### `mappings.py`
 - produit une base de mappings V1
+- bridge minimal LEGI ↔ JORF en place
 - validité métier encore à confirmer à grande échelle
 
 ---
 
-## 5. Résultats du test LEGI minimal
+## 5. Résultats des tests réels
 
-### Archive testée
+### LEGI
+Archive testée :
 - `LEGI_20260309-211112.tar.gz`
 
-### Ce qui a été publié proprement
+Publié proprement :
 - `legi/texte/LEGITEXT000005616367.json` ✅
 - `legi/article/LEGIARTI000006698549.json` ✅
 - `legi/section/LEGISCTA000006103669.json` ✅
 - manifest LEGI minimal ✅
 - mappings minimaux ✅
 
-### Mappings observés
-- `article_to_text.jsonl`
-- `text_to_articles.jsonl`
-- `legi_to_jorf.jsonl`
-- `section_to_text.jsonl`
+### JORF
+Archive testée :
+- `JORF_20260310-002235.tar.gz`
 
-### Conclusion
-Le roundtrip LEGI minimal est maintenant **fonctionnel**.
+Publié proprement :
+- `jorf/texte/JORFTEXT000053642114.json` ✅
+- manifest JORF minimal ✅
+
+### Bridge minimal
+Mappings observés :
+- `legi_to_jorf.jsonl` ✅
+- `jorf_to_legi.jsonl` ✅
+- `article_to_text.jsonl` ✅
+- `text_to_articles.jsonl` ✅
+- `section_to_text.jsonl` ✅
 
 ---
 
-## 6. Commandes / usages réellement testables
+## 6. Commandes réellement testables
 
-### Écriture Dragonfly de test
-Le writer est testable et validé avec une vraie API key.
+### Bootstrap LEGI auto ou manuel
+```bash
+python3 -m legifrance_ingestion.main --mode bootstrap --corpus legi
+python3 -m legifrance_ingestion.main --mode bootstrap --corpus legi --archive-path /path/to/archive.tar.gz
+```
 
-### Bootstrap LEGI minimal
-Le module suivant est aujourd'hui la meilleure base de test :
-- `legifrance_ingestion.bootstrap_legi_minimal`
-
-### Acquisition LEGI
-Le module suivant est déjà exploitable :
-- `legifrance_ingestion.acquisition`
+### Bootstrap JORF auto ou manuel
+```bash
+python3 -m legifrance_ingestion.main --mode bootstrap --corpus jorf
+python3 -m legifrance_ingestion.main --mode bootstrap --corpus jorf --archive-path /path/to/archive.tar.gz
+```
 
 ---
 
@@ -165,26 +188,20 @@ Et utilement aussi :
 ## 8. Priorité immédiate
 
 ### À faire maintenant
-1. implémenter `parse_jorf.py`
-2. créer un `bootstrap_jorf_minimal.py`
-3. tester un roundtrip JORF `texte` uniquement
-4. commencer le bridge minimal `JORF ↔ LEGI`
+1. stabiliser les formats réels de `_meta/manifests/` et `_meta/mappings/`
+2. commencer le premier tool réel de consultation (`load_object` ou `resolve_id`)
+3. réfléchir à la consommation des mappings par les tools V1
 
 ### Ensuite seulement
-5. brancher davantage le flux dans `main.py`
-6. stabiliser la couche JORF V1
-7. préparer le bridge documentaire plus robuste
+4. brancher `replay`
+5. brancher `daily`
+6. renforcer le bridge documentaire
+7. élargir JORF si nécessaire
 
 ---
 
 ## 9. Règle de lecture pour un autre LLM ou dev
 
-Si tu reprends ce worker, ne pars pas du principe que :
-- `main.py` est complet,
-- `bootstrap/replay/daily` sont déjà branchés,
-- JORF est déjà implémenté,
-- les mappings sont déjà métierment fiables à grande échelle.
-
 Le bon état mental est :
 
-> socle technique validé, tuyau Dragonfly validé, bootstrap LEGI minimal validé, JORF minimal encore à coder.
+> socle technique validé, tuyau Dragonfly validé, bootstrap LEGI et JORF minimaux validés, bridge minimal LEGI ↔ JORF validé, mais pipeline complet et tools réels encore à construire.
