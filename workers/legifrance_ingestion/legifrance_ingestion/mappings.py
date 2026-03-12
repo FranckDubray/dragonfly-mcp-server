@@ -40,6 +40,9 @@ class MappingCollector:
                 self.rows_by_mapping["section_to_text"].append(
                     {"source_id": object_id, "target_id": parent_text_id, "corpus": corpus}
                 )
+                self.rows_by_mapping["text_to_sections"].append(
+                    {"source_id": parent_text_id, "target_id": object_id, "corpus": corpus}
+                )
 
             parent_section_id = context.get("parent_section_id")
             if parent_section_id:
