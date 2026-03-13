@@ -1,6 +1,6 @@
 # Worker Status — Legifrance Ingestion V1
 
-**Date** : 2026-03-10
+**Date** : 2026-03-12
 **Objet** : état réel du code local dans `workers/legifrance_ingestion/`.
 
 ---
@@ -9,17 +9,18 @@
 
 Le worker Python V1 est **amorcé et partiellement opérationnel**.
 
-Il ne s'agit **pas encore** d'un pipeline complet bootstrap/replay/daily, mais le mode `bootstrap` commence désormais à être **réellement branché** pour LEGI et JORF minimaux.
+Il ne s'agit **pas encore** d'un pipeline complet bootstrap/replay/daily, mais le mode `bootstrap` est désormais réellement branché pour LEGI et JORF minimaux.
 
 ### Ce que c'est actuellement
 - un socle de worker réel,
 - un writer Dragonfly testé en réel,
 - une acquisition LEGI/JORF minimale testée,
-- un bootstrap LEGI minimal séparé,
-- un bootstrap JORF minimal séparé,
+- un bootstrap LEGI minimal,
+- un bootstrap JORF minimal,
 - un parseur LEGI MVP capable de produire un roundtrip minimal propre,
 - un parseur JORF minimal (`texte` uniquement),
-- un bridge minimal LEGI ↔ JORF via mappings.
+- un bridge minimal LEGI ↔ JORF via mappings,
+- un mapping `text_to_sections` publié pour la navigation LEGI.
 
 ### Ce que ce n'est pas encore
 - un runner de production complet,
@@ -84,6 +85,7 @@ Validé en réel :
   - 1 section LEGI ✅
   - 1 texte JORF ✅
 - bridge minimal LEGI ↔ JORF via mappings ✅
+- `text_to_sections.jsonl` publié ✅
 - `main.py --mode bootstrap --corpus legi|jorf` branché et testé ✅
 
 ---
@@ -130,22 +132,24 @@ Validé en réel :
 ## 5. Résultats des tests réels
 
 ### LEGI
-Archive testée :
+Archives testées :
 - `LEGI_20260309-211112.tar.gz`
+- `LEGI_20260312-070417.tar.gz`
 
 Publié proprement :
-- `legi/texte/LEGITEXT000005616367.json` ✅
-- `legi/article/LEGIARTI000006698549.json` ✅
-- `legi/section/LEGISCTA000006103669.json` ✅
+- `legi/texte/...` ✅
+- `legi/article/...` ✅
+- `legi/section/...` ✅
 - manifest LEGI minimal ✅
 - mappings minimaux ✅
+- `text_to_sections.jsonl` ✅
 
 ### JORF
 Archive testée :
 - `JORF_20260310-002235.tar.gz`
 
 Publié proprement :
-- `jorf/texte/JORFTEXT000053642114.json` ✅
+- `jorf/texte/...` ✅
 - manifest JORF minimal ✅
 
 ### Bridge minimal
@@ -155,6 +159,7 @@ Mappings observés :
 - `article_to_text.jsonl` ✅
 - `text_to_articles.jsonl` ✅
 - `section_to_text.jsonl` ✅
+- `text_to_sections.jsonl` ✅
 
 ---
 
@@ -189,8 +194,8 @@ Et utilement aussi :
 
 ### À faire maintenant
 1. stabiliser les formats réels de `_meta/manifests/` et `_meta/mappings/`
-2. commencer le premier tool réel de consultation (`load_object` ou `resolve_id`)
-3. réfléchir à la consommation des mappings par les tools V1
+2. continuer le support des tools backend par la qualité des mappings
+3. préparer des usages de navigation structurée plus complets
 
 ### Ensuite seulement
 4. brancher `replay`
@@ -204,4 +209,4 @@ Et utilement aussi :
 
 Le bon état mental est :
 
-> socle technique validé, tuyau Dragonfly validé, bootstrap LEGI et JORF minimaux validés, bridge minimal LEGI ↔ JORF validé, mais pipeline complet et tools réels encore à construire.
+> socle technique validé, tuyau Dragonfly validé, bootstrap LEGI et JORF minimaux validés, bridge minimal LEGI ↔ JORF validé, mappings de navigation structurelle disponibles, mais pipeline complet et couverture corpus encore à construire.
