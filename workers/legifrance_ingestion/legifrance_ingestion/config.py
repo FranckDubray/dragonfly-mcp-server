@@ -33,12 +33,16 @@ class Settings:
     enable_jorf: bool
     enable_kali: bool
     enable_cass: bool
+    enable_jade: bool
+    enable_constit: bool
 
     dila_base_url: str
     dila_legi_url: str
     dila_jorf_url: str
     dila_kali_url: str
     dila_cass_url: str
+    dila_jade_url: str
+    dila_constit_url: str
 
     @property
     def ingestion_state_prefix(self) -> str:
@@ -89,9 +93,13 @@ def load_settings() -> Settings:
         enable_jorf=_as_bool(os.getenv("LEGI_ENABLE_JORF"), True),
         enable_kali=_as_bool(os.getenv("LEGI_ENABLE_KALI"), True),
         enable_cass=_as_bool(os.getenv("LEGI_ENABLE_CASS"), True),
+        enable_jade=_as_bool(os.getenv("LEGI_ENABLE_JADE"), True),
+        enable_constit=_as_bool(os.getenv("LEGI_ENABLE_CONSTIT"), True),
         dila_base_url=os.getenv("DILA_BASE_URL", "https://echanges.dila.gouv.fr/OPENDATA"),
         dila_legi_url=os.getenv("DILA_LEGI_URL", "https://echanges.dila.gouv.fr/OPENDATA/LEGI/"),
         dila_jorf_url=os.getenv("DILA_JORF_URL", "https://echanges.dila.gouv.fr/OPENDATA/JORF/"),
         dila_kali_url=os.getenv("DILA_KALI_URL", "https://echanges.dila.gouv.fr/OPENDATA/KALI/"),
         dila_cass_url=os.getenv("DILA_CASS_URL", "https://echanges.dila.gouv.fr/OPENDATA/CASS/"),
+        dila_jade_url=os.getenv("DILA_JADE_URL", "https://echanges.dila.gouv.fr/OPENDATA/JADE/"),
+        dila_constit_url=os.getenv("DILA_CONSTIT_URL", "https://echanges.dila.gouv.fr/OPENDATA/CONSTIT/"),
     )

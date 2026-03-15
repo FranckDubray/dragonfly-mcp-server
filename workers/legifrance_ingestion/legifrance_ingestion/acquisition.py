@@ -65,6 +65,14 @@ def list_cass_archives(settings: Settings) -> list[ArchiveInfo]:
     return _build_archives("cass", settings.dila_cass_url, settings)
 
 
+def list_jade_archives(settings: Settings) -> list[ArchiveInfo]:
+    return _build_archives("jade", settings.dila_jade_url, settings)
+
+
+def list_constit_archives(settings: Settings) -> list[ArchiveInfo]:
+    return _build_archives("constit", settings.dila_constit_url, settings)
+
+
 def download_archive(settings: Settings, archive: ArchiveInfo) -> Path:
     target_dir = settings.workdir / archive.corpus / "archives"
     target_dir.mkdir(parents=True, exist_ok=True)
