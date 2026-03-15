@@ -1,0 +1,347 @@
+from __future__ import annotations
+
+import logging
+from dataclasses import dataclass
+from typing import Any
+from xml.etree import ElementTree as ET
+
+from .archive_reader import ArchiveMember
+
+LOGGER = logging.getLogger("legifrance_ingestion.parse_legi")
+
+
+@dataclass
+class ParsedLegiObject:
+    entity_type: str
+    corpus: str
+    id: str
+    title: str
+    nature: str
+    content: dict[str, Any]
+    context: dict[str, Any]
+    extra: dict[str, Any]
+
+    def to_raw_obj(self) -> dict[str, Any]:
+        raw = {
+            "entity_type": self.entity_type,
+            "corpus": self.corpus,
+            "id": self.id,
+            "title": self.title,
+            "nature": self.nature,
+            "content": self.content,
+            "context": self.context,
+        }
+        raw.update(self.extra)
+        return raw
+
+
+def _text_or_none(node: ET.Element | None, xpath: str) -> str | None:
+    if node is None:
+        return None
+    found = node.find(xpath)
+    if found is None or found.text is None:
+        return None
+    value = found.text.strip()
+    return value or None
+
+
+def _inner_xml(node: ET.Element | None) -> str | None:
+    if node is None:
+        return None
+    parts: list[str] = []
+    if node.text and node.text.strip():
+        parts.append(node.text.strip())
+    for child in node:
+        parts.append(ET.tostring(child, encoding="unicode"))
+    joined = "".join(parts).strip()
+    return joined or None
+
+
+def _safe_get_attr(node: ET.Element | None, attr_name: str) -> str | None:
+    if node is None:
+        return None
+    value = node.attrib.get(attr_name)
+    if value is None:
+        return None
+    value = value.strip()
+    return value or None
+
+
+def _find_first(node: ET.Element | None, tag_name: str) -> ET.Element | None:
+    if node is None:
+        return None
+    for elem in node.iter():
+        if elem.tag == tag_name:
+            return elem
+    return None
+
+
+def _extract_parent_text_candidates(root: ET.Element) -> dict[str, str | None]:
+    contexte = _find_first(root, "CONTEXTE")
+    texte = _find_first(contexte, "TEXTE")
+    titre_txt = _find_first(contexte, "TITRE_TXT")
+
+    return {
+        "contexte_texte_id": _safe_get_attr(texte, "id"),
+        "contexte_texte_cid": _safe_get_attr(texte, "cid"),
+        "contexte_texte_nature": _safe_get_attr(texte, "nature"),
+        "titre_txt_id": _safe_get_attr(titre_txt, "id_txt"),
+    }
+
+
+def _is_legi_text_id(value: str | None) -> bool:
+    return bool(value) and value.startswith("LEGITEXT")
+
+
+def _resolve_parent_text_id_from_candidates(candidates: dict[str, str | None]) -> tuple[str | None, str | None]:
+    ordered_candidates = [
+        ("contexte_texte_id", candidates.get("contexte_texte_id")),
+        ("titre_txt_id", candidates.get("titre_txt_id")),
+    ]
+    for method, value in ordered_candidates:
+        if _is_legi_text_id(value):
+            return value, f"xml:{method}"
+    return None, None
+
+
+def _context_texte_node(root: ET.Element) -> ET.Element | None:
+    return root.find('.//CONTEXTE/TEXTE')
+
+
+def _extract_context_ids(root: ET.Element) -> dict[str, str | None]:
+    texte_node = _context_texte_node(root)
+    if texte_node is None:
+        return {
+            "cid": None,
+            "jorf_id": None,
+            "nor": None,
+            "text_nature": None,
+            "texte_titre": None,
+        }
+
+    cid = texte_node.attrib.get('cid') or None
+    jorf_id = texte_node.attrib.get('cid') or None
+    nor = texte_node.attrib.get('nor') or None
+    text_nature = texte_node.attrib.get('nature') or None
+    texte_titre = _text_or_none(texte_node, './TITRE_TXT')
+
+    return {
+        "cid": cid,
+        "jorf_id": jorf_id,
+        "nor": nor,
+        "text_nature": text_nature,
+        "texte_titre": texte_titre,
+    }
+
+
+def _detect_kind(member_name: str, root_tag: str) -> str:
+    name = member_name.lower()
+    tag = root_tag.upper()
+
+    if 'versions.xml' in name or '/eli/' in name:
+        raise ValueError(f"Unsupported LEGI auxiliary file: {member_name}")
+
+    # Primary source of truth: XML root tag
+    if tag == 'ARTICLE':
+        return 'article'
+    if tag == 'SECTION_TA':
+        return 'section'
+    if tag in {'TEXTELR', 'TEXTE_VERSION'}:
+        return 'texte'
+
+    # Secondary fallback: archive path
+    if '/article/' in name:
+        return 'article'
+    if '/section_ta/' in name or '/section/' in name:
+        return 'section'
+    if '/texte/' in name:
+        return 'texte'
+
+    LOGGER.debug("Unknown LEGI kind candidate | member=%s root_tag=%s", member_name, root_tag)
+    raise ValueError(f"Unsupported LEGI kind for member={member_name} root_tag={root_tag}")
+
+
+def _parse_links(root: ET.Element) -> list[dict[str, Any]]:
+    links: list[dict[str, Any]] = []
+    for link in root.findall('.//LIENS/LIEN'):
+        target_id = link.attrib.get('id') or None
+        link_type = link.attrib.get('typelien') or None
+        direction = link.attrib.get('sens') or None
+        surface = (link.text or '').strip() or None
+
+        if not (target_id or link_type or surface):
+            continue
+
+        item: dict[str, Any] = {
+            "link_type": link_type or "UNKNOWN",
+            "direction": direction or "unknown",
+            "target": {},
+        }
+        if target_id:
+            item["target"]["id"] = target_id
+        if link.attrib.get('cidtexte'):
+            item["target"]["cid"] = link.attrib.get('cidtexte')
+        if link.attrib.get('naturetexte'):
+            item["target"]["nature"] = link.attrib.get('naturetexte')
+        if link.attrib.get('nortexte'):
+            item["target"]["nor"] = link.attrib.get('nortexte')
+        if link.attrib.get('num'):
+            item["target"]["num"] = link.attrib.get('num')
+        if link.attrib.get('numtexte'):
+            item["target"]["num_text"] = link.attrib.get('numtexte')
+        if link.attrib.get('datesignatexte'):
+            item["target"]["date_signature"] = link.attrib.get('datesignatexte')
+        if surface:
+            item["surface"] = surface
+        links.append(item)
+    return links
+
+
+def parse_legi_member(member: ArchiveMember) -> list[dict[str, Any]]:
+    root = ET.fromstring(member.content)
+    kind = _detect_kind(member.member_name, root.tag)
+
+    if kind == "article":
+        return [parse_legi_article(root).to_raw_obj()]
+    if kind == "section":
+        return [parse_legi_section(root, member.member_name).to_raw_obj()]
+    if kind == "texte":
+        return [parse_legi_texte(root).to_raw_obj()]
+
+    raise ValueError(f"Unsupported parsed kind: {kind}")
+
+
+def parse_legi_article(root: ET.Element) -> ParsedLegiObject:
+    article_id = _text_or_none(root, './/META/META_COMMUN/ID') or 'UNKNOWN_ARTICLE_ID'
+    article_num = _text_or_none(root, './/META/META_SPEC/META_ARTICLE/NUM') or article_id
+    nature = _text_or_none(root, './/META/META_COMMUN/NATURE') or 'Article'
+    etat = _text_or_none(root, './/META/META_SPEC/META_ARTICLE/ETAT')
+    date_debut = _text_or_none(root, './/META/META_SPEC/META_ARTICLE/DATE_DEBUT')
+    date_fin = _text_or_none(root, './/META/META_SPEC/META_ARTICLE/DATE_FIN')
+
+    context_data = _extract_context_ids(root)
+    parent_text_candidates = _extract_parent_text_candidates(root)
+    resolved_parent_text_id, resolution_method = _resolve_parent_text_id_from_candidates(parent_text_candidates)
+    contenu_node = root.find('.//BLOC_TEXTUEL/CONTENU')
+    content_html = _inner_xml(contenu_node)
+    content_text = ''.join(contenu_node.itertext()).strip() if contenu_node is not None else None
+    links = _parse_links(root)
+
+    parent_section_id = None
+    # V1 minimal: no reliable extraction yet for all LEGI variants
+
+    return ParsedLegiObject(
+        entity_type='article',
+        corpus='LEGI',
+        id=article_id,
+        title=article_num,
+        nature=nature,
+        content={
+            'text': content_text,
+            'html': content_html,
+        },
+        context={
+            'parent_text_id': resolved_parent_text_id or context_data['cid'],
+            'parent_section_id': parent_section_id,
+            'code_id': resolved_parent_text_id or context_data['cid'],
+            'code_title': context_data['texte_titre'],
+        },
+        extra={
+            'cid': context_data['cid'],
+            'jorf_id': context_data['jorf_id'],
+            'nor': context_data['nor'],
+            'legi_id': resolved_parent_text_id,
+            'article_num': article_num,
+            'etat': etat,
+            'date_debut': date_debut,
+            'date_fin': date_fin,
+            'document_kind': context_data['text_nature'],
+            'links_explicit': links,
+            '_debug': {
+                'parent_text_candidates': parent_text_candidates,
+                'parent_text_resolution_method': resolution_method,
+            },
+        },
+    )
+
+
+def parse_legi_section(root: ET.Element, member_name: str) -> ParsedLegiObject:
+    section_id = _text_or_none(root, './/META/META_COMMUN/ID')
+    if not section_id:
+        lower_name = member_name.lower()
+        if lower_name.endswith('.xml'):
+            section_id = member_name.rsplit('/', 1)[-1].replace('.xml', '')
+    if not section_id:
+        section_id = 'UNKNOWN_SECTION_ID'
+
+    section_title = _text_or_none(root, './/TITRE_TA') or section_id
+    nature = _text_or_none(root, './/META/META_COMMUN/NATURE') or 'Section'
+    context_data = _extract_context_ids(root)
+    parent_text_candidates = _extract_parent_text_candidates(root)
+    resolved_parent_text_id, resolution_method = _resolve_parent_text_id_from_candidates(parent_text_candidates)
+
+    parent_section_id = None
+
+    return ParsedLegiObject(
+        entity_type='section',
+        corpus='LEGI',
+        id=section_id,
+        title=section_title,
+        nature=nature,
+        content={},
+        context={
+            'parent_text_id': resolved_parent_text_id or context_data['cid'],
+            'parent_section_id': parent_section_id,
+        },
+        extra={
+            'cid': context_data['cid'],
+            'legi_id': resolved_parent_text_id,
+            'section_title': section_title,
+            '_debug': {
+                'parent_text_candidates': parent_text_candidates,
+                'parent_text_resolution_method': resolution_method,
+            },
+        },
+    )
+
+
+def parse_legi_texte(root: ET.Element) -> ParsedLegiObject:
+    texte_id = _text_or_none(root, './/META/META_COMMUN/ID') or 'UNKNOWN_TEXTE_ID'
+    title = (
+        _text_or_none(root, './/META/META_SPEC/META_TEXTE_VERSION/TITRE')
+        or _text_or_none(root, './/TITRE')
+        or texte_id
+    )
+    title_full = _text_or_none(root, './/META/META_SPEC/META_TEXTE_VERSION/TITREFULL')
+    nature = _text_or_none(root, './/META/META_COMMUN/NATURE') or 'Texte'
+    cid = _text_or_none(root, './/META/META_SPEC/META_TEXTE_CHRONICLE/CID')
+    nor = _text_or_none(root, './/META/META_SPEC/META_TEXTE_CHRONICLE/NOR')
+    date_signature = _text_or_none(root, './/META/META_SPEC/META_TEXTE_CHRONICLE/DATE_TEXTE')
+    date_publication = _text_or_none(root, './/META/META_SPEC/META_TEXTE_CHRONICLE/DATE_PUBLI')
+    date_debut = _text_or_none(root, './/META/META_SPEC/META_TEXTE_VERSION/DATE_DEBUT')
+    date_fin = _text_or_none(root, './/META/META_SPEC/META_TEXTE_VERSION/DATE_FIN')
+    etat = _text_or_none(root, './/META/META_SPEC/META_TEXTE_VERSION/ETAT')
+    links = _parse_links(root)
+
+    return ParsedLegiObject(
+        entity_type='texte',
+        corpus='LEGI',
+        id=texte_id,
+        title=title,
+        nature=nature,
+        content={},
+        context={},
+        extra={
+            'cid': cid,
+            'legi_id': texte_id,
+            'nor': nor,
+            'title_full': title_full,
+            'date_signature': date_signature,
+            'date_publication': date_publication,
+            'date_debut': date_debut,
+            'date_fin': date_fin,
+            'etat': etat,
+            'document_kind': 'normative_text',
+            'links_explicit': links,
+        },
+    )
