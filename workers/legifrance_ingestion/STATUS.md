@@ -16,15 +16,14 @@ Il ne s'agit **pas encore** d'un pipeline complet bootstrap/replay/daily entièr
 - un writer Dragonfly testé en réel,
 - une acquisition LEGI minimale testée,
 - un bootstrap LEGI minimal séparé,
-- un parseur LEGI MVP désormais capable de produire un roundtrip minimal propre,
-- un futur parseur JORF encore à implémenter.
+- un parseur LEGI MVP encore fragile.
 
 ### Ce que ce n'est pas encore
 - un runner de production complet,
 - un pipeline daily entièrement branché,
+- un parseur LEGI fiable,
 - un parseur JORF V1,
-- un bridge JORF ↔ LEGI stabilisé,
-- un pipeline multi-corpus prêt pour la montée en charge.
+- un bridge JORF ↔ LEGI stabilisé.
 
 ---
 
@@ -60,8 +59,8 @@ Il ne s'agit **pas encore** d'un pipeline complet bootstrap/replay/daily entièr
 Validé en réel :
 - write datasource ✅
 - read datasource ✅
-- meta/head datasource ✅
-- versions datasource ✅
+- meta/head ✅
+- versions ✅
 
 ### Worker
 Validé en réel :
@@ -71,11 +70,7 @@ Validé en réel :
 - téléchargement archive LEGI ✅
 - génération manifests minimaux ✅
 - génération mappings minimaux ✅
-- bootstrap LEGI minimal ✅
-- roundtrip minimal propre sur :
-  - 1 texte LEGI ✅
-  - 1 article LEGI ✅
-  - 1 section LEGI ✅
+- bootstrap LEGI minimal partiel ✅
 
 ---
 
@@ -87,12 +82,12 @@ Validé en réel :
 - **ne pas considérer `main.py` comme pipeline complet fonctionnel**
 
 ### `parse_legi.py`
-- premier parseur réel utile
-- extraction minimale désormais correcte pour un roundtrip de base
-- reste encore limité pour :
-  - hiérarchies plus riches
-  - robustesse complète sur tous les variants LEGI
-  - filtrage métier plus fin
+- premier jet réel
+- parse `texte`, `article`, `section`
+- mais encore fragile sur :
+  - lecture des attributs XML
+  - extraction d'ID section
+  - filtrage des bons membres
 
 ### `bootstrap_legi_minimal.py`
 - c'est actuellement le **vrai harness de test utile**
@@ -109,7 +104,7 @@ Validé en réel :
 
 ### `mappings.py`
 - produit une base de mappings V1
-- validité métier encore à confirmer à grande échelle
+- validité métier encore à confirmer quand le parseur LEGI sera stabilisé
 
 ---
 
@@ -118,21 +113,16 @@ Validé en réel :
 ### Archive testée
 - `LEGI_20260309-211112.tar.gz`
 
-### Ce qui a été publié proprement
-- `legi/texte/LEGITEXT000005616367.json` ✅
-- `legi/article/LEGIARTI000006698549.json` ✅
-- `legi/section/LEGISCTA000006103669.json` ✅
-- manifest LEGI minimal ✅
-- mappings minimaux ✅
+### Ce qui a été publié
+- un texte LEGI ✅
+- une section LEGI ✅
+- un manifest ✅
+- un mapping minimal ✅
 
-### Mappings observés
-- `article_to_text.jsonl`
-- `text_to_articles.jsonl`
-- `legi_to_jorf.jsonl`
-- `section_to_text.jsonl`
-
-### Conclusion
-Le roundtrip LEGI minimal est maintenant **fonctionnel**.
+### Problèmes observés
+- erreurs de parsing article (`'@'`) ❌
+- section avec `UNKNOWN_SECTION_ID` ❌
+- filtrage trop large des membres d'archive ❌
 
 ---
 
@@ -165,15 +155,17 @@ Et utilement aussi :
 ## 8. Priorité immédiate
 
 ### À faire maintenant
-1. implémenter `parse_jorf.py`
-2. créer un `bootstrap_jorf_minimal.py`
-3. tester un roundtrip JORF `texte` uniquement
-4. commencer le bridge minimal `JORF ↔ LEGI`
+1. corriger `parse_legi.py`
+2. relancer `bootstrap_legi_minimal.py`
+3. obtenir un roundtrip propre sur :
+   - 1 texte
+   - 1 article
+   - 1 section
 
 ### Ensuite seulement
-5. brancher davantage le flux dans `main.py`
-6. stabiliser la couche JORF V1
-7. préparer le bridge documentaire plus robuste
+4. brancher le flow dans `main.py`
+5. stabiliser LEGI V1
+6. commencer `parse_jorf.py`
 
 ---
 
@@ -183,8 +175,8 @@ Si tu reprends ce worker, ne pars pas du principe que :
 - `main.py` est complet,
 - `bootstrap/replay/daily` sont déjà branchés,
 - JORF est déjà implémenté,
-- les mappings sont déjà métierment fiables à grande échelle.
+- les mappings sont déjà métierment fiables.
 
 Le bon état mental est :
 
-> socle technique validé, tuyau Dragonfly validé, bootstrap LEGI minimal validé, JORF minimal encore à coder.
+> socle technique validé, tuyau Dragonfly validé, bootstrap LEGI partiel validé, parseur LEGI à corriger.
