@@ -1,1 +1,0 @@
-"""Legifrance ingestion worker package."""
