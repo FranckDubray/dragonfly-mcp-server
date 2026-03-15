@@ -118,16 +118,6 @@ def build_canonical_texte(raw_obj: dict[str, Any], archive_name: str, source_xml
     return obj
 
 
-def build_canonical_decision(raw_obj: dict[str, Any], archive_name: str, source_xml_path: str) -> dict[str, Any]:
-    obj = build_common_base(raw_obj, archive_name, source_xml_path)
-    obj["decision_metadata"] = {}
-    add_if_present(obj["decision_metadata"], "jurisdiction", raw_obj.get("jurisdiction"))
-    add_if_present(obj["decision_metadata"], "formation", raw_obj.get("formation"))
-    add_if_present(obj["decision_metadata"], "decision_number", raw_obj.get("decision_number"))
-    add_if_present(obj["decision_metadata"], "solution", raw_obj.get("solution"))
-    return obj
-
-
 def map_to_canonical_json(raw_obj: dict[str, Any], archive_name: str, source_xml_path: str) -> dict[str, Any]:
     entity_type = raw_obj["entity_type"]
 
@@ -137,7 +127,5 @@ def map_to_canonical_json(raw_obj: dict[str, Any], archive_name: str, source_xml
         return build_canonical_section(raw_obj, archive_name, source_xml_path)
     if entity_type == "texte":
         return build_canonical_texte(raw_obj, archive_name, source_xml_path)
-    if entity_type == "decision":
-        return build_canonical_decision(raw_obj, archive_name, source_xml_path)
 
     raise ValueError(f"Unsupported entity_type for V1 mapper: {entity_type}")
