@@ -34,49 +34,35 @@ def _extract_archive_names(html: str) -> list[str]:
     return deduped
 
 
-def list_legi_archives(settings: Settings) -> list[ArchiveInfo]:
-    html = _fetch_index(settings.dila_legi_url, settings.http_timeout)
+def _build_archives(corpus: str, base_url: str, settings: Settings) -> list[ArchiveInfo]:
+    html = _fetch_index(base_url, settings.http_timeout)
     archive_names = _extract_archive_names(html)
     archives: list[ArchiveInfo] = []
     for name in archive_names:
         archives.append(
             ArchiveInfo(
-                corpus="legi",
+                corpus=corpus,
                 name=name,
-                url=urljoin(settings.dila_legi_url, name),
+                url=urljoin(base_url, name),
             )
         )
     return archives
+
+
+def list_legi_archives(settings: Settings) -> list[ArchiveInfo]:
+    return _build_archives("legi", settings.dila_legi_url, settings)
 
 
 def list_jorf_archives(settings: Settings) -> list[ArchiveInfo]:
-    html = _fetch_index(settings.dila_jorf_url, settings.http_timeout)
-    archive_names = _extract_archive_names(html)
-    archives: list[ArchiveInfo] = []
-    for name in archive_names:
-        archives.append(
-            ArchiveInfo(
-                corpus="jorf",
-                name=name,
-                url=urljoin(settings.dila_jorf_url, name),
-            )
-        )
-    return archives
+    return _build_archives("jorf", settings.dila_jorf_url, settings)
 
 
 def list_kali_archives(settings: Settings) -> list[ArchiveInfo]:
-    html = _fetch_index(settings.dila_kali_url, settings.http_timeout)
-    archive_names = _extract_archive_names(html)
-    archives: list[ArchiveInfo] = []
-    for name in archive_names:
-        archives.append(
-            ArchiveInfo(
-                corpus="kali",
-                name=name,
-                url=urljoin(settings.dila_kali_url, name),
-            )
-        )
-    return archives
+    return _build_archives("kali", settings.dila_kali_url, settings)
+
+
+def list_cass_archives(settings: Settings) -> list[ArchiveInfo]:
+    return _build_archives("cass", settings.dila_cass_url, settings)
 
 
 def download_archive(settings: Settings, archive: ArchiveInfo) -> Path:
