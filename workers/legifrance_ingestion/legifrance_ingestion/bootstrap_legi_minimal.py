@@ -15,9 +15,6 @@ from .validators import validate_canonical
 LOGGER = logging.getLogger("legifrance_ingestion.bootstrap_legi_minimal")
 
 
-TARGET_ENTITY_TYPES = {"texte", "article", "section"}
-
-
 def compute_datasource_path(obj: dict) -> str:
     return f"legi/{obj['entity_type']}/{obj['id']}.json"
 
@@ -45,8 +42,6 @@ def run_minimal_legi_roundtrip(archive_path: str) -> dict:
 
         for raw_obj in raw_objects:
             entity_type = raw_obj["entity_type"]
-            if entity_type not in TARGET_ENTITY_TYPES:
-                continue
             if entity_type in entity_types_seen:
                 continue
 
@@ -64,15 +59,14 @@ def run_minimal_legi_roundtrip(archive_path: str) -> dict:
 
             LOGGER.info("Published minimal LEGI object | type=%s path=%s", entity_type, path)
 
-        if entity_types_seen == TARGET_ENTITY_TYPES:
+            if entity_types_seen == {"texte", "article", "section"}:
+                break
+
+        if entity_types_seen == {"texte", "article", "section"}:
             break
 
-    if "texte" not in entity_types_seen:
-        raise RuntimeError("No LEGI text object could be parsed and published from archive")
-    if "article" not in entity_types_seen:
-        raise RuntimeError("No LEGI article object could be parsed and published from archive")
-    if "section" not in entity_types_seen:
-        raise RuntimeError("No LEGI section object could be parsed and published from archive")
+    if not published:
+        raise RuntimeError("No LEGI object could be parsed and published from archive")
 
     run_name = f"legi_bootstrap_minimal_{archive.stem.replace('.', '_')}"
     manifest_paths = manifests.flush(writer, run_name)
