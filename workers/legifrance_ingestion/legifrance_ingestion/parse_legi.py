@@ -57,53 +57,6 @@ def _inner_xml(node: ET.Element | None) -> str | None:
     return joined or None
 
 
-def _safe_get_attr(node: ET.Element | None, attr_name: str) -> str | None:
-    if node is None:
-        return None
-    value = node.attrib.get(attr_name)
-    if value is None:
-        return None
-    value = value.strip()
-    return value or None
-
-
-def _find_first(node: ET.Element | None, tag_name: str) -> ET.Element | None:
-    if node is None:
-        return None
-    for elem in node.iter():
-        if elem.tag == tag_name:
-            return elem
-    return None
-
-
-def _extract_parent_text_candidates(root: ET.Element) -> dict[str, str | None]:
-    contexte = _find_first(root, "CONTEXTE")
-    texte = _find_first(contexte, "TEXTE")
-    titre_txt = _find_first(contexte, "TITRE_TXT")
-
-    return {
-        "contexte_texte_id": _safe_get_attr(texte, "id"),
-        "contexte_texte_cid": _safe_get_attr(texte, "cid"),
-        "contexte_texte_nature": _safe_get_attr(texte, "nature"),
-        "titre_txt_id": _safe_get_attr(titre_txt, "id_txt"),
-    }
-
-
-def _is_legi_text_id(value: str | None) -> bool:
-    return bool(value) and value.startswith("LEGITEXT")
-
-
-def _resolve_parent_text_id_from_candidates(candidates: dict[str, str | None]) -> tuple[str | None, str | None]:
-    ordered_candidates = [
-        ("contexte_texte_id", candidates.get("contexte_texte_id")),
-        ("titre_txt_id", candidates.get("titre_txt_id")),
-    ]
-    for method, value in ordered_candidates:
-        if _is_legi_text_id(value):
-            return value, f"xml:{method}"
-    return None, None
-
-
 def _context_texte_node(root: ET.Element) -> ET.Element | None:
     return root.find('.//CONTEXTE/TEXTE')
 
@@ -141,23 +94,12 @@ def _detect_kind(member_name: str, root_tag: str) -> str:
     if 'versions.xml' in name or '/eli/' in name:
         raise ValueError(f"Unsupported LEGI auxiliary file: {member_name}")
 
-    # Primary source of truth: XML root tag
-    if tag == 'ARTICLE':
+    if '/article/' in name or tag == 'ARTICLE':
         return 'article'
-    if tag == 'SECTION_TA':
+    if '/section_ta/' in name or tag == 'SECTION_TA':
         return 'section'
-    if tag in {'TEXTELR', 'TEXTE_VERSION'}:
+    if '/texte/' in name or tag in {'TEXTELR', 'TEXTE_VERSION'}:
         return 'texte'
-
-    # Secondary fallback: archive path
-    if '/article/' in name:
-        return 'article'
-    if '/section_ta/' in name or '/section/' in name:
-        return 'section'
-    if '/texte/' in name:
-        return 'texte'
-
-    LOGGER.debug("Unknown LEGI kind candidate | member=%s root_tag=%s", member_name, root_tag)
     raise ValueError(f"Unsupported LEGI kind for member={member_name} root_tag={root_tag}")
 
 
@@ -220,8 +162,6 @@ def parse_legi_article(root: ET.Element) -> ParsedLegiObject:
     date_fin = _text_or_none(root, './/META/META_SPEC/META_ARTICLE/DATE_FIN')
 
     context_data = _extract_context_ids(root)
-    parent_text_candidates = _extract_parent_text_candidates(root)
-    resolved_parent_text_id, resolution_method = _resolve_parent_text_id_from_candidates(parent_text_candidates)
     contenu_node = root.find('.//BLOC_TEXTUEL/CONTENU')
     content_html = _inner_xml(contenu_node)
     content_text = ''.join(contenu_node.itertext()).strip() if contenu_node is not None else None
@@ -241,26 +181,21 @@ def parse_legi_article(root: ET.Element) -> ParsedLegiObject:
             'html': content_html,
         },
         context={
-            'parent_text_id': resolved_parent_text_id or context_data['cid'],
+            'parent_text_id': context_data['cid'],
             'parent_section_id': parent_section_id,
-            'code_id': resolved_parent_text_id or context_data['cid'],
+            'code_id': context_data['cid'],
             'code_title': context_data['texte_titre'],
         },
         extra={
             'cid': context_data['cid'],
             'jorf_id': context_data['jorf_id'],
             'nor': context_data['nor'],
-            'legi_id': resolved_parent_text_id,
             'article_num': article_num,
             'etat': etat,
             'date_debut': date_debut,
             'date_fin': date_fin,
             'document_kind': context_data['text_nature'],
             'links_explicit': links,
-            '_debug': {
-                'parent_text_candidates': parent_text_candidates,
-                'parent_text_resolution_method': resolution_method,
-            },
         },
     )
 
@@ -277,8 +212,6 @@ def parse_legi_section(root: ET.Element, member_name: str) -> ParsedLegiObject:
     section_title = _text_or_none(root, './/TITRE_TA') or section_id
     nature = _text_or_none(root, './/META/META_COMMUN/NATURE') or 'Section'
     context_data = _extract_context_ids(root)
-    parent_text_candidates = _extract_parent_text_candidates(root)
-    resolved_parent_text_id, resolution_method = _resolve_parent_text_id_from_candidates(parent_text_candidates)
 
     parent_section_id = None
 
@@ -290,17 +223,12 @@ def parse_legi_section(root: ET.Element, member_name: str) -> ParsedLegiObject:
         nature=nature,
         content={},
         context={
-            'parent_text_id': resolved_parent_text_id or context_data['cid'],
+            'parent_text_id': context_data['cid'],
             'parent_section_id': parent_section_id,
         },
         extra={
             'cid': context_data['cid'],
-            'legi_id': resolved_parent_text_id,
             'section_title': section_title,
-            '_debug': {
-                'parent_text_candidates': parent_text_candidates,
-                'parent_text_resolution_method': resolution_method,
-            },
         },
     )
 

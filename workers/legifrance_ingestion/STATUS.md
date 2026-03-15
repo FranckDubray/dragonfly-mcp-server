@@ -1,6 +1,6 @@
 # Worker Status — Legifrance Ingestion V1
 
-**Date** : 2026-03-13
+**Date** : 2026-03-12
 **Objet** : état réel du code local dans `workers/legifrance_ingestion/`.
 
 ---
@@ -20,8 +20,7 @@ Il ne s'agit **pas encore** d'un pipeline complet bootstrap/replay/daily, mais l
 - un parseur LEGI MVP capable de produire un roundtrip minimal propre,
 - un parseur JORF minimal (`texte` uniquement),
 - un bridge minimal LEGI ↔ JORF via mappings,
-- un mapping `text_to_sections` publié pour la navigation LEGI,
-- un réancrage des enfants LEGI sur le parent consolidé `LEGITEXT...` dans le flux de bootstrap.
+- un mapping `text_to_sections` publié pour la navigation LEGI.
 
 ### Ce que ce n'est pas encore
 - un runner de production complet,
@@ -84,12 +83,10 @@ Validé en réel :
   - 1 texte LEGI ✅
   - 1 article LEGI ✅
   - 1 section LEGI ✅
-  - 1 texte JORF récent ✅
-  - 1 texte JORF historique ciblé ✅
+  - 1 texte JORF ✅
 - bridge minimal LEGI ↔ JORF via mappings ✅
 - `text_to_sections.jsonl` publié ✅
 - `main.py --mode bootstrap --corpus legi|jorf` branché et testé ✅
-- réancrage `LEGITEXT -> article/section` validé ✅
 
 ---
 
@@ -115,7 +112,6 @@ Validé en réel :
 ### `bootstrap_legi_minimal.py` / `bootstrap_jorf_minimal.py`
 - vrais harnesss de test utiles
 - encore pensés comme bootstrap minimal, pas comme pipeline complet de production
-- `bootstrap_jorf_minimal.py` supporte maintenant un ciblage par `target_ids`
 
 ### `state_store.py`
 - implémenté
@@ -149,13 +145,11 @@ Publié proprement :
 - `text_to_sections.jsonl` ✅
 
 ### JORF
-Archives testées :
-- `JORF_20260310-002235.tar.gz` (récent)
-- `Freemium_jorf_global_20250713-140000.tar.gz` (global / historique)
+Archive testée :
+- `JORF_20260310-002235.tar.gz`
 
 Publié proprement :
-- `jorf/texte/JORFTEXT000053642114.json` ✅
-- `jorf/texte/JORFTEXT000000713238.json` ✅
+- `jorf/texte/...` ✅
 - manifest JORF minimal ✅
 
 ### Bridge minimal
@@ -169,33 +163,7 @@ Mappings observés :
 
 ---
 
-## 6. Jalon agentique validé
-
-Les outils backend et le chargement natif permettent désormais les boucles suivantes :
-
-### A. Résolution directe
-- `resolve_id`
-- puis `file_editor load`
-- puis résumé depuis le workspace ✅
-
-### B. Navigation structurelle
-- `get_children`
-- puis `file_editor load`
-- puis résumé depuis le workspace ✅
-
-### C. Pont inter-corpus JORF → LEGI
-- `jorf_to_legi`
-- puis chargement d’un objet LEGI ✅
-
-### D. Pont inter-corpus LEGI → JORF
-- `legi_to_jorf`
-- puis chargement du texte JORF source ✅
-
-Le noyau agentique minimal est donc fonctionnel en réel.
-
----
-
-## 7. Commandes réellement testables
+## 6. Commandes réellement testables
 
 ### Bootstrap LEGI auto ou manuel
 ```bash
@@ -209,14 +177,9 @@ python3 -m legifrance_ingestion.main --mode bootstrap --corpus jorf
 python3 -m legifrance_ingestion.main --mode bootstrap --corpus jorf --archive-path /path/to/archive.tar.gz
 ```
 
-### Bootstrap JORF ciblé (en Python direct pour l’instant)
-```python
-run_minimal_jorf_roundtrip('/path/to/freemium.tar.gz', target_ids={'JORFTEXT000000713238'})
-```
-
 ---
 
-## 8. Permissions nécessaires
+## 7. Permissions nécessaires
 
 Pour la clé d'ingestion datasource, il faut au minimum :
 - `storage.write`
@@ -227,12 +190,12 @@ Et utilement aussi :
 
 ---
 
-## 9. Priorité immédiate
+## 8. Priorité immédiate
 
 ### À faire maintenant
 1. stabiliser les formats réels de `_meta/manifests/` et `_meta/mappings/`
-2. continuer les tests IHM des outils backend
-3. améliorer la qualité d’usage / de résumé côté LLM
+2. continuer le support des tools backend par la qualité des mappings
+3. préparer des usages de navigation structurée plus complets
 
 ### Ensuite seulement
 4. brancher `replay`
@@ -242,8 +205,8 @@ Et utilement aussi :
 
 ---
 
-## 10. Règle de lecture pour un autre LLM ou dev
+## 9. Règle de lecture pour un autre LLM ou dev
 
 Le bon état mental est :
 
-> socle technique validé, tuyau Dragonfly validé, bootstrap LEGI et JORF minimaux validés, bridge minimal LEGI ↔ JORF validé, navigation locale et inter-corpus fonctionnelle via les tools backend, mais pipeline complet et couverture corpus encore à construire.
+> socle technique validé, tuyau Dragonfly validé, bootstrap LEGI et JORF minimaux validés, bridge minimal LEGI ↔ JORF validé, mappings de navigation structurelle disponibles, mais pipeline complet et couverture corpus encore à construire.
