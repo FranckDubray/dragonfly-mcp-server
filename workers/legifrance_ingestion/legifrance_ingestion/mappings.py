@@ -47,53 +47,21 @@ class MappingCollector:
                     {"source_id": parent_section_id, "target_id": object_id, "corpus": corpus}
                 )
 
-        # Minimal LEGI -> JORF bridge
-        if corpus == "LEGI":
-            bridge_target = (
-                source_ids.get("jorf_id")
-                or (source_ids.get("cid") if str(source_ids.get("cid", "")).startswith("JORFTEXT") else None)
-                or (context.get("parent_text_id") if str(context.get("parent_text_id", "")).startswith("JORFTEXT") else None)
+        jorf_id = source_ids.get("jorf_id")
+        legi_id = source_ids.get("legi_id")
+        if corpus == "LEGI" and jorf_id:
+            self.rows_by_mapping["legi_to_jorf"].append(
+                {"source_id": object_id, "target_id": jorf_id, "corpus": corpus}
             )
-            if bridge_target:
-                self.rows_by_mapping["legi_to_jorf"].append(
-                    {"source_id": object_id, "target_id": bridge_target, "corpus": corpus}
-                )
-                self.rows_by_mapping["jorf_to_legi"].append(
-                    {"source_id": bridge_target, "target_id": object_id, "corpus": corpus}
-                )
-
-        # Direct JORF -> LEGI bridge if already known in the object
-        if corpus == "JORF":
-            legi_id = source_ids.get("legi_id")
-            if legi_id:
-                self.rows_by_mapping["jorf_to_legi"].append(
-                    {"source_id": object_id, "target_id": legi_id, "corpus": corpus}
-                )
-                self.rows_by_mapping["legi_to_jorf"].append(
-                    {"source_id": legi_id, "target_id": object_id, "corpus": corpus}
-                )
+        if corpus == "JORF" and legi_id:
+            self.rows_by_mapping["jorf_to_legi"].append(
+                {"source_id": object_id, "target_id": legi_id, "corpus": corpus}
+            )
 
     def flush(self, writer: DragonflyWriter) -> list[str]:
         written_paths: list[str] = []
         for mapping_name, rows in self.rows_by_mapping.items():
-            deduped_rows = _dedupe_rows(rows)
             path = f"_meta/mappings/{mapping_name}.jsonl"
-            writer.write_jsonl(path, deduped_rows)
+            writer.write_jsonl(path, rows)
             written_paths.append(path)
         return written_paths
-
-
-def _dedupe_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    seen: set[tuple[str, str, str]] = set()
-    deduped: list[dict[str, Any]] = []
-    for row in rows:
-        key = (
-            str(row.get("source_id")),
-            str(row.get("target_id")),
-            str(row.get("corpus")),
-        )
-        if key in seen:
-            continue
-        seen.add(key)
-        deduped.append(row)
-    return deduped
