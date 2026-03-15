@@ -73,6 +73,10 @@ def list_constit_archives(settings: Settings) -> list[ArchiveInfo]:
     return _build_archives("constit", settings.dila_constit_url, settings)
 
 
+def list_cnil_archives(settings: Settings) -> list[ArchiveInfo]:
+    return _build_archives("cnil", settings.dila_cnil_url, settings)
+
+
 def download_archive(settings: Settings, archive: ArchiveInfo) -> Path:
     target_dir = settings.workdir / archive.corpus / "archives"
     target_dir.mkdir(parents=True, exist_ok=True)

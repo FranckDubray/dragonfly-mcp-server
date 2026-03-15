@@ -9,6 +9,7 @@ from typing import Literal
 from .acquisition import (
     download_archive,
     list_cass_archives,
+    list_cnil_archives,
     list_constit_archives,
     list_jade_archives,
     list_jorf_archives,
@@ -17,6 +18,7 @@ from .acquisition import (
     select_latest_archive,
 )
 from .bootstrap_cass_minimal import run_minimal_cass_roundtrip
+from .bootstrap_cnil_minimal import run_minimal_cnil_roundtrip
 from .bootstrap_constit_minimal import run_minimal_constit_roundtrip
 from .bootstrap_jade_minimal import run_minimal_jade_roundtrip
 from .bootstrap_jorf_minimal import run_minimal_jorf_roundtrip
@@ -26,7 +28,7 @@ from .config import Settings, load_settings
 from .state_store import LocalStateStore, RunState
 
 Mode = Literal["bootstrap", "replay", "daily"]
-Corpus = Literal["legi", "jorf", "kali", "cass", "jade", "constit"]
+Corpus = Literal["legi", "jorf", "kali", "cass", "jade", "constit", "cnil"]
 
 LOGGER = logging.getLogger("legifrance_ingestion")
 DEFAULT_REPLAY_LIMIT = 3
@@ -54,7 +56,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--corpus",
         required=True,
-        choices=["legi", "jorf", "kali", "cass", "jade", "constit"],
+        choices=["legi", "jorf", "kali", "cass", "jade", "constit", "cnil"],
         help="Corpus à traiter",
     )
     parser.add_argument(
@@ -118,6 +120,9 @@ def _resolve_bootstrap_archive(settings: Settings, corpus: Corpus, archive_path:
     if corpus == "constit":
         latest = select_latest_archive(list_constit_archives(settings))
         return str(download_archive(settings, latest))
+    if corpus == "cnil":
+        latest = select_latest_archive(list_cnil_archives(settings))
+        return str(download_archive(settings, latest))
 
     raise RuntimeError(f"Unsupported corpus for bootstrap archive resolution: {corpus}")
 
@@ -135,6 +140,8 @@ def _run_single_archive(corpus: Corpus, archive_path: str) -> dict:
         return run_minimal_jade_roundtrip(archive_path)
     if corpus == "constit":
         return run_minimal_constit_roundtrip(archive_path)
+    if corpus == "cnil":
+        return run_minimal_cnil_roundtrip(archive_path)
     raise RuntimeError(f"Unsupported corpus for single archive run: {corpus}")
 
 
@@ -151,6 +158,8 @@ def _list_archives_for_corpus(settings: Settings, corpus: Corpus):
         return list_jade_archives(settings)
     if corpus == "constit":
         return list_constit_archives(settings)
+    if corpus == "cnil":
+        return list_cnil_archives(settings)
     raise RuntimeError(f"Unsupported corpus for archive listing: {corpus}")
 
 
@@ -302,6 +311,8 @@ def dispatch(settings: Settings, mode: Mode, corpus: Corpus, archive_path: str |
         raise RuntimeError("Corpus JADE is disabled by configuration")
     if corpus == "constit" and not settings.enable_constit:
         raise RuntimeError("Corpus CONSTIT is disabled by configuration")
+    if corpus == "cnil" and not settings.enable_cnil:
+        raise RuntimeError("Corpus CNIL is disabled by configuration")
 
     if mode == "bootstrap":
         return run_bootstrap(settings, corpus, archive_path)
