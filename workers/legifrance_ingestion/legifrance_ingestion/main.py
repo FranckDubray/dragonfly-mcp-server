@@ -3,15 +3,8 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
-from pathlib import Path
 from typing import Literal
 
-from .acquisition import (
-    download_archive,
-    list_jorf_archives,
-    list_legi_archives,
-    select_latest_archive,
-)
 from .bootstrap_jorf_minimal import run_minimal_jorf_roundtrip
 from .bootstrap_legi_minimal import run_minimal_legi_roundtrip
 from .config import Settings, load_settings
@@ -79,41 +72,24 @@ def _update_state_success(state_store: LocalStateStore, corpus: Corpus, mode: Mo
     state_store.save(state)
 
 
-def _resolve_bootstrap_archive(settings: Settings, corpus: Corpus, archive_path: str | None) -> str:
-    if archive_path:
-        path = Path(archive_path).resolve()
-        if not path.exists():
-            raise FileNotFoundError(f"Archive not found: {path}")
-        return str(path)
-
-    LOGGER.info("No archive path provided, resolving latest remote archive | corpus=%s", corpus)
-
-    if corpus == "legi":
-        latest = select_latest_archive(list_legi_archives(settings))
-        return str(download_archive(settings, latest))
-
-    if corpus == "jorf":
-        latest = select_latest_archive(list_jorf_archives(settings))
-        return str(download_archive(settings, latest))
-
-    raise RuntimeError(f"Unsupported corpus for bootstrap archive resolution: {corpus}")
-
-
 def run_bootstrap(settings: Settings, corpus: Corpus, archive_path: str | None = None) -> int:
-    resolved_archive = _resolve_bootstrap_archive(settings, corpus, archive_path)
-    LOGGER.info("BOOTSTRAP start | corpus=%s archive=%s", corpus, resolved_archive)
+    LOGGER.info("BOOTSTRAP start | corpus=%s archive=%s", corpus, archive_path)
     state_store = LocalStateStore(settings)
-    _update_state_begin(state_store, corpus, "bootstrap", resolved_archive)
+    _update_state_begin(state_store, corpus, "bootstrap", archive_path)
 
     if corpus == "legi":
-        result = run_minimal_legi_roundtrip(resolved_archive)
-        _update_state_success(state_store, corpus, "bootstrap", resolved_archive, result)
+        if not archive_path:
+            raise RuntimeError("For now, LEGI bootstrap requires --archive-path")
+        result = run_minimal_legi_roundtrip(archive_path)
+        _update_state_success(state_store, corpus, "bootstrap", archive_path, result)
         LOGGER.info("BOOTSTRAP done | result=%s", result)
         return 0
 
     if corpus == "jorf":
-        result = run_minimal_jorf_roundtrip(resolved_archive)
-        _update_state_success(state_store, corpus, "bootstrap", resolved_archive, result)
+        if not archive_path:
+            raise RuntimeError("For now, JORF bootstrap requires --archive-path")
+        result = run_minimal_jorf_roundtrip(archive_path)
+        _update_state_success(state_store, corpus, "bootstrap", archive_path, result)
         LOGGER.info("BOOTSTRAP done | result=%s", result)
         return 0
 
