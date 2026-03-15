@@ -64,6 +64,21 @@ def list_jorf_archives(settings: Settings) -> list[ArchiveInfo]:
     return archives
 
 
+def list_kali_archives(settings: Settings) -> list[ArchiveInfo]:
+    html = _fetch_index(settings.dila_kali_url, settings.http_timeout)
+    archive_names = _extract_archive_names(html)
+    archives: list[ArchiveInfo] = []
+    for name in archive_names:
+        archives.append(
+            ArchiveInfo(
+                corpus="kali",
+                name=name,
+                url=urljoin(settings.dila_kali_url, name),
+            )
+        )
+    return archives
+
+
 def download_archive(settings: Settings, archive: ArchiveInfo) -> Path:
     target_dir = settings.workdir / archive.corpus / "archives"
     target_dir.mkdir(parents=True, exist_ok=True)

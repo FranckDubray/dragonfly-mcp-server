@@ -31,10 +31,12 @@ class Settings:
 
     enable_legi: bool
     enable_jorf: bool
+    enable_kali: bool
 
     dila_base_url: str
     dila_legi_url: str
     dila_jorf_url: str
+    dila_kali_url: str
 
     @property
     def ingestion_state_prefix(self) -> str:
@@ -83,7 +85,9 @@ def load_settings() -> Settings:
         log_level=os.getenv("LEGI_LOG_LEVEL", "INFO").upper(),
         enable_legi=_as_bool(os.getenv("LEGI_ENABLE_LEGI"), True),
         enable_jorf=_as_bool(os.getenv("LEGI_ENABLE_JORF"), True),
+        enable_kali=_as_bool(os.getenv("LEGI_ENABLE_KALI"), True),
         dila_base_url=os.getenv("DILA_BASE_URL", "https://echanges.dila.gouv.fr/OPENDATA"),
         dila_legi_url=os.getenv("DILA_LEGI_URL", "https://echanges.dila.gouv.fr/OPENDATA/LEGI/"),
         dila_jorf_url=os.getenv("DILA_JORF_URL", "https://echanges.dila.gouv.fr/OPENDATA/JORF/"),
+        dila_kali_url=os.getenv("DILA_KALI_URL", "https://echanges.dila.gouv.fr/OPENDATA/KALI/"),
     )

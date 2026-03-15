@@ -9,16 +9,18 @@ from typing import Literal
 from .acquisition import (
     download_archive,
     list_jorf_archives,
+    list_kali_archives,
     list_legi_archives,
     select_latest_archive,
 )
 from .bootstrap_jorf_minimal import run_minimal_jorf_roundtrip
+from .bootstrap_kali_minimal import run_minimal_kali_roundtrip
 from .bootstrap_legi_minimal import run_minimal_legi_roundtrip
 from .config import Settings, load_settings
 from .state_store import LocalStateStore, RunState
 
 Mode = Literal["bootstrap", "replay", "daily"]
-Corpus = Literal["legi", "jorf"]
+Corpus = Literal["legi", "jorf", "kali"]
 
 LOGGER = logging.getLogger("legifrance_ingestion")
 
@@ -44,7 +46,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--corpus",
         required=True,
-        choices=["legi", "jorf"],
+        choices=["legi", "jorf", "kali"],
         help="Corpus à traiter",
     )
     parser.add_argument(
@@ -96,6 +98,10 @@ def _resolve_bootstrap_archive(settings: Settings, corpus: Corpus, archive_path:
         latest = select_latest_archive(list_jorf_archives(settings))
         return str(download_archive(settings, latest))
 
+    if corpus == "kali":
+        latest = select_latest_archive(list_kali_archives(settings))
+        return str(download_archive(settings, latest))
+
     raise RuntimeError(f"Unsupported corpus for bootstrap archive resolution: {corpus}")
 
 
@@ -113,6 +119,12 @@ def run_bootstrap(settings: Settings, corpus: Corpus, archive_path: str | None =
 
     if corpus == "jorf":
         result = run_minimal_jorf_roundtrip(resolved_archive)
+        _update_state_success(state_store, corpus, "bootstrap", resolved_archive, result)
+        LOGGER.info("BOOTSTRAP done | result=%s", result)
+        return 0
+
+    if corpus == "kali":
+        result = run_minimal_kali_roundtrip(resolved_archive)
         _update_state_success(state_store, corpus, "bootstrap", resolved_archive, result)
         LOGGER.info("BOOTSTRAP done | result=%s", result)
         return 0
@@ -137,6 +149,8 @@ def dispatch(settings: Settings, mode: Mode, corpus: Corpus, archive_path: str |
         raise RuntimeError("Corpus LEGI is disabled by configuration")
     if corpus == "jorf" and not settings.enable_jorf:
         raise RuntimeError("Corpus JORF is disabled by configuration")
+    if corpus == "kali" and not settings.enable_kali:
+        raise RuntimeError("Corpus KALI is disabled by configuration")
 
     if mode == "bootstrap":
         return run_bootstrap(settings, corpus, archive_path)
