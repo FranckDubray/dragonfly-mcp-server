@@ -78,5 +78,7 @@ def validate_canonical(obj: dict[str, Any]) -> None:
 
     if entity_type == "decision":
         decision_metadata = obj.get("decision_metadata") or {}
-        if not decision_metadata.get("jurisdiction"):
-            raise CanonicalValidationError("Missing decision_metadata.jurisdiction")
+        # Minimal CASS/CNIL/JADE/... V1: jurisdiction is desirable but not strictly blocking.
+        # Keep decision objects publishable as long as the core canonical invariants are present.
+        if not decision_metadata:
+            raise CanonicalValidationError("Missing decision_metadata")
